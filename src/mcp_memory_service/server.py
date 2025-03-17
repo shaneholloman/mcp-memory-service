@@ -36,10 +36,11 @@ from .utils.system_detection import (
 )
 from .utils.time_parser import extract_time_expression, parse_time_expression
 
-# Configure logging
+# Configure logging to go to stderr
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
 )
 logger = logging.getLogger(__name__)
 
@@ -124,12 +125,12 @@ class MemoryServer:
             logger.info("Starting async initialization...")
             
             # Print system diagnostics to stderr for visibility
-            print("\n=== System Diagnostics ===", file=sys.stderr)
-            print(f"OS: {self.system_info.os_name} {self.system_info.os_version}", file=sys.stderr)
-            print(f"Architecture: {self.system_info.architecture}", file=sys.stderr)
-            print(f"Memory: {self.system_info.memory_gb:.2f} GB", file=sys.stderr)
-            print(f"Accelerator: {self.system_info.accelerator}", file=sys.stderr)
-            print(f"Python: {platform.python_version()}", file=sys.stderr)
+            print("\n=== System Diagnostics ===", file=sys.stderr, flush=True)
+            print(f"OS: {self.system_info.os_name} {self.system_info.os_version}", file=sys.stderr, flush=True)
+            print(f"Architecture: {self.system_info.architecture}", file=sys.stderr, flush=True)
+            print(f"Memory: {self.system_info.memory_gb:.2f} GB", file=sys.stderr, flush=True)
+            print(f"Accelerator: {self.system_info.accelerator}", file=sys.stderr, flush=True)
+            print(f"Python: {platform.python_version()}", file=sys.stderr, flush=True)
             
             # Validate database health with timeout
             try:
@@ -143,14 +144,14 @@ class MemoryServer:
                 logger.warning("Database health check timed out, continuing anyway")
             
             # Add explicit console error output for Smithery to see
-            print("MCP Memory Service initialization completed", file=sys.stderr)
+            print("MCP Memory Service initialization completed", file=sys.stderr, flush=True)
             
             return True
         except Exception as e:
             logger.error(f"Async initialization error: {str(e)}")
             logger.error(traceback.format_exc())
             # Add explicit console error output for Smithery to see
-            print(f"Initialization error: {str(e)}", file=sys.stderr)
+            print(f"Initialization error: {str(e)}", file=sys.stderr, flush=True)
             # Don't raise the exception, just return False
             return False
 
@@ -1031,15 +1032,15 @@ async def async_main():
     
     # Print system diagnostics to console
     system_info = get_system_info()
-    print("\n=== MCP Memory Service System Diagnostics ===", file=sys.stderr)
-    print(f"OS: {system_info.os_name} {system_info.architecture}", file=sys.stderr)
-    print(f"Python: {platform.python_version()}", file=sys.stderr)
-    print(f"Hardware Acceleration: {system_info.accelerator}", file=sys.stderr)
-    print(f"Memory: {system_info.memory_gb:.2f} GB", file=sys.stderr)
-    print(f"Optimal Model: {system_info.get_optimal_model()}", file=sys.stderr)
-    print(f"Optimal Batch Size: {system_info.get_optimal_batch_size()}", file=sys.stderr)
-    print(f"ChromaDB Path: {CHROMA_PATH}", file=sys.stderr)
-    print("================================================\n", file=sys.stderr)
+    print("\n=== MCP Memory Service System Diagnostics ===", file=sys.stderr, flush=True)
+    print(f"OS: {system_info.os_name} {system_info.architecture}", file=sys.stderr, flush=True)
+    print(f"Python: {platform.python_version()}", file=sys.stderr, flush=True)
+    print(f"Hardware Acceleration: {system_info.accelerator}", file=sys.stderr, flush=True)
+    print(f"Memory: {system_info.memory_gb:.2f} GB", file=sys.stderr, flush=True)
+    print(f"Optimal Model: {system_info.get_optimal_model()}", file=sys.stderr, flush=True)
+    print(f"Optimal Batch Size: {system_info.get_optimal_batch_size()}", file=sys.stderr, flush=True)
+    print(f"ChromaDB Path: {CHROMA_PATH}", file=sys.stderr, flush=True)
+    print("================================================\n", file=sys.stderr, flush=True)
     
     logger.info(f"Starting MCP Memory Service with ChromaDB path: {CHROMA_PATH}")
     
@@ -1106,7 +1107,7 @@ async def async_main():
     except Exception as e:
         logger.error(f"Server error: {str(e)}")
         logger.error(traceback.format_exc())
-        print(f"Fatal server error: {str(e)}", file=sys.stderr)
+        print(f"Fatal server error: {str(e)}", file=sys.stderr, flush=True)
         raise
 
 def main():

@@ -36,23 +36,23 @@ def parse_args():
 def print_debug(text):
     """Print formatted debug text to stderr."""
     if DEBUG:
-        print(f"[DEBUG] {text}", file=sys.stderr)
+        print(f"[DEBUG] {text}", file=sys.stderr, flush=True)
 
 def print_info(text):
     """Print formatted info text to stderr."""
-    print(f"[INFO] {text}", file=sys.stderr)
+    print(f"[INFO] {text}", file=sys.stderr, flush=True)
 
 def print_error(text):
     """Print formatted error text to stderr."""
-    print(f"[ERROR] {text}", file=sys.stderr)
+    print(f"[ERROR] {text}", file=sys.stderr, flush=True)
 
 def print_success(text):
     """Print formatted success text to stderr."""
-    print(f"[SUCCESS] {text}", file=sys.stderr)
+    print(f"[SUCCESS] {text}", file=sys.stderr, flush=True)
 
 def print_warning(text):
     """Print formatted warning text to stderr."""
-    print(f"[WARNING] {text}", file=sys.stderr)
+    print(f"[WARNING] {text}", file=sys.stderr, flush=True)
 
 def print_environment_info():
     """Print detailed environment information for debugging."""

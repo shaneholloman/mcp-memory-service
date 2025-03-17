@@ -25,27 +25,27 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
 # Set ChromaDB path if provided via environment variables
 if "MCP_MEMORY_CHROMA_PATH" in os.environ:
-    print(f"Using ChromaDB path: {os.environ['MCP_MEMORY_CHROMA_PATH']}")
+    print(f"Using ChromaDB path: {os.environ['MCP_MEMORY_CHROMA_PATH']}", file=sys.stderr, flush=True)
 
 # Set backups path if provided via environment variables
 if "MCP_MEMORY_BACKUPS_PATH" in os.environ:
-    print(f"Using backups path: {os.environ['MCP_MEMORY_BACKUPS_PATH']}")
+    print(f"Using backups path: {os.environ['MCP_MEMORY_BACKUPS_PATH']}", file=sys.stderr, flush=True)
 
 def print_info(text):
     """Print formatted info text."""
-    print(f"[INFO] {text}")
+    print(f"[INFO] {text}", file=sys.stderr, flush=True)
 
 def print_error(text):
     """Print formatted error text."""
-    print(f"[ERROR] {text}")
+    print(f"[ERROR] {text}", file=sys.stderr, flush=True)
 
 def print_success(text):
     """Print formatted success text."""
-    print(f"[SUCCESS] {text}")
+    print(f"[SUCCESS] {text}", file=sys.stderr, flush=True)
 
 def print_warning(text):
     """Print formatted warning text."""
-    print(f"[WARNING] {text}")
+    print(f"[WARNING] {text}", file=sys.stderr, flush=True)
 
 def run_memory_server():
     """Run the MCP Memory Service directly."""
@@ -120,15 +120,15 @@ def run_memory_server():
             server.main()
         except Exception as e:
             print_error(f"Error running memory server: {e}")
-            traceback.print_exc()
+            traceback.print_exc(file=sys.stderr)
             sys.exit(1)
     except ImportError as e:
         print_error(f"Failed to import mcp_memory_service.server: {e}")
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print_error(f"Error setting up memory server: {e}")
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
     finally:
         # Restore original sys.path and meta_path
@@ -143,5 +143,5 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         print_error(f"Unhandled exception: {e}")
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
