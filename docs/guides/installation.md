@@ -80,13 +80,42 @@ For Apple Silicon Macs:
    python -c "import platform; print(platform.machine())"
    # Should output "arm64"
    ```
+**If not, you can follow these steps to create and run the server in a virtual environment (Recommended)**
+```bash
+# requirements: 1-homebrew 2-python installation (brew install python)
+# for Apple Silicon Macs, make sure to first uninstall pytorch, torch, torchvision if you have any of them installed
+brew uninstall pytorch torchvision
 
-2. **Run the standard installation**:
+# create and activate a virtual environment (first, make sure to delete the .venv folder if you git clone)
+cd /path/to/your/cloned/project/
+python -m venv .venv
+source .venv/bin/activate
+
+# install uv in the virtual environment (as the command that handles the project in JSON is uv, and it is more compatible with the
+# project than python/python3/rye/etc.)
+pip install uv
+
+# make sure to give the JSON config the full PATH to the uv for Claude desktop.  "PATH_TO_YOUR_CLONED_PROJECT/.venv/bin/uv"
+
+# Then install Pytorch manually
+pip install torch torchvision torchaudio
+
+# Then install other dependencies without PyTorch
+pip install -r requirements.txt --no-deps
+
+# Finally install the package
+pip install -e .
+
+#Then check if the server runs
+memory
+```
+
+3. **Run the standard installation**:
    ```bash
    python install.py
    ```
 
-3. **Enable MPS acceleration**:
+4. **Enable MPS acceleration**:
    ```bash
    export PYTORCH_ENABLE_MPS_FALLBACK=1
    ```

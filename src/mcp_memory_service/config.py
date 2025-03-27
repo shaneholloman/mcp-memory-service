@@ -18,6 +18,9 @@ def validate_and_create_path(path: str) -> str:
         
         # Create directory if it doesn't exist
         os.makedirs(abs_path, exist_ok=True)
+
+        # Add small delay to prevent potential race condition on macOS during initial write test
+        time.sleep(0.1)
         
         # Check if directory is writable
         test_file = os.path.join(abs_path, '.write_test')
