@@ -27,7 +27,49 @@ An MCP server providing semantic memory and persistent storage capabilities for 
 
 ## Installation
 
-### Quick Start (Recommended)
+### Installation with UV (Recommended)
+
+UV is a fast, reliable Python package installer and resolver. Using UV with mcp-memory-service provides:
+
+- Faster dependency resolution, especially for complex dependencies like PyTorch
+- More reliable environment management
+- Better compatibility with different platforms
+
+```bash
+# Install UV if not already installed
+pip install uv
+
+# Clone the repository
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service
+
+# Create and activate a virtual environment with UV
+uv venv
+
+# On Windows
+.venv\Scripts\activate
+
+# On Unix/macOS
+source .venv/bin/activate
+
+# Install dependencies with UV
+uv pip install -r requirements.txt
+
+# Install the package
+uv pip install -e .
+
+# Run with UV
+uv run memory
+```
+
+For an even simpler experience, use our UV wrapper:
+
+```bash
+# After activating your virtual environment
+python uv_wrapper.py
+```
+
+### Alternative: Traditional Installation
 
 The enhanced installation script automatically detects your system and installs the appropriate dependencies:
 
@@ -52,11 +94,15 @@ The `install.py` script will:
 
 ### Windows Installation (Special Case)
 
-Windows users may encounter PyTorch installation issues due to platform-specific wheel availability. Use our Windows-specific installation script:
+Windows users may encounter PyTorch installation issues due to platform-specific wheel availability. 
+
+We recommend using UV (see above) which handles these complexities automatically. Alternatively, use our Windows-specific wrapper:
 
 ```bash
 # After activating your virtual environment
-python scripts/install_windows.py
+python memory_wrapper_uv.py  # UV-based wrapper (recommended)
+# OR
+python memory_wrapper.py     # Traditional wrapper
 ```
 
 This script handles:
@@ -79,9 +125,9 @@ For comprehensive installation instructions and troubleshooting, see the [Instal
 
 ## Claude MCP Configuration
 
-### Standard Configuration
+### Standard Configuration (Recommended)
 
-Add the following to your `claude_desktop_config.json` file:
+Add the following to your `claude_desktop_config.json` file to use UV (recommended for best performance):
 
 ```json
 {
@@ -130,7 +176,13 @@ The wrapper script will:
 To run the memory server directly (for testing):
 
 ```bash
-# Quick run script (recommended for testing)
+# Run with UV (recommended for best performance)
+uv run memory
+
+# Use the UV wrapper for automatic dependency handling
+python uv_wrapper.py
+
+# Alternative: quick run script (traditional method)
 python scripts/run_memory_server.py
 
 # For isolated testing of methods
@@ -231,8 +283,9 @@ See the [Installation Guide](docs/guides/installation.md#troubleshooting-common-
 
 ### Quick Troubleshooting Tips
 
-- **Windows PyTorch errors**: Use `python scripts/install_windows.py`
-- **macOS Intel dependency conflicts**: Use `python install.py --force-compatible-deps`
+- **Dependency issues**: Try using UV: `python scripts/convert_to_uv.py`
+- **Windows PyTorch errors**: Use `python memory_wrapper_uv.py`
+- **macOS Intel dependency conflicts**: Use UV or `python install.py --force-compatible-deps`
 - **Recursion errors**: Run `python scripts/fix_sitecustomize.py` 
 - **Environment verification**: Run `python scripts/verify_environment_enhanced.py`
 - **Memory issues**: Set `MCP_MEMORY_BATCH_SIZE=4` and try a smaller model
@@ -251,7 +304,12 @@ mcp-memory-service/
 │   ├── utils/                   # Utility functions
 │   └── server.py                # Main MCP server
 ├── scripts/                     # Helper scripts
+│   ├── convert_to_uv.py         # Script to migrate to UV
+│   └── install_uv.py            # UV installation helper
+├── .uv/                         # UV configuration
 ├── memory_wrapper.py            # Windows wrapper script
+├── memory_wrapper_uv.py         # UV-based wrapper script
+├── uv_wrapper.py                # UV wrapper script
 ├── install.py                   # Enhanced installation script
 └── tests/                       # Test suite
 ```

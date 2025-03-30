@@ -129,9 +129,11 @@ async def run_validation_report(storage):
 
 async def main():
     # Configure logging
+    log_level = os.getenv('LOG_LEVEL', 'ERROR').upper()
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=getattr(logging, log_level, logging.ERROR),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        stream=sys.stderr
     )
     
     # Initialize storage

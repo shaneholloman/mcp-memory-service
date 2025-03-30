@@ -46,10 +46,12 @@ async def repair_missing_hashes(storage):
     return fixed_count
 
 async def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+log_level = os.getenv('LOG_LEVEL', 'ERROR').upper()
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.ERROR),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
     
     parser = argparse.ArgumentParser(description='Repair memories with missing content hashes')
     parser.add_argument('--db-path', required=True, help='Path to ChromaDB database')
