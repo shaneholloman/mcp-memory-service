@@ -3,12 +3,16 @@ MCP Memory Service
 Copyright (c) 2024 Heinrich Krupp
 Licensed under the MIT License. See LICENSE file in the project root for full license text.
 """
-import asyncio
+import sys
 import os
+# Add path to your virtual environment's site-packages
+venv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'venv', 'Lib', 'site-packages')
+if os.path.exists(venv_path):
+    sys.path.insert(0, venv_path)
+import asyncio
 import logging
 import traceback
 import argparse
-import sys
 import json
 import platform
 from typing import List, Dict, Any, Optional, Tuple

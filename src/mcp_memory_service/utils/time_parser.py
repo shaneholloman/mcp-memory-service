@@ -52,8 +52,7 @@ PATTERNS = {
     "recent": re.compile(r'recent|lately|recently'),
     "specific_date": re.compile(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?'),
     "full_date": re.compile(r'(\d{4})-(\d{1,2})-(\d{1,2})'),
-    "named_period": re.compile(r'(christmas|new\s*year|valentine|halloween|thanksgiving|spring\s*break|summer\s*break|winter\s*break)'),
-    "half_year": re.compile(r'(first|second)\s+half\s+of\s+(\d{4})'),
+    "named_period": re.compile(r'(spring|summer|winter|fall|autumn|christmas|new\s*year|valentine|halloween|thanksgiving|spring\s*break|summer\s*break|winter\s*break)'),    "half_year": re.compile(r'(first|second)\s+half\s+of\s+(\d{4})'),
     "quarter": re.compile(r'(first|second|third|fourth|1st|2nd|3rd|4th)\s+quarter(?:\s+of\s+(\d{4}))?'),
 }
 
@@ -205,7 +204,7 @@ def parse_time_expression(query: str) -> Tuple[Optional[float], Optional[float]]
         # Named periods (holidays, etc.)
         named_period_match = PATTERNS["named_period"].search(query)
         if named_period_match:
-            period_name = named_period_match.group(1).replace(" ", "_")
+            period_name = named_period_match.group(1)  # <-- Just get the matched group without replacing
             return get_named_period_range(period_name)
         
         # Half year expressions
@@ -470,92 +469,92 @@ def get_named_period_range(period_name: str) -> Tuple[Optional[float], Optional[
     current_month = datetime.now().month
     current_day = datetime.now().day
     
-    for key, info in NAMED_PERIODS.items():
-        if period_name in key or key in period_name:
-            # Found matching period
-            # Determine if the period is in the past or future for this year
-            if "month" in info and "day" in info:
-                # Simple fixed-date holiday
-                month = info["month"]
-                day = info["day"]
-                window = info.get("window", 1)  # Default 1-day window
-                
-                # Special case for Thanksgiving (fourth Thursday in November)
-                if day == -1 and month == 11:  # Thanksgiving
-                    # Find the fourth Thursday in November
-                    first_day = date(current_year, 11, 1)
-                    # Find first Thursday
-                    first_thursday = first_day + timedelta(days=((3 - first_day.weekday()) % 7))
-                    # Fourth Thursday is 3 weeks later
-                    thanksgiving = first_thursday + timedelta(weeks=3)
-                    day = thanksgiving.day
-                
-                # Check if the holiday has passed this year
-                is_past = (current_month > month or 
-                          (current_month == month and current_day > day + window))
-                          
-                year = current_year if not is_past else current_year - 1
-                target_date = date(year, month, day)
-                
-                # Create date range with window
-                start_date = target_date - timedelta(days=window)
-                end_date = target_date + timedelta(days=window)
-                
-                start_dt = datetime.combine(start_date, time.min)
-                end_dt = datetime.combine(end_date, time.max)
-                return start_dt.timestamp(), end_dt.timestamp()
-                
-            elif "start_month" in info and "end_month" in info:
-                # Season or date range
-                start_month = info["start_month"]
-                start_day = info["start_day"]
-                end_month = info["end_month"]
-                end_day = info["end_day"]
-                
-                # Determine year based on current date
-                if start_month > end_month:  # Period crosses year boundary
-                    if current_month < end_month or (current_month == end_month and current_day <= end_day):
-                        # We're in the end part of the period that started last year
+    if period_name in NAMED_PERIODS:
+        info = NAMED_PERIODS[period_name]
+        # Found matching period
+        # Determine if the period is in the past or future for this year
+        if "month" in info and "day" in info:
+            # Simple fixed-date holiday
+            month = info["month"]
+            day = info["day"]
+            window = info.get("window", 1)  # Default 1-day window
+            
+            # Special case for Thanksgiving (fourth Thursday in November)
+            if day == -1 and month == 11:  # Thanksgiving
+                # Find the fourth Thursday in November
+                first_day = date(current_year, 11, 1)
+                # Find first Thursday
+                first_thursday = first_day + timedelta(days=((3 - first_day.weekday()) % 7))
+                # Fourth Thursday is 3 weeks later
+                thanksgiving = first_thursday + timedelta(weeks=3)
+                day = thanksgiving.day
+            
+            # Check if the holiday has passed this year
+            is_past = (current_month > month or 
+                        (current_month == month and current_day > day + window))
+                        
+            year = current_year if not is_past else current_year - 1
+            target_date = date(year, month, day)
+            
+            # Create date range with window
+            start_date = target_date - timedelta(days=window)
+            end_date = target_date + timedelta(days=window)
+            
+            start_dt = datetime.combine(start_date, time.min)
+            end_dt = datetime.combine(end_date, time.max)
+            return start_dt.timestamp(), end_dt.timestamp()
+            
+        elif "start_month" in info and "end_month" in info:
+            # Season or date range
+            start_month = info["start_month"]
+            start_day = info["start_day"]
+            end_month = info["end_month"]
+            end_day = info["end_day"]
+            
+            # Determine year based on current date
+            if start_month > end_month:  # Period crosses year boundary
+                if current_month < end_month or (current_month == end_month and current_day <= end_day):
+                    # We're in the end part of the period that started last year
+                    start_dt = datetime(current_year - 1, start_month, start_day)
+                    end_dt = datetime(current_year, end_month, end_day, 23, 59, 59)
+                else:
+                    # The period is either coming up this year or happened earlier this year
+                    if current_month > start_month or (current_month == start_month and current_day >= start_day):
+                        # Period already started this year
+                        start_dt = datetime(current_year, start_month, start_day)
+                        end_dt = datetime(current_year + 1, end_month, end_day, 23, 59, 59)
+                    else:
+                        # Period from last year
                         start_dt = datetime(current_year - 1, start_month, start_day)
                         end_dt = datetime(current_year, end_month, end_day, 23, 59, 59)
-                    else:
-                        # The period is either coming up this year or happened earlier this year
-                        if current_month > start_month or (current_month == start_month and current_day >= start_day):
-                            # Period already started this year
-                            start_dt = datetime(current_year, start_month, start_day)
-                            end_dt = datetime(current_year + 1, end_month, end_day, 23, 59, 59)
-                        else:
-                            # Period from last year
-                            start_dt = datetime(current_year - 1, start_month, start_day)
-                            end_dt = datetime(current_year, end_month, end_day, 23, 59, 59)
+            else:
+                # Period within a single year
+                # Check if period has already occurred this year
+                if (current_month > end_month or 
+                    (current_month == end_month and current_day > end_day)):
+                    # Period already passed this year
+                    start_dt = datetime(current_year, start_month, start_day)
+                    end_dt = datetime(current_year, end_month, end_day, 23, 59, 59)
                 else:
-                    # Period within a single year
-                    # Check if period has already occurred this year
-                    if (current_month > end_month or 
-                        (current_month == end_month and current_day > end_day)):
-                        # Period already passed this year
+                    # Check if current date is within the period
+                    is_within_period = (
+                        (current_month > start_month or 
+                            (current_month == start_month and current_day >= start_day))
+                        and
+                        (current_month < end_month or 
+                            (current_month == end_month and current_day <= end_day))
+                    )
+                    
+                    if is_within_period:
+                        # We're in the period this year
                         start_dt = datetime(current_year, start_month, start_day)
                         end_dt = datetime(current_year, end_month, end_day, 23, 59, 59)
                     else:
-                        # Check if current date is within the period
-                        is_within_period = (
-                            (current_month > start_month or 
-                             (current_month == start_month and current_day >= start_day))
-                            and
-                            (current_month < end_month or 
-                             (current_month == end_month and current_day <= end_day))
-                        )
-                        
-                        if is_within_period:
-                            # We're in the period this year
-                            start_dt = datetime(current_year, start_month, start_day)
-                            end_dt = datetime(current_year, end_month, end_day, 23, 59, 59)
-                        else:
-                            # Period from last year
-                            start_dt = datetime(current_year - 1, start_month, start_day)
-                            end_dt = datetime(current_year - 1, end_month, end_day, 23, 59, 59)
-                
-                return start_dt.timestamp(), end_dt.timestamp()
+                        # Period from last year
+                        start_dt = datetime(current_year - 1, start_month, start_day)
+                        end_dt = datetime(current_year - 1, end_month, end_day, 23, 59, 59)
+            
+            return start_dt.timestamp(), end_dt.timestamp()
     
     # If no match found
     return None, None
@@ -588,7 +587,7 @@ def extract_time_expression(query: str) -> Tuple[str, Tuple[Optional[float], Opt
         r'\brecent|lately|recently\b',
         r'\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b',
         r'\b\d{4}-\d{1,2}-\d{1,2}\b',
-        r'\b(christmas|new\s*year|valentine|halloween|thanksgiving|spring\s*break|summer\s*break|winter\s*break)\b',
+        r'\b(spring|summer|winter|fall|autumn|christmas|new\s*year|valentine|halloween|thanksgiving|spring\s*break|summer\s*break|winter\s*break)\b',
         r'\b(first|second)\s+half\s+of\s+\d{4}\b',
         r'\b(first|second|third|fourth|1st|2nd|3rd|4th)\s+quarter(?:\s+of\s+\d{4})?\b',
         r'\bfrom\s+.+\s+to\s+.+\b'

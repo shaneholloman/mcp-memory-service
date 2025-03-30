@@ -95,6 +95,60 @@ def detect_cuda():
         "available": cuda_available,
         "version": cuda_version
     }
+def reset_pip_config():
+    """Reset pip configuration to use the default PyPI index."""
+    print_step("0", "Resetting pip configuration")
+    
+    try:
+        # Determine the pip config directory
+        if os.name == 'nt':  # Windows
+            pip_config_dir = os.path.join(os.path.expanduser('~'), 'pip')
+        else:  # Unix/Linux/macOS
+            pip_config_dir = os.path.join(os.path.expanduser('~'), '.pip')
+        
+        # Determine the config file name
+        if os.name == 'nt':  # Windows
+            pip_config_file = os.path.join(pip_config_dir, 'pip.ini')
+        else:  # Unix/Linux/macOS
+            pip_config_file = os.path.join(pip_config_dir, 'pip.conf')
+        
+        # Check if file exists
+        if os.path.exists(pip_config_file):
+            print_info(f"Found pip config file at {pip_config_file}")
+            print_info("Creating backup of existing file")
+            backup_path = pip_config_file + '.bak'
+            os.rename(pip_config_file, backup_path)
+            print_success(f"Backup created at {backup_path}")
+            
+            # Create new pip config file with default settings
+            with open(pip_config_file, 'w') as f:
+                f.write("""
+[global]
+no-cache-dir = false
+timeout = 60
+
+[install]
+no-warn-script-location = true
+""")
+            print_success(f"Reset pip config file at {pip_config_file}")
+            
+            # Verify the change
+            try:
+                result = subprocess.run([sys.executable, '-m', 'pip', 'config', 'list'],
+                                    capture_output=True, text=True)
+                print_info("New pip configuration:")
+                for line in result.stdout.strip().split('\n'):
+                    print_info(f"  {line}")
+            except subprocess.SubprocessError:
+                pass
+            
+            return True
+        else:
+            print_info("No pip config file found, no reset needed")
+            return True
+    except Exception as e:
+        print_warning(f"Failed to reset pip configuration: {e}")
+        return False
 
 def install_pytorch(cuda_info):
     """Install PyTorch with the appropriate index URL."""
@@ -136,8 +190,13 @@ def install_pytorch(cuda_info):
         
         # Add channels in order of preference
         if cuda_major == "12":
-            cuda_channels = ["cu121", "cu118"]  # Try CUDA 12.x first, then fall back to 11.x
-            print_info(f"Detected CUDA {cuda_version}, will try cu121 and cu118 channels")
+            # For CUDA 12.7, try cu121 and cu122 first, then fall back to cu118
+            if cuda_version and cuda_version.startswith("12.7"):
+                cuda_channels = ["cu121", "cu122", "cu118"]
+                print_info(f"Detected CUDA {cuda_version}, will try cu121, cu122, and cu118 channels")
+            else:
+                cuda_channels = ["cu121", "cu118"]  # Try CUDA 12.x first, then fall back to 11.x
+                print_info(f"Detected CUDA {cuda_version}, will try cu121 and cu118 channels")
         elif cuda_major == "11":
             cuda_channels = ["cu118", "cu117", "cu116"]  # Try different CUDA 11.x versions
             print_info(f"Detected CUDA {cuda_version}, will try cu118, cu117, and cu116 channels")
@@ -146,15 +205,15 @@ def install_pytorch(cuda_info):
             print_info(f"Detected CUDA {cuda_version}, will try cu102 and cu101 channels")
         else:
             # Default channels to try
-            cuda_channels = ["cu118", "cu117", "cu121"]
+            cuda_channels = ["cu121", "cu118", "cu117"]
             print_info(f"Using default channels for CUDA {cuda_version}")
     else:
         # CPU-only version
         cuda_channels = ["cpu"]
         print_info("Using CPU-only PyTorch for Windows")
     
-    # Try different PyTorch versions
-    torch_versions = ["2.1.0", "2.0.0", "1.13.1"]
+    # Try different PyTorch versions - use latest versions compatible with Python 3.12
+    torch_versions = ["2.5.1", "2.4.1", "2.3.1", "2.2.2"]
     
     # Try different combinations of versions and channels
     for torch_version in torch_versions:
@@ -192,16 +251,40 @@ def install_pytorch(cuda_info):
                     if cuda_suffix == "cpu" and not torch.cuda.is_available():
                         try:
                             # Check if we have an AMD or Intel GPU that could benefit from DirectML
-                            dxdiag_output = subprocess.check_output(['dxdiag', '/t'],
+                            try:
+                                # First try using PowerShell to get more accurate GPU info
+                                ps_cmd = "Get-WmiObject Win32_VideoController | Select-Object Name | Format-List"
+                                gpu_output = subprocess.check_output(['powershell', '-Command', ps_cmd],
                                                                 stderr=subprocess.DEVNULL,
                                                                 universal_newlines=True)
-                            
-                            # Check for AMD or Intel GPUs
-                            if 'AMD' in dxdiag_output or 'Radeon' in dxdiag_output or 'Intel' in dxdiag_output:
-                                print_info("AMD or Intel GPU detected, installing torch-directml")
-                                subprocess.check_call([
-                                    sys.executable, '-m', 'pip', 'install', 'torch-directml>=0.2.0'
-                                ])
+                                
+                                # Check for Intel ARC specifically
+                                has_intel_arc = 'Intel(R) Arc(TM)' in gpu_output or 'Intel ARC' in gpu_output
+                                has_intel_gpu = 'Intel' in gpu_output and not has_intel_arc
+                                has_amd_gpu = 'AMD' in gpu_output or 'Radeon' in gpu_output
+                                
+                                if has_intel_arc:
+                                    print_info("Intel ARC GPU detected, installing torch-directml")
+                                    subprocess.check_call([
+                                        sys.executable, '-m', 'pip', 'install', 'torch-directml>=0.2.0'
+                                    ])
+                                elif has_intel_gpu or has_amd_gpu:
+                                    print_info("AMD or Intel GPU detected, installing torch-directml")
+                                    subprocess.check_call([
+                                        sys.executable, '-m', 'pip', 'install', 'torch-directml>=0.2.0'
+                                    ])
+                            except (subprocess.SubprocessError, FileNotFoundError):
+                                # Fall back to dxdiag if PowerShell method fails
+                                dxdiag_output = subprocess.check_output(['dxdiag', '/t'],
+                                                                    stderr=subprocess.DEVNULL,
+                                                                    universal_newlines=True)
+                                
+                                # Check for AMD or Intel GPUs
+                                if 'AMD' in dxdiag_output or 'Radeon' in dxdiag_output or 'Intel' in dxdiag_output:
+                                    print_info("AMD or Intel GPU detected, installing torch-directml")
+                                    subprocess.check_call([
+                                        sys.executable, '-m', 'pip', 'install', 'torch-directml>=0.2.0'
+                                    ])
                         except (subprocess.SubprocessError, FileNotFoundError):
                             pass
                     
@@ -234,14 +317,16 @@ def install_dependencies():
         # Install requirements.txt but skip PyTorch
         print_info("Installing requirements.txt (excluding PyTorch)")
         subprocess.check_call([
-            sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt', 
-            '--no-deps'  # Don't install dependencies to avoid PyTorch
+            sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt',
+            '--no-deps',  # Don't install dependencies to avoid PyTorch
+            '--index-url=https://pypi.org/simple'  # Use default PyPI index
         ])
         
         # Install MCP separately
         print_info("Installing MCP package")
         subprocess.check_call([
-            sys.executable, '-m', 'pip', 'install', 'mcp>=1.0.0,<2.0.0'
+            sys.executable, '-m', 'pip', 'install', 'mcp>=1.0.0,<2.0.0',
+            '--index-url=https://pypi.org/simple'  # Use default PyPI index
         ])
         
         print_success("Dependencies installed successfully")
@@ -256,7 +341,7 @@ def install_package(dev_mode=False):
     
     try:
         # Install the package
-        cmd = [sys.executable, '-m', 'pip', 'install']
+        cmd = [sys.executable, '-m', 'pip', 'install', '--index-url=https://pypi.org/simple']
         if dev_mode:
             cmd.append('-e')
         cmd.append('.')
@@ -268,6 +353,74 @@ def install_package(dev_mode=False):
         return True
     except subprocess.SubprocessError as e:
         print_error(f"Failed to install MCP Memory Service: {e}")
+        return False
+
+def configure_dual_gpu_setup():
+    """Configure the system for dual GPU setups (NVIDIA + Intel/AMD)."""
+    print_step("3", "Configuring dual GPU setup")
+    
+    try:
+        # Check if we have both NVIDIA and Intel/AMD GPUs
+        has_nvidia = False
+        has_intel_amd = False
+        
+        # Use PowerShell to detect GPUs
+        ps_cmd = "Get-WmiObject Win32_VideoController | Select-Object Name | Format-List"
+        gpu_output = subprocess.check_output(['powershell', '-Command', ps_cmd],
+                                        stderr=subprocess.DEVNULL,
+                                        universal_newlines=True)
+        
+        # Check for NVIDIA GPUs
+        has_nvidia = 'NVIDIA' in gpu_output
+        
+        # Check for Intel/AMD GPUs
+        has_intel_arc = 'Intel(R) Arc(TM)' in gpu_output or 'Intel ARC' in gpu_output
+        has_intel_gpu = 'Intel' in gpu_output
+        has_amd_gpu = 'AMD' in gpu_output or 'Radeon' in gpu_output
+        
+        # If we have both NVIDIA and Intel/AMD GPUs
+        if has_nvidia and (has_intel_arc or has_intel_gpu or has_amd_gpu):
+            print_info("Detected dual GPU setup (NVIDIA + Intel/AMD)")
+            
+            # Check if PyTorch is installed
+            try:
+                import torch
+                
+                # If CUDA is available, we're good
+                if torch.cuda.is_available():
+                    print_success(f"CUDA is available (version {torch.version.cuda})")
+                    print_info(f"GPU: {torch.cuda.get_device_name(0)}")
+                    
+                    # Install DirectML for the Intel/AMD GPU
+                    if has_intel_arc:
+                        print_info("Installing torch-directml for Intel ARC GPU")
+                    else:
+                        print_info("Installing torch-directml for Intel/AMD GPU")
+                    
+                    try:
+                        subprocess.check_call([
+                            sys.executable, '-m', 'pip', 'install', 'torch-directml>=0.2.0'
+                        ])
+                        print_success("torch-directml installed successfully")
+                        
+                        # Try to import torch_directml to verify installation
+                        try:
+                            import torch_directml
+                            print_success(f"DirectML is available (version {torch_directml.__version__})")
+                        except ImportError:
+                            print_warning("torch-directml installed but could not be imported")
+                    except subprocess.SubprocessError as e:
+                        print_warning(f"Failed to install torch-directml: {e}")
+                else:
+                    print_warning("CUDA is not available in PyTorch despite having an NVIDIA GPU")
+            except ImportError:
+                print_warning("PyTorch is not installed, skipping dual GPU configuration")
+        else:
+            print_info("No dual GPU setup detected, skipping configuration")
+            
+        return True
+    except Exception as e:
+        print_warning(f"Failed to configure dual GPU setup: {e}")
         return False
 
 def verify_installation():
@@ -296,6 +449,10 @@ def main():
     if not check_system():
         sys.exit(1)
     
+    # Reset pip configuration
+    if not reset_pip_config():
+        print_warning("Failed to reset pip configuration, but will continue with installation")
+    
     # Detect CUDA
     cuda_info = detect_cuda()
     
@@ -306,6 +463,10 @@ def main():
     # Install other dependencies
     if not install_dependencies():
         print_warning("Dependency installation failed, but will continue with package installation")
+    
+    # Configure dual GPU setup if needed
+    if not configure_dual_gpu_setup():
+        print_warning("Dual GPU configuration failed, but will continue with package installation")
     
     # Install the package
     if not install_package(args.dev):

@@ -68,8 +68,50 @@ def check_pytorch_installation():
             try:
                 import torch_directml
                 print_success(f"DirectML is available (version {torch_directml.__version__})")
+                
+                # Check for Intel ARC GPU
+                try:
+                    ps_cmd = "Get-WmiObject Win32_VideoController | Select-Object Name | Format-List"
+                    gpu_output = subprocess.check_output(['powershell', '-Command', ps_cmd],
+                                                    stderr=subprocess.DEVNULL,
+                                                    universal_newlines=True)
+                    
+                    if 'Intel(R) Arc(TM)' in gpu_output or 'Intel ARC' in gpu_output:
+                        print_success("Intel ARC GPU detected, DirectML support is available")
+                    elif 'Intel' in gpu_output:
+                        print_success("Intel GPU detected, DirectML support is available")
+                    elif 'AMD' in gpu_output or 'Radeon' in gpu_output:
+                        print_success("AMD GPU detected, DirectML support is available")
+                except (subprocess.SubprocessError, FileNotFoundError):
+                    pass
+                
+                # Test a simple DirectML tensor operation
+                try:
+                    dml = torch_directml.device()
+                    x_dml = torch.rand(5, 3, device=dml)
+                    y_dml = torch.rand(5, 3, device=dml)
+                    z_dml = x_dml + y_dml
+                    print_success("DirectML tensor operations work correctly")
+                except Exception as e:
+                    print_warning(f"DirectML tensor operations failed: {e}")
             except ImportError:
                 print_info("DirectML is not available")
+                
+                # Check for Intel/AMD GPUs that could benefit from DirectML
+                try:
+                    ps_cmd = "Get-WmiObject Win32_VideoController | Select-Object Name | Format-List"
+                    gpu_output = subprocess.check_output(['powershell', '-Command', ps_cmd],
+                                                    stderr=subprocess.DEVNULL,
+                                                    universal_newlines=True)
+                    
+                    if 'Intel(R) Arc(TM)' in gpu_output or 'Intel ARC' in gpu_output:
+                        print_warning("Intel ARC GPU detected, but DirectML is not installed")
+                        print_info("Consider installing torch-directml for better performance")
+                    elif 'Intel' in gpu_output or 'AMD' in gpu_output or 'Radeon' in gpu_output:
+                        print_warning("Intel/AMD GPU detected, but DirectML is not installed")
+                        print_info("Consider installing torch-directml for better performance")
+                except (subprocess.SubprocessError, FileNotFoundError):
+                    pass
         
         # Test a simple tensor operation
         try:
@@ -101,7 +143,15 @@ def suggest_installation():
     
     print_info("\nFor DirectML support (AMD/Intel GPUs):")
     print("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu")
-    print("pip install torch-directml")
+    print("pip install torch-directml>=0.2.0")
+    
+    print_info("\nFor Intel ARC Pro Graphics:")
+    print("pip install torch==2.2.0 torchvision==2.2.0 torchaudio==2.2.0 --index-url https://download.pytorch.org/whl/cpu")
+    print("pip install torch-directml>=0.2.0")
+    
+    print_info("\nFor dual GPU setups (NVIDIA + Intel):")
+    print("pip install torch==2.2.0 torchvision==2.2.0 torchaudio==2.2.0 --index-url https://download.pytorch.org/whl/cu118")
+    print("pip install torch-directml>=0.2.0")
     
     print_info("\nAfter installing PyTorch, run this script again to verify the installation.")
 

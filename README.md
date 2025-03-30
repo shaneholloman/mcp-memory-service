@@ -277,4 +277,4 @@ MIT License - See LICENSE file for details
 
 ## Contact
 
-[Telegram](t.me/doobeedoo)
+[t.me/doobidoo](https://t.me/+MJtKdOWzmQdhY2Vi)

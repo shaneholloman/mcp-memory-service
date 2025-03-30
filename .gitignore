@@ -97,3 +97,6 @@ claude_config/claude_desktop_config.json
 .venv/bin/wheel
 .venv/bin/wsdump
 .venv/share/man/man1/isympy.1
+dxdiag_output.txt
+dxdiag.txt
+tests/test_db/chroma.sqlite3
