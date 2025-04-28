@@ -388,14 +388,17 @@ class ChromaMemoryStorage(MemoryStorage):
                 where_clause = {"$and": []}
                 
                 if start_timestamp is not None:
-                    where_clause["$and"].append({"timestamp": {"$gte": float(start_timestamp)}})
+                    where_clause["$and"].append({"timestamp": {"$gte": int(float(start_timestamp))}})
                 
                 if end_timestamp is not None:
-                    where_clause["$and"].append({"timestamp": {"$lte": float(end_timestamp)}})
+                    where_clause["$and"].append({"timestamp": {"$lte": int(float(end_timestamp))}})
 
             # If there's no valid where clause, set it to None to avoid ChromaDB errors
             if not where_clause.get("$and", []):
                 where_clause = None
+                
+            # Log the where clause for debugging
+            logger.info(f"Time filtering where clause: {where_clause}")
                 
             # Determine whether to use semantic search or just time-based filtering
             if query:
@@ -566,8 +569,11 @@ class ChromaMemoryStorage(MemoryStorage):
         metadata = {
             "content_hash": memory.content_hash,
             "memory_type": memory.memory_type if memory.memory_type else "",
-            "timestamp": str(memory.timestamp.timestamp())
+            "timestamp": int(memory.timestamp.timestamp())
         }
+        
+        # Log the timestamp for debugging
+        logger.debug(f"Storing memory with timestamp: {metadata['timestamp']} (from {memory.timestamp})")
         
         # Properly serialize tags
         if memory.tags:

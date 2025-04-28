@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
+"""
+Enhanced migration script for MCP Memory Service.
+This script handles migration of memories between different ChromaDB instances,
+with support for both local and remote migrations.
+"""
 import sys
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+import chromadb
+from chromadb import HttpClient, Settings
+import json
+import time
+from chromadb.utils import embedding_functions
 
 # Import our environment verifier
 from verify_environment import EnvironmentVerifier
@@ -19,12 +29,6 @@ def verify_environment():
 # Load environment variables
 load_dotenv()
 
-import chromadb
-from chromadb import HttpClient, Settings
-import json
-import time
-from chromadb.utils import embedding_functions
-
 def get_claude_desktop_chroma_path():
     """Get ChromaDB path from Claude Desktop config"""
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -32,8 +36,17 @@ def get_claude_desktop_chroma_path():
     print(f"Using ChromaDB path: {config_path}")
     return config_path
 
-def migrate_memories(aws_ip):
-    print(f"Starting migration to AWS ChromaDB at {aws_ip}")
+def migrate_memories(source_type, source_config, target_type, target_config):
+    """
+    Migrate memories between ChromaDB instances.
+    
+    Args:
+        source_type: 'local' or 'remote'
+        source_config: For local: path to ChromaDB, for remote: {'host': host, 'port': port}
+        target_type: 'local' or 'remote'
+        target_config: For local: path to ChromaDB, for remote: {'host': host, 'port': port}
+    """
+    print(f"Starting migration from {source_type} to {target_type}")
     
     try:
         # Set up embedding function
@@ -41,67 +54,85 @@ def migrate_memories(aws_ip):
             model_name='all-MiniLM-L6-v2'
         )
         
-        # Connect to AWS ChromaDB
-        aws_client = HttpClient(host=aws_ip, port=8000)
-        print("Connected to AWS ChromaDB")
+        # Connect to target ChromaDB
+        if target_type == 'remote':
+            target_client = HttpClient(
+                host=target_config['host'],
+                port=target_config['port']
+            )
+            print(f"Connected to remote ChromaDB at {target_config['host']}:{target_config['port']}")
+        else:
+            settings = Settings(
+                anonymized_telemetry=False,
+                allow_reset=True,
+                is_persistent=True,
+                persist_directory=target_config
+            )
+            target_client = chromadb.Client(settings)
+            print(f"Connected to local ChromaDB at {target_config}")
         
         # Get or create collection for imported memories
         try:
-            aws_collection = aws_client.get_collection(
+            target_collection = target_client.get_collection(
                 name="mcp_imported_memories",
                 embedding_function=embedding_function
             )
-            print("Found existing collection 'mcp_imported_memories' on AWS")
+            print("Found existing collection 'mcp_imported_memories' on target")
         except Exception:
-            aws_collection = aws_client.create_collection(
+            target_collection = target_client.create_collection(
                 name="mcp_imported_memories",
                 metadata={"hnsw:space": "cosine"},
                 embedding_function=embedding_function
             )
-            print("Created new collection 'mcp_imported_memories' on AWS")
+            print("Created new collection 'mcp_imported_memories' on target")
         
-        # Connect to local ChromaDB directly with settings
-        local_path = get_claude_desktop_chroma_path()
-        print(f"Connecting to local ChromaDB at: {local_path}")
-        settings = Settings(
-            anonymized_telemetry=False,
-            allow_reset=True,
-            is_persistent=True,
-            persist_directory=local_path
-        )
-        local_client = chromadb.Client(settings)
-        print("Connected to local ChromaDB")
+        # Connect to source ChromaDB
+        if source_type == 'remote':
+            source_client = HttpClient(
+                host=source_config['host'],
+                port=source_config['port']
+            )
+            print(f"Connected to remote ChromaDB at {source_config['host']}:{source_config['port']}")
+        else:
+            settings = Settings(
+                anonymized_telemetry=False,
+                allow_reset=True,
+                is_persistent=True,
+                persist_directory=source_config
+            )
+            source_client = chromadb.Client(settings)
+            print(f"Connected to local ChromaDB at {source_config}")
         
         # List collections
-        collections = local_client.list_collections()
-        print(f"Found {len(collections)} collections locally")
+        collections = source_client.list_collections()
+        print(f"Found {len(collections)} collections in source")
         for coll in collections:
             print(f"- {coll.name}")
         
         # Try to get the memory collection
         try:
-            local_collection = local_client.get_collection(
+            source_collection = source_client.get_collection(
                 name="memory_collection",
                 embedding_function=embedding_function
             )
-            print("Found local memory collection")
+            print("Found source memory collection")
         except ValueError as e:
-            print(f"Error accessing local collection: {str(e)}")
+            print(f"Error accessing source collection: {str(e)}")
             return
             
-        # Get all memories from local
-        print("Fetching local memories...")
-        results = local_collection.get()
+        # Get all memories from source
+        print("Fetching source memories...")
+        results = source_collection.get()
         
         if not results["ids"]:
-            print("No memories found in local collection")
+            print("No memories found in source collection")
             return
             
         print(f"Found {len(results['ids'])} memories to migrate")
         
-        # Check for existing memories in AWS to avoid duplicates
-        aws_existing = aws_collection.get()
-        existing_ids = set(aws_existing["ids"])
+        # Check for existing memories in target to avoid duplicates
+        target_existing = target_collection.get()
+        existing_ids = set(target_existing["ids"])
         
         # Filter out already migrated memories
         new_memories = {
@@ -133,7 +164,7 @@ def migrate_memories(aws_ip):
             
             print(f"Migrating batch {i//batch_size + 1} ({len(batch_ids)} memories)...")
             
-            aws_collection.add(
+            target_collection.add(
                 documents=batch_documents,
                 metadatas=batch_metadatas,
                 ids=batch_ids
@@ -145,8 +176,8 @@ def migrate_memories(aws_ip):
         print("\nMigration complete!")
         
         # Verify migration
-        aws_results = aws_collection.get()
-        print(f"Verification: {len(aws_results['ids'])} total memories in AWS collection")
+        target_results = target_collection.get()
+        print(f"Verification: {len(target_results['ids'])} total memories in target collection")
         
     except Exception as e:
         print(f"Error during migration: {str(e)}")
@@ -156,5 +187,19 @@ if __name__ == "__main__":
     # First verify the environment
     verify_environment()
     
-    AWS_IP = "16.171.169.46"  # Your EC2 public IP
-    migrate_memories(AWS_IP)
+    # Example usage:
+    # Local to remote migration
+    migrate_memories(
+        source_type='local',
+        source_config=get_claude_desktop_chroma_path(),
+        target_type='remote',
+        target_config={'host': '16.171.169.46', 'port': 8000}
+    )
+    
+    # Remote to local migration
+    # migrate_memories(
+    #     source_type='remote',
+    #     source_config={'host': '16.171.169.46', 'port': 8000},
+    #     target_type='local',
+    #     target_config=get_claude_desktop_chroma_path()
+    # )

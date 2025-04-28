@@ -1,10 +1,18 @@
+# Aider files
+.aider.*
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# Python environment & build artifacts
 .Python
 env/
+.venv/
+venv/
+py310_venv/
 build/
 develop-eggs/
 dist/
@@ -21,82 +29,57 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
-venv/
-.venv/
-py310_venv/
-.env
+# Python project tools
+pip-wheel-metadata/
+__pypackages__/
 
-# IDE
+# Virtual Environment activation files (redundant due to .venv/ but explicit if needed)
+.env
+.env.*
+
+# IDEs & Editors
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# ChromaDB
-chroma_db/
-
-# Project specific
-backups/
-test_output.txt
-claude_desktop_config_updated.json
-claude_config/claude_desktop_config.json
-=1.0.0,
-=11.0.3
-
-# macOS
+# OS-specific files
 .DS_Store
 .AppleDouble
 .LSOverride
-.codegpt
-.venv/pyvenv.cfg
-.venv/bin/activate
-.venv/bin/activate.csh
-.venv/bin/activate.fish
-.venv/bin/Activate.ps1
-.venv/bin/chroma
-.venv/bin/coloredlogs
-.venv/bin/distro
-.venv/bin/dotenv
-.venv/bin/f2py
-.venv/bin/fastapi
-.venv/bin/httpx
-.venv/bin/huggingface-cli
-.venv/bin/humanfriendly
-.venv/bin/isympy
-.venv/bin/markdown-it
-.venv/bin/mcp
-.venv/bin/memory
-.venv/bin/normalizer
-.venv/bin/numpy-config
-.venv/bin/onnxruntime_test
-.venv/bin/opentelemetry-bootstrap
-.venv/bin/opentelemetry-instrument
-.venv/bin/pip
-.venv/bin/pip3
-.venv/bin/pip3.11
-.venv/bin/pygmentize
-.venv/bin/pyproject-build
-.venv/bin/pyrsa-decrypt
-.venv/bin/pyrsa-encrypt
-.venv/bin/pyrsa-keygen
-.venv/bin/pyrsa-priv2pub
-.venv/bin/pyrsa-sign
-.venv/bin/pyrsa-verify
-.venv/bin/python
-.venv/bin/python3
-.venv/bin/python3.11
-.venv/bin/torchfrtrace
-.venv/bin/torchrun
-.venv/bin/tqdm
-.venv/bin/transformers-cli
-.venv/bin/typer
-.venv/bin/uvicorn
-.venv/bin/watchfiles
-.venv/bin/websockets
-.venv/bin/wheel
-.venv/bin/wsdump
-.venv/share/man/man1/isympy.1
+
+# CodeGPT / Extensions
+.codegpt/
+
+# ChromaDB artifacts
+chroma_db/
+tests/test_db/chroma.sqlite3
+
+# Project-specific artifacts
+backups/
+test_output.txt
 dxdiag_output.txt
 dxdiag.txt
-tests/test_db/chroma.sqlite3
+claude_desktop_config_updated.json
+claude_config/claude_desktop_config.json
+
+# Remove these if mistakenly included
+=1.0.0,
+=11.0.3
+
+# Logs and debugging
+*.log
+*.bak
+*.tmp
+*.old
+
+# Optional: VSCode debugging & Python caches
+*.coverage
+coverage.*
+.cache/
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/

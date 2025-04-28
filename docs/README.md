@@ -2,59 +2,69 @@
 
 Welcome to the MCP Memory Service documentation. This directory contains comprehensive guides for installing, using, and troubleshooting the service.
 
-## Available Guides
+## Guides
 
-- [Installation Guide](guides/installation.md) - Detailed installation instructions for all platforms
-- [Troubleshooting](guides/installation.md#troubleshooting-common-installation-issues) - Solutions to common installation and usage issues
+- [Installation Guide](guides/installation.md) - Comprehensive installation instructions for all platforms
+- [Troubleshooting Guide](guides/troubleshooting.md) - Solutions for common issues and debugging procedures
+- [Migration Guide](guides/migration.md) - Instructions for migrating memories between different ChromaDB instances
+
+## Technical Documentation
+
+- [Tag Storage Procedure](technical/tag-storage.md) - Technical details about tag storage and migration
+- [Memory Migration](technical/memory-migration.md) - Technical details about memory migration process
 
 ## Quick Links
 
 - [Main README](../README.md) - Overview of the service and its features
-- [CLAUDE.md](../CLAUDE.md) - Development guidelines for AI assistants
-- [MCP Protocol Fix](../MCP_PROTOCOL_FIX.md) - Details about MCP protocol compatibility fixes
+- [Hardware Compatibility](../README.md#hardware-compatibility) - Supported platforms and accelerators
+- [Configuration Options](../README.md#configuration-options) - Available environment variables and settings
 
-## Platform-Specific Installation Notes
-
-### macOS (Intel x86_64)
-
-For macOS running on Intel (x86_64) processors, the following PyTorch versions are required:
-- torch==1.13.1
-- torchvision==0.14.1 
-- torchaudio==0.13.1
-
-You can install these with:
-```bash
-pip install torch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1
-pip install sentence-transformers==2.2.2
-```
-
-Our installation scripts (`install.py` and `memory_wrapper.py`) now automatically detect macOS on Intel and will install the correct versions. If you were previously experiencing issues with the Windows-specific installation script being erroneously used on macOS, this has been fixed.
-
-For more details, see the [macOS installation section](guides/installation.md#intel-cpus) in the installation guide.
+## Platform-Specific Notes
 
 ### Windows
+- Uses Windows-specific installation script
+- Requires PyTorch wheels from specific index URL
+- See [Windows Installation Guide](guides/installation.md#windows)
 
-Windows requires the Windows-specific installation script and PyTorch wheels from a specific index URL:
-```bash
-python scripts/install_windows.py
-```
+### macOS
+- Intel x86_64: Uses specific PyTorch versions for compatibility
+- Apple Silicon: Supports MPS acceleration with fallbacks
+- See [macOS Installation Guide](guides/installation.md#macos)
 
-### Apple Silicon
-
-Apple Silicon Macs work best with:
-- torch==2.1.0
-- torchvision==2.1.0
-- torchaudio==2.1.0
-
-## Scripts
+## Available Scripts
 
 The `scripts/` directory contains several useful tools:
 
+### Core Scripts
 - `run_memory_server.py` - Direct runner for MCP Memory Service
-- `verify_environment_enhanced.py` - Verify your environment compatibility
-- `install_windows.py` - Windows-specific installation script
-- `fix_sitecustomize.py` - Fix for recursion issues in sitecustomize.py
-- `verify_pytorch_windows.py` - Verify PyTorch installation on Windows
+- `verify_environment.py` - Enhanced environment compatibility verification
+- `fix_sitecustomize.py` - Fix for recursion issues with enhanced platform support
+- `mcp-migration.py` - Memory migration tool supporting local and remote migrations
+
+### Platform-Specific Scripts
+- `install_windows.py` - Windows-specific installation
+- `verify_pytorch_windows.py` - Windows PyTorch verification
+
+## Script Usage Examples
+
+### Environment Verification
+```bash
+python scripts/verify_environment.py
+```
+
+### Memory Migration
+```bash
+# Local to Remote Migration
+python scripts/mcp-migration.py --source-type local --source-config /path/to/local/chroma --target-type remote --target-config '{"host": "remote-host", "port": 8000}'
+
+# Remote to Local Migration
+python scripts/mcp-migration.py --source-type remote --source-config '{"host": "remote-host", "port": 8000}' --target-type local --target-config /path/to/local/chroma
+```
+
+### Site Customization Fix
+```bash
+python scripts/fix_sitecustomize.py
+```
 
 ## Configuration
 

@@ -1,0 +1,28 @@
+services:
+  memory-service:
+    image: python:3.10-slim
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ${CHROMA_DB_PATH:-$HOME/mcp-memory/chroma_db}:/app/chroma_db
+      - ${BACKUPS_PATH:-$HOME/mcp-memory/backups}:/app/backups
+    environment:
+      - MCP_MEMORY_CHROMA_PATH=/app/chroma_db
+      - MCP_MEMORY_BACKUPS_PATH=/app/backups
+      - LOG_LEVEL=INFO
+      - MAX_RESULTS_PER_QUERY=10
+      - SIMILARITY_THRESHOLD=0.7
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    command: >
+      bash -c "
+        apt-get update && 
+        apt-get install -y --no-install-recommends build-essential gcc g++ &&
+        rm -rf /var/lib/apt/lists/* &&
+        pip install -r requirements.txt &&
+        chmod a+rw /dev/stdin /dev/stdout /dev/stderr &&
+        python -u -m mcp_memory_service.server
+      "

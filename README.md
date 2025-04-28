@@ -27,49 +27,7 @@ An MCP server providing semantic memory and persistent storage capabilities for 
 
 ## Installation
 
-### Installation with UV (Recommended)
-
-UV is a fast, reliable Python package installer and resolver. Using UV with mcp-memory-service provides:
-
-- Faster dependency resolution, especially for complex dependencies like PyTorch
-- More reliable environment management
-- Better compatibility with different platforms
-
-```bash
-# Install UV if not already installed
-pip install uv
-
-# Clone the repository
-git clone https://github.com/doobidoo/mcp-memory-service.git
-cd mcp-memory-service
-
-# Create and activate a virtual environment with UV
-uv venv
-
-# On Windows
-.venv\Scripts\activate
-
-# On Unix/macOS
-source .venv/bin/activate
-
-# Install dependencies with UV
-uv pip install -r requirements.txt
-
-# Install the package
-uv pip install -e .
-
-# Run with UV
-uv run memory
-```
-
-For an even simpler experience, use our UV wrapper:
-
-```bash
-# After activating your virtual environment
-python uv_wrapper.py
-```
-
-### Alternative: Traditional Installation
+### Quick Start (Recommended)
 
 The enhanced installation script automatically detects your system and installs the appropriate dependencies:
 
@@ -94,15 +52,11 @@ The `install.py` script will:
 
 ### Windows Installation (Special Case)
 
-Windows users may encounter PyTorch installation issues due to platform-specific wheel availability. 
-
-We recommend using UV (see above) which handles these complexities automatically. Alternatively, use our Windows-specific wrapper:
+Windows users may encounter PyTorch installation issues due to platform-specific wheel availability. Use our Windows-specific installation script:
 
 ```bash
 # After activating your virtual environment
-python memory_wrapper_uv.py  # UV-based wrapper (recommended)
-# OR
-python memory_wrapper.py     # Traditional wrapper
+python scripts/install_windows.py
 ```
 
 This script handles:
@@ -125,9 +79,9 @@ For comprehensive installation instructions and troubleshooting, see the [Instal
 
 ## Claude MCP Configuration
 
-### Standard Configuration (Recommended)
+### Standard Configuration
 
-Add the following to your `claude_desktop_config.json` file to use UV (recommended for best performance):
+Add the following to your `claude_desktop_config.json` file:
 
 ```json
 {
@@ -171,23 +125,19 @@ The wrapper script will:
 2. Install PyTorch with the correct index URL if needed
 3. Run the memory server with the appropriate configuration
 
-## Usage
+## Usage Guide
 
-To run the memory server directly (for testing):
+For detailed instructions on how to interact with the memory service in Claude Desktop:
 
-```bash
-# Run with UV (recommended for best performance)
-uv run memory
+- [Invocation Guide](docs/guides/invocation_guide.md) - Learn the specific keywords and phrases that trigger memory operations in Claude
+- [Installation Guide](docs/guides/installation.md) - Detailed setup instructions
 
-# Use the UV wrapper for automatic dependency handling
-python uv_wrapper.py
+The memory service is invoked through natural language commands in your conversations with Claude. For example:
+- To store: "Please remember that my project deadline is May 15th."
+- To retrieve: "Do you remember what I told you about my project deadline?"
+- To delete: "Please forget what I told you about my address."
 
-# Alternative: quick run script (traditional method)
-python scripts/run_memory_server.py
-
-# For isolated testing of methods
-python src/chroma_test_isolated.py
-```
+See the [Invocation Guide](docs/guides/invocation_guide.md) for a complete list of commands and detailed usage examples.
 
 ## Memory Operations
 
@@ -283,9 +233,8 @@ See the [Installation Guide](docs/guides/installation.md#troubleshooting-common-
 
 ### Quick Troubleshooting Tips
 
-- **Dependency issues**: Try using UV: `python scripts/convert_to_uv.py`
-- **Windows PyTorch errors**: Use `python memory_wrapper_uv.py`
-- **macOS Intel dependency conflicts**: Use UV or `python install.py --force-compatible-deps`
+- **Windows PyTorch errors**: Use `python scripts/install_windows.py`
+- **macOS Intel dependency conflicts**: Use `python install.py --force-compatible-deps`
 - **Recursion errors**: Run `python scripts/fix_sitecustomize.py` 
 - **Environment verification**: Run `python scripts/verify_environment_enhanced.py`
 - **Memory issues**: Set `MCP_MEMORY_BATCH_SIZE=4` and try a smaller model
@@ -304,12 +253,7 @@ mcp-memory-service/
 │   ├── utils/                   # Utility functions
 │   └── server.py                # Main MCP server
 ├── scripts/                     # Helper scripts
-│   ├── convert_to_uv.py         # Script to migrate to UV
-│   └── install_uv.py            # UV installation helper
-├── .uv/                         # UV configuration
 ├── memory_wrapper.py            # Windows wrapper script
-├── memory_wrapper_uv.py         # UV-based wrapper script
-├── uv_wrapper.py                # UV wrapper script
 ├── install.py                   # Enhanced installation script
 └── tests/                       # Test suite
 ```
@@ -335,4 +279,11 @@ MIT License - See LICENSE file for details
 
 ## Contact
 
-[t.me/doobidoo](https://t.me/+MJtKdOWzmQdhY2Vi)
+[Telegram](t.me/doobeedoo)
+
+## Integrations
+
+The MCP Memory Service can be extended with various tools and utilities. See [Integrations](docs/integrations.md) for a list of available options, including:
+
+- [MCP Memory Dashboard](https://github.com/doobidoo/mcp-memory-dashboard) - Web UI for browsing and managing memories
+- [Claude Memory Context](https://github.com/doobidoo/claude-memory-context) - Inject memory context into Claude project instructions

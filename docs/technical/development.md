@@ -17,14 +17,6 @@
   ```
 - For recursion errors, run: `python scripts/fix_sitecustomize.py`
 
-## Memory Service Invocation
-- See the comprehensive [Invocation Guide](docs/guides/invocation_guide.md) for full details
-- Key trigger phrases:
-  - **Storage**: "remember that", "remember this", "save to memory", "store in memory"
-  - **Retrieval**: "do you remember", "recall", "retrieve from memory", "search your memory for"
-  - **Tag-based**: "find memories with tag", "search for tag", "retrieve memories tagged"
-  - **Deletion**: "forget", "delete from memory", "remove from memory"
-
 ## Code Style
 - Python 3.10+ with type hints
 - Use dataclasses for models (see `models/memory.py`)

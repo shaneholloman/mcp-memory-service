@@ -9,7 +9,9 @@ This guide provides detailed instructions for installing the MCP Memory Service 
 - A virtual environment (venv or conda)
 - Git (to clone the repository)
 
-## Standard Installation (All Platforms)
+## Installation Methods
+
+### 1. Standard Installation (All Platforms)
 
 1. **Clone the repository**:
    ```bash
@@ -38,6 +40,46 @@ This guide provides detailed instructions for installing the MCP Memory Service 
    ```bash
    python scripts/verify_environment_enhanced.py
    ```
+
+### 2. Docker Installation (Recommended for Cross-Platform Compatibility)
+
+For the easiest cross-platform deployment, use Docker:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/doobidoo/mcp-memory-service.git
+   cd mcp-memory-service
+   ```
+
+2. **Build and run with Docker Compose**:
+   ```bash
+   # Create directories for persistent storage
+   mkdir -p ./data/chroma_db ./data/backups
+   
+   # Build and start the service
+   docker-compose up -d
+   ```
+
+3. **Configure Claude Desktop** to use the Docker container:
+   ```json
+   {
+     "memory": {
+       "command": "docker",
+       "args": [
+         "run",
+         "--rm",
+         "-p", "8000:8000",
+         "-v", "/path/to/data/chroma_db:/app/chroma_db",
+         "-v", "/path/to/data/backups:/app/backups",
+         "-e", "MCP_MEMORY_CHROMA_PATH=/app/chroma_db",
+         "-e", "MCP_MEMORY_BACKUPS_PATH=/app/backups",
+         "mcp-memory-service"
+       ]
+     }
+   }
+   ```
+
+For detailed Docker deployment instructions, see [Docker Deployment Guide](../technical/docker-deployment.md).
 
 ## Platform-Specific Installation Instructions
 
