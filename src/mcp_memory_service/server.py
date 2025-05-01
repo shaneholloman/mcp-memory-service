@@ -5,6 +5,7 @@ Licensed under the MIT License. See LICENSE file in the project root for full li
 """
 import sys
 import os
+import time
 # Add path to your virtual environment's site-packages
 venv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'venv', 'Lib', 'site-packages')
 if os.path.exists(venv_path):
@@ -17,6 +18,7 @@ import json
 import platform
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
+from .utils.utils import ensure_datetime
 
 from mcp.server.models import InitializationOptions
 import mcp.types as types
@@ -682,12 +684,15 @@ class MemoryServer:
             
             # Create memory object
             content_hash = generate_content_hash(content, metadata)
+            now = time.time()
             memory = Memory(
                 content=content,
                 content_hash=content_hash,
                 tags=tags,  # keep as a list for easier use in other methods
                 memory_type=metadata.get("type"),
-                metadata = {**metadata, "tags":sanitized_tags}  # include the stringified tags in the meta data
+                metadata = {**metadata, "tags":sanitized_tags},  # include the stringified tags in the meta data
+                created_at=now,
+                created_at_iso=datetime.utcfromtimestamp(now).isoformat() + "Z"
             )
             
             # Store memory
@@ -956,7 +961,7 @@ class MemoryServer:
             # Format results
             formatted_results = []
             for i, result in enumerate(results):
-                memory_dt = datetime.fromtimestamp(float(result.memory.timestamp)) if result.memory.timestamp else None
+                memory_dt = ensure_datetime(result.memory.timestamp)
                 
                 memory_info = [
                     f"Memory {i+1}:",
@@ -1055,8 +1060,7 @@ class MemoryServer:
             
             formatted_results = []
             for i, result in enumerate(results):
-                memory_timestamp = datetime.fromtimestamp(float(result.memory.timestamp)) if result.memory.timestamp else None
-                
+                memory_timestamp = ensure_datetime(result.memory.timestamp)
                 memory_info = [
                     f"Memory {i+1}:",
                 ]

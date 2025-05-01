@@ -16,13 +16,14 @@ services:
       - SIMILARITY_THRESHOLD=0.7
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
+      - UV_ACTIVE=1
     restart: unless-stopped
     command: >
       bash -c "
         apt-get update && 
         apt-get install -y --no-install-recommends build-essential gcc g++ &&
         rm -rf /var/lib/apt/lists/* &&
-        pip install -e . &&
+        pip install uv &&
         chmod a+rw /dev/stdin /dev/stdout /dev/stderr &&
-        python -u -m mcp_memory_service.server
+        python -u uv_wrapper.py
       "

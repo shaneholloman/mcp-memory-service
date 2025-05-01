@@ -14,7 +14,7 @@ services:
       - LOG_LEVEL=INFO
       - MAX_RESULTS_PER_QUERY=10
       - SIMILARITY_THRESHOLD=0.7
-      - PYTHONPATH=/app
+      - PYTHONPATH=/app/src:/app
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     command: >
@@ -22,7 +22,7 @@ services:
         apt-get update && 
         apt-get install -y --no-install-recommends build-essential gcc g++ &&
         rm -rf /var/lib/apt/lists/* &&
-        pip install -e . &&
+        pip install -r requirements.txt &&
         chmod a+rw /dev/stdin /dev/stdout /dev/stderr &&
         python -u -m mcp_memory_service.server
       "

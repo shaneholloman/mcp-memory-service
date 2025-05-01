@@ -47,3 +47,23 @@
 - Apple Silicon requires Python 3.10+ built for ARM64
 - CUDA issues: verify with `torch.cuda.is_available()`
 - For MCP protocol issues, check `server.py` for required methods
+
+## Debugging with MCP-Inspector
+
+To debug the MCP-MEMORY-SERVICE using the [MCP-Inspector](https://modelcontextprotocol.io/docs/tools/inspector) tool, you can use the following command pattern:
+
+```bash
+MCP_MEMORY_CHROMA_PATH="/path/to/your/chroma_db" MCP_MEMORY_BACKUPS_PATH="/path/to/your/backups" npx @modelcontextprotocol/inspector uv --directory /path/to/mcp-memory-service run memory
+```
+
+Replace the paths with your specific directories:
+- `/path/to/your/chroma_db`: Location where Chroma database files are stored
+- `/path/to/your/backups`: Location for memory backups
+- `/path/to/mcp-memory-service`: Directory containing the MCP-MEMORY-SERVICE code
+
+For example:
+```bash
+MCP_MEMORY_CHROMA_PATH="~/Library/Mobile Documents/com~apple~CloudDocs/AI/claude-memory/chroma_db" MCP_MEMORY_BACKUPS_PATH="~/Library/Mobile Documents/com~apple~CloudDocs/AI/claude-memory/backups" npx @modelcontextprotocol/inspector uv --directory ~/Documents/GitHub/mcp-memory-service run memory
+```
+
+This command sets the required environment variables and runs the memory service through the inspector tool for debugging purposes.

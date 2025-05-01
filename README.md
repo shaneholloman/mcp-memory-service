@@ -8,6 +8,8 @@ An MCP server providing semantic memory and persistent storage capabilities for 
 <img width="240" alt="grafik" src="https://github.com/user-attachments/assets/eab1f341-ca54-445c-905e-273cd9e89555" />
 <a href="https://glama.ai/mcp/servers/bzvl3lz34o"><img width="380" height="200" src="https://glama.ai/mcp/servers/bzvl3lz34o/badge" alt="Memory Service MCP server" /></a>
 
+## Help
+Talk to the Repo with [TalkToGitHub](https://talktogithub.com/doobidoo/mcp-memory-service)!
 ## Features
 
 - Semantic search using sentence transformers
@@ -49,6 +51,29 @@ The `install.py` script will:
 2. Install the appropriate dependencies for your platform
 3. Configure the optimal settings for your environment
 4. Verify the installation and provide diagnostics if needed
+
+### Docker Installation
+
+You can run the Memory Service using Docker:
+
+```bash
+# Using Docker Compose (recommended)
+docker-compose up
+
+# Using Docker directly
+docker build -t mcp-memory-service .
+docker run -p 8000:8000 -v /path/to/data:/app/chroma_db -v /path/to/backups:/app/backups mcp-memory-service
+```
+
+We provide multiple Docker Compose configurations for different scenarios:
+- `docker-compose.yml` - Standard configuration using pip install
+- `docker-compose.uv.yml` - Alternative configuration using UV package manager
+- `docker-compose.pythonpath.yml` - Configuration with explicit PYTHONPATH settings
+
+To use an alternative configuration:
+```bash
+docker-compose -f docker-compose.uv.yml up
+```
 
 ### Windows Installation (Special Case)
 

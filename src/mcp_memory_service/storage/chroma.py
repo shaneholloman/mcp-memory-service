@@ -197,6 +197,16 @@ class ChromaMemoryStorage(MemoryStorage):
         # Return JSON string representation of the array
         return json.dumps(tags)
 
+    @staticmethod
+    def normalize_timestamp(ts) -> float:
+        """Convert datetime or float-like timestamp into float seconds."""
+        if isinstance(ts, datetime):
+            return time.mktime(ts.timetuple())
+        if isinstance(ts, (float, int)):
+            return float(ts)
+        logger.error(f"Invalid timestamp type: {type(ts)}")
+        return time.time()
+    
     async def store(self, memory: Memory) -> Tuple[bool, str]:
         """Store a memory with proper embedding handling."""
         try:
@@ -387,11 +397,13 @@ class ChromaMemoryStorage(MemoryStorage):
             if start_timestamp is not None or end_timestamp is not None:
                 where_clause = {"$and": []}
                 
-                if start_timestamp is not None:
-                    where_clause["$and"].append({"timestamp": {"$gte": int(float(start_timestamp))}})
-                
-                if end_timestamp is not None:
-                    where_clause["$and"].append({"timestamp": {"$lte": int(float(end_timestamp))}})
+            if start_timestamp is not None:
+                start_timestamp = self.normalize_timestamp(start_timestamp)
+                where_clause["$and"].append({"timestamp": {"$gte": int(start_timestamp)}})
+
+            if end_timestamp is not None:
+                end_timestamp = self.normalize_timestamp(end_timestamp)
+                where_clause["$and"].append({"timestamp": {"$lte": int(end_timestamp)}})
 
             # If there's no valid where clause, set it to None to avoid ChromaDB errors
             if not where_clause.get("$and", []):
@@ -425,7 +437,12 @@ class ChromaMemoryStorage(MemoryStorage):
                             tags = []
                         
                         # Reconstruct memory object
-                        timestamp = float(metadata.get("timestamp", time.time()))
+                        # timestamp = float(metadata.get("timestamp", time.time()))
+                        raw_timestamp = metadata.get("timestamp", time.time())
+                        if isinstance(raw_timestamp, datetime):
+                            timestamp = time.mktime(raw_timestamp.timetuple())
+                        else:
+                            timestamp = float(raw_timestamp)
                         memory = Memory(
                             content=results["documents"][0][i],
                             content_hash=metadata["content_hash"],
@@ -565,15 +582,32 @@ class ChromaMemoryStorage(MemoryStorage):
 
 
     def _format_metadata_for_chroma(self, memory: Memory) -> Dict[str, Any]:
-        """Format metadata to be compatible with ChromaDB requirements."""
+        """Format metadata to be compatible with ChromaDB requirements with multi-format timestamps."""
+        # Ensure timestamps are properly synchronized
+        memory._sync_timestamps(
+            created_at=memory.created_at,
+            created_at_iso=memory.created_at_iso,
+            updated_at=memory.updated_at,
+            updated_at_iso=memory.updated_at_iso
+        )
+        
+        # Use both new timestamp fields and legacy timestamp fields for compatibility
         metadata = {
             "content_hash": memory.content_hash,
             "memory_type": memory.memory_type if memory.memory_type else "",
-            "timestamp": int(memory.timestamp.timestamp())
+            # Store legacy timestamp in all formats for backward compatibility
+            "timestamp": int(memory.created_at),
+            "timestamp_float": memory.created_at,
+            "timestamp_str": memory.created_at_iso,
+            # Store new timestamp fields
+            "created_at": memory.created_at,
+            "created_at_iso": memory.created_at_iso,
+            "updated_at": memory.updated_at,
+            "updated_at_iso": memory.updated_at_iso
         }
         
-        # Log the timestamp for debugging
-        logger.debug(f"Storing memory with timestamp: {metadata['timestamp']} (from {memory.timestamp})")
+        # Log the timestamps for debugging
+        logger.debug(f"Storing memory with multi-format timestamps: created_at={memory.created_at}, created_at_iso='{memory.created_at_iso}', updated_at={memory.updated_at}, updated_at_iso='{memory.updated_at_iso}'")
         
         # Properly serialize tags
         if memory.tags:

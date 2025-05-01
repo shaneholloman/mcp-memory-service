@@ -1,6 +1,0 @@
-{
-  "mcp-memory": {
-    "chroma_db": "${USER_DATA_PATH}/mcp-memory/chroma_db",
-    "backup_path": "${USER_DATA_PATH}/mcp-memory/backups"
-  }
-}

@@ -1,253 +1,298 @@
 #!/usr/bin/env python3
 """
-Migration script to update timestamp format in memory database.
-This script reads all memories, updates timestamps to the new format, and saves them back.
+Enhanced SQLite migration script to fix timestamp formats in ChromaDB.
+This improved version populates all timestamp columns with appropriate values.
 """
-import sys
-import os
-import json
-import asyncio
+import sqlite3
 import logging
+import os
+import sys
+import platform
 from pathlib import Path
-
-# Add parent directory to path so we can import from the src directory
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.mcp_memory_service.storage.chroma import ChromaMemoryStorage
-from src.mcp_memory_service.config import CHROMA_PATH
+import json
+import datetime
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
-logger = logging.getLogger("timestamp_migration")
+logger = logging.getLogger("sqlite_migration")
 
-async def migrate_timestamps():
+def find_claude_chroma_db():
     """
-    Migrate all memories to use integer timestamps for consistent time-based queries.
+    Finds the Claude desktop ChromaDB storage location based on the operating system.
     """
-    logger.info(f"Initializing ChromaDB storage at {CHROMA_PATH}")
-    storage = ChromaMemoryStorage(CHROMA_PATH)
+    system = platform.system()
+    home = Path.home()
     
-    # Get all memories from the database
-    logger.info("Retrieving all memories from database")
-    try:
-        # First try without embeddings to avoid potential issues
-        results = storage.collection.get(
-            include=["metadatas", "documents"]
-        )
+    # List of potential ChromaDB locations for Claude desktop
+    possible_locations = []
+    
+    if system == "Darwin":  # macOS
+        # Standard iCloud Drive location
+        icloud_path = home / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "AI" / "claude-memory" / "chroma_db"
+        possible_locations.append(icloud_path)
         
-        if not results["ids"]:
-            logger.info("No memories found in database")
-            return
+        # Local AppData location
+        local_path = home / "Library" / "Application Support" / "Claude" / "claude-memory" / "chroma_db"
+        possible_locations.append(local_path)
         
-        total_memories = len(results["ids"])
-        logger.info(f"Found {total_memories} memories")
+    elif system == "Windows":
+        # Standard Windows location
+        appdata_path = Path(os.environ.get("LOCALAPPDATA", "")) / "Claude" / "claude-memory" / "chroma_db"
+        possible_locations.append(appdata_path)
         
-        # Track which memories need to be updated
-        memories_to_update = []
+        # OneDrive potential path
+        onedrive_path = home / "OneDrive" / "Documents" / "Claude" / "claude-memory" / "chroma_db"
+        possible_locations.append(onedrive_path)
         
-        # Check each memory's timestamp format
-        for i, memory_id in enumerate(results["ids"]):
-            metadata = results["metadatas"][i]
-            document = results["documents"][i]
-            
-            # Extract current timestamp
-            current_timestamp = metadata.get("timestamp")
-            if not current_timestamp:
-                logger.warning(f"Memory {memory_id} has no timestamp, skipping")
-                continue
-                
-            logger.debug(f"Memory {i+1}/{total_memories}: ID={memory_id}, Current timestamp={current_timestamp}")
-            
-            # Convert timestamp to integer format
+    elif system == "Linux":
+        # Standard Linux location
+        linux_path = home / ".config" / "Claude" / "claude-memory" / "chroma_db"
+        possible_locations.append(linux_path)
+    
+    # Try to find config file that might tell us the location
+    config_locations = []
+    
+    if system == "Darwin":
+        config_locations.append(home / "Library" / "Application Support" / "Claude" / "config.json")
+    elif system == "Windows":
+        config_locations.append(Path(os.environ.get("APPDATA", "")) / "Claude" / "config.json")
+    elif system == "Linux":
+        config_locations.append(home / ".config" / "Claude" / "config.json")
+    
+    # Check if config file exists and try to read DB path from it
+    for config_path in config_locations:
+        if config_path.exists():
             try:
-                # Handle different timestamp formats
-                if isinstance(current_timestamp, (int, float)):
-                    new_timestamp = int(float(current_timestamp))
-                elif isinstance(current_timestamp, str):
-                    if "." in current_timestamp:  # It's a float string
-                        new_timestamp = int(float(current_timestamp))
-                    else:
-                        try:
-                            # Make sure it's a valid integer
-                            new_timestamp = int(current_timestamp)
-                        except ValueError:
-                            # Not a valid integer string, convert it
-                            new_timestamp = int(float(current_timestamp))
-                else:
-                    logger.warning(f"Memory {memory_id} has unexpected timestamp type: {type(current_timestamp)}")
-                    continue
-                
-                # Check if the timestamp needs to be updated
-                if current_timestamp != new_timestamp:
-                    logger.info(f"Memory {memory_id}: Changing timestamp from {current_timestamp} to {new_timestamp}")
-                    
-                    # Update the metadata with the new timestamp
-                    new_metadata = metadata.copy()
-                    new_metadata["timestamp"] = new_timestamp
-                    
-                    memories_to_update.append({
-                        "id": memory_id,
-                        "document": document,
-                        "metadata": new_metadata
-                    })
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    if 'memoryStoragePath' in config:
+                        mem_path = Path(config['memoryStoragePath']) / "chroma_db"
+                        possible_locations.insert(0, mem_path)  # Prioritize this path
+                        logger.info(f"Found memory path in config: {mem_path}")
             except Exception as e:
-                logger.error(f"Error processing memory {memory_id}: {str(e)}")
-                continue
-        
-        # Update the memories in the database
-        if memories_to_update:
-            update_count = len(memories_to_update)
-            logger.info(f"Updating {update_count} memories with new timestamp format")
-            
-            # Process in batches to avoid overwhelming the database
-            batch_size = 50
-            for i in range(0, len(memories_to_update), batch_size):
-                batch = memories_to_update[i:i+batch_size]
-                logger.info(f"Processing batch {i//batch_size + 1}/{(len(memories_to_update)-1)//batch_size + 1}")
-                
-                # Prepare batch arrays for update
-                batch_ids = []
-                batch_metadatas = []
-                batch_documents = []
-                
-                for memory in batch:
-                    batch_ids.append(memory["id"])
-                    batch_metadatas.append(memory["metadata"])
-                    batch_documents.append(memory["document"])
-                
-                try:
-                    # Update the entire batch at once
-                    storage.collection.update(
-                        ids=batch_ids,
-                        metadatas=batch_metadatas,
-                        documents=batch_documents
-                    )
-                except Exception as e:
-                    logger.error(f"Error updating batch: {str(e)}")
-            
-            logger.info(f"Successfully updated {update_count} memories")
-        else:
-            logger.info("No memories need timestamp format updates")
-        
-    except Exception as e:
-        logger.error(f"Error during migration: {str(e)}")
-        raise
+                logger.warning(f"Error reading config file {config_path}: {e}")
+    
+    # Check all possible locations
+    for location in possible_locations:
+        db_path = location / "chroma.sqlite3"
+        if db_path.exists():
+            logger.info(f"Found ChromaDB at: {db_path}")
+            return str(db_path)
+    
+    logger.error("Could not find Claude's ChromaDB storage location")
+    return None
 
-async def verify_migration():
+def get_table_schema(cursor, table_name):
     """
-    Verify that the migration was successful by checking timestamp formats.
+    Retrieves the schema of a table to understand available columns.
     """
-    logger.info("Verifying migration results")
-    storage = ChromaMemoryStorage(CHROMA_PATH)
-    
-    try:
-        results = storage.collection.get(
-            include=["metadatas"]
-        )
-        
-        if not results["ids"]:
-            logger.info("No memories found in database")
-            return
-        
-        total_memories = len(results["ids"])
-        invalid_count = 0
-        
-        for i, memory_id in enumerate(results["ids"]):
-            metadata = results["metadatas"][i]
-            timestamp = metadata.get("timestamp")
-            
-            if not timestamp:
-                logger.warning(f"Memory {memory_id} has no timestamp")
-                invalid_count += 1
-                continue
-                
-            # Check if timestamp is an integer
-            if not isinstance(timestamp, int):
-                try:
-                    # Try to convert to make sure it can be represented as an integer
-                    int(timestamp)
-                except (ValueError, TypeError):
-                    logger.warning(f"Memory {memory_id} has invalid timestamp format: {timestamp}")
-                    invalid_count += 1
-        
-        if invalid_count == 0:
-            logger.info(f"Verification successful: All {total_memories} memories have valid timestamp format")
-        else:
-            logger.warning(f"Verification found {invalid_count} out of {total_memories} memories with invalid timestamp format")
-            
-    except Exception as e:
-        logger.error(f"Error during verification: {str(e)}")
-        raise
-        
-async def test_time_query():
-    """
-    Test time-based memory queries to ensure they're working correctly.
-    """
-    logger.info("Testing time-based memory queries")
-    storage = ChromaMemoryStorage(CHROMA_PATH)
-    
-    try:
-        # Try querying memories from the past week
-        from datetime import datetime, timedelta
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=7)
-        
-        start_timestamp = int(start_date.timestamp())
-        end_timestamp = int(end_date.timestamp())
-        
-        logger.info(f"Testing query for past week: {start_date} to {end_date}")
-        logger.info(f"Timestamp range: {start_timestamp} to {end_timestamp}")
-        
-        # Build time filtering where clause
-        where_clause = {
-            "$and": [
-                {"timestamp": {"$gte": int(start_timestamp)}},
-                {"timestamp": {"$lte": int(end_timestamp)}}
-            ]
-        }
-        
-        # Direct query using where clause
-        results = storage.collection.get(
-            where=where_clause,
-            include=["metadatas", "documents"]
-        )
-        
-        if not results["ids"]:
-            logger.info("No memories found in the past week")
-        else:
-            logger.info(f"Found {len(results['ids'])} memories in the past week")
-            
-            # Log the first few memories
-            for i, memory_id in enumerate(results["ids"][:3]):
-                metadata = results["metadatas"][i]
-                document = results["documents"][i]
-                logger.info(f"Memory {i+1}: ID={memory_id}, Timestamp={metadata.get('timestamp')}, Content={document[:50]}...")
-    
-    except Exception as e:
-        logger.error(f"Error during time query test: {str(e)}")
-        raise
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = cursor.fetchall()
+    return {col[1]: col for col in columns}  # returns dict with column name as key
 
-async def main():
-    """Main function to run the migration."""
-    logger.info("=== Starting timestamp migration ===")
+def timestamp_to_all_types(timestamp_value):
+    """
+    Convert a timestamp to all possible formats:
+    - integer (unix timestamp)
+    - float (unix timestamp with milliseconds)
+    - string (ISO format)
+    """
+    # Handle different input types
+    timestamp_int = None
+    
+    if isinstance(timestamp_value, int):
+        timestamp_int = timestamp_value
+    elif isinstance(timestamp_value, float):
+        timestamp_int = int(timestamp_value)
+    elif isinstance(timestamp_value, str):
+        try:
+            # Try to parse as float first
+            timestamp_int = int(float(timestamp_value))
+        except ValueError:
+            # Try to parse as ISO date
+            try:
+                dt = datetime.datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
+                timestamp_int = int(dt.timestamp())
+            except ValueError:
+                # Try different date formats
+                for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y/%m/%d %H:%M:%S"]:
+                    try:
+                        dt = datetime.datetime.strptime(timestamp_value, fmt)
+                        timestamp_int = int(dt.timestamp())
+                        break
+                    except ValueError:
+                        continue
+    
+    if timestamp_int is None:
+        raise ValueError(f"Could not convert timestamp value: {timestamp_value}")
+    
+    # Generate all formats
+    timestamp_float = float(timestamp_int)
+    
+    # ISO format string representation
+    dt = datetime.datetime.fromtimestamp(timestamp_int, tz=datetime.timezone.utc)
+    timestamp_str = dt.isoformat().replace('+00:00', 'Z')
+    
+    return {
+        'int': timestamp_int,
+        'float': timestamp_float,
+        'string': timestamp_str
+    }
+
+def migrate_timestamps_in_sqlite(db_path):
+    """
+    Enhanced migration that identifies timestamp data across all columns
+    and populates all columns with consistent type values.
+    """
+    logger.info(f"Connecting to SQLite database at {db_path}")
+    
+    if not os.path.exists(db_path):
+        logger.error(f"Database file not found: {db_path}")
+        return False
     
     try:
-        # Run migration
-        await migrate_timestamps()
+        # Connect to the SQLite database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
         
-        # Verify migration
-        await verify_migration()
+        # Check if the embedding_metadata table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='embedding_metadata'")
+        if not cursor.fetchone():
+            logger.error("Table embedding_metadata not found in database.")
+            conn.close()
+            return False
         
-        # Test time query
-        await test_time_query()
+        # Get table schema to understand column structure
+        schema = get_table_schema(cursor, "embedding_metadata")
+        logger.info(f"Table schema: {schema}")
         
-        logger.info("=== Migration completed successfully ===")
+        # Find all timestamp entries from any column
+        logger.info("Identifying all timestamp entries...")
+        cursor.execute("""
+            SELECT id, key, string_value, int_value, float_value 
+            FROM embedding_metadata 
+            WHERE key = 'timestamp'
+        """)
+        all_rows = cursor.fetchall()
+        
+        if not all_rows:
+            logger.warning("No timestamp entries found in the database.")
+            conn.close()
+            return True
+        
+        logger.info(f"Found {len(all_rows)} timestamp entries to process")
+        
+        # Process each timestamp row
+        processed_count = 0
+        failed_count = 0
+        
+        for row in all_rows:
+            id_val, key, string_val, int_val, float_val = row
+            source_value = None
+            source_type = None
+            
+            # Find which column has a non-NULL value
+            if int_val is not None:
+                source_value = int_val
+                source_type = 'int'
+            elif float_val is not None:
+                source_value = float_val
+                source_type = 'float'
+            elif string_val is not None:
+                source_value = string_val
+                source_type = 'string'
+            
+            if source_value is None:
+                logger.warning(f"Row ID {id_val} has no timestamp value in any column")
+                failed_count += 1
+                continue
+            
+            try:
+                # Convert to all types
+                logger.info(f"Processing ID {id_val}: {source_type} value {source_value}")
+                all_formats = timestamp_to_all_types(source_value)
+                
+                # Update the row with all formats
+                cursor.execute("""
+                    UPDATE embedding_metadata 
+                    SET int_value = ?, float_value = ?, string_value = ? 
+                    WHERE id = ? AND KEY ='timestamp'
+                """, (all_formats['int'], all_formats['float'], all_formats['string'], id_val))
+                
+                processed_count += 1
+                
+            except Exception as e:
+                logger.error(f"Error processing timestamp for ID {id_val}: {e}")
+                failed_count += 1
+        
+        # Commit all changes
+        conn.commit()
+        
+        # Verify the changes
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM embedding_metadata 
+            WHERE key = 'timestamp' AND (int_value IS NULL OR float_value IS NULL OR string_value IS NULL)
+        """)
+        incomplete = cursor.fetchone()[0]
+        
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM embedding_metadata 
+            WHERE key = 'timestamp' AND int_value IS NOT NULL AND float_value IS NOT NULL AND string_value IS NOT NULL
+        """)
+        complete = cursor.fetchone()[0]
+        
+        logger.info(f"Migration summary:")
+        logger.info(f"  - {processed_count} timestamp entries processed successfully")
+        logger.info(f"  - {failed_count} timestamp entries failed to process")
+        logger.info(f"  - {complete} timestamp entries now have values in all columns")
+        logger.info(f"  - {incomplete} timestamp entries still have NULL values in some columns")
+        
+        # Show some examples of remaining problematic entries if any
+        if incomplete > 0:
+            cursor.execute("""
+                SELECT id, key, string_value, int_value, float_value 
+                FROM embedding_metadata 
+                WHERE key = 'timestamp' AND (int_value IS NULL OR float_value IS NULL OR string_value IS NULL)
+                LIMIT 5
+            """)
+            problem_rows = cursor.fetchall()
+            logger.info(f"Examples of incomplete entries: {problem_rows}")
+        
+        conn.close()
+        return incomplete == 0
+    
     except Exception as e:
-        logger.error(f"Migration failed: {str(e)}")
+        logger.error(f"Error during SQLite migration: {e}")
+        return False
+
+def main():
+    # Check if a database path was provided as a command-line argument
+    if len(sys.argv) >= 2:
+        db_path = sys.argv[1]
+    else:
+        # Try to automatically find the ChromaDB location
+        db_path = find_claude_chroma_db()
+        if not db_path:
+            print("Could not automatically find Claude's ChromaDB location.")
+            print("Please provide the path as a command-line argument:")
+            print("python migrate_timestamps.py /path/to/chroma.sqlite3")
+            sys.exit(1)
+    
+    print(f"Using database: {db_path}")
+    success = migrate_timestamps_in_sqlite(db_path)
+    
+    if success:
+        print("\n✅ Migration completed successfully!")
+        print("All timestamps now have consistent values in all columns (int_value, float_value, and string_value).")
+        sys.exit(0)
+    else:
+        print("\n⚠️ Migration completed with issues. Check the logs for details.")
         sys.exit(1)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
