@@ -15,6 +15,7 @@ Talk to the Repo with [TalkToGitHub](https://talktogithub.com/doobidoo/mcp-memor
 
 - Semantic search using sentence transformers
 - **Natural language time-based recall** (e.g., "last week", "yesterday morning")
+- **Enhanced tag deletion system** with flexible multi-tag support
 - Tag-based memory retrieval system
 - Persistent storage using ChromaDB
 - Automatic database backups
@@ -27,6 +28,13 @@ Talk to the Repo with [TalkToGitHub](https://talktogithub.com/doobidoo/mcp-memor
 - **Cross-platform compatibility** (Apple Silicon, Intel, Windows, Linux)
 - **Hardware-aware optimizations** for different environments
 - **Graceful fallbacks** for limited hardware resources
+
+### Recent Enhancements
+
+- ✅ **API Consistency**: Enhanced `delete_by_tag` to support both single and multiple tags
+- ✅ **New Delete Methods**: Added `delete_by_tags` (OR logic) and `delete_by_all_tags` (AND logic)
+- ✅ **Backward Compatibility**: All existing code continues to work unchanged
+- ✅ **Dashboard Integration**: Enhanced UI with multiple tag selection capabilities
 
 ## Installation
 
@@ -189,8 +197,47 @@ The memory service provides the following operations through the MCP server:
 ### Memory Management
 
 12. `delete_memory` - Delete specific memory by hash
-13. `delete_by_tag` - Delete all memories with specific tag
-14. `cleanup_duplicates` - Remove duplicate entries
+13. `delete_by_tag` - **Enhanced**: Delete memories with specific tag(s) - supports both single tags and multiple tags
+14. `delete_by_tags` - **New**: Explicitly delete memories containing any of the specified tags (OR logic)
+15. `delete_by_all_tags` - **New**: Delete memories containing all specified tags (AND logic)
+16. `cleanup_duplicates` - Remove duplicate entries
+
+### API Consistency Improvements
+
+**Issue 5 Resolution**: Enhanced tag deletion functionality for consistent API design.
+
+- **Before**: `search_by_tag` accepted arrays, `delete_by_tag` only accepted single strings
+- **After**: Both operations now support flexible tag handling
+
+```javascript
+// Single tag deletion (backward compatible)
+delete_by_tag("temporary")
+
+// Multiple tag deletion (new!)
+delete_by_tag(["temporary", "outdated", "test"])  // OR logic
+
+// Explicit methods for clarity
+delete_by_tags(["tag1", "tag2"])                  // OR logic  
+delete_by_all_tags(["urgent", "important"])       // AND logic
+```
+
+### Example Usage
+
+```javascript
+// Store memories with tags
+store_memory("Project deadline is May 15th", {tags: ["work", "deadlines", "important"]})
+store_memory("Grocery list: milk, eggs, bread", {tags: ["personal", "shopping"]})
+store_memory("Meeting notes from sprint planning", {tags: ["work", "meetings", "important"]})
+
+// Search by multiple tags (existing functionality)
+search_by_tag(["work", "important"])  // Returns memories with either tag
+
+// Enhanced deletion options (new!)
+delete_by_tag("temporary")                    // Delete single tag (backward compatible)
+delete_by_tag(["temporary", "outdated"])     // Delete memories with any of these tags
+delete_by_tags(["personal", "shopping"])     // Explicit multi-tag deletion
+delete_by_all_tags(["work", "important"])    // Delete only memories with BOTH tags
+```
 
 ## Configuration Options
 
