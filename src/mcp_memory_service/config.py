@@ -140,17 +140,19 @@ except Exception as e:
 SERVER_NAME = "memory"
 SERVER_VERSION = "0.2.0"
 
-# ChromaDB settings
+# ChromaDB settings with performance optimizations
 CHROMA_SETTINGS = {
     "anonymized_telemetry": False,
-    "allow_reset": True,
+    "allow_reset": False,  # Disable for production performance
     "is_persistent": True,
     "chroma_db_impl": "duckdb+parquet"
 }
 
-# Collection settings
+# Collection settings with optimized HNSW parameters
 COLLECTION_METADATA = {
     "hnsw:space": "cosine",
-    "hnsw:construction_ef": 100,  # Increased for better accuracy
-    "hnsw:search_ef": 100        # Increased for better search results
+    "hnsw:construction_ef": 200,  # Increased for better accuracy (was 100)
+    "hnsw:search_ef": 100,        # Balanced for good search results
+    "hnsw:M": 16,                 # Better graph connectivity (was not set)
+    "hnsw:max_elements": 100000   # Pre-allocate space for better performance
 }

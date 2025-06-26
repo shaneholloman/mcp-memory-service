@@ -171,7 +171,11 @@ class SystemInfo:
             import pkg_resources
             pkg_resources.get_distribution('torch-directml')
             return True
-        except (ImportError, pkg_resources.DistributionNotFound):
+        except ImportError:
+            # pkg_resources not available
+            return False
+        except Exception:
+            # Any other error (including DistributionNotFound)
             return False
             
     def _detect_rosetta(self) -> bool:

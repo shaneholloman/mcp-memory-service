@@ -3,7 +3,16 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import time
-from dateutil import parser as dateutil_parser  # For robust ISO parsing
+import logging
+
+# Try to import dateutil, but fall back to standard datetime parsing if not available
+try:
+    from dateutil import parser as dateutil_parser
+    DATEUTIL_AVAILABLE = True
+except ImportError:
+    DATEUTIL_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Memory:
@@ -45,7 +54,24 @@ class Memory:
         
         def iso_to_float(iso_str: str) -> float:
             """Convert ISO string to float timestamp."""
-            return dateutil_parser.isoparse(iso_str).timestamp()
+            if DATEUTIL_AVAILABLE:
+                return dateutil_parser.isoparse(iso_str).timestamp()
+            else:
+                # Fallback to basic ISO parsing
+                try:
+                    # Handle common ISO formats
+                    if iso_str.endswith('Z'):
+                        dt = datetime.fromisoformat(iso_str[:-1])
+                    elif '+' in iso_str or iso_str.count('-') > 2:
+                        # Has timezone info, use fromisoformat in Python 3.7+
+                        dt = datetime.fromisoformat(iso_str)
+                    else:
+                        dt = datetime.fromisoformat(iso_str)
+                    return dt.timestamp()
+                except:
+                    # Last resort: try strptime
+                    dt = datetime.strptime(iso_str[:19], "%Y-%m-%dT%H:%M:%S")
+                    return dt.timestamp()
 
         def float_to_iso(ts: float) -> str:
             """Convert float timestamp to ISO string."""
@@ -132,7 +158,7 @@ class Memory:
             "tags_str": ",".join(self.tags) if self.tags else "",
             "type": self.memory_type,
             # Store timestamps in all formats for better compatibility
-            "timestamp": int(self.created_at),  # Legacy timestamp (int)
+            "timestamp": float(self.created_at),  # Changed from int() to preserve precision
             "timestamp_float": self.created_at,  # Legacy timestamp (float)
             "timestamp_str": self.created_at_iso,  # Legacy timestamp (ISO)
             # New timestamp fields

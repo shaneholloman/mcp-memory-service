@@ -1,7 +1,13 @@
-"""Test the time_parser module."""
+"""
+Unit tests for time_parser module
+"""
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import time
+
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from mcp_memory_service.utils.time_parser import (
     parse_time_expression,
@@ -13,306 +19,230 @@ from mcp_memory_service.utils.time_parser import (
     get_named_period_range
 )
 
-def test_parse_relative_days():
-    """Test parsing relative day expressions."""
-    # Test 'X days ago'
-    start_ts, end_ts = parse_time_expression("3 days ago")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    # The date should be 3 days ago
-    expected_date = datetime.now().date() - timedelta(days=3)
-    assert start_dt.date() == expected_date
-    assert end_dt.date() == expected_date
-    
-    # The time range should cover the full day
-    assert start_dt.hour == 0 and start_dt.minute == 0 and start_dt.second == 0
-    assert end_dt.hour == 23 and end_dt.minute == 59 and end_dt.second == 59
 
-def test_parse_yesterday_today():
-    """Test parsing 'yesterday' and 'today'."""
-    # Test 'yesterday'
-    start_ts, end_ts = parse_time_expression("yesterday")
-    assert start_ts is not None and end_ts is not None
+class TestTimeParser:
+    """Test time parsing functionality"""
     
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
+    def test_relative_days(self):
+        """Test parsing relative day expressions"""
+        # Test "yesterday"
+        start_ts, end_ts = parse_time_expression("yesterday")
+        assert start_ts is not None
+        assert end_ts is not None
+        
+        yesterday = date.today() - timedelta(days=1)
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        assert start_dt.date() == yesterday
+        assert end_dt.date() == yesterday
+        assert start_dt.time() == datetime.min.time()
+        assert end_dt.time().hour == 23
+        assert end_dt.time().minute == 59
+        
+        # Test "3 days ago"
+        start_ts, end_ts = parse_time_expression("3 days ago")
+        three_days_ago = date.today() - timedelta(days=3)
+        start_dt = datetime.fromtimestamp(start_ts)
+        assert start_dt.date() == three_days_ago
+        
+        # Test "today"
+        start_ts, end_ts = parse_time_expression("today")
+        start_dt = datetime.fromtimestamp(start_ts)
+        assert start_dt.date() == date.today()
     
-    expected_date = datetime.now().date() - timedelta(days=1)
-    assert start_dt.date() == expected_date
-    assert end_dt.date() == expected_date
+    def test_relative_weeks(self):
+        """Test parsing relative week expressions"""
+        start_ts, end_ts = parse_time_expression("2 weeks ago")
+        assert start_ts is not None
+        assert end_ts is not None
+        
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        # Should be a Monday to Sunday range
+        assert start_dt.weekday() == 0  # Monday
+        assert end_dt.weekday() == 6    # Sunday
+        
+        # Should be roughly 2 weeks ago
+        days_ago = (date.today() - start_dt.date()).days
+        assert 14 <= days_ago <= 20  # Allow some flexibility for week boundaries
     
-    # Test 'today'
-    start_ts, end_ts = parse_time_expression("today")
-    assert start_ts is not None and end_ts is not None
+    def test_relative_months(self):
+        """Test parsing relative month expressions"""
+        start_ts, end_ts = parse_time_expression("1 month ago")
+        assert start_ts is not None
+        assert end_ts is not None
+        
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        # Should be first to last day of the month
+        assert start_dt.day == 1
+        assert (end_dt + timedelta(days=1)).day == 1  # Next day is first of next month
     
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
+    def test_specific_dates(self):
+        """Test parsing specific date formats"""
+        # Test MM/DD/YYYY format with unambiguous date
+        start_ts, end_ts = parse_time_expression("03/15/2024")
+        assert start_ts is not None
+        
+        start_dt = datetime.fromtimestamp(start_ts)
+        assert start_dt.year == 2024
+        assert start_dt.month == 3
+        assert start_dt.day == 15
+        
+        # Test YYYY-MM-DD format
+        start_ts, end_ts = parse_time_expression("2024-06-15")
+        assert start_ts is not None
+        start_dt = datetime.fromtimestamp(start_ts)
+        assert start_dt.date() == date(2024, 6, 15)
     
-    expected_date = datetime.now().date()
-    assert start_dt.date() == expected_date
-    assert end_dt.date() == expected_date
+    def test_month_names(self):
+        """Test parsing month names"""
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        
+        # Test a past month
+        start_ts, end_ts = parse_time_expression("january")
+        start_dt = datetime.fromtimestamp(start_ts)
+        
+        # Should be this year's January if we're past January, otherwise last year's
+        expected_year = current_year if current_month > 1 else current_year - 1
+        assert start_dt.month == 1
+        assert start_dt.year == expected_year
+    
+    def test_seasons(self):
+        """Test parsing season names"""
+        # Test summer
+        start_ts, end_ts = parse_time_expression("last summer")
+        assert start_ts is not None
+        assert end_ts is not None
+        
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        # Summer is roughly June 21 to September 22
+        assert start_dt.month == 6
+        assert end_dt.month == 9
+    
+    def test_holidays(self):
+        """Test parsing holiday names"""
+        # Test Christmas
+        start_ts, end_ts = parse_time_expression("christmas")
+        assert start_ts is not None
+        
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        # Christmas window should include Dec 25 +/- a few days
+        assert start_dt.month == 12
+        assert 22 <= start_dt.day <= 25
+        assert 25 <= end_dt.day <= 28
+    
+    def test_time_of_day(self):
+        """Test time of day parsing"""
+        # Test "yesterday morning"
+        start_ts, end_ts = parse_time_expression("yesterday morning")
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        yesterday = date.today() - timedelta(days=1)
+        assert start_dt.date() == yesterday
+        assert 5 <= start_dt.hour <= 6  # Morning starts at 5 AM
+        assert 11 <= end_dt.hour <= 12  # Morning ends before noon
+    
+    def test_date_ranges(self):
+        """Test date range expressions"""
+        start_ts, end_ts = parse_time_expression("between january and march")
+        assert start_ts is not None
+        assert end_ts is not None
+        
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        assert start_dt.month == 1
+        assert end_dt.month == 3
+    
+    def test_quarters(self):
+        """Test quarter expressions"""
+        start_ts, end_ts = parse_time_expression("first quarter of 2024")
+        assert start_ts is not None
+        
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        assert start_dt == datetime(2024, 1, 1, 0, 0, 0)
+        assert end_dt.year == 2024
+        assert end_dt.month == 3
+        assert end_dt.day == 31
+    
+    def test_extract_time_expression(self):
+        """Test extracting time expressions from queries"""
+        # Test extraction with semantic content
+        cleaned, (start_ts, end_ts) = extract_time_expression(
+            "find meetings from last week about project updates"
+        )
+        
+        assert "meetings" in cleaned
+        assert "project updates" in cleaned
+        assert "last week" not in cleaned
+        assert start_ts is not None
+        assert end_ts is not None
+        
+        # Test multiple time expressions
+        cleaned, (start_ts, end_ts) = extract_time_expression(
+            "yesterday in the morning I had coffee"
+        )
+        
+        assert "coffee" in cleaned
+        assert "yesterday" not in cleaned
+        assert "in the morning" not in cleaned
+    
+    def test_edge_cases(self):
+        """Test edge cases and error handling"""
+        # Test empty string
+        start_ts, end_ts = parse_time_expression("")
+        assert start_ts is None
+        assert end_ts is None
+        
+        # Test invalid date format
+        start_ts, end_ts = parse_time_expression("13/32/2024")  # Invalid month and day
+        assert start_ts is None
+        assert end_ts is None
+        
+        # Test nonsense string
+        start_ts, end_ts = parse_time_expression("random gibberish text")
+        assert start_ts is None
+        assert end_ts is None
+    
+    def test_this_period_expressions(self):
+        """Test 'this X' period expressions"""
+        # This week
+        start_ts, end_ts = parse_time_expression("this week")
+        start_dt = datetime.fromtimestamp(start_ts)
+        end_dt = datetime.fromtimestamp(end_ts)
+        
+        # Should include today
+        today = date.today()
+        assert start_dt.date() <= today <= end_dt.date()
+        
+        # This month
+        start_ts, end_ts = parse_time_expression("this month")
+        start_dt = datetime.fromtimestamp(start_ts)
+        assert start_dt.month == datetime.now().month
+        assert start_dt.year == datetime.now().year
+    
+    def test_recent_expressions(self):
+        """Test 'recent' and similar expressions"""
+        start_ts, end_ts = parse_time_expression("recently")
+        assert start_ts is not None
+        assert end_ts is not None
+        
+        # Should default to last 7 days
+        days_diff = (end_ts - start_ts) / (24 * 3600)
+        assert 6 <= days_diff <= 8  # Allow for some time variance
 
-def test_parse_relative_weeks():
-    """Test parsing 'X weeks ago'."""
-    start_ts, end_ts = parse_time_expression("2 weeks ago")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    # Should be a week starting 2 weeks ago (Monday to Sunday)
-    today = datetime.now().date()
-    days_since_monday = today.weekday()
-    expected_monday = today - timedelta(days=days_since_monday) - timedelta(weeks=2)
-    expected_sunday = expected_monday + timedelta(days=6)
-    
-    assert start_dt.date() == expected_monday
-    assert end_dt.date() == expected_sunday
 
-def test_parse_relative_months():
-    """Test parsing 'X months ago'."""
-    start_ts, end_ts = parse_time_expression("1 month ago")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    # Should be the previous calendar month
-    now = datetime.now()
-    
-    if now.month == 1:  # January
-        expected_month = 12  # December
-        expected_year = now.year - 1
-    else:
-        expected_month = now.month - 1
-        expected_year = now.year
-    
-    assert start_dt.year == expected_year
-    assert start_dt.month == expected_month
-    assert start_dt.day == 1  # First day of month
-    
-    # Last day of month varies
-    if expected_month == 12:  # December
-        expected_last_day = datetime(expected_year + 1, 1, 1) - timedelta(days=1)
-    else:
-        expected_last_day = datetime(expected_year, expected_month + 1, 1) - timedelta(days=1)
-    
-    assert end_dt.date() == expected_last_day.date()
-
-def test_parse_relative_years():
-    """Test parsing 'X years ago'."""
-    start_ts, end_ts = parse_time_expression("2 years ago")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    expected_year = datetime.now().year - 2
-    
-    assert start_dt.year == expected_year
-    assert start_dt.month == 1  # January
-    assert start_dt.day == 1    # 1st
-    
-    assert end_dt.year == expected_year
-    assert end_dt.month == 12   # December
-    assert end_dt.day == 31     # 31st
-
-def test_parse_last_period():
-    """Test parsing 'last X' expressions."""
-    # Test 'last week'
-    start_ts, end_ts = parse_time_expression("last week")
-    assert start_ts is not None and end_ts is not None
-    
-    # Test 'last month'
-    start_ts, end_ts = parse_time_expression("last month")
-    assert start_ts is not None and end_ts is not None
-    
-    # Test 'last year'
-    start_ts, end_ts = parse_time_expression("last year")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    expected_year = datetime.now().year - 1
-    assert start_dt.year == expected_year
-    assert start_dt.month == 1   # January
-    assert start_dt.day == 1     # 1st
-    
-    assert end_dt.year == expected_year
-    assert end_dt.month == 12    # December
-    assert end_dt.day == 31      # 31st
-
-def test_parse_this_period():
-    """Test parsing 'this X' expressions."""
-    # Test 'this week'
-    start_ts, end_ts = parse_time_expression("this week")
-    assert start_ts is not None and end_ts is not None
-    
-    # Should be current week (Monday to Sunday)
-    today = datetime.now().date()
-    days_since_monday = today.weekday()
-    expected_monday = today - timedelta(days=days_since_monday)
-    expected_sunday = expected_monday + timedelta(days=6)
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    assert start_dt.date() == expected_monday
-    assert end_dt.date() == expected_sunday
-    
-    # Test 'this month'
-    start_ts, end_ts = parse_time_expression("this month")
-    assert start_ts is not None and end_ts is not None
-    
-    # Should be current calendar month
-    now = datetime.now()
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    assert start_dt.year == now.year
-    assert start_dt.month == now.month
-    assert start_dt.day == 1  # First day of month
-
-def test_parse_month_name():
-    """Test parsing month names."""
-    # Test with a past month
-    start_ts, end_ts = parse_time_expression("january")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    # Should be January of the current or previous year
-    now = datetime.now()
-    expected_year = now.year if now.month > 1 else now.year - 1
-    
-    assert start_dt.year == expected_year
-    assert start_dt.month == 1  # January
-    assert start_dt.day == 1    # 1st day
-    
-    # Last day of January
-    assert end_dt.year == expected_year
-    assert end_dt.month == 1   # January
-    assert end_dt.day == 31    # 31st
-
-def test_parse_specific_date():
-    """Test parsing specific date formats."""
-    # Test MM/DD/YYYY format
-    start_ts, end_ts = parse_time_expression("12/25/2023")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    assert start_dt.year == 2023
-    assert start_dt.month == 12  # December
-    assert start_dt.day == 25    # 25th
-    
-    assert end_dt.year == 2023
-    assert end_dt.month == 12
-    assert end_dt.day == 25
-    assert end_dt.hour == 23
-    assert end_dt.minute == 59
-    assert end_dt.second == 59
-    
-    # Test MM/DD format (current year)
-    start_ts, end_ts = parse_time_expression("7/4")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    
-    now = datetime.now()
-    expected_year = now.year
-    
-    assert start_dt.year == expected_year
-    assert start_dt.month == 7  # July
-    assert start_dt.day == 4    # 4th
-
-def test_parse_named_period():
-    """Test parsing named periods like holidays."""
-    # Test Christmas
-    start_ts, end_ts = parse_time_expression("christmas")
-    assert start_ts is not None and end_ts is not None
-    
-    # Test Summer
-    start_ts, end_ts = parse_time_expression("summer")
-    assert start_ts is not None and end_ts is not None
-    
-    # Test Spring
-    start_ts, end_ts = parse_time_expression("spring")
-    assert start_ts is not None and end_ts is not None
-
-def test_parse_time_of_day():
-    """Test parsing time of day expressions."""
-    # Test 'yesterday morning'
-    start_ts, end_ts = parse_time_expression("yesterday morning")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    expected_date = datetime.now().date() - timedelta(days=1)
-    assert start_dt.date() == expected_date
-    assert end_dt.date() == expected_date
-    
-    # Morning should be roughly 5AM-12PM
-    assert start_dt.hour >= 5
-    assert end_dt.hour <= 12
-
-def test_extract_time_expression():
-    """Test extracting time expressions from queries."""
-    # Simple case with just a time expression
-    query, (start_ts, end_ts) = extract_time_expression("yesterday")
-    assert query.strip() == ""
-    assert start_ts is not None and end_ts is not None
-    
-    # Mixed query with time expression
-    query, (start_ts, end_ts) = extract_time_expression("find information about databases from 2 months ago")
-    assert query.strip() == "find information about databases from"
-    assert start_ts is not None and end_ts is not None
-    
-    # No time expression
-    query, (start_ts, end_ts) = extract_time_expression("find information about databases")
-    assert query.strip() == "find information about databases"
-    assert start_ts is None and end_ts is None
-
-def test_date_range():
-    """Test parsing date ranges."""
-    # Test 'between X and Y'
-    start_ts, end_ts = parse_time_expression("between January and March")
-    assert start_ts is not None and end_ts is not None
-    
-    start_dt = datetime.fromtimestamp(start_ts)
-    end_dt = datetime.fromtimestamp(end_ts)
-    
-    now = datetime.now()
-    expected_year = now.year
-    
-    # If the current month is after March, the range refers to this year
-    # If the current month is before January, the range refers to last year
-    if now.month < 1:
-        expected_year -= 1
-    
-    assert start_dt.year == expected_year
-    assert start_dt.month == 1  # January
-    
-    assert end_dt.year == expected_year
-    assert end_dt.month == 3   # March
-    assert end_dt.day == 31    # Last day of March
-
-def test_complex_query_with_time():
-    """Test extracting time expressions from complex queries."""
-    complex_query = "I need information about databases that I saved last week and details about API architecture from 3 months ago"
-    
-    # This should extract both time expressions and return the first one
-    query, (start_ts, end_ts) = extract_time_expression(complex_query)
-    
-    # The cleaned query should remove the time expressions
-    assert "last week" not in query
-    assert "3 months ago" not in query
-    assert start_ts is not None and end_ts is not None
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

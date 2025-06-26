@@ -10,37 +10,68 @@ logger = logging.getLogger(__name__)
 async def validate_database(storage) -> Tuple[bool, str]:
     """Validate database health and configuration."""
     try:
-        # Check if collection exists and is accessible
-        collection_info = storage.collection.count()
-        if collection_info == 0:
-            logger.info("Database is empty but accessible")
+        # Check if storage is properly initialized
+        if storage is None:
+            return False, "Storage is not initialized"
+        
+        # Use the new initialization check method if available
+        if hasattr(storage, 'is_initialized'):
+            if not storage.is_initialized():
+                # Get detailed status for debugging
+                if hasattr(storage, 'get_initialization_status'):
+                    status = storage.get_initialization_status()
+                    return False, f"Storage not fully initialized: {status}"
+                else:
+                    return False, "Storage initialization incomplete"
+        
+        # Legacy checks for backward compatibility
+        if storage.collection is None:
+            return False, "Collection is not initialized"
+        
+        if storage.embedding_function is None:
+            return False, "Embedding function is not initialized"
+        
+        # Get collection count safely
+        try:
+            collection_count = storage.collection.count()
+            if collection_count == 0:
+                logger.info("Database is empty but accessible")
+        except Exception as count_error:
+            return False, f"Cannot access collection: {str(count_error)}"
         
         # Verify embedding function is working
         test_text = "Database validation test"
-        embedding = storage.embedding_function([test_text])
-        if not embedding or len(embedding) == 0:
-            return False, "Embedding function is not working properly"
+        try:
+            embedding = storage.embedding_function([test_text])
+            if not embedding or len(embedding) == 0:
+                return False, "Embedding function is not working properly"
+        except Exception as embed_error:
+            return False, f"Embedding function error: {str(embed_error)}"
         
         # Test basic operations
         test_id = "test_" + datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Test add
-        storage.collection.add(
-            documents=[test_text],
-            metadatas=[{"test": True}],
-            ids=[test_id]
-        )
-        
-        # Test query
-        query_result = storage.collection.query(
-            query_texts=[test_text],
-            n_results=1
-        )
-        if not query_result["ids"]:
-            return False, "Query operation failed"
-        
-        # Clean up test data
-        storage.collection.delete(ids=[test_id])
+        try:
+            # Test add
+            storage.collection.add(
+                documents=[test_text],
+                metadatas=[{"test": True}],
+                ids=[test_id]
+            )
+            
+            # Test query
+            query_result = storage.collection.query(
+                query_texts=[test_text],
+                n_results=1
+            )
+            if not query_result["ids"]:
+                return False, "Query operation failed"
+            
+            # Clean up test data
+            storage.collection.delete(ids=[test_id])
+            
+        except Exception as ops_error:
+            return False, f"Database operations failed: {str(ops_error)}"
         
         return True, "Database validation successful"
     except Exception as e:
@@ -48,28 +79,57 @@ async def validate_database(storage) -> Tuple[bool, str]:
         return False, f"Database validation failed: {str(e)}"
 
 def get_database_stats(storage) -> Dict[str, Any]:
-    """Get detailed database statistics."""
+    """Get detailed database statistics with proper error handling."""
     try:
-        count = storage.collection.count()
+        # Check if storage is properly initialized
+        if storage is None:
+            return {
+                "status": "error",
+                "error": "Storage is not initialized"
+            }
+        
+        if storage.collection is None:
+            return {
+                "status": "error", 
+                "error": "Collection is not initialized"
+            }
+        
+        # Get collection count safely
+        try:
+            count = storage.collection.count()
+        except Exception as count_error:
+            return {
+                "status": "error",
+                "error": f"Cannot get collection count: {str(count_error)}"
+            }
         
         # Get collection info
         collection_info = {
             "total_memories": count,
-            "embedding_function": storage.embedding_function.__class__.__name__,
-            "metadata": storage.collection.metadata
+            "embedding_function": storage.embedding_function.__class__.__name__ if storage.embedding_function else "None",
+            "metadata": storage.collection.metadata if hasattr(storage.collection, 'metadata') else {}
         }
         
         # Get storage info
-        db_path = storage.path
-        size = 0
-        for root, dirs, files in os.walk(db_path):
-            size += sum(os.path.getsize(os.path.join(root, name)) for name in files)
-        
         storage_info = {
-            "path": db_path,
-            "size_bytes": size,
-            "size_mb": round(size / (1024 * 1024), 2)
+            "path": storage.path,
+            "size_bytes": 0,
+            "size_mb": 0.0
         }
+        
+        try:
+            db_path = storage.path
+            if os.path.exists(db_path):
+                size = 0
+                for root, dirs, files in os.walk(db_path):
+                    size += sum(os.path.getsize(os.path.join(root, name)) for name in files)
+                
+                storage_info.update({
+                    "size_bytes": size,
+                    "size_mb": round(size / (1024 * 1024), 2)
+                })
+        except Exception as size_error:
+            logger.warning(f"Could not calculate storage size: {str(size_error)}")
         
         return {
             "collection": collection_info,

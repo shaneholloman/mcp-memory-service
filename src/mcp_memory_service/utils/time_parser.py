@@ -78,6 +78,19 @@ def parse_time_expression(query: str) -> Tuple[Optional[float], Optional[float]]
             start_ts, _ = parse_time_expression(start_expr)
             _, end_ts = parse_time_expression(end_expr)
             return start_ts, end_ts
+        
+        # Check for full ISO dates (YYYY-MM-DD) FIRST
+        full_date_match = PATTERNS["full_date"].search(query)
+        if full_date_match:
+            year, month, day = full_date_match.groups()
+            try:
+                specific_date = date(int(year), int(month), int(day))
+                start_dt = datetime.combine(specific_date, time.min)
+                end_dt = datetime.combine(specific_date, time.max)
+                return start_dt.timestamp(), end_dt.timestamp()
+            except ValueError as e:
+                logger.warning(f"Invalid date: {e}")
+                return None, None
             
         # Check for specific dates (MM/DD/YYYY)
         specific_date_match = PATTERNS["specific_date"].search(query)
@@ -93,19 +106,6 @@ def parse_time_expression(query: str) -> Tuple[Optional[float], Optional[float]]
                 
             try:
                 specific_date = date(year, month, day)
-                start_dt = datetime.combine(specific_date, time.min)
-                end_dt = datetime.combine(specific_date, time.max)
-                return start_dt.timestamp(), end_dt.timestamp()
-            except ValueError as e:
-                logger.warning(f"Invalid date: {e}")
-                return None, None
-        
-        # Check for full ISO dates (YYYY-MM-DD)
-        full_date_match = PATTERNS["full_date"].search(query)
-        if full_date_match:
-            year, month, day = full_date_match.groups()
-            try:
-                specific_date = date(int(year), int(month), int(day))
                 start_dt = datetime.combine(specific_date, time.min)
                 end_dt = datetime.combine(specific_date, time.max)
                 return start_dt.timestamp(), end_dt.timestamp()

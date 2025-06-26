@@ -43,14 +43,20 @@ from .utils.system_detection import (
 )
 from .utils.time_parser import extract_time_expression, parse_time_expression
 
-# Configure logging to go to stderr
-log_level = os.getenv('LOG_LEVEL', 'ERROR').upper()
+# Configure logging to go to stderr with performance optimizations
+log_level = os.getenv('LOG_LEVEL', 'WARNING').upper()  # Default to WARNING for performance
 logging.basicConfig(
-    level=getattr(logging, log_level, logging.ERROR),
+    level=getattr(logging, log_level, logging.WARNING),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     stream=sys.stderr
 )
 logger = logging.getLogger(__name__)
+
+# Configure performance-critical module logging
+if not os.getenv('DEBUG_MODE'):
+    # Set higher log levels for performance-critical modules
+    for module_name in ['chromadb', 'sentence_transformers', 'transformers', 'torch', 'numpy']:
+        logging.getLogger(module_name).setLevel(logging.WARNING)
 
 # Check if UV is being used
 def check_uv_environment():
@@ -103,6 +109,27 @@ def configure_environment():
 
 # Configure environment before any imports that might use it
 configure_environment()
+
+# Performance optimization environment variables
+def configure_performance_environment():
+    """Configure environment variables for optimal performance."""
+    # PyTorch optimizations
+    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128,garbage_collection_threshold:0.6"
+    
+    # CPU optimizations
+    os.environ["OMP_NUM_THREADS"] = str(min(8, os.cpu_count() or 1))
+    os.environ["MKL_NUM_THREADS"] = str(min(8, os.cpu_count() or 1))
+    
+    # Disable unnecessary features for performance
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+    
+    # Async CUDA operations
+    os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
+
+# Apply performance optimizations
+configure_performance_environment()
 
 class MemoryServer:
     def __init__(self):
@@ -169,22 +196,48 @@ class MemoryServer:
         logger.debug(f"Average query time: {avg:.2f}ms (from {len(self.query_times)} samples)")
         return round(avg, 2)
     
+    async def _initialize_storage_with_timeout(self):
+        """Initialize storage with timeout and caching optimization."""
+        try:
+            logger.info("Attempting eager ChromaMemoryStorage initialization...")
+            # Initialize with preload_model=True for caching
+            self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=True)
+            self._storage_initialized = True
+            logger.info("Eager ChromaMemoryStorage initialization successful")
+            return True
+        except Exception as e:
+            logger.error(f"Eager storage initialization failed: {str(e)}")
+            logger.error(traceback.format_exc())
+            return False
+
     async def _ensure_storage_initialized(self):
-        """Lazily initialize ChromaMemoryStorage when needed."""
+        """Lazily initialize ChromaMemoryStorage when needed (fallback)."""
         if not self._storage_initialized:
             try:
-                logger.info("Initializing ChromaMemoryStorage on first use...")
-                self.storage = ChromaMemoryStorage(CHROMA_PATH)
+                logger.info("Lazy ChromaMemoryStorage initialization (fallback)...")
+                self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=False)
+                
+                # Verify the storage is properly initialized
+                if hasattr(self.storage, 'is_initialized') and not self.storage.is_initialized():
+                    # Get detailed status for debugging
+                    if hasattr(self.storage, 'get_initialization_status'):
+                        status = self.storage.get_initialization_status()
+                        logger.error(f"Storage initialization incomplete: {status}")
+                    raise RuntimeError("Storage initialization incomplete")
+                
                 self._storage_initialized = True
-                logger.info("ChromaMemoryStorage initialized successfully")
+                logger.info("Lazy ChromaMemoryStorage initialization successful")
             except Exception as e:
                 logger.error(f"Failed to initialize ChromaMemoryStorage: {str(e)}")
                 logger.error(traceback.format_exc())
+                # Set storage to None to indicate failure
+                self.storage = None
+                self._storage_initialized = False
                 raise
         return self.storage
 
     async def initialize(self):
-        """Async initialization method with improved error handling."""
+        """Async initialization method with eager storage initialization and timeout."""
         try:
             # Run any async initialization tasks here
             logger.info("Starting async initialization...")
@@ -197,12 +250,31 @@ class MemoryServer:
             print(f"Accelerator: {self.system_info.accelerator}", file=sys.stderr, flush=True)
             print(f"Python: {platform.python_version()}", file=sys.stderr, flush=True)
             
-            # SKIP DATABASE VALIDATION - This is causing the hanging issue
-            # The validation performs database operations that hang during server startup
-            logger.info("Skipping database validation to prevent hanging during initialization")
-            print("Skipping database validation to prevent hanging", file=sys.stderr, flush=True)
+            # Attempt eager storage initialization with timeout
+            print("Attempting eager storage initialization...", file=sys.stderr, flush=True)
+            try:
+                init_task = asyncio.create_task(self._initialize_storage_with_timeout())
+                success = await asyncio.wait_for(init_task, timeout=15.0)
+                if success:
+                    print("✅ Eager storage initialization successful", file=sys.stderr, flush=True)
+                    logger.info("Eager storage initialization completed successfully")
+                else:
+                    print("⚠️ Eager storage initialization failed, will use lazy loading", file=sys.stderr, flush=True)
+                    logger.warning("Eager initialization failed, falling back to lazy loading")
+            except asyncio.TimeoutError:
+                print("⏱️ Eager storage initialization timed out, will use lazy loading", file=sys.stderr, flush=True)
+                logger.warning("Storage initialization timed out, falling back to lazy loading")
+                # Reset state for lazy loading
+                self.storage = None
+                self._storage_initialized = False
+            except Exception as e:
+                print(f"⚠️ Eager initialization error: {str(e)}, will use lazy loading", file=sys.stderr, flush=True)
+                logger.warning(f"Eager initialization error: {str(e)}, falling back to lazy loading")
+                # Reset state for lazy loading
+                self.storage = None
+                self._storage_initialized = False
             
-            # Add explicit console error output for Smithery to see
+            # Add explicit console output for Smithery to see
             print("MCP Memory Service initialization completed", file=sys.stderr, flush=True)
             
             return True
@@ -1337,7 +1409,13 @@ class MemoryServer:
             # Initialize storage lazily when needed
             storage = await self._ensure_storage_initialized()
             
+            # Track performance
+            start_time = time.time()
             results = await storage.retrieve(query, n_results)
+            query_time_ms = (time.time() - start_time) * 1000
+            
+            # Record query time for performance monitoring
+            self.record_query_time(query_time_ms)
             
             if not results:
                 return [types.TextContent(type="text", text="No matching memories found")]
@@ -1691,11 +1769,37 @@ class MemoryServer:
             return [types.TextContent(type="text", text=f"Error recalling memories: {str(e)}")]
 
     async def handle_check_database_health(self, arguments: dict) -> List[types.TextContent]:
-        """Handle database health check requests."""
+        """Handle database health check requests with performance metrics."""
         logger.info("=== EXECUTING CHECK_DATABASE_HEALTH ===")
         try:
             # Initialize storage lazily when needed
-            storage = await self._ensure_storage_initialized()
+            try:
+                storage = await self._ensure_storage_initialized()
+            except Exception as init_error:
+                # Storage initialization failed
+                result = {
+                    "validation": {
+                        "status": "unhealthy",
+                        "message": f"Storage initialization failed: {str(init_error)}"
+                    },
+                    "statistics": {
+                        "status": "error",
+                        "error": "Cannot get statistics - storage not initialized"
+                    },
+                    "performance": {
+                        "storage": {},
+                        "server": {
+                            "average_query_time_ms": self.get_average_query_time(),
+                            "total_queries": len(self.query_times)
+                        }
+                    }
+                }
+                
+                logger.error(f"Storage initialization failed during health check: {str(init_error)}")
+                return [types.TextContent(
+                    type="text",
+                    text=f"Database Health Check Results:\n{json.dumps(result, indent=2)}"
+                )]
             
             from .utils.db_utils import validate_database, get_database_stats
             
@@ -1705,16 +1809,39 @@ class MemoryServer:
             # Get database stats
             stats = get_database_stats(storage)
             
-            # Combine results
+            # Get performance stats from optimized storage
+            performance_stats = {}
+            if hasattr(storage, 'get_performance_stats'):
+                try:
+                    performance_stats = storage.get_performance_stats()
+                except Exception as perf_error:
+                    logger.warning(f"Could not get performance stats: {str(perf_error)}")
+                    performance_stats = {"error": str(perf_error)}
+            
+            # Get server-level performance stats
+            server_stats = {
+                "average_query_time_ms": self.get_average_query_time(),
+                "total_queries": len(self.query_times)
+            }
+            
+            # Add storage initialization status for debugging
+            if hasattr(storage, 'get_initialization_status'):
+                server_stats["storage_initialization"] = storage.get_initialization_status()
+            
+            # Combine results with performance data
             result = {
                 "validation": {
                     "status": "healthy" if is_valid else "unhealthy",
                     "message": message
                 },
-                "statistics": stats
+                "statistics": stats,
+                "performance": {
+                    "storage": performance_stats,
+                    "server": server_stats
+                }
             }
             
-            logger.info(f"Database health result: {result}")
+            logger.info(f"Database health result with performance data: {result}")
             return [types.TextContent(
                 type="text",
                 text=f"Database Health Check Results:\n{json.dumps(result, indent=2)}"
