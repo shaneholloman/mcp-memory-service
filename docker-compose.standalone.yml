@@ -16,9 +16,14 @@ services:
       - LOG_LEVEL=INFO
       - MAX_RESULTS_PER_QUERY=10
       - SIMILARITY_THRESHOLD=0.7
-      - PYTHONPATH=/app/src:/app
+      - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
+      - UV_ACTIVE=1
+      - MCP_STANDALONE_MODE=1
+      - CHROMA_TELEMETRY_IMPL=none
+      - ANONYMIZED_TELEMETRY=false
     restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
+    entrypoint: ["/usr/local/bin/docker-entrypoint-persistent.sh"]

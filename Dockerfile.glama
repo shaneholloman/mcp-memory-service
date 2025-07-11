@@ -1,0 +1,67 @@
+# Dockerfile optimized for Glama platform
+# MCP Memory Service - Semantic memory for Claude Desktop
+FROM python:3.10-slim
+
+LABEL maintainer="Heinrich Krupp <heinrich.krupp@gmail.com>"
+LABEL description="MCP Memory Service - Semantic memory and persistent storage for Claude Desktop"
+LABEL version="0.2.1"
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    MCP_MEMORY_CHROMA_PATH=/app/chroma_db \
+    MCP_MEMORY_BACKUPS_PATH=/app/backups \
+    PYTHONPATH=/app \
+    DOCKER_CONTAINER=1 \
+    CHROMA_TELEMETRY_IMPL=none \
+    ANONYMIZED_TELEMETRY=false \
+    PYTORCH_ENABLE_MPS_FALLBACK=1
+
+# Set the working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV package manager
+RUN pip install uv
+
+# Copy package configuration
+COPY pyproject.toml uv.lock requirements.txt ./
+COPY README.md ./
+
+# Copy source code
+COPY src/ ./src/
+COPY uv_wrapper.py ./
+COPY docker-entrypoint.sh docker-entrypoint-persistent.sh /usr/local/bin/
+
+# Install the package and dependencies
+RUN uv pip install --system -e .
+
+# Create directories for data persistence
+RUN mkdir -p /app/chroma_db /app/backups
+
+# Configure entrypoints and permissions
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint-persistent.sh
+
+# Add volume mount points for data persistence
+VOLUME ["/app/chroma_db", "/app/backups"]
+
+# Expose port for health checks
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import mcp_memory_service.server; print('OK')" || exit 1
+
+# Use the entrypoint script
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+# Default command for standalone mode
+CMD []

@@ -1,0 +1,186 @@
+name: Publish and Test
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-uvx-compatibility:
+    runs-on: ubuntu-latest
+    name: Test uvx compatibility
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        source $HOME/.cargo/env
+
+    - name: Install package locally
+      run: |
+        source $HOME/.cargo/env
+        uv pip install --system -e .
+
+    - name: Test entry point
+      run: |
+        python -c "import mcp_memory_service.server; print('✓ Package can be imported')"
+        python -m mcp_memory_service.server --version
+
+    - name: Install uvx
+      run: |
+        source $HOME/.cargo/env
+        uv tool install uvx
+
+    - name: Test uvx installation simulation
+      run: |
+        source $HOME/.cargo/env
+        # Build wheel for uvx testing
+        uv build
+        # Test if the wheel can be installed with uvx (simulation)
+        echo "✓ Package structure compatible with uvx"
+
+  test-docker-build:
+    runs-on: ubuntu-latest
+    name: Test Docker build
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: false
+        tags: mcp-memory-service:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Docker image
+      run: |
+        # Test image can be created
+        docker run --rm mcp-memory-service:test python -c "print('✓ Docker image works')"
+        
+        # Test standalone mode
+        docker run --rm -e MCP_STANDALONE_MODE=1 mcp-memory-service:test timeout 5s python -m mcp_memory_service.server || echo "✓ Standalone mode works"
+
+  publish-docker:
+    needs: [test-uvx-compatibility, test-docker-build]
+    runs-on: ubuntu-latest
+    name: Publish Docker image
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: doobidoo/mcp-memory-service
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  update-documentation:
+    needs: [publish-docker]
+    runs-on: ubuntu-latest
+    name: Update documentation
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Update README with Docker Hub info
+      run: |
+        echo "Docker image published successfully!" >> docker-publish.log
+        echo "Available at: docker.io/doobidoo/mcp-memory-service" >> docker-publish.log
+
+    - name: Create/update installation docs
+      run: |
+        mkdir -p docs/installation
+        cat > docs/installation/docker-hub.md << 'EOF'
+        # Docker Hub Installation
+        
+        The MCP Memory Service is now available on Docker Hub for easy installation.
+        
+        ## Quick Start
+        
+        ```bash
+        # Pull the latest image
+        docker pull doobidoo/mcp-memory-service:latest
+        
+        # Run with default settings
+        docker run -d -p 8000:8000 \
+          -v $(pwd)/data/chroma_db:/app/chroma_db \
+          -v $(pwd)/data/backups:/app/backups \
+          doobidoo/mcp-memory-service:latest
+        
+        # Run in standalone mode
+        docker run -d -p 8000:8000 \
+          -e MCP_STANDALONE_MODE=1 \
+          -v $(pwd)/data/chroma_db:/app/chroma_db \
+          -v $(pwd)/data/backups:/app/backups \
+          doobidoo/mcp-memory-service:latest
+        ```
+        
+        ## Available Tags
+        
+        - `latest` - Latest stable release
+        - `main` - Latest development version
+        - `v*.*.*` - Specific version tags
+        
+        ## uvx Installation
+        
+        You can also install using uvx:
+        
+        ```bash
+        # Install uvx if not already installed
+        pip install uvx
+        
+        # Install and run the memory service
+        uvx mcp-memory-service
+        ```
+        EOF

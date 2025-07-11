@@ -30,15 +30,30 @@ This will:
 
 We provide multiple Docker Compose configurations to accommodate different environments and preferences:
 
-### Standard Configuration (recommended)
+### Standard Configuration (recommended for MCP clients)
 
 **File**: `docker-compose.yml`
 
-This configuration installs the package in development mode, ensuring the module is properly accessible:
+This configuration installs the package in development mode and is designed for use with MCP clients like Claude Desktop:
 
 ```bash
 docker-compose up
 ```
+
+### Standalone Configuration (recommended for testing/development)
+
+**File**: `docker-compose.standalone.yml`
+
+This configuration runs the service in standalone mode, which keeps the container running without requiring an active MCP client connection. This prevents the "boot loop" issue where the container exits immediately after initialization:
+
+```bash
+docker-compose -f docker-compose.standalone.yml up
+```
+
+Use this mode when:
+- Testing the service without Claude Desktop
+- Running the service for development purposes
+- Deploying the service independently
 
 ### UV Package Manager Configuration
 
@@ -71,6 +86,9 @@ environment:
   - LOG_LEVEL=INFO
   - MAX_RESULTS_PER_QUERY=10
   - SIMILARITY_THRESHOLD=0.7
+  - MCP_STANDALONE_MODE=1  # Enable standalone mode (no MCP client required)
+  - CHROMA_TELEMETRY_IMPL=none  # Disable ChromaDB telemetry
+  - ANONYMIZED_TELEMETRY=false  # Disable anonymous telemetry
 ```
 
 ## Volume Management
@@ -111,6 +129,26 @@ docker run -p 8000:8000 \
 
 ## Troubleshooting
 
+### Docker Boot Loop Issue
+
+If your container keeps restarting immediately after initialization (exit code 0), this is because the MCP server expects an active client connection via stdio. Solutions:
+
+1. **Use standalone mode** (recommended for testing):
+   ```bash
+   docker-compose -f docker-compose.standalone.yml up
+   ```
+
+2. **Set standalone environment variable** in your docker-compose file:
+   ```yaml
+   environment:
+     - MCP_STANDALONE_MODE=1
+   ```
+
+3. **For production use with Claude Desktop**, use the standard configuration which handles stdio properly:
+   ```bash
+   docker-compose up
+   ```
+
 ### Module Not Found Error
 
 If you see a `ModuleNotFoundError` for `mcp_memory_service`, it means the Python module is not in the Python path. Try:
@@ -118,6 +156,12 @@ If you see a `ModuleNotFoundError` for `mcp_memory_service`, it means the Python
 1. Using the standard `docker-compose.yml` file which installs the package with `pip install -e .`
 2. Using the `docker-compose.uv.yml` file which uses the wrapper script
 3. Using the `docker-compose.pythonpath.yml` file which explicitly sets the PYTHONPATH
+
+### Telemetry Errors
+
+If you see ChromaDB telemetry errors during initialization, these are now automatically disabled in all Docker configurations. The errors are harmless but have been suppressed by setting:
+- `CHROMA_TELEMETRY_IMPL=none`
+- `ANONYMIZED_TELEMETRY=false`
 
 ### Port Conflicts
 

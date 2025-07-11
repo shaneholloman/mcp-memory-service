@@ -53,12 +53,22 @@ def install_uv():
     """Install UV if not already installed."""
     print_info("Installing UV package manager...")
     try:
+        # Try regular pip install first
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'uv'])
         print_success("UV installed successfully!")
         return True
     except subprocess.SubprocessError as e:
-        print_error(f"Failed to install UV: {e}")
-        return False
+        print_warning(f"Failed to install UV with pip: {e}")
+        
+        # Try with --user flag for user installation
+        try:
+            print_info("Trying user installation...")
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--user', 'uv'])
+            print_success("UV installed successfully with --user flag!")
+            return True
+        except subprocess.SubprocessError as e2:
+            print_error(f"Failed to install UV with --user: {e2}")
+            return False
 
 def run_with_uv():
     """Run the memory service using UV."""
@@ -72,13 +82,36 @@ def run_with_uv():
     if "MCP_MEMORY_BACKUPS_PATH" in os.environ:
         print_info(f"Using backups path: {os.environ['MCP_MEMORY_BACKUPS_PATH']}")
     
+    # Check if running in Docker
+    running_in_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False)
+    if running_in_docker:
+        print_info("Running in Docker container - ensuring proper process handling")
+        
+    # Check if running in standalone mode
+    standalone_mode = os.environ.get('MCP_STANDALONE_MODE', '').lower() == '1'
+    if standalone_mode:
+        print_info("Running in standalone mode - server will stay alive without active client")
+    
     try:
         # Try to run using UV
         cmd = [sys.executable, '-m', 'uv', 'run', 'memory']
         cmd.extend(sys.argv[1:])  # Pass through any additional arguments
         
         print_info(f"Running command: {' '.join(cmd)}")
-        subprocess.check_call(cmd)
+        
+        # Use subprocess.run with proper handling for Docker
+        if running_in_docker and not standalone_mode:
+            # In Docker with MCP client mode, handle stdin properly
+            result = subprocess.run(cmd, check=False, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr)
+        else:
+            # Normal execution
+            result = subprocess.run(cmd, check=False)
+        
+        if result.returncode != 0:
+            print_warning(f"UV run exited with code {result.returncode}")
+            # Only raise error if not in Docker or if it's a real error (not exit code 0)
+            if not running_in_docker or result.returncode != 0:
+                raise subprocess.SubprocessError(f"UV run failed with exit code {result.returncode}")
         
     except subprocess.SubprocessError as e:
         print_error(f"UV run failed: {e}")

@@ -20,10 +20,11 @@ startCommand:
     |-
     (config) => ({ 
       command: 'python', 
-      args: ['-u', 'src/mcp_memory_service/server.py'], 
+      args: ['-m', 'mcp_memory_service.server'], 
       env: { 
         MCP_MEMORY_CHROMA_PATH: config.chromaDbPath, 
         MCP_MEMORY_BACKUPS_PATH: config.backupsPath,
-        PYTHONUNBUFFERED: '1'
+        PYTHONUNBUFFERED: '1',
+        PYTORCH_ENABLE_MPS_FALLBACK: '1'
       } 
     })

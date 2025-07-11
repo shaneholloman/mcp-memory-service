@@ -2,6 +2,8 @@ services:
   memory-service:
     image: python:3.10-slim
     working_dir: /app
+    stdin_open: true
+    tty: true
     ports:
       - "8000:8000"
     volumes:
@@ -16,13 +18,9 @@ services:
       - SIMILARITY_THRESHOLD=0.7
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
+      - CHROMA_TELEMETRY_IMPL=none
+      - ANONYMIZED_TELEMETRY=false
     restart: unless-stopped
-    command: >
-      bash -c "
-        apt-get update && 
-        apt-get install -y --no-install-recommends build-essential gcc g++ &&
-        rm -rf /var/lib/apt/lists/* &&
-        pip install -e . &&
-        chmod a+rw /dev/stdin /dev/stdout /dev/stderr &&
-        python -u -m mcp_memory_service.server
-      "
+    build:
+      context: .
+      dockerfile: Dockerfile

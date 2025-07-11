@@ -838,6 +838,77 @@ class MemoryServer:
                             },
                             "required": ["memory_id"]
                         }
+                    ),
+                    types.Tool(
+                        name="update_memory_metadata",
+                        description="""Update memory metadata without recreating the entire memory entry.
+                        
+                        This provides efficient metadata updates while preserving the original
+                        memory content, embeddings, and optionally timestamps.
+                        
+                        Examples:
+                        # Add tags to a memory
+                        {
+                            "content_hash": "abc123...",
+                            "updates": {
+                                "tags": ["important", "reference", "new-tag"]
+                            }
+                        }
+                        
+                        # Update memory type and custom metadata
+                        {
+                            "content_hash": "abc123...",
+                            "updates": {
+                                "memory_type": "reminder",
+                                "metadata": {
+                                    "priority": "high",
+                                    "due_date": "2024-01-15"
+                                }
+                            }
+                        }
+                        
+                        # Update custom fields directly
+                        {
+                            "content_hash": "abc123...",
+                            "updates": {
+                                "priority": "urgent",
+                                "status": "active"
+                            }
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "content_hash": {
+                                    "type": "string",
+                                    "description": "The content hash of the memory to update."
+                                },
+                                "updates": {
+                                    "type": "object",
+                                    "description": "Dictionary of metadata fields to update.",
+                                    "properties": {
+                                        "tags": {
+                                            "type": "array",
+                                            "items": {"type": "string"},
+                                            "description": "Replace existing tags with this list."
+                                        },
+                                        "memory_type": {
+                                            "type": "string",
+                                            "description": "Update the memory type (e.g., 'note', 'reminder', 'fact')."
+                                        },
+                                        "metadata": {
+                                            "type": "object",
+                                            "description": "Custom metadata fields to merge with existing metadata."
+                                        }
+                                    }
+                                },
+                                "preserve_timestamps": {
+                                    "type": "boolean",
+                                    "default": True,
+                                    "description": "Whether to preserve the original created_at timestamp (default: true)."
+                                }
+                            },
+                            "required": ["content_hash", "updates"]
+                        }
                     )
                 ]
                 logger.info(f"Returning {len(tools)} tools")
@@ -929,6 +1000,10 @@ class MemoryServer:
                     logger.info("Calling handle_dashboard_delete_memory")
                     print("Calling handle_dashboard_delete_memory", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_delete_memory(arguments)
+                elif name == "update_memory_metadata":
+                    logger.info("Calling handle_update_memory_metadata")
+                    print("Calling handle_update_memory_metadata", file=sys.stderr, flush=True)
+                    return await self.handle_update_memory_metadata(arguments)
                 else:
                     logger.warning(f"Unknown tool requested: {name}")
                     print(f"Unknown tool requested: {name}", file=sys.stderr, flush=True)
@@ -1539,6 +1614,47 @@ class MemoryServer:
             logger.error(f"Error cleaning up duplicates: {str(e)}\n{traceback.format_exc()}")
             return [types.TextContent(type="text", text=f"Error cleaning up duplicates: {str(e)}")]
 
+    async def handle_update_memory_metadata(self, arguments: dict) -> List[types.TextContent]:
+        """Handle memory metadata update requests."""
+        try:
+            content_hash = arguments.get("content_hash")
+            updates = arguments.get("updates")
+            preserve_timestamps = arguments.get("preserve_timestamps", True)
+            
+            if not content_hash:
+                return [types.TextContent(type="text", text="Error: content_hash is required")]
+            
+            if not updates:
+                return [types.TextContent(type="text", text="Error: updates dictionary is required")]
+            
+            if not isinstance(updates, dict):
+                return [types.TextContent(type="text", text="Error: updates must be a dictionary")]
+            
+            # Initialize storage lazily when needed
+            storage = await self._ensure_storage_initialized()
+            
+            # Call the storage method
+            success, message = await storage.update_memory_metadata(
+                content_hash=content_hash,
+                updates=updates,
+                preserve_timestamps=preserve_timestamps
+            )
+            
+            if success:
+                logger.info(f"Successfully updated metadata for memory {content_hash}")
+                return [types.TextContent(
+                    type="text", 
+                    text=f"Successfully updated memory metadata. {message}"
+                )]
+            else:
+                logger.warning(f"Failed to update metadata for memory {content_hash}: {message}")
+                return [types.TextContent(type="text", text=f"Failed to update memory metadata: {message}")]
+                
+        except Exception as e:
+            error_msg = f"Error updating memory metadata: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
     async def handle_get_embedding(self, arguments: dict) -> List[types.TextContent]:
         content = arguments.get("content")
         if not content:
@@ -1959,6 +2075,12 @@ def parse_args():
         description="MCP Memory Service - A semantic memory service using the Model Context Protocol"
     )
     parser.add_argument(
+        "--version",
+        action="version",
+        version=f"MCP Memory Service {SERVER_VERSION}",
+        help="Show version information"
+    )
+    parser.add_argument(
         "--debug", 
         action="store_true",
         help="Enable debug logging"
@@ -2033,31 +2155,63 @@ async def async_main():
                     logger.info(f"Waiting 2 seconds before retry...")
                     await asyncio.sleep(2)
         
-        # Start the server
-        async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-            logger.info("Server started and ready to handle requests")
-            await memory_server.server.run(
-                read_stream,
-                write_stream,
-                InitializationOptions(
-                    server_name=SERVER_NAME,
-                    server_version=SERVER_VERSION,
-                    # Explicitly specify the protocol version that matches Claude's request
-                    # Use the latest protocol version to ensure compatibility with all clients
-                    protocol_version="2024-11-05",
-                    capabilities=memory_server.server.get_capabilities(
-                        notification_options=NotificationOptions(),
-                        experimental_capabilities={
-                            "hardware_info": {
-                                "architecture": system_info.architecture,
-                                "accelerator": system_info.accelerator,
-                                "memory_gb": system_info.memory_gb,
-                                "cpu_count": system_info.cpu_count
-                            }
-                        },
-                    ),
-                ),
-            )
+        # Check if running in standalone mode (Docker without active client)
+        standalone_mode = os.environ.get('MCP_STANDALONE_MODE', '').lower() == '1'
+        running_in_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False)
+        
+        if standalone_mode:
+            logger.info("Running in standalone mode - keeping server alive without active client")
+            print("MCP Memory Service running in standalone mode", file=sys.stderr, flush=True)
+            
+            # Keep the server running indefinitely
+            try:
+                while True:
+                    await asyncio.sleep(60)  # Sleep for 60 seconds at a time
+                    logger.debug("Standalone server heartbeat")
+            except asyncio.CancelledError:
+                logger.info("Standalone server cancelled")
+                raise
+        else:
+            # Start the server with stdio
+            async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+                logger.info("Server started and ready to handle requests")
+                
+                if running_in_docker:
+                    logger.info("Detected Docker environment - ensuring proper stdio handling")
+                    print("MCP Memory Service running in Docker container", file=sys.stderr, flush=True)
+                
+                try:
+                    await memory_server.server.run(
+                        read_stream,
+                        write_stream,
+                        InitializationOptions(
+                            server_name=SERVER_NAME,
+                            server_version=SERVER_VERSION,
+                            # Explicitly specify the protocol version that matches Claude's request
+                            # Use the latest protocol version to ensure compatibility with all clients
+                            protocol_version="2024-11-05",
+                            capabilities=memory_server.server.get_capabilities(
+                                notification_options=NotificationOptions(),
+                                experimental_capabilities={
+                                    "hardware_info": {
+                                        "architecture": system_info.architecture,
+                                        "accelerator": system_info.accelerator,
+                                        "memory_gb": system_info.memory_gb,
+                                        "cpu_count": system_info.cpu_count
+                                    }
+                                },
+                            ),
+                        ),
+                    )
+                except asyncio.CancelledError:
+                    logger.info("Server run cancelled")
+                    raise
+                except Exception as e:
+                    logger.error(f"Error in server.run: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    raise
+                finally:
+                    logger.info("Server run completed")
     except Exception as e:
         logger.error(f"Server error: {str(e)}")
         logger.error(traceback.format_exc())
@@ -2065,7 +2219,22 @@ async def async_main():
         raise
 
 def main():
+    import signal
+    
+    # Set up signal handlers for graceful shutdown
+    def signal_handler(signum, frame):
+        logger.info(f"Received signal {signum}, shutting down gracefully...")
+        sys.exit(0)
+    
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
     try:
+        # Check if running in Docker
+        if os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False):
+            logger.info("Running in Docker container")
+            print("MCP Memory Service starting in Docker mode", file=sys.stderr, flush=True)
+        
         asyncio.run(async_main())
     except KeyboardInterrupt:
         logger.info("Shutting down gracefully...")

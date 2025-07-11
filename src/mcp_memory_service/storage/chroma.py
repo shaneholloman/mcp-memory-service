@@ -723,6 +723,146 @@ class ChromaMemoryStorage(MemoryStorage):
         except Exception as e:
             logger.error(f"Error cleaning up duplicates: {str(e)}")
             return 0, f"Error cleaning up duplicates: {str(e)}"
+    
+    async def update_memory_metadata(self, content_hash: str, updates: Dict[str, Any], preserve_timestamps: bool = True) -> Tuple[bool, str]:
+        """
+        Update memory metadata without recreating the entire memory entry.
+        
+        This method provides efficient metadata updates while preserving the original
+        memory content, embeddings, and optionally timestamps.
+        
+        Args:
+            content_hash: Hash of the memory to update
+            updates: Dictionary of metadata fields to update. Supported fields:
+                    - tags: List[str] - Replace existing tags
+                    - memory_type: str - Update memory type
+                    - metadata: Dict[str, Any] - Merge with existing metadata
+                    - Any other custom metadata fields
+            preserve_timestamps: Whether to preserve original created_at timestamp
+            
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            # Check if collection is initialized
+            if self.collection is None:
+                error_msg = "Collection not initialized, cannot update memory metadata"
+                logger.error(error_msg)
+                return False, error_msg
+            
+            # Find the memory by content hash
+            existing = self.collection.get(
+                where={"content_hash": content_hash}
+            )
+            
+            if not existing["ids"]:
+                return False, f"Memory with hash {content_hash} not found"
+            
+            if len(existing["ids"]) > 1:
+                logger.warning(f"Multiple memories found with hash {content_hash}, updating the first one")
+            
+            # Get the first matching memory
+            memory_id = existing["ids"][0]
+            current_metadata = existing["metadatas"][0]
+            current_document = existing["documents"][0]
+            
+            # Create updated metadata by merging with current metadata
+            updated_metadata = current_metadata.copy()
+            
+            # Handle special update fields
+            if "tags" in updates:
+                tags = updates["tags"]
+                if isinstance(tags, list):
+                    updated_metadata["tags_str"] = ",".join(tags)
+                else:
+                    return False, "Tags must be provided as a list of strings"
+            
+            if "memory_type" in updates:
+                updated_metadata["type"] = updates["memory_type"]
+            
+            if "metadata" in updates:
+                # Merge custom metadata
+                if isinstance(updates["metadata"], dict):
+                    updated_metadata.update(updates["metadata"])
+                else:
+                    return False, "Metadata must be provided as a dictionary"
+            
+            # Handle other custom metadata fields (excluding protected fields)
+            protected_fields = {
+                "content", "content_hash", "tags", "memory_type", "metadata",
+                "embedding", "created_at", "created_at_iso", "updated_at", "updated_at_iso",
+                "timestamp", "timestamp_float", "timestamp_str"
+            }
+            
+            for key, value in updates.items():
+                if key not in protected_fields:
+                    updated_metadata[key] = value
+            
+            # Update timestamps
+            import time
+            now = time.time()
+            now_iso = datetime.utcfromtimestamp(now).isoformat() + "Z"
+            
+            # Always update the updated_at timestamp
+            updated_metadata["updated_at"] = now
+            updated_metadata["updated_at_iso"] = now_iso
+            
+            # Preserve created_at timestamp unless explicitly requested not to
+            if preserve_timestamps:
+                # Keep existing created_at timestamps if they exist
+                if "created_at" not in updated_metadata and "timestamp" in current_metadata:
+                    updated_metadata["created_at"] = current_metadata["timestamp"]
+                if "created_at_iso" not in updated_metadata and "timestamp_str" in current_metadata:
+                    updated_metadata["created_at_iso"] = current_metadata["timestamp_str"]
+            else:
+                # Reset to current time if not preserving timestamps
+                updated_metadata["created_at"] = now
+                updated_metadata["created_at_iso"] = now_iso
+                updated_metadata["timestamp"] = now
+                updated_metadata["timestamp_str"] = now_iso
+            
+            # Ensure backward compatibility fields are updated
+            if "created_at" in updated_metadata:
+                updated_metadata["timestamp"] = updated_metadata["created_at"]
+                updated_metadata["timestamp_float"] = updated_metadata["created_at"]
+            if "created_at_iso" in updated_metadata:
+                updated_metadata["timestamp_str"] = updated_metadata["created_at_iso"]
+            
+            # Update the memory in ChromaDB
+            # ChromaDB requires us to update via upsert since there's no direct metadata update
+            self.collection.upsert(
+                ids=[memory_id],
+                documents=[current_document],
+                metadatas=[updated_metadata]
+                # Note: We don't include embeddings here as ChromaDB will preserve existing ones
+            )
+            
+            logger.info(f"Successfully updated metadata for memory {content_hash}")
+            
+            # Create a summary of what was updated
+            updated_fields = []
+            if "tags" in updates:
+                updated_fields.append("tags")
+            if "memory_type" in updates:
+                updated_fields.append("memory_type")
+            if "metadata" in updates:
+                updated_fields.append("custom_metadata")
+            
+            # Add other custom fields
+            for key in updates.keys():
+                if key not in protected_fields and key not in ["tags", "memory_type", "metadata"]:
+                    updated_fields.append(key)
+            
+            updated_fields.append("updated_at")
+            
+            summary = f"Updated fields: {', '.join(updated_fields)}"
+            return True, summary
+            
+        except Exception as e:
+            error_msg = f"Error updating memory metadata: {str(e)}"
+            logger.error(error_msg)
+            traceback.print_exc()
+            return False, error_msg
 
     async def recall(self, query: Optional[str] = None, n_results: int = 5, start_timestamp: Optional[float] = None, end_timestamp: Optional[float] = None) -> List[MemoryQueryResult]:
         """

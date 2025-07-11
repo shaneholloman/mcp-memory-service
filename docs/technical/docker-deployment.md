@@ -20,10 +20,17 @@ docker build -t mcp-memory-service .
 # Create directories for persistent storage
 mkdir -p ./data/chroma_db ./data/backups
 
-# Run with default settings
+# Run with default settings (for MCP clients)
 docker run -d -p 8000:8000 --name memory-service \
   -v ./data/chroma_db:/app/chroma_db \
   -v ./data/backups:/app/backups \
+  mcp-memory-service
+
+# Run in standalone mode (for testing/development)
+docker run -d -p 8000:8000 --name memory-service \
+  -v ./data/chroma_db:/app/chroma_db \
+  -v ./data/backups:/app/backups \
+  -e MCP_STANDALONE_MODE=1 \
   mcp-memory-service
 ```
 
@@ -33,8 +40,11 @@ docker run -d -p 8000:8000 --name memory-service \
 # Create data directories
 mkdir -p ./data/chroma_db ./data/backups
 
-# Start the service
+# Start the service (for MCP clients like Claude Desktop)
 docker-compose up -d
+
+# Start in standalone mode (prevents boot loops)
+docker-compose -f docker-compose.standalone.yml up -d
 ```
 
 ## Configuration Options
@@ -52,6 +62,9 @@ The Docker container supports the following environment variables:
 | `SIMILARITY_THRESHOLD` | Threshold for similarity search | `0.7` |
 | `MCP_MEMORY_FORCE_CPU` | Force CPU-only mode | `0` |
 | `PYTORCH_ENABLE_MPS_FALLBACK` | Enable MPS fallback for Apple Silicon | `1` |
+| `MCP_STANDALONE_MODE` | Enable standalone mode (no MCP client required) | `0` |
+| `CHROMA_TELEMETRY_IMPL` | ChromaDB telemetry implementation | `none` |
+| `ANONYMIZED_TELEMETRY` | Enable anonymous telemetry | `false` |
 
 ### Example: Custom Configuration
 
@@ -148,7 +161,25 @@ docker exec -it memory-service bash
 
 ### Common Issues
 
-1. **Permission Errors**
+1. **Docker Boot Loop (Container Exits with Code 0)**
+   
+   If your container keeps restarting immediately after initialization, this is because the MCP server expects an active client connection via stdio. When no client is connected, the server exits gracefully.
+   
+   **Solution**: Use standalone mode:
+   
+   ```bash
+   # Option 1: Use the standalone docker-compose file
+   docker-compose -f docker-compose.standalone.yml up
+   
+   # Option 2: Set the environment variable
+   docker run -d -p 8000:8000 --name memory-service \
+     -v ./data/chroma_db:/app/chroma_db \
+     -v ./data/backups:/app/backups \
+     -e MCP_STANDALONE_MODE=1 \
+     mcp-memory-service
+   ```
+
+2. **Permission Errors**
    
    If you see permission errors when accessing the volumes:
    
@@ -157,13 +188,17 @@ docker exec -it memory-service bash
    chmod -R 777 ./data/chroma_db ./data/backups
    ```
 
-2. **Connection Refused**
+3. **Connection Refused**
    
    If Claude Desktop can't connect to the memory service:
    
    - Verify the container is running: `docker ps`
    - Check exposed ports: `docker port memory-service`
    - Test locally: `curl http://localhost:8000/health`
+
+4. **Telemetry Errors**
+   
+   If you see ChromaDB telemetry errors during initialization, these are now automatically disabled in the Docker configuration. The errors are harmless but have been suppressed.
 
 ## Building Custom Images
 
