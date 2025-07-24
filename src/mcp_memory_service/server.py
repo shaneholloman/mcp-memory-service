@@ -1433,8 +1433,10 @@ class MemoryServer:
             tags = metadata.get("tags", "")
             if isinstance(tags, str):
                 tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            elif isinstance(tags, list):
+                tags = [str(tag).strip() for tag in tags if str(tag).strip()]
             else:
-                tags = []  # If tags is not a string, default to empty list to be consistent with the Memory Model
+                tags = []  # If tags is neither string nor list, default to empty list
 
             sanitized_tags = storage.sanitized(tags)
             

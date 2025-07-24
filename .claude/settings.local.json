@@ -17,7 +17,19 @@
       "Bash(gh issue comment:*)",
       "WebFetch(domain:glama.ai)",
       "WebFetch(domain:alexgarcia.xyz)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "mcp__memory__check_database_health",
+      "mcp__memory__store_memory",
+      "mcp__memory__retrieve_memory",
+      "mcp__memory__search_by_tag",
+      "mcp__memory__recall_memory",
+      "Bash(/bin/bash -c \"git status\")",
+      "Bash(ls:*)",
+      "Bash(bash -c 'export PATH=\"\"/usr/bin:/bin:$PATH\"\" && git status')",
+      "Bash(bash -l -c 'git status')",
+      "Bash(pytest:*)",
+      "Bash(docker build:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

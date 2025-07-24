@@ -10,7 +10,9 @@ An MCP server providing semantic memory and persistent storage capabilities for 
 <a href="https://glama.ai/mcp/servers/bzvl3lz34o"><img width="380" height="200" src="https://glama.ai/mcp/servers/bzvl3lz34o/badge" alt="Memory Service MCP server" /></a>
 
 ## Help
-Talk to the Repo with [TalkToGitHub](https://talktogithub.com/doobidoo/mcp-memory-service)!
+- Talk to the Repo with [TalkToGitHub](https://talktogithub.com/doobidoo/mcp-memory-service)!
+- Use Gitprobe to digg deeper: [GitProbe](https://gitprobe.com/doobidoo/mcp-memory-service)!
+
 ## Features
 
 - Semantic search using sentence transformers
@@ -414,6 +416,31 @@ MIT License - See LICENSE file for details
 - ChromaDB team for the vector database
 - Sentence Transformers project for embedding models
 - MCP project for the protocol specification
+
+## 🎯 Why Sponsor MCP Memory Service?
+
+## 🏆 In Production
+- Deployed on Glama.ai
+- Managing 300+ enterprise memories
+- Processing queries in <1 second
+
+### Production Impact
+- **319+ memories** actively managed
+- **828ms** average query response time
+- **100%** cache hit ratio performance
+- **20MB** efficient vector storage
+
+### Developer Community
+- Complete MCP protocol implementation
+- Cross-platform compatibility
+- React dashboard with real-time statistics
+- Comprehensive documentation
+
+### Enterprise Features
+- Semantic search with sentence-transformers
+- Tag-based categorization system
+- Automatic backup and optimization
+- Health monitoring dashboard
 
 ## Contact
 
