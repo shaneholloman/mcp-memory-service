@@ -1,3 +1,17 @@
+# Copyright 2024 Heinrich Krupp
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 MCP Memory Service
 Copyright (c) 2024 Heinrich Krupp
@@ -138,7 +152,47 @@ except Exception as e:
 
 # Server settings
 SERVER_NAME = "memory"
-SERVER_VERSION = "0.2.0"
+SERVER_VERSION = "0.2.2"
+
+# Storage backend configuration
+SUPPORTED_BACKENDS = ['chroma', 'sqlite_vec', 'sqlite-vec']
+STORAGE_BACKEND = os.getenv('MCP_MEMORY_STORAGE_BACKEND', 'chroma').lower()
+
+# Normalize backend names (sqlite-vec -> sqlite_vec)
+if STORAGE_BACKEND == 'sqlite-vec':
+    STORAGE_BACKEND = 'sqlite_vec'
+
+# Validate backend selection
+if STORAGE_BACKEND not in SUPPORTED_BACKENDS:
+    logger.warning(f"Unknown storage backend: {STORAGE_BACKEND}, falling back to chroma")
+    STORAGE_BACKEND = 'chroma'
+
+logger.info(f"Using storage backend: {STORAGE_BACKEND}")
+
+# SQLite-vec specific configuration
+if STORAGE_BACKEND == 'sqlite_vec':
+    # Try multiple environment variable names for SQLite-vec path
+    sqlite_vec_path = None
+    for env_var in ['MCP_MEMORY_SQLITE_PATH', 'MCP_MEMORY_SQLITEVEC_PATH']:
+        if path := os.getenv(env_var):
+            sqlite_vec_path = path
+            logger.info(f"Using {env_var}={path} for SQLite-vec database path")
+            break
+    
+    # If no environment variable is set, use the default path
+    if not sqlite_vec_path:
+        sqlite_vec_path = os.path.join(BASE_DIR, 'sqlite_vec.db')
+        logger.info(f"No SQLite-vec path environment variable found, using default: {sqlite_vec_path}")
+    
+    # Ensure directory exists for SQLite database
+    sqlite_dir = os.path.dirname(sqlite_vec_path)
+    if sqlite_dir:
+        os.makedirs(sqlite_dir, exist_ok=True)
+    
+    SQLITE_VEC_PATH = sqlite_vec_path
+    logger.info(f"Using SQLite-vec database path: {SQLITE_VEC_PATH}")
+else:
+    SQLITE_VEC_PATH = None
 
 # ChromaDB settings with performance optimizations
 CHROMA_SETTINGS = {
@@ -156,3 +210,102 @@ COLLECTION_METADATA = {
     "hnsw:M": 16,                 # Better graph connectivity (was not set)
     "hnsw:max_elements": 100000   # Pre-allocate space for better performance
 }
+
+# HTTP Server Configuration
+HTTP_ENABLED = os.getenv('MCP_HTTP_ENABLED', 'false').lower() == 'true'
+HTTP_PORT = int(os.getenv('MCP_HTTP_PORT', '8000'))
+HTTP_HOST = os.getenv('MCP_HTTP_HOST', '0.0.0.0')
+CORS_ORIGINS = os.getenv('MCP_CORS_ORIGINS', '*').split(',')
+SSE_HEARTBEAT_INTERVAL = int(os.getenv('MCP_SSE_HEARTBEAT', '30'))
+API_KEY = os.getenv('MCP_API_KEY', None)  # Optional authentication
+
+# HTTPS Configuration
+HTTPS_ENABLED = os.getenv('MCP_HTTPS_ENABLED', 'false').lower() == 'true'
+SSL_CERT_FILE = os.getenv('MCP_SSL_CERT_FILE', None)
+SSL_KEY_FILE = os.getenv('MCP_SSL_KEY_FILE', None)
+
+# mDNS Service Discovery Configuration
+MDNS_ENABLED = os.getenv('MCP_MDNS_ENABLED', 'true').lower() == 'true'
+MDNS_SERVICE_NAME = os.getenv('MCP_MDNS_SERVICE_NAME', 'MCP Memory Service')
+MDNS_SERVICE_TYPE = os.getenv('MCP_MDNS_SERVICE_TYPE', '_mcp-memory._tcp.local.')
+MDNS_DISCOVERY_TIMEOUT = int(os.getenv('MCP_MDNS_DISCOVERY_TIMEOUT', '5'))
+
+# Database path for HTTP interface (use SQLite-vec by default)
+if STORAGE_BACKEND == 'sqlite_vec' and SQLITE_VEC_PATH:
+    DATABASE_PATH = SQLITE_VEC_PATH
+else:
+    # Fallback to a default SQLite-vec path for HTTP interface
+    DATABASE_PATH = os.path.join(BASE_DIR, 'memory_http.db')
+
+# Embedding model configuration
+EMBEDDING_MODEL_NAME = os.getenv('MCP_EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
+
+# Dream-inspired consolidation configuration
+CONSOLIDATION_ENABLED = os.getenv('MCP_CONSOLIDATION_ENABLED', 'false').lower() == 'true'
+
+# Consolidation archive location
+consolidation_archive_path = None
+for env_var in ['MCP_CONSOLIDATION_ARCHIVE_PATH', 'MCP_MEMORY_ARCHIVE_PATH']:
+    if path := os.getenv(env_var):
+        consolidation_archive_path = path
+        logger.info(f"Using {env_var}={path} for consolidation archive path")
+        break
+
+if not consolidation_archive_path:
+    consolidation_archive_path = os.path.join(BASE_DIR, 'consolidation_archive')
+    logger.info(f"No consolidation archive path environment variable found, using default: {consolidation_archive_path}")
+
+try:
+    CONSOLIDATION_ARCHIVE_PATH = validate_and_create_path(consolidation_archive_path)
+    logger.info(f"Using consolidation archive path: {CONSOLIDATION_ARCHIVE_PATH}")
+except Exception as e:
+    logger.error(f"Error creating consolidation archive path: {e}")
+    CONSOLIDATION_ARCHIVE_PATH = None
+
+# Consolidation settings with environment variable overrides
+CONSOLIDATION_CONFIG = {
+    # Decay settings
+    'decay_enabled': os.getenv('MCP_DECAY_ENABLED', 'true').lower() == 'true',
+    'retention_periods': {
+        'critical': int(os.getenv('MCP_RETENTION_CRITICAL', '365')),
+        'reference': int(os.getenv('MCP_RETENTION_REFERENCE', '180')),
+        'standard': int(os.getenv('MCP_RETENTION_STANDARD', '30')),
+        'temporary': int(os.getenv('MCP_RETENTION_TEMPORARY', '7'))
+    },
+    
+    # Association settings
+    'associations_enabled': os.getenv('MCP_ASSOCIATIONS_ENABLED', 'true').lower() == 'true',
+    'min_similarity': float(os.getenv('MCP_ASSOCIATION_MIN_SIMILARITY', '0.3')),
+    'max_similarity': float(os.getenv('MCP_ASSOCIATION_MAX_SIMILARITY', '0.7')),
+    'max_pairs_per_run': int(os.getenv('MCP_ASSOCIATION_MAX_PAIRS', '100')),
+    
+    # Clustering settings
+    'clustering_enabled': os.getenv('MCP_CLUSTERING_ENABLED', 'true').lower() == 'true',
+    'min_cluster_size': int(os.getenv('MCP_CLUSTERING_MIN_SIZE', '5')),
+    'clustering_algorithm': os.getenv('MCP_CLUSTERING_ALGORITHM', 'dbscan'),  # 'dbscan', 'hierarchical', 'simple'
+    
+    # Compression settings
+    'compression_enabled': os.getenv('MCP_COMPRESSION_ENABLED', 'true').lower() == 'true',
+    'max_summary_length': int(os.getenv('MCP_COMPRESSION_MAX_LENGTH', '500')),
+    'preserve_originals': os.getenv('MCP_COMPRESSION_PRESERVE_ORIGINALS', 'true').lower() == 'true',
+    
+    # Forgetting settings
+    'forgetting_enabled': os.getenv('MCP_FORGETTING_ENABLED', 'true').lower() == 'true',
+    'relevance_threshold': float(os.getenv('MCP_FORGETTING_RELEVANCE_THRESHOLD', '0.1')),
+    'access_threshold_days': int(os.getenv('MCP_FORGETTING_ACCESS_THRESHOLD', '90')),
+    'archive_location': CONSOLIDATION_ARCHIVE_PATH
+}
+
+# Consolidation scheduling settings (for APScheduler integration)
+CONSOLIDATION_SCHEDULE = {
+    'daily': os.getenv('MCP_SCHEDULE_DAILY', '02:00'),      # 2 AM daily
+    'weekly': os.getenv('MCP_SCHEDULE_WEEKLY', 'SUN 03:00'), # 3 AM on Sundays
+    'monthly': os.getenv('MCP_SCHEDULE_MONTHLY', '01 04:00'), # 4 AM on 1st of month
+    'quarterly': os.getenv('MCP_SCHEDULE_QUARTERLY', 'disabled'), # Disabled by default
+    'yearly': os.getenv('MCP_SCHEDULE_YEARLY', 'disabled')        # Disabled by default
+}
+
+logger.info(f"Consolidation enabled: {CONSOLIDATION_ENABLED}")
+if CONSOLIDATION_ENABLED:
+    logger.info(f"Consolidation configuration: {CONSOLIDATION_CONFIG}")
+    logger.info(f"Consolidation schedule: {CONSOLIDATION_SCHEDULE}")

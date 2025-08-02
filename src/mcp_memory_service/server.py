@@ -1,3 +1,17 @@
+# Copyright 2024 Heinrich Krupp
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 MCP Memory Service
 Copyright (c) 2024 Heinrich Krupp
@@ -19,7 +33,6 @@ import platform
 from collections import deque
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
-from .utils.utils import ensure_datetime
 
 from mcp.server.models import InitializationOptions
 import mcp.types as types
@@ -31,9 +44,14 @@ from .config import (
     CHROMA_PATH,
     BACKUPS_PATH,
     SERVER_NAME,
-    SERVER_VERSION
+    SERVER_VERSION,
+    STORAGE_BACKEND,
+    SQLITE_VEC_PATH,
+    CONSOLIDATION_ENABLED,
+    CONSOLIDATION_CONFIG,
+    CONSOLIDATION_SCHEDULE
 )
-from .storage.chroma import ChromaMemoryStorage
+# Storage imports will be done conditionally in the server class
 from .models.memory import Memory
 from .utils.hashing import generate_content_hash
 from .utils.system_detection import (
@@ -42,6 +60,12 @@ from .utils.system_detection import (
     AcceleratorType
 )
 from .utils.time_parser import extract_time_expression, parse_time_expression
+
+# Consolidation system imports (conditional)
+if CONSOLIDATION_ENABLED:
+    from .consolidation.base import ConsolidationConfig
+    from .consolidation.consolidator import DreamInspiredConsolidator
+    from .consolidation.scheduler import ConsolidationScheduler
 
 # Configure logging to go to stderr with performance optimizations
 log_level = os.getenv('LOG_LEVEL', 'WARNING').upper()  # Default to WARNING for performance
@@ -140,6 +164,20 @@ class MemoryServer:
         # Initialize query time tracking
         self.query_times = deque(maxlen=50)  # Keep last 50 query times for averaging
         
+        # Initialize consolidation system (if enabled)
+        self.consolidator = None
+        self.consolidation_scheduler = None
+        if CONSOLIDATION_ENABLED:
+            try:
+                config = ConsolidationConfig(**CONSOLIDATION_CONFIG)
+                self.consolidator = None  # Will be initialized after storage
+                self.consolidation_scheduler = None  # Will be initialized after consolidator
+                logger.info("Consolidation system will be initialized after storage")
+            except Exception as e:
+                logger.error(f"Failed to initialize consolidation config: {e}")
+                self.consolidator = None
+                self.consolidation_scheduler = None
+        
         try:
             # Initialize paths
             logger.info(f"Creating directories if they don't exist...")
@@ -152,8 +190,8 @@ class MemoryServer:
             
             # DEFER CHROMADB INITIALIZATION - Initialize storage lazily when needed
             # This prevents hanging during server startup due to embedding model loading
-            logger.info("Deferring ChromaMemoryStorage initialization to prevent hanging")
-            print("Deferring ChromaDB initialization to prevent startup hanging", file=sys.stderr, flush=True)
+            logger.info(f"Deferring {STORAGE_BACKEND} storage initialization to prevent hanging")
+            print(f"Deferring {STORAGE_BACKEND} storage initialization to prevent startup hanging", file=sys.stderr, flush=True)
             self.storage = None
             self._storage_initialized = False
 
@@ -199,11 +237,60 @@ class MemoryServer:
     async def _initialize_storage_with_timeout(self):
         """Initialize storage with timeout and caching optimization."""
         try:
-            logger.info("Attempting eager ChromaMemoryStorage initialization...")
-            # Initialize with preload_model=True for caching
-            self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=True)
+            logger.info(f"Attempting eager {STORAGE_BACKEND} storage initialization...")
+            
+            if STORAGE_BACKEND == 'sqlite_vec':
+                # Check for multi-client coordination mode
+                from .utils.port_detection import ServerCoordinator
+                coordinator = ServerCoordinator()
+                coordination_mode = await coordinator.detect_mode()
+                
+                logger.info(f"Eager init - detected coordination mode: {coordination_mode}")
+                
+                if coordination_mode == "http_client":
+                    # Use HTTP client to connect to existing server
+                    from .storage.http_client import HTTPClientStorage
+                    self.storage = HTTPClientStorage()
+                    logger.info(f"Eager init - using HTTP client storage")
+                elif coordination_mode == "http_server":
+                    # Try to auto-start HTTP server for coordination
+                    from .utils.http_server_manager import auto_start_http_server_if_needed
+                    server_started = await auto_start_http_server_if_needed()
+                    
+                    if server_started:
+                        # Wait a moment for the server to be ready, then use HTTP client
+                        await asyncio.sleep(2)
+                        from .storage.http_client import HTTPClientStorage
+                        self.storage = HTTPClientStorage()
+                        logger.info(f"Eager init - started HTTP server and using HTTP client storage")
+                    else:
+                        # Fall back to direct SQLite-vec storage
+                        from . import storage
+                        import importlib
+                        storage_module = importlib.import_module('mcp_memory_service.storage.sqlite_vec')
+                        SqliteVecMemoryStorage = storage_module.SqliteVecMemoryStorage
+                        self.storage = SqliteVecMemoryStorage(SQLITE_VEC_PATH)
+                        logger.info(f"Eager init - HTTP server auto-start failed, using direct storage")
+                else:
+                    # Import sqlite-vec storage module (supports dynamic class replacement)
+                    from . import storage
+                    import importlib
+                    storage_module = importlib.import_module('mcp_memory_service.storage.sqlite_vec')
+                    SqliteVecMemoryStorage = storage_module.SqliteVecMemoryStorage
+                    self.storage = SqliteVecMemoryStorage(SQLITE_VEC_PATH)
+            else:
+                # Initialize ChromaDB with preload_model=True for caching
+                from .storage.chroma import ChromaMemoryStorage
+                self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=True)
+            
+            # Initialize the storage backend
+            await self.storage.initialize()
             self._storage_initialized = True
-            logger.info("Eager ChromaMemoryStorage initialization successful")
+            logger.info(f"Eager {STORAGE_BACKEND} storage initialization successful")
+            
+            # Initialize consolidation system after storage is ready
+            await self._initialize_consolidation()
+            
             return True
         except Exception as e:
             logger.error(f"Eager storage initialization failed: {str(e)}")
@@ -211,11 +298,57 @@ class MemoryServer:
             return False
 
     async def _ensure_storage_initialized(self):
-        """Lazily initialize ChromaMemoryStorage when needed (fallback)."""
+        """Lazily initialize storage backend when needed."""
         if not self._storage_initialized:
             try:
-                logger.info("Lazy ChromaMemoryStorage initialization (fallback)...")
-                self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=False)
+                logger.info(f"Initializing {STORAGE_BACKEND} storage backend...")
+                
+                if STORAGE_BACKEND == 'sqlite_vec':
+                    # Check for multi-client coordination mode
+                    from .utils.port_detection import ServerCoordinator
+                    coordinator = ServerCoordinator()
+                    coordination_mode = await coordinator.detect_mode()
+                    
+                    logger.info(f"Detected coordination mode: {coordination_mode}")
+                    
+                    if coordination_mode == "http_client":
+                        # Use HTTP client to connect to existing server
+                        from .storage.http_client import HTTPClientStorage
+                        self.storage = HTTPClientStorage()
+                        logger.info(f"Using HTTP client storage to connect to existing server")
+                    elif coordination_mode == "http_server":
+                        # Try to auto-start HTTP server for coordination
+                        from .utils.http_server_manager import auto_start_http_server_if_needed
+                        server_started = await auto_start_http_server_if_needed()
+                        
+                        if server_started:
+                            # Wait a moment for the server to be ready, then use HTTP client
+                            await asyncio.sleep(2)
+                            from .storage.http_client import HTTPClientStorage
+                            self.storage = HTTPClientStorage()
+                            logger.info(f"Started HTTP server and using HTTP client storage")
+                        else:
+                            # Fall back to direct SQLite-vec storage
+                            import importlib
+                            storage_module = importlib.import_module('mcp_memory_service.storage.sqlite_vec')
+                            SqliteVecMemoryStorage = storage_module.SqliteVecMemoryStorage
+                            self.storage = SqliteVecMemoryStorage(SQLITE_VEC_PATH)
+                            logger.info(f"HTTP server auto-start failed, using direct SQLite-vec storage at: {SQLITE_VEC_PATH}")
+                    else:
+                        # Use direct SQLite-vec storage (with WAL mode for concurrent access)
+                        import importlib
+                        storage_module = importlib.import_module('mcp_memory_service.storage.sqlite_vec')
+                        SqliteVecMemoryStorage = storage_module.SqliteVecMemoryStorage
+                        self.storage = SqliteVecMemoryStorage(SQLITE_VEC_PATH)
+                        logger.info(f"Created SQLite-vec storage at: {SQLITE_VEC_PATH}")
+                else:
+                    # Default to ChromaDB
+                    from .storage.chroma import ChromaMemoryStorage
+                    self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=False)
+                    logger.info(f"Created ChromaDB storage at: {CHROMA_PATH}")
+                
+                # Initialize the storage backend
+                await self.storage.initialize()
                 
                 # Verify the storage is properly initialized
                 if hasattr(self.storage, 'is_initialized') and not self.storage.is_initialized():
@@ -226,9 +359,13 @@ class MemoryServer:
                     raise RuntimeError("Storage initialization incomplete")
                 
                 self._storage_initialized = True
-                logger.info("Lazy ChromaMemoryStorage initialization successful")
+                logger.info(f"Storage backend ({STORAGE_BACKEND}) initialization successful")
+                
+                # Initialize consolidation system after storage is ready
+                await self._initialize_consolidation()
+                
             except Exception as e:
-                logger.error(f"Failed to initialize ChromaMemoryStorage: {str(e)}")
+                logger.error(f"Failed to initialize {STORAGE_BACKEND} storage: {str(e)}")
                 logger.error(traceback.format_exc())
                 # Set storage to None to indicate failure
                 self.storage = None
@@ -312,6 +449,43 @@ class MemoryServer:
         except Exception as e:
             logger.error(f"Database validation error: {str(e)}")
             return False
+
+    async def _initialize_consolidation(self):
+        """Initialize the consolidation system after storage is ready."""
+        if not CONSOLIDATION_ENABLED or not self._storage_initialized:
+            return
+        
+        try:
+            if self.consolidator is None:
+                # Create consolidation config
+                config = ConsolidationConfig(**CONSOLIDATION_CONFIG)
+                
+                # Initialize the consolidator with storage
+                self.consolidator = DreamInspiredConsolidator(self.storage, config)
+                logger.info("Dream-inspired consolidator initialized")
+                
+                # Initialize the scheduler if not disabled
+                if any(schedule != 'disabled' for schedule in CONSOLIDATION_SCHEDULE.values()):
+                    self.consolidation_scheduler = ConsolidationScheduler(
+                        self.consolidator, 
+                        CONSOLIDATION_SCHEDULE, 
+                        enabled=True
+                    )
+                    
+                    # Start the scheduler
+                    if await self.consolidation_scheduler.start():
+                        logger.info("Consolidation scheduler started successfully")
+                    else:
+                        logger.warning("Failed to start consolidation scheduler")
+                        self.consolidation_scheduler = None
+                else:
+                    logger.info("Consolidation scheduler disabled (all schedules set to 'disabled')")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize consolidation system: {e}")
+            logger.error(traceback.format_exc())
+            self.consolidator = None
+            self.consolidation_scheduler = None
 
     def handle_method_not_found(self, method: str) -> None:
         """Custom handler for unsupported methods.
@@ -911,6 +1085,134 @@ class MemoryServer:
                         }
                     )
                 ]
+                
+                # Add consolidation tools if enabled
+                if CONSOLIDATION_ENABLED and self.consolidator:
+                    consolidation_tools = [
+                        types.Tool(
+                            name="consolidate_memories",
+                            description="""Run memory consolidation for a specific time horizon.
+                            
+                            Performs dream-inspired memory consolidation including:
+                            - Exponential decay scoring
+                            - Creative association discovery  
+                            - Semantic clustering and compression
+                            - Controlled forgetting with archival
+                            
+                            Example:
+                            {
+                                "time_horizon": "weekly"
+                            }""",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "time_horizon": {
+                                        "type": "string",
+                                        "enum": ["daily", "weekly", "monthly", "quarterly", "yearly"],
+                                        "description": "Time horizon for consolidation operations."
+                                    }
+                                },
+                                "required": ["time_horizon"]
+                            }
+                        ),
+                        types.Tool(
+                            name="consolidation_status",
+                            description="Get status and health information about the consolidation system.",
+                            inputSchema={"type": "object", "properties": {}}
+                        ),
+                        types.Tool(
+                            name="consolidation_recommendations",
+                            description="""Get recommendations for consolidation based on current memory state.
+                            
+                            Example:
+                            {
+                                "time_horizon": "monthly"
+                            }""",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "time_horizon": {
+                                        "type": "string",
+                                        "enum": ["daily", "weekly", "monthly", "quarterly", "yearly"],
+                                        "description": "Time horizon to analyze for consolidation recommendations."
+                                    }
+                                },
+                                "required": ["time_horizon"]
+                            }
+                        ),
+                        types.Tool(
+                            name="scheduler_status",
+                            description="Get consolidation scheduler status and job information.",
+                            inputSchema={"type": "object", "properties": {}}
+                        ),
+                        types.Tool(
+                            name="trigger_consolidation",
+                            description="""Manually trigger a consolidation job.
+                            
+                            Example:
+                            {
+                                "time_horizon": "weekly",
+                                "immediate": true
+                            }""",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "time_horizon": {
+                                        "type": "string",
+                                        "enum": ["daily", "weekly", "monthly", "quarterly", "yearly"],
+                                        "description": "Time horizon for the consolidation job."
+                                    },
+                                    "immediate": {
+                                        "type": "boolean",
+                                        "default": True,
+                                        "description": "Whether to run immediately or schedule for later."
+                                    }
+                                },
+                                "required": ["time_horizon"]
+                            }
+                        ),
+                        types.Tool(
+                            name="pause_consolidation",
+                            description="""Pause consolidation jobs.
+                            
+                            Example:
+                            {
+                                "time_horizon": "weekly"
+                            }""",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "time_horizon": {
+                                        "type": "string",
+                                        "enum": ["daily", "weekly", "monthly", "quarterly", "yearly"],
+                                        "description": "Specific time horizon to pause, or omit to pause all jobs."
+                                    }
+                                }
+                            }
+                        ),
+                        types.Tool(
+                            name="resume_consolidation",
+                            description="""Resume consolidation jobs.
+                            
+                            Example:
+                            {
+                                "time_horizon": "weekly"
+                            }""",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "time_horizon": {
+                                        "type": "string",
+                                        "enum": ["daily", "weekly", "monthly", "quarterly", "yearly"],
+                                        "description": "Specific time horizon to resume, or omit to resume all jobs."
+                                    }
+                                }
+                            }
+                        )
+                    ]
+                    tools.extend(consolidation_tools)
+                    logger.info(f"Added {len(consolidation_tools)} consolidation tools")
+                
                 logger.info(f"Returning {len(tools)} tools")
                 return tools
             except Exception as e:
@@ -1004,6 +1306,35 @@ class MemoryServer:
                     logger.info("Calling handle_update_memory_metadata")
                     print("Calling handle_update_memory_metadata", file=sys.stderr, flush=True)
                     return await self.handle_update_memory_metadata(arguments)
+                # Consolidation tool handlers
+                elif name == "consolidate_memories":
+                    logger.info("Calling handle_consolidate_memories")
+                    print("Calling handle_consolidate_memories", file=sys.stderr, flush=True)
+                    return await self.handle_consolidate_memories(arguments)
+                elif name == "consolidation_status":
+                    logger.info("Calling handle_consolidation_status")
+                    print("Calling handle_consolidation_status", file=sys.stderr, flush=True)
+                    return await self.handle_consolidation_status(arguments)
+                elif name == "consolidation_recommendations":
+                    logger.info("Calling handle_consolidation_recommendations")
+                    print("Calling handle_consolidation_recommendations", file=sys.stderr, flush=True)
+                    return await self.handle_consolidation_recommendations(arguments)
+                elif name == "scheduler_status":
+                    logger.info("Calling handle_scheduler_status")
+                    print("Calling handle_scheduler_status", file=sys.stderr, flush=True)
+                    return await self.handle_scheduler_status(arguments)
+                elif name == "trigger_consolidation":
+                    logger.info("Calling handle_trigger_consolidation")
+                    print("Calling handle_trigger_consolidation", file=sys.stderr, flush=True)
+                    return await self.handle_trigger_consolidation(arguments)
+                elif name == "pause_consolidation":
+                    logger.info("Calling handle_pause_consolidation")
+                    print("Calling handle_pause_consolidation", file=sys.stderr, flush=True)
+                    return await self.handle_pause_consolidation(arguments)
+                elif name == "resume_consolidation":
+                    logger.info("Calling handle_resume_consolidation")
+                    print("Calling handle_resume_consolidation", file=sys.stderr, flush=True)
+                    return await self.handle_resume_consolidation(arguments)
                 else:
                     logger.warning(f"Unknown tool requested: {name}")
                     print(f"Unknown tool requested: {name}", file=sys.stderr, flush=True)
@@ -1657,6 +1988,281 @@ class MemoryServer:
             logger.error(f"{error_msg}\n{traceback.format_exc()}")
             return [types.TextContent(type="text", text=error_msg)]
 
+    # Consolidation tool handlers
+    async def handle_consolidate_memories(self, arguments: dict) -> List[types.TextContent]:
+        """Handle memory consolidation requests."""
+        if not CONSOLIDATION_ENABLED or not self.consolidator:
+            return [types.TextContent(type="text", text="Error: Consolidation system not available")]
+        
+        try:
+            time_horizon = arguments.get("time_horizon")
+            if not time_horizon:
+                return [types.TextContent(type="text", text="Error: time_horizon is required")]
+            
+            if time_horizon not in ["daily", "weekly", "monthly", "quarterly", "yearly"]:
+                return [types.TextContent(type="text", text="Error: Invalid time_horizon. Must be one of: daily, weekly, monthly, quarterly, yearly")]
+            
+            logger.info(f"Starting {time_horizon} consolidation")
+            
+            # Run consolidation
+            report = await self.consolidator.consolidate(time_horizon)
+            
+            # Format response
+            result = f"""Consolidation completed successfully!
+
+Time Horizon: {report.time_horizon}
+Duration: {(report.end_time - report.start_time).total_seconds():.2f} seconds
+Memories Processed: {report.memories_processed}
+Associations Discovered: {report.associations_discovered}
+Clusters Created: {report.clusters_created}
+Memories Compressed: {report.memories_compressed}
+Memories Archived: {report.memories_archived}"""
+
+            if report.errors:
+                result += f"\n\nWarnings/Errors:\n" + "\n".join(f"- {error}" for error in report.errors)
+            
+            return [types.TextContent(type="text", text=result)]
+            
+        except Exception as e:
+            error_msg = f"Error during consolidation: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
+    async def handle_consolidation_status(self, arguments: dict) -> List[types.TextContent]:
+        """Handle consolidation status requests."""
+        if not CONSOLIDATION_ENABLED or not self.consolidator:
+            return [types.TextContent(type="text", text="Consolidation system: DISABLED")]
+        
+        try:
+            # Get health check from consolidator
+            health = await self.consolidator.health_check()
+            
+            # Format status report
+            status_lines = [
+                f"Consolidation System Status: {health['status'].upper()}",
+                f"Last Updated: {health['timestamp']}",
+                "",
+                "Component Health:"
+            ]
+            
+            for component, component_health in health['components'].items():
+                status = component_health['status']
+                status_lines.append(f"  {component}: {status.upper()}")
+                if status == 'unhealthy' and 'error' in component_health:
+                    status_lines.append(f"    Error: {component_health['error']}")
+            
+            status_lines.extend([
+                "",
+                "Statistics:",
+                f"  Total consolidation runs: {health['statistics']['total_runs']}",
+                f"  Successful runs: {health['statistics']['successful_runs']}",
+                f"  Total memories processed: {health['statistics']['total_memories_processed']}",
+                f"  Total associations created: {health['statistics']['total_associations_created']}",
+                f"  Total clusters created: {health['statistics']['total_clusters_created']}",
+                f"  Total memories compressed: {health['statistics']['total_memories_compressed']}",
+                f"  Total memories archived: {health['statistics']['total_memories_archived']}"
+            ])
+            
+            if health['last_consolidation_times']:
+                status_lines.extend([
+                    "",
+                    "Last Consolidation Times:"
+                ])
+                for horizon, timestamp in health['last_consolidation_times'].items():
+                    status_lines.append(f"  {horizon}: {timestamp}")
+            
+            return [types.TextContent(type="text", text="\n".join(status_lines))]
+            
+        except Exception as e:
+            error_msg = f"Error getting consolidation status: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
+    async def handle_consolidation_recommendations(self, arguments: dict) -> List[types.TextContent]:
+        """Handle consolidation recommendation requests."""
+        if not CONSOLIDATION_ENABLED or not self.consolidator:
+            return [types.TextContent(type="text", text="Error: Consolidation system not available")]
+        
+        try:
+            time_horizon = arguments.get("time_horizon")
+            if not time_horizon:
+                return [types.TextContent(type="text", text="Error: time_horizon is required")]
+            
+            if time_horizon not in ["daily", "weekly", "monthly", "quarterly", "yearly"]:
+                return [types.TextContent(type="text", text="Error: Invalid time_horizon")]
+            
+            # Get recommendations
+            recommendations = await self.consolidator.get_consolidation_recommendations(time_horizon)
+            
+            # Format response
+            lines = [
+                f"Consolidation Recommendations for {time_horizon} horizon:",
+                "",
+                f"Recommendation: {recommendations['recommendation'].upper()}",
+                f"Memory Count: {recommendations['memory_count']}",
+            ]
+            
+            if 'reasons' in recommendations:
+                lines.extend([
+                    "",
+                    "Reasons:"
+                ])
+                for reason in recommendations['reasons']:
+                    lines.append(f"  • {reason}")
+            
+            if 'memory_types' in recommendations:
+                lines.extend([
+                    "",
+                    "Memory Types:"
+                ])
+                for mem_type, count in recommendations['memory_types'].items():
+                    lines.append(f"  {mem_type}: {count}")
+            
+            if 'total_size_bytes' in recommendations:
+                size_mb = recommendations['total_size_bytes'] / (1024 * 1024)
+                lines.append(f"\nTotal Size: {size_mb:.2f} MB")
+            
+            if 'old_memory_percentage' in recommendations:
+                lines.append(f"Old Memory Percentage: {recommendations['old_memory_percentage']:.1f}%")
+            
+            if 'estimated_duration_seconds' in recommendations:
+                lines.append(f"Estimated Duration: {recommendations['estimated_duration_seconds']:.1f} seconds")
+            
+            return [types.TextContent(type="text", text="\n".join(lines))]
+            
+        except Exception as e:
+            error_msg = f"Error getting consolidation recommendations: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
+    async def handle_scheduler_status(self, arguments: dict) -> List[types.TextContent]:
+        """Handle scheduler status requests."""
+        if not CONSOLIDATION_ENABLED or not self.consolidation_scheduler:
+            return [types.TextContent(type="text", text="Consolidation scheduler: DISABLED")]
+        
+        try:
+            # Get scheduler status
+            status = await self.consolidation_scheduler.get_scheduler_status()
+            
+            if not status['enabled']:
+                return [types.TextContent(type="text", text=f"Scheduler: DISABLED\nReason: {status.get('reason', 'Unknown')}")]
+            
+            # Format status report
+            lines = [
+                f"Consolidation Scheduler Status: {'RUNNING' if status['running'] else 'STOPPED'}",
+                "",
+                "Scheduled Jobs:"
+            ]
+            
+            for job in status['jobs']:
+                next_run = job['next_run_time'] or 'Not scheduled'
+                lines.append(f"  {job['name']}: {next_run}")
+            
+            lines.extend([
+                "",
+                "Execution Statistics:",
+                f"  Total jobs executed: {status['execution_stats']['total_jobs']}",
+                f"  Successful jobs: {status['execution_stats']['successful_jobs']}",
+                f"  Failed jobs: {status['execution_stats']['failed_jobs']}"
+            ])
+            
+            if status['last_execution_times']:
+                lines.extend([
+                    "",
+                    "Last Execution Times:"
+                ])
+                for horizon, timestamp in status['last_execution_times'].items():
+                    lines.append(f"  {horizon}: {timestamp}")
+            
+            if status['recent_jobs']:
+                lines.extend([
+                    "",
+                    "Recent Jobs:"
+                ])
+                for job in status['recent_jobs'][-5:]:  # Show last 5 jobs
+                    duration = (job['end_time'] - job['start_time']).total_seconds()
+                    lines.append(f"  {job['time_horizon']} ({job['status']}): {duration:.2f}s")
+            
+            return [types.TextContent(type="text", text="\n".join(lines))]
+            
+        except Exception as e:
+            error_msg = f"Error getting scheduler status: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
+    async def handle_trigger_consolidation(self, arguments: dict) -> List[types.TextContent]:
+        """Handle manual consolidation trigger requests."""
+        if not CONSOLIDATION_ENABLED or not self.consolidation_scheduler:
+            return [types.TextContent(type="text", text="Error: Consolidation scheduler not available")]
+        
+        try:
+            time_horizon = arguments.get("time_horizon")
+            immediate = arguments.get("immediate", True)
+            
+            if not time_horizon:
+                return [types.TextContent(type="text", text="Error: time_horizon is required")]
+            
+            if time_horizon not in ["daily", "weekly", "monthly", "quarterly", "yearly"]:
+                return [types.TextContent(type="text", text="Error: Invalid time_horizon")]
+            
+            # Trigger consolidation
+            success = await self.consolidation_scheduler.trigger_consolidation(time_horizon, immediate)
+            
+            if success:
+                action = "triggered immediately" if immediate else "scheduled for later"
+                return [types.TextContent(type="text", text=f"Successfully {action} {time_horizon} consolidation")]
+            else:
+                return [types.TextContent(type="text", text=f"Failed to trigger {time_horizon} consolidation")]
+            
+        except Exception as e:
+            error_msg = f"Error triggering consolidation: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
+    async def handle_pause_consolidation(self, arguments: dict) -> List[types.TextContent]:
+        """Handle consolidation pause requests."""
+        if not CONSOLIDATION_ENABLED or not self.consolidation_scheduler:
+            return [types.TextContent(type="text", text="Error: Consolidation scheduler not available")]
+        
+        try:
+            time_horizon = arguments.get("time_horizon")
+            
+            # Pause consolidation
+            success = await self.consolidation_scheduler.pause_consolidation(time_horizon)
+            
+            if success:
+                target = time_horizon or "all"
+                return [types.TextContent(type="text", text=f"Successfully paused {target} consolidation jobs")]
+            else:
+                return [types.TextContent(type="text", text="Failed to pause consolidation jobs")]
+            
+        except Exception as e:
+            error_msg = f"Error pausing consolidation: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
+    async def handle_resume_consolidation(self, arguments: dict) -> List[types.TextContent]:
+        """Handle consolidation resume requests."""
+        if not CONSOLIDATION_ENABLED or not self.consolidation_scheduler:
+            return [types.TextContent(type="text", text="Error: Consolidation scheduler not available")]
+        
+        try:
+            time_horizon = arguments.get("time_horizon")
+            
+            # Resume consolidation
+            success = await self.consolidation_scheduler.resume_consolidation(time_horizon)
+            
+            if success:
+                target = time_horizon or "all"
+                return [types.TextContent(type="text", text=f"Successfully resumed {target} consolidation jobs")]
+            else:
+                return [types.TextContent(type="text", text="Failed to resume consolidation jobs")]
+            
+        except Exception as e:
+            error_msg = f"Error resuming consolidation: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=error_msg)]
+
     async def handle_get_embedding(self, arguments: dict) -> List[types.TextContent]:
         content = arguments.get("content")
         if not content:
@@ -1836,7 +2442,7 @@ class MemoryServer:
             # Format results
             formatted_results = []
             for i, result in enumerate(results):
-                memory_dt = ensure_datetime(result.memory.timestamp)
+                memory_dt = result.memory.timestamp
                 
                 memory_info = [
                     f"Memory {i+1}:",
@@ -1907,17 +2513,136 @@ class MemoryServer:
                     text=f"Database Health Check Results:\n{json.dumps(result, indent=2)}"
                 )]
             
-            from .utils.db_utils import validate_database, get_database_stats
+            # Skip db_utils completely for health check - implement directly here
+            # Get storage type for backend-specific handling
+            storage_type = storage.__class__.__name__
             
-            # Get validation status
-            is_valid, message = await validate_database(storage)
+            # Direct health check implementation based on storage type
+            is_valid = False
+            message = ""
+            stats = {}
             
-            # Get database stats
-            stats = get_database_stats(storage)
+            if storage_type == "SqliteVecMemoryStorage":
+                # Direct SQLite-vec validation
+                if not hasattr(storage, 'conn') or storage.conn is None:
+                    is_valid = False
+                    message = "SQLite database connection is not initialized"
+                else:
+                    try:
+                        # Check for required tables
+                        cursor = storage.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memories'")
+                        if not cursor.fetchone():
+                            is_valid = False
+                            message = "SQLite database is missing required tables"
+                        else:
+                            # Count memories
+                            cursor = storage.conn.execute('SELECT COUNT(*) FROM memories')
+                            memory_count = cursor.fetchone()[0]
+                            
+                            # Check if embedding tables exist
+                            cursor = storage.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'")
+                            has_embeddings = cursor.fetchone() is not None
+                            
+                            # Check embedding model
+                            has_model = hasattr(storage, 'embedding_model') and storage.embedding_model is not None
+                            
+                            # Collect stats
+                            stats = {
+                                "status": "healthy",
+                                "backend": "sqlite-vec",
+                                "total_memories": memory_count,
+                                "has_embedding_tables": has_embeddings,
+                                "has_embedding_model": has_model,
+                                "embedding_model": storage.embedding_model_name if hasattr(storage, 'embedding_model_name') else "none"
+                            }
+                            
+                            # Get database file size
+                            db_path = storage.db_path if hasattr(storage, 'db_path') else None
+                            if db_path and os.path.exists(db_path):
+                                file_size = os.path.getsize(db_path)
+                                stats["database_size_bytes"] = file_size
+                                stats["database_size_mb"] = round(file_size / (1024 * 1024), 2)
+                            
+                            is_valid = True
+                            message = "SQLite-vec database validation successful"
+                    except Exception as e:
+                        is_valid = False
+                        message = f"SQLite database validation error: {str(e)}"
+                        stats = {
+                            "status": "error",
+                            "error": str(e),
+                            "backend": "sqlite-vec" 
+                        }
+            
+            elif hasattr(storage, 'collection'):
+                # Standard ChromaDB validation
+                if storage.collection is None:
+                    is_valid = False
+                    message = "Collection is not initialized"
+                    stats = {
+                        "status": "error",
+                        "error": "Collection is not initialized",
+                        "backend": "chromadb"
+                    }
+                else:
+                    try:
+                        # Count documents
+                        collection_count = storage.collection.count()
+                        
+                        # Get collection metadata
+                        metadata = {}
+                        if hasattr(storage.collection, 'metadata'):
+                            metadata = storage.collection.metadata
+                        
+                        # Get embedding function info
+                        embedding_function = "none"
+                        if hasattr(storage, 'embedding_function') and storage.embedding_function:
+                            embedding_function = storage.embedding_function.__class__.__name__
+                        
+                        # Collect stats
+                        stats = {
+                            "status": "healthy",
+                            "backend": "chromadb",
+                            "total_memories": collection_count,
+                            "embedding_function": embedding_function,
+                            "metadata": metadata
+                        }
+                        
+                        # Check database path and size
+                        if hasattr(storage, 'path'):
+                            db_path = storage.path
+                            if os.path.exists(db_path):
+                                total_size = 0
+                                for dirpath, _, filenames in os.walk(db_path):
+                                    for f in filenames:
+                                        fp = os.path.join(dirpath, f)
+                                        total_size += os.path.getsize(fp)
+                                
+                                stats["database_size_bytes"] = total_size
+                                stats["database_size_mb"] = round(total_size / (1024 * 1024), 2)
+                        
+                        is_valid = True
+                        message = "ChromaDB validation successful"
+                    except Exception as e:
+                        is_valid = False
+                        message = f"ChromaDB validation error: {str(e)}"
+                        stats = {
+                            "status": "error",
+                            "error": str(e),
+                            "backend": "chromadb"
+                        }
+            else:
+                is_valid = False
+                message = f"Unknown storage type: {storage_type}"
+                stats = {
+                    "status": "error",
+                    "error": f"Unknown storage type: {storage_type}",
+                    "backend": "unknown"
+                }
             
             # Get performance stats from optimized storage
             performance_stats = {}
-            if hasattr(storage, 'get_performance_stats'):
+            if hasattr(storage, 'get_performance_stats') and callable(storage.get_performance_stats):
                 try:
                     performance_stats = storage.get_performance_stats()
                 except Exception as perf_error:
@@ -1930,9 +2655,15 @@ class MemoryServer:
                 "total_queries": len(self.query_times)
             }
             
+            # Add storage type for debugging
+            server_stats["storage_type"] = storage_type
+            
             # Add storage initialization status for debugging
-            if hasattr(storage, 'get_initialization_status'):
-                server_stats["storage_initialization"] = storage.get_initialization_status()
+            if hasattr(storage, 'get_initialization_status') and callable(storage.get_initialization_status):
+                try:
+                    server_stats["storage_initialization"] = storage.get_initialization_status()
+                except Exception:
+                    pass
             
             # Combine results with performance data
             result = {
@@ -1994,7 +2725,7 @@ class MemoryServer:
             
             formatted_results = []
             for i, result in enumerate(results):
-                memory_timestamp = ensure_datetime(result.memory.timestamp)
+                memory_timestamp = result.memory.timestamp
                 memory_info = [
                     f"Memory {i+1}:",
                 ]

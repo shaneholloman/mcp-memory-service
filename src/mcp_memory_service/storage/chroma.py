@@ -1,10 +1,24 @@
+# Copyright 2024 Heinrich Krupp
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 MCP Memory Service
 Copyright (c) 2024 Heinrich Krupp
 Licensed under the MIT License. See LICENSE file in the project root for full license text.
 """
 
-from mcp_memory_service.models.memory import Memory
+from ..models.memory import Memory
 
 import chromadb
 import json
@@ -1080,6 +1094,17 @@ class ChromaMemoryStorage(MemoryStorage):
             return 0, str(e)
 
 
+    async def initialize(self) -> None:
+        """
+        Initialize the storage backend (async method for compatibility).
+        
+        Since ChromaMemoryStorage initialization happens in __init__,
+        this method just verifies that initialization was successful.
+        """
+        if not self.is_initialized():
+            raise RuntimeError("ChromaMemoryStorage initialization incomplete")
+        logger.info("ChromaMemoryStorage async initialization verified")
+    
     def is_initialized(self) -> bool:
         """Check if the storage is properly initialized."""
         return (self.collection is not None and 

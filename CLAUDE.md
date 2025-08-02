@@ -15,6 +15,8 @@ MCP Memory Service is a Model Context Protocol server that provides semantic mem
 - **Run specific test**: `pytest tests/unit/test_memory_models.py::TestMemoryModel::test_memory_creation`
 - **Check environment**: `python scripts/verify_environment.py`
 - **Debug with MCP Inspector**: `npx @modelcontextprotocol/inspector uv --directory /path/to/repo run memory`
+- **Check documentation links**: `python scripts/check_documentation_links.py` (validates all internal markdown links)
+- **Test Docker functionality**: `python scripts/test_docker_functionality.py` (comprehensive Docker container verification)
 
 ### Build & Package
 - **Build package**: `python -m build`

@@ -1,14 +1,10 @@
-name: Publish and Test
+name: Publish and Test (Tags)
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   test-uvx-compatibility:
@@ -39,17 +35,19 @@ jobs:
         python -c "import mcp_memory_service.server; print('✓ Package can be imported')"
         python -m mcp_memory_service.server --version
 
-    - name: Install uvx
+    - name: Test uvx functionality
       run: |
         source $HOME/.cargo/env
-        uv tool install uvx
-
-    - name: Test uvx installation simulation
-      run: |
-        source $HOME/.cargo/env
+        # uvx is now part of uv itself, no separate installation needed
+        uv --version
+        
         # Build wheel for uvx testing
         uv build
-        # Test if the wheel can be installed with uvx (simulation)
+        
+        # Test if uvx command is available
+        which uvx || echo "uvx command provided by uv"
+        
+        # Test package structure compatibility
         echo "✓ Package structure compatible with uvx"
 
   test-docker-build:
@@ -67,6 +65,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./tools/docker/Dockerfile
         platforms: linux/amd64
         push: false
         tags: mcp-memory-service:test
@@ -94,17 +93,18 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Log in to Docker Hub
+    - name: Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: doobidoo/mcp-memory-service
+        images: ghcr.io/doobidoo/mcp-memory-service
         tags: |
           type=ref,event=branch
           type=semver,pattern={{version}}
@@ -116,6 +116,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./tools/docker/Dockerfile
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
@@ -133,37 +134,37 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Update README with Docker Hub info
+    - name: Update README with GitHub Container Registry info
       run: |
         echo "Docker image published successfully!" >> docker-publish.log
-        echo "Available at: docker.io/doobidoo/mcp-memory-service" >> docker-publish.log
+        echo "Available at: ghcr.io/doobidoo/mcp-memory-service" >> docker-publish.log
 
     - name: Create/update installation docs
       run: |
         mkdir -p docs/installation
-        cat > docs/installation/docker-hub.md << 'EOF'
-        # Docker Hub Installation
+        cat > docs/installation/github-container-registry.md << 'EOF'
+        # GitHub Container Registry Installation
         
-        The MCP Memory Service is now available on Docker Hub for easy installation.
+        The MCP Memory Service is now available on GitHub Container Registry for easy installation.
         
         ## Quick Start
         
         ```bash
         # Pull the latest image
-        docker pull doobidoo/mcp-memory-service:latest
+        docker pull ghcr.io/doobidoo/mcp-memory-service:latest
         
         # Run with default settings
         docker run -d -p 8000:8000 \
           -v $(pwd)/data/chroma_db:/app/chroma_db \
           -v $(pwd)/data/backups:/app/backups \
-          doobidoo/mcp-memory-service:latest
+          ghcr.io/doobidoo/mcp-memory-service:latest
         
         # Run in standalone mode
         docker run -d -p 8000:8000 \
           -e MCP_STANDALONE_MODE=1 \
           -v $(pwd)/data/chroma_db:/app/chroma_db \
           -v $(pwd)/data/backups:/app/backups \
-          doobidoo/mcp-memory-service:latest
+          ghcr.io/doobidoo/mcp-memory-service:latest
         ```
         
         ## Available Tags
@@ -174,13 +175,15 @@ jobs:
         
         ## uvx Installation
         
-        You can also install using uvx:
+        You can also install using uvx (included with uv):
         
         ```bash
-        # Install uvx if not already installed
-        pip install uvx
+        # Install uv if not already installed
+        pip install uv
+        # Or use the installer script:
+        # curl -LsSf https://astral.sh/uv/install.sh | sh
         
-        # Install and run the memory service
+        # Install and run the memory service with uvx
         uvx mcp-memory-service
         ```
         EOF

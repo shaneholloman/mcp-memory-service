@@ -1,24 +1,45 @@
 [build-system]
-requires = ["hatchling", "python-semantic-release"]
+requires = ["hatchling", "python-semantic-release", "build"]
 build-backend = "hatchling.build"
 
 [project]
 name = "mcp-memory-service"
-version = "0.2.1"  
-description = "A semantic memory service using ChromaDB and sentence-transformers"
+version = "3.3.2"  
+description = "An intelligent semantic memory service with dream-inspired autonomous consolidation using ChromaDB and sentence-transformers"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
     { name = "Heinrich Krupp", email = "heinrich.krupp@gmail.com" }
 ]
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 dependencies = [
     "chromadb==0.5.23",
-    # Looser constraint for sentence-transformers to allow for platform-specific versions
-    # Actual version will be managed by install.py based on platform
-    "sentence-transformers",
     "tokenizers==0.20.3",
-    "mcp>=1.0.0,<2.0.0"
+    "mcp>=1.0.0,<2.0.0",
+    "sqlite-vec>=0.1.0",
+    "sentence-transformers>=2.2.2",
+    "torch>=1.6.0",
+    "build>=0.10.0",
+    "aiohttp>=3.8.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+    "sse-starlette>=2.1.0",
+    "aiofiles>=23.2.1",
+    "psutil>=5.9.0",
+    "zeroconf>=0.130.0"
+]
+
+[project.optional-dependencies]
+ml = [
+    "sentence-transformers>=2.2.2",
+    "torch>=1.6.0"
+]
+chromadb = [
+    "chromadb==0.5.23"
+]
+sqlite = [
+    "sqlite-vec>=0.1.0"
 ]
 
 [project.scripts]
@@ -37,9 +58,10 @@ version_variable = [
 ]
 branch = "main"
 changelog_file = "CHANGELOG.md"
-build_command = "python -m build"
+build_command = "pip install build && python -m build"
+build_command_env = []
 dist_path = "dist/"
-upload_to_pypi = true
+upload_to_pypi = false
 upload_to_release = true
 commit_message = "chore(release): bump version to {version}"
 

@@ -18,7 +18,7 @@
 - For recursion errors, run: `python scripts/fix_sitecustomize.py`
 
 ## Memory Service Invocation
-- See the comprehensive [Invocation Guide](docs/guides/invocation_guide.md) for full details
+- See the comprehensive [Invocation Guide](invocation_guide.md) for full details
 - Key trigger phrases:
   - **Storage**: "remember that", "remember this", "save to memory", "store in memory"
   - **Retrieval**: "do you remember", "recall", "retrieve from memory", "search your memory for"

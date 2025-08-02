@@ -1,0 +1,16 @@
+MCP Memory Service
+Copyright 2024 Heinrich Krupp
+
+This product includes software developed by Heinrich Krupp.
+
+This project uses the following third-party libraries:
+
+- ChromaDB (Apache License 2.0)
+- sentence-transformers (Apache License 2.0)
+- PyTorch (BSD-style license)
+- SQLite-vec (MIT License)
+- MCP SDK (MIT License)
+- FastAPI (MIT License)
+- ONNX Runtime (MIT License)
+
+For full license information of dependencies, see their respective LICENSE files.

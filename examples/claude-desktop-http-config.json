@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "node",
+      "args": ["/path/to/mcp-memory-service/examples/http-mcp-bridge.js"],
+      "env": {
+        "MCP_MEMORY_HTTP_ENDPOINT": "http://your-server:8000/api",
+        "MCP_MEMORY_API_KEY": "your-secure-api-key"
+      }
+    }
+  }
+}

@@ -13,6 +13,7 @@ env/
 .venv/
 venv/
 py310_venv/
+venv_py310/
 build/
 develop-eggs/
 dist/
@@ -55,6 +56,12 @@ __pypackages__/
 chroma_db/
 tests/test_db/chroma.sqlite3
 
+# SQLite-vec artifacts
+*.sqlite
+*.sqlite-*
+.mcp_memory_sqlite/
+.mcp_memory_chroma/
+
 # Project-specific artifacts
 backups/
 test_output.txt
@@ -73,6 +80,11 @@ claude_config/claude_desktop_config.json
 *.tmp
 *.old
 
+# Test and development artifacts
+test_*.py.backup
+*_test.py.old
+development_notes.md
+
 # Optional: VSCode debugging & Python caches
 *.coverage
 coverage.*
@@ -85,3 +97,7 @@ coverage.xml
 .hypothesis/
 claude_config/claude_desktop_config.json
 .claude/mcp_config.json
+
+# Personalized setup guides (generated locally)
+YOUR_PERSONALIZED_SETUP_GUIDE.md
+.mcp.json

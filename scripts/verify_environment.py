@@ -1,4 +1,18 @@
 #!/usr/bin/env python3
+# Copyright 2024 Heinrich Krupp
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Enhanced environment verification script for MCP Memory Service.
 This script checks the system environment, hardware capabilities,
@@ -37,18 +51,18 @@ class EnvironmentVerifier:
         }
         
         self.verification_results.append(
-            f"✓ System: {platform.system()} {platform.version()}"
+            f"[OK] System: {platform.system()} {platform.version()}"
         )
         self.verification_results.append(
-            f"✓ Architecture: {system_info['architecture']}"
+            f"[OK] Architecture: {system_info['architecture']}"
         )
         self.verification_results.append(
-            f"✓ Python: {system_info['python_version']}"
+            f"[OK] Python: {system_info['python_version']}"
         )
         
         if system_info["in_virtual_env"]:
             self.verification_results.append(
-                f"✓ Virtual environment: {sys.prefix}"
+                f"[OK] Virtual environment: {sys.prefix}"
             )
         else:
             self.warnings.append(
@@ -196,26 +210,26 @@ class EnvironmentVerifier:
         if gpu_info["has_cuda"]:
             gpu_info["accelerator"] = "cuda"
             self.verification_results.append(
-                f"✓ CUDA detected: {gpu_info['cuda_version'] or 'Unknown version'}"
+                f"[OK] CUDA detected: {gpu_info['cuda_version'] or 'Unknown version'}"
             )
         elif gpu_info["has_rocm"]:
             gpu_info["accelerator"] = "rocm"
             self.verification_results.append(
-                f"✓ ROCm detected: {gpu_info['rocm_version'] or 'Unknown version'}"
+                f"[OK] ROCm detected: {gpu_info['rocm_version'] or 'Unknown version'}"
             )
         elif gpu_info["has_mps"]:
             gpu_info["accelerator"] = "mps"
             self.verification_results.append(
-                "✓ Apple Metal Performance Shaders (MPS) detected"
+                "[OK] Apple Metal Performance Shaders (MPS) detected"
             )
         elif gpu_info["has_directml"]:
             gpu_info["accelerator"] = "directml"
             self.verification_results.append(
-                "✓ DirectML detected"
+                "[OK] DirectML detected"
             )
         else:
             self.verification_results.append(
-                "✓ Using CPU-only mode (no GPU acceleration detected)"
+                "[OK] Using CPU-only mode (no GPU acceleration detected)"
             )
         
         return gpu_info
@@ -235,7 +249,7 @@ class EnvironmentVerifier:
                     with open(config_path) as f:
                         config = json.load(f)
                         self.verification_results.append(
-                            f"✓ Found Claude Desktop config at {config_path}"
+                            f"[OK] Found Claude Desktop config at {config_path}"
                         )
                         return config
 
@@ -262,7 +276,7 @@ class EnvironmentVerifier:
                 )
             else:
                 self.verification_results.append(
-                    f"✓ Python version verified: {python_version}"
+                    f"[OK] Python version verified: {python_version}"
                 )
         except Exception as e:
             self.critical_failures.append(f"Failed to verify Python version: {str(e)}")
@@ -276,7 +290,7 @@ class EnvironmentVerifier:
                 )
             else:
                 self.verification_results.append(
-                    f"✓ Virtual environment verified: {sys.prefix}"
+                    f"[OK] Virtual environment verified: {sys.prefix}"
                 )
         except Exception as e:
             self.critical_failures.append(
@@ -302,7 +316,7 @@ class EnvironmentVerifier:
                     )
                 else:
                     self.verification_results.append(
-                        f"✓ Package verified: {package} {installed_version}"
+                        f"[OK] Package verified: {package} {installed_version}"
                     )
             except pkg_resources.DistributionNotFound:
                 self.critical_failures.append(f"Required package not found: {package}")
@@ -323,7 +337,7 @@ class EnvironmentVerifier:
             if chroma_path:
                 os.environ['CHROMA_DB_PATH'] = str(chroma_path)
                 self.verification_results.append(
-                    f"✓ Set CHROMA_DB_PATH from config: {chroma_path}"
+                    f"[OK] Set CHROMA_DB_PATH from config: {chroma_path}"
                 )
             else:
                 self.critical_failures.append("CHROMA_DB_PATH not found in Claude config")
@@ -331,7 +345,7 @@ class EnvironmentVerifier:
             if backup_path:
                 os.environ['MCP_MEMORY_BACKUP_PATH'] = str(backup_path)
                 self.verification_results.append(
-                    f"✓ Set MCP_MEMORY_BACKUP_PATH from config: {backup_path}"
+                    f"[OK] Set MCP_MEMORY_BACKUP_PATH from config: {backup_path}"
                 )
             else:
                 self.critical_failures.append("MCP_MEMORY_BACKUP_PATH not found in Claude config")
@@ -349,7 +363,7 @@ class EnvironmentVerifier:
         for module_name in critical_imports:
             try:
                 module = importlib.import_module(module_name)
-                self.verification_results.append(f"✓ Successfully imported {module_name}")
+                self.verification_results.append(f"[OK] Successfully imported {module_name}")
             except ImportError as e:
                 self.critical_failures.append(f"Failed to import {module_name}: {str(e)}")
 
@@ -370,7 +384,7 @@ class EnvironmentVerifier:
                 elif not os.access(path, os.R_OK | os.W_OK):
                     self.critical_failures.append(f"Insufficient permissions for path: {path}")
                 else:
-                    self.verification_results.append(f"✓ Path verified: {path}")
+                    self.verification_results.append(f"[OK] Path verified: {path}")
             except Exception as e:
                 self.critical_failures.append(f"Failed to verify path {path}: {str(e)}")
 
@@ -395,12 +409,12 @@ class EnvironmentVerifier:
         if self.warnings:
             print("\nWarnings:")
             for warning in self.warnings:
-                print(f"  ⚠️  {warning}")
+                print(f"  [!] {warning}")
         
         if self.critical_failures:
             print("\nCritical Failures:")
             for failure in self.critical_failures:
-                print(f"  ✗ {failure}")
+                print(f"  [X] {failure}")
         
         print("\nSummary:")
         print(f"  Passed: {len(self.verification_results)}")
@@ -424,10 +438,10 @@ def main():
     environment_ok = verifier.print_results()
     
     if not environment_ok:
-        print("\n⚠️  Environment verification failed! Please fix the issues above.")
+        print("\n[WARNING]  Environment verification failed! Please fix the issues above.")
         sys.exit(1)
     else:
-        print("\n✓ Environment verification passed! Safe to proceed.")
+        print("\n[OK] Environment verification passed! Safe to proceed.")
         sys.exit(0)
 
 if __name__ == "__main__":

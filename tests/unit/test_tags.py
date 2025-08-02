@@ -9,15 +9,17 @@ both single tags and multiple tags, addressing the API inconsistency.
 import asyncio
 import sys
 import os
+import pytest
 
 # Add the path to the MCP Memory Service
-sys.path.insert(0, '/Users/hkr/Documents/GitHub/mcp-memory-service/src')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 from mcp_memory_service.storage.chroma import ChromaMemoryStorage
 from mcp_memory_service.models.memory import Memory
 from mcp_memory_service.config import CHROMA_PATH
 import time
 
+@pytest.mark.asyncio
 async def test_enhanced_delete_by_tag():
     """Test the enhanced delete_by_tag functionality."""
     

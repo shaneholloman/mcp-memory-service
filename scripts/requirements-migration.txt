@@ -1,6 +1,0 @@
-# chromadb==0.4.13  # Keep your working version
-# sentence-transformers==2.2.2
-# urllib3<2.0.0  # Add this to fix the SSL cipher issue
-chromadb
-sentence-transformers
-urllib3

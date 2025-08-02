@@ -1,9 +1,0 @@
-{
-    "servers": {
-        "memory": {
-            "command": "uv",
-            "args": ["run", "-m", "mcp_memory_service.server"],
-            "cwd": "/Users/hkr/Documents/GitHub/mcp-memory-service"
-        }
-    }
-}
