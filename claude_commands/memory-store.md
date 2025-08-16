@@ -9,12 +9,14 @@ I'll help you store information in your MCP Memory Service with proper context a
 2. **Capture Memory Content**: I'll take the provided information or current session summary and prepare it for storage.
 
 3. **Add Smart Tags**: I'll automatically generate relevant tags based on:
+   - Machine hostname (source identifier)
    - Current project directory name
    - Programming languages detected
    - File types and patterns
    - Any explicit tags you provide
 
 4. **Store with Metadata**: I'll include useful metadata like:
+   - Machine hostname for source tracking
    - Timestamp and session context
    - Project path and git repository info
    - File associations and dependencies
@@ -29,15 +31,20 @@ claude /memory-store --type "note" "Remember to update the Docker configuration 
 
 ## Implementation:
 
-I'll first check if the MCP Memory Service is running and accessible. If it's available, I'll use the mDNS discovery to find the service endpoint, or fall back to the default localhost configuration.
+I'll store the memory directly to your MCP Memory Service at `https://memory.local:8443/`. The memory will be saved automatically without confirmation prompts.
 
 The content will be stored with automatic context detection:
+- **Machine Context**: Hostname automatically added as tag (e.g., "source:your-machine-name")
 - **Project Context**: Current directory, git repository, recent commits
 - **Session Context**: Current conversation topics and decisions
 - **Technical Context**: Programming language, frameworks, and tools in use
 - **Temporal Context**: Date, time, and relationship to recent activities
 
-If the memory service is not available, I'll provide clear instructions on how to start it and retry the operation.
+The service endpoint is configured at:
+- **Main endpoint**: `https://memory.local:8443/`
+- **API endpoint**: `https://memory.local:8443/api/memories`
+
+I'll use the correct curl syntax with `-k` flag for HTTPS, proper JSON payload formatting, and automatic client hostname detection using the `X-Client-Hostname` header.
 
 ## Arguments:
 
@@ -47,4 +54,4 @@ If the memory service is not available, I'll provide clear instructions on how t
   - `--project "name"` - Override project name detection
   - `--private` - Mark as private/sensitive content
 
-I'll ensure the memory is stored successfully and provide confirmation of the storage operation, including the generated content hash and applied tags.
+I'll store the memory automatically without asking for confirmation. The memory will be saved immediately using proper JSON formatting with the curl command. You'll receive a brief confirmation showing the content hash and applied tags after successful storage.

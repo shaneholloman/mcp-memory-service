@@ -25,22 +25,23 @@ claude /memory-health --export-report
 
 ## Implementation:
 
-I'll perform comprehensive health checks:
+I'll perform comprehensive health checks using your MCP Memory Service at `https://memory.local:8443/`:
 
 1. **Service Detection**: 
-   - Try mDNS auto-discovery for running services
-   - Check configured endpoints (localhost:8000, etc.)
-   - Verify HTTP/HTTPS connectivity
+   - Connect to configured HTTPS endpoint
+   - Check health endpoint at `/api/health/detailed`
+   - Verify HTTPS connectivity with `-k` flag for self-signed certificates
 
 2. **Basic Health Check**:
-   - Service responsiveness and API availability
-   - Database connection status
-   - Embedding model availability
+   - Service responsiveness via `/api/health` endpoint
+   - Detailed diagnostics via `/api/health/detailed`
+   - Database connection status and embedding model availability
 
 3. **Detailed Diagnostics**:
-   - Memory count and database statistics
-   - Storage backend type and configuration
-   - Performance metrics and response times
+   - Memory count and database statistics from API response
+   - Storage backend type (SQLite-vec, ChromaDB, etc.)
+   - Performance metrics, uptime, and response times
+   - Disk usage warnings and system resource status
 
 4. **Operational Testing** (if requested):
    - Test memory storage and retrieval

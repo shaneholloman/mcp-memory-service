@@ -34,6 +34,7 @@ Welcome to the comprehensive documentation for MCP Memory Service - a Model Cont
 
 ### 📚 User Guides
 
+- **[MCP Protocol Enhancements](guides/mcp-enhancements.md)** - Resources, Prompts, and Progress Tracking (v4.1.0)
 - **[Storage Backends](guides/STORAGE_BACKENDS.md)** - ChromaDB vs SQLite-vec comparison and configuration
 - **[Migration Guide](guides/migration.md)** - Migrate between storage backends and versions
 - **[Scripts Reference](guides/scripts.md)** - Available utility scripts

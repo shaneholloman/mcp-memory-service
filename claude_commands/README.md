@@ -5,7 +5,7 @@ This directory contains conversational Claude Code commands that integrate memor
 ## Available Commands
 
 ### `/memory-store` - Store Current Context
-Store information in your MCP Memory Service with proper context and tagging. Automatically detects project context and applies relevant tags.
+Store information in your MCP Memory Service with proper context and tagging. Automatically detects project context, applies relevant tags, and includes machine hostname for source tracking.
 
 **Usage:**
 ```bash
@@ -32,7 +32,7 @@ claude /memory-search "SQLite performance optimization"
 ```
 
 ### `/memory-context` - Session Context Integration
-Capture the current conversation and project context as a memory for future reference.
+Capture the current conversation and project context as a memory for future reference. Automatically includes machine source identification for multi-device workflows.
 
 **Usage:**
 ```bash
@@ -91,25 +91,27 @@ python scripts/claude_commands_utils.py --uninstall
 
 1. **Command Files**: Each command is a markdown file with conversational instructions
 2. **Claude Code Integration**: Commands are installed to `~/.claude/commands/`
-3. **Auto-Discovery**: Commands automatically discover and connect to your MCP Memory Service
+3. **Service Connection**: Commands connect via mDNS discovery or direct HTTPS endpoints
 4. **Context Awareness**: Commands understand your current project and session context
-5. **Fallback Handling**: Graceful degradation when the memory service is unavailable
+5. **API Integration**: Uses standard MCP Memory Service API endpoints for all operations
 
 ## Command Features
 
+- **Machine Source Tracking**: Automatic hostname tagging for multi-device memory filtering
 - **Conversational Interface**: Natural language interactions following CCPlugins pattern
 - **Context Detection**: Automatic project and session context recognition
 - **Smart Tagging**: Intelligent tag generation based on current work
-- **Error Recovery**: Helpful error messages and fallback suggestions
-- **Backend Agnostic**: Works with both ChromaDB and SQLite-vec backends
+- **Auto-Save**: Immediate storage without confirmation prompts
+- **Flexible Configuration**: Supports both mDNS discovery and direct HTTPS endpoints
+- **API Compatibility**: Works with standard MCP Memory Service API endpoints
 
 ## Example Workflow
 
 ```bash
-# Start a development session
+# Start a development session (automatically tagged with machine hostname)
 claude /memory-context --summary "Starting work on mDNS integration"
 
-# Store important decisions
+# Store important decisions (includes source:machine-name tag)
 claude /memory-store --tags "mDNS,architecture" "Decided to use zeroconf library for service discovery"
 
 # Continue development...
@@ -119,6 +121,9 @@ claude /memory-recall "what did we decide about mDNS last week?"
 
 # Search for related information
 claude /memory-search --tags "mDNS,zeroconf"
+
+# Search memories from specific machine
+claude /memory-search --tags "source:laptop-work"
 
 # Check service health
 claude /memory-health
@@ -131,24 +136,34 @@ claude /memory-health
 - Check if commands are installed: `ls ~/.claude/commands/memory-*.md`
 - Reinstall commands: `python scripts/claude_commands_utils.py`
 
-### MCP Service Connection Issues
-- Verify MCP Memory Service is running: `memory --help`
-- Check service health: `claude /memory-health`
-- Review service configuration in your Claude Code settings
+### Service Connection Issues
+- **Service Health**: Check if service is accessible: `curl -k https://your-endpoint:8443/api/health`
+- **Comprehensive Diagnostics**: Use `claude /memory-health` for detailed service status
+- **Local Development**: Verify server can start: `python scripts/run_memory_server.py --help`
+- **Endpoint Configuration**: Verify API endpoints match your service deployment
 
 ### Permission Issues
 - Check directory permissions: `ls -la ~/.claude/commands/`
 - Ensure write access to the commands directory
 - Try running installation with appropriate permissions
 
-## Integration with MCP Memory Service
+## Configuration & API Compatibility
 
-These commands seamlessly integrate with your MCP Memory Service installation:
+These commands integrate with your MCP Memory Service through configurable endpoints:
 
-- **Auto-Discovery**: Commands automatically find running memory services via mDNS
-- **Backend Compatibility**: Works with both ChromaDB and SQLite-vec storage backends  
-- **Configuration Aware**: Respects your memory service configuration settings
-- **Health Monitoring**: Built-in service health checking and diagnostics
+- **Flexible Connection**: Supports both mDNS auto-discovery and direct HTTPS endpoints
+- **Configurable Endpoints**: Template uses `memory.local:8443` but can be customized to your setup
+- **API Requirements**: Commands must use these standard API endpoints to function:
+  - `POST /api/search` - Semantic similarity search
+  - `POST /api/search/by-tag` - Tag-based search (AND/OR matching)
+  - `POST /api/search/by-time` - Time-based natural language queries
+  - `GET /api/memories` - List memories with pagination
+  - `POST /api/memories` - Store new memories
+  - `GET /api/health/detailed` - Service health diagnostics
+- **Backend Compatibility**: Works with both ChromaDB and SQLite-vec storage backends
+- **HTTPS Support**: Uses curl with `-k` flag for self-signed certificates
+
+**Important**: Commands are configurable but must maintain compatibility with the documented API endpoints to function properly. Users can customize server locations but not the API contract.
 
 ## Development
 

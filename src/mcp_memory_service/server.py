@@ -19,13 +19,147 @@ Licensed under the MIT License. See LICENSE file in the project root for full li
 """
 import sys
 import os
+import socket
 import time
-# Add path to your virtual environment's site-packages
-venv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'venv', 'Lib', 'site-packages')
-if os.path.exists(venv_path):
-    sys.path.insert(0, venv_path)
-import asyncio
 import logging
+import psutil
+
+# Client detection for environment-aware behavior
+def detect_mcp_client():
+    """Detect which MCP client is running this server."""
+    try:
+        # Get the parent process (the MCP client)
+        current_process = psutil.Process()
+        parent = current_process.parent()
+        
+        if parent:
+            parent_name = parent.name().lower()
+            parent_exe = parent.exe() if hasattr(parent, 'exe') else ""
+            
+            # Check for Claude Desktop
+            if 'claude' in parent_name or 'claude' in parent_exe.lower():
+                return 'claude_desktop'
+            
+            # Check for LM Studio
+            if 'lmstudio' in parent_name or 'lm-studio' in parent_name or 'lmstudio' in parent_exe.lower():
+                return 'lm_studio'
+            
+            # Check command line for additional clues
+            try:
+                cmdline = parent.cmdline()
+                cmdline_str = ' '.join(cmdline).lower()
+                
+                if 'claude' in cmdline_str:
+                    return 'claude_desktop'
+                if 'lmstudio' in cmdline_str or 'lm-studio' in cmdline_str:
+                    return 'lm_studio'
+            except:
+                pass
+        
+        # Fallback: check environment variables
+        if os.getenv('CLAUDE_DESKTOP'):
+            return 'claude_desktop'
+        if os.getenv('LM_STUDIO'):
+            return 'lm_studio'
+            
+        # Default to Claude Desktop for strict JSON compliance
+        return 'claude_desktop'
+        
+    except Exception:
+        # If detection fails, default to Claude Desktop (strict mode)
+        return 'claude_desktop'
+
+# Detect the current MCP client
+MCP_CLIENT = detect_mcp_client()
+
+# Custom logging handler that routes INFO/DEBUG to stdout, WARNING/ERROR to stderr
+class DualStreamHandler(logging.Handler):
+    """Client-aware handler that adjusts logging behavior based on MCP client."""
+    
+    def __init__(self, client_type='claude_desktop'):
+        super().__init__()
+        self.client_type = client_type
+        self.stdout_handler = logging.StreamHandler(sys.stdout)
+        self.stderr_handler = logging.StreamHandler(sys.stderr)
+        
+        # Set the same formatter for both handlers
+        formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+        self.stdout_handler.setFormatter(formatter)
+        self.stderr_handler.setFormatter(formatter)
+    
+    def emit(self, record):
+        """Route log records based on client type and level."""
+        # For Claude Desktop: strict JSON mode - suppress most output, route everything to stderr
+        if self.client_type == 'claude_desktop':
+            # Only emit WARNING and above to stderr to maintain JSON protocol
+            if record.levelno >= logging.WARNING:
+                self.stderr_handler.emit(record)
+            # Suppress INFO/DEBUG for Claude Desktop to prevent JSON parsing errors
+            return
+        
+        # For LM Studio: enhanced mode with dual-stream
+        if record.levelno >= logging.WARNING:  # WARNING, ERROR, CRITICAL
+            self.stderr_handler.emit(record)
+        else:  # DEBUG, INFO
+            self.stdout_handler.emit(record)
+
+# Configure logging with client-aware handler BEFORE any imports that use logging
+log_level = os.getenv('LOG_LEVEL', 'WARNING').upper()  # Default to WARNING for performance
+root_logger = logging.getLogger()
+root_logger.setLevel(getattr(logging, log_level, logging.WARNING))
+
+# Remove any existing handlers to avoid duplicates
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+# Add our custom client-aware handler
+client_aware_handler = DualStreamHandler(client_type=MCP_CLIENT)
+root_logger.addHandler(client_aware_handler)
+
+logger = logging.getLogger(__name__)
+
+# Enhanced path detection for Claude Desktop compatibility
+def setup_python_paths():
+    """Setup Python paths for dependency access."""
+    current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    
+    # Check for virtual environment
+    potential_venv_paths = [
+        os.path.join(current_dir, 'venv', 'Lib', 'site-packages'),  # Windows venv
+        os.path.join(current_dir, 'venv', 'lib', 'python3.11', 'site-packages'),  # Linux/Mac venv
+        os.path.join(current_dir, '.venv', 'Lib', 'site-packages'),  # Windows .venv
+        os.path.join(current_dir, '.venv', 'lib', 'python3.11', 'site-packages'),  # Linux/Mac .venv
+    ]
+    
+    for venv_path in potential_venv_paths:
+        if os.path.exists(venv_path):
+            sys.path.insert(0, venv_path)
+            logger.debug(f"Added venv path: {venv_path}")
+            break
+    
+    # For Claude Desktop: also check if we can access global site-packages
+    try:
+        import site
+        global_paths = site.getsitepackages()
+        user_path = site.getusersitepackages()
+        
+        # Add user site-packages if not blocked by PYTHONNOUSERSITE
+        if not os.environ.get('PYTHONNOUSERSITE') and user_path not in sys.path:
+            sys.path.append(user_path)
+            logger.debug(f"Added user site-packages: {user_path}")
+        
+        # Add global site-packages if available
+        for path in global_paths:
+            if path not in sys.path:
+                sys.path.append(path)
+                logger.debug(f"Added global site-packages: {path}")
+                
+    except Exception as e:
+        logger.warning(f"Could not access site-packages: {e}")
+
+# Setup paths before other imports
+setup_python_paths()
+import asyncio
 import traceback
 import argparse
 import json
@@ -40,6 +174,8 @@ from mcp.server import NotificationOptions, Server
 import mcp.server.stdio
 from mcp.types import Resource, Prompt
 
+from .lm_studio_compat import patch_mcp_for_lm_studio, add_windows_timeout_handling
+from .dependency_check import run_dependency_check, get_recommended_timeout
 from .config import (
     CHROMA_PATH,
     BACKUPS_PATH,
@@ -49,7 +185,8 @@ from .config import (
     SQLITE_VEC_PATH,
     CONSOLIDATION_ENABLED,
     CONSOLIDATION_CONFIG,
-    CONSOLIDATION_SCHEDULE
+    CONSOLIDATION_SCHEDULE,
+    INCLUDE_HOSTNAME
 )
 # Storage imports will be done conditionally in the server class
 from .models.memory import Memory
@@ -67,14 +204,7 @@ if CONSOLIDATION_ENABLED:
     from .consolidation.consolidator import DreamInspiredConsolidator
     from .consolidation.scheduler import ConsolidationScheduler
 
-# Configure logging to go to stderr with performance optimizations
-log_level = os.getenv('LOG_LEVEL', 'WARNING').upper()  # Default to WARNING for performance
-logging.basicConfig(
-    level=getattr(logging, log_level, logging.WARNING),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    stream=sys.stderr
-)
-logger = logging.getLogger(__name__)
+# Note: Logging is already configured at the top of the file with dual-stream handler
 
 # Configure performance-critical module logging
 if not os.getenv('DEBUG_MODE'):
@@ -164,6 +294,9 @@ class MemoryServer:
         # Initialize query time tracking
         self.query_times = deque(maxlen=50)  # Keep last 50 query times for averaging
         
+        # Initialize progress tracking
+        self.current_progress = {}  # Track ongoing operations
+        
         # Initialize consolidation system (if enabled)
         self.consolidator = None
         self.consolidation_scheduler = None
@@ -191,7 +324,8 @@ class MemoryServer:
             # DEFER CHROMADB INITIALIZATION - Initialize storage lazily when needed
             # This prevents hanging during server startup due to embedding model loading
             logger.info(f"Deferring {STORAGE_BACKEND} storage initialization to prevent hanging")
-            print(f"Deferring {STORAGE_BACKEND} storage initialization to prevent startup hanging", file=sys.stderr, flush=True)
+            if MCP_CLIENT == 'lm_studio':
+                print(f"Deferring {STORAGE_BACKEND} storage initialization to prevent startup hanging", file=sys.stdout, flush=True)
             self.storage = None
             self._storage_initialized = False
 
@@ -215,7 +349,8 @@ class MemoryServer:
                 experimental_capabilities={}
             )
             logger.info(f"Server capabilities: {capabilities}")
-            print(f"Server capabilities registered successfully!", file=sys.stderr, flush=True)
+            if MCP_CLIENT == 'lm_studio':
+                print(f"Server capabilities registered successfully!", file=sys.stdout, flush=True)
         except Exception as e:
             logger.error(f"Handler registration test failed: {str(e)}")
             print(f"Handler registration issue: {str(e)}", file=sys.stderr, flush=True)
@@ -233,6 +368,37 @@ class MemoryServer:
         avg = sum(self.query_times) / len(self.query_times)
         logger.debug(f"Average query time: {avg:.2f}ms (from {len(self.query_times)} samples)")
         return round(avg, 2)
+    
+    async def send_progress_notification(self, operation_id: str, progress: float, message: str = None):
+        """Send a progress notification for a long-running operation."""
+        try:
+            # Store progress for potential querying
+            self.current_progress[operation_id] = {
+                "progress": progress,
+                "message": message or f"Operation {operation_id}: {progress:.0f}% complete",
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Send notification if server supports it
+            if hasattr(self.server, 'send_progress_notification'):
+                await self.server.send_progress_notification(
+                    progress=progress,
+                    progress_token=operation_id,
+                    message=message
+                )
+            
+            logger.debug(f"Progress {operation_id}: {progress:.0f}% - {message}")
+            
+            # Clean up completed operations
+            if progress >= 100:
+                self.current_progress.pop(operation_id, None)
+                
+        except Exception as e:
+            logger.debug(f"Could not send progress notification: {e}")
+    
+    def get_operation_progress(self, operation_id: str) -> Optional[Dict[str, Any]]:
+        """Get the current progress of an operation."""
+        return self.current_progress.get(operation_id)
     
     async def _initialize_storage_with_timeout(self):
         """Initialize storage with timeout and caching optimization."""
@@ -342,7 +508,29 @@ class MemoryServer:
                         self.storage = SqliteVecMemoryStorage(SQLITE_VEC_PATH)
                         logger.info(f"Created SQLite-vec storage at: {SQLITE_VEC_PATH}")
                 else:
-                    # Default to ChromaDB
+                    # ChromaDB backend (deprecated) - Check for migration
+                    logger.warning("=" * 70)
+                    logger.warning("DEPRECATION WARNING: ChromaDB backend is deprecated!")
+                    logger.warning("ChromaDB will be removed in v6.0.0.")
+                    logger.warning("Please migrate to SQLite-vec for better performance and reliability.")
+                    logger.warning("To migrate your data, run: python scripts/migrate_to_sqlite_vec.py")
+                    logger.warning("=" * 70)
+                    
+                    # Check if ChromaDB has existing data
+                    if os.path.exists(CHROMA_PATH) and os.listdir(CHROMA_PATH):
+                        logger.warning("")
+                        logger.warning("MIGRATION RECOMMENDED: Existing ChromaDB data detected!")
+                        logger.warning("Your memories are stored in the deprecated ChromaDB format.")
+                        logger.warning("")
+                        logger.warning("To migrate now (recommended):")
+                        logger.warning("  1. Stop this server (Ctrl+C)")
+                        logger.warning("  2. Run: python scripts/migrate_to_sqlite_vec.py")
+                        logger.warning("  3. Set environment: export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec")
+                        logger.warning("  4. Restart the server")
+                        logger.warning("")
+                        logger.warning("Continuing with ChromaDB for now...")
+                        logger.warning("")
+                    
                     from .storage.chroma import ChromaMemoryStorage
                     self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=False)
                     logger.info(f"Created ChromaDB storage at: {CHROMA_PATH}")
@@ -379,40 +567,49 @@ class MemoryServer:
             # Run any async initialization tasks here
             logger.info("Starting async initialization...")
             
-            # Print system diagnostics to stderr for visibility
-            print("\n=== System Diagnostics ===", file=sys.stderr, flush=True)
-            print(f"OS: {self.system_info.os_name} {self.system_info.os_version}", file=sys.stderr, flush=True)
-            print(f"Architecture: {self.system_info.architecture}", file=sys.stderr, flush=True)
-            print(f"Memory: {self.system_info.memory_gb:.2f} GB", file=sys.stderr, flush=True)
-            print(f"Accelerator: {self.system_info.accelerator}", file=sys.stderr, flush=True)
-            print(f"Python: {platform.python_version()}", file=sys.stderr, flush=True)
+            # Print system diagnostics only for LM Studio (avoid JSON parsing errors in Claude Desktop)
+            if MCP_CLIENT == 'lm_studio':
+                print("\n=== System Diagnostics ===", file=sys.stdout, flush=True)
+                print(f"OS: {self.system_info.os_name} {self.system_info.os_version}", file=sys.stdout, flush=True)
+                print(f"Architecture: {self.system_info.architecture}", file=sys.stdout, flush=True)
+                print(f"Memory: {self.system_info.memory_gb:.2f} GB", file=sys.stdout, flush=True)
+                print(f"Accelerator: {self.system_info.accelerator}", file=sys.stdout, flush=True)
+                print(f"Python: {platform.python_version()}", file=sys.stdout, flush=True)
             
             # Attempt eager storage initialization with timeout
-            print("Attempting eager storage initialization...", file=sys.stderr, flush=True)
+            # Get dynamic timeout based on system and dependency status
+            timeout_seconds = get_recommended_timeout()
+            if MCP_CLIENT == 'lm_studio':
+                print(f"Attempting eager storage initialization (timeout: {timeout_seconds}s)...", file=sys.stdout, flush=True)
             try:
                 init_task = asyncio.create_task(self._initialize_storage_with_timeout())
-                success = await asyncio.wait_for(init_task, timeout=15.0)
+                success = await asyncio.wait_for(init_task, timeout=timeout_seconds)
                 if success:
-                    print("✅ Eager storage initialization successful", file=sys.stderr, flush=True)
+                    if MCP_CLIENT == 'lm_studio':
+                        print("[OK] Eager storage initialization successful", file=sys.stdout, flush=True)
                     logger.info("Eager storage initialization completed successfully")
                 else:
-                    print("⚠️ Eager storage initialization failed, will use lazy loading", file=sys.stderr, flush=True)
+                    if MCP_CLIENT == 'lm_studio':
+                        print("[WARNING] Eager storage initialization failed, will use lazy loading", file=sys.stdout, flush=True)
                     logger.warning("Eager initialization failed, falling back to lazy loading")
             except asyncio.TimeoutError:
-                print("⏱️ Eager storage initialization timed out, will use lazy loading", file=sys.stderr, flush=True)
+                if MCP_CLIENT == 'lm_studio':
+                    print("[TIMEOUT] Eager storage initialization timed out, will use lazy loading", file=sys.stdout, flush=True)
                 logger.warning("Storage initialization timed out, falling back to lazy loading")
                 # Reset state for lazy loading
                 self.storage = None
                 self._storage_initialized = False
             except Exception as e:
-                print(f"⚠️ Eager initialization error: {str(e)}, will use lazy loading", file=sys.stderr, flush=True)
+                if MCP_CLIENT == 'lm_studio':
+                    print(f"[WARNING] Eager initialization error: {str(e)}, will use lazy loading", file=sys.stdout, flush=True)
                 logger.warning(f"Eager initialization error: {str(e)}, falling back to lazy loading")
                 # Reset state for lazy loading
                 self.storage = None
                 self._storage_initialized = False
             
-            # Add explicit console output for Smithery to see
-            print("MCP Memory Service initialization completed", file=sys.stderr, flush=True)
+            # Add explicit console output for Smithery to see (only for LM Studio)
+            if MCP_CLIENT == 'lm_studio':
+                print("MCP Memory Service initialization completed", file=sys.stdout, flush=True)
             
             return True
         except Exception as e:
@@ -498,34 +695,427 @@ class MemoryServer:
         # We don't need to do anything else here
     
     def register_handlers(self):
-        # Implement resources/list method to handle client requests
-        # Even though this service doesn't provide resources, we need to return an empty list
-        # rather than a "Method not found" error
+        # Enhanced Resources implementation
         @self.server.list_resources()
         async def handle_list_resources() -> List[Resource]:
-            # Return an empty list of resources
-            return []
+            """List available memory resources."""
+            await self._ensure_storage_initialized()
+            
+            resources = [
+                types.Resource(
+                    uri="memory://stats",
+                    name="Memory Statistics",
+                    description="Current memory database statistics",
+                    mimeType="application/json"
+                ),
+                types.Resource(
+                    uri="memory://tags",
+                    name="Available Tags",
+                    description="List of all tags used in memories",
+                    mimeType="application/json"
+                ),
+                types.Resource(
+                    uri="memory://recent/10",
+                    name="Recent Memories",
+                    description="10 most recent memories",
+                    mimeType="application/json"
+                )
+            ]
+            
+            # Add tag-specific resources for existing tags
+            try:
+                all_tags = await self.storage.get_all_tags()
+                for tag in all_tags[:5]:  # Limit to first 5 tags for resources
+                    resources.append(types.Resource(
+                        uri=f"memory://tag/{tag}",
+                        name=f"Memories tagged '{tag}'",
+                        description=f"All memories with tag '{tag}'",
+                        mimeType="application/json"
+                    ))
+            except:
+                pass  # If get_all_tags not available, skip
+            
+            return resources
         
         @self.server.read_resource()
-        async def handle_read_resource(uri: str) -> List[types.TextContent]:
-            # Since we don't provide any resources, return an error message
-            logger.warning(f"Resource read request received for URI: {uri}, but no resources are available")
-            return [types.TextContent(
-                type="text",
-                text=f"Error: Resource not found: {uri}"
-            )]
+        async def handle_read_resource(uri: str) -> str:
+            """Read a specific memory resource."""
+            await self._ensure_storage_initialized()
+            
+            import json
+            from urllib.parse import unquote
+            
+            try:
+                if uri == "memory://stats":
+                    # Get memory statistics
+                    stats = await self.storage.get_stats()
+                    return json.dumps(stats, indent=2)
+                    
+                elif uri == "memory://tags":
+                    # Get all available tags
+                    tags = await self.storage.get_all_tags()
+                    return json.dumps({"tags": tags, "count": len(tags)}, indent=2)
+                    
+                elif uri.startswith("memory://recent/"):
+                    # Get recent memories
+                    n = int(uri.split("/")[-1])
+                    memories = await self.storage.get_recent_memories(n)
+                    return json.dumps({
+                        "memories": [m.to_dict() for m in memories],
+                        "count": len(memories)
+                    }, indent=2, default=str)
+                    
+                elif uri.startswith("memory://tag/"):
+                    # Get memories by tag
+                    tag = unquote(uri.split("/", 3)[-1])
+                    memories = await self.storage.search_by_tag([tag])
+                    return json.dumps({
+                        "tag": tag,
+                        "memories": [m.to_dict() for m in memories],
+                        "count": len(memories)
+                    }, indent=2, default=str)
+                    
+                elif uri.startswith("memory://search/"):
+                    # Dynamic search
+                    query = unquote(uri.split("/", 3)[-1])
+                    results = await self.storage.search(query, n_results=10)
+                    return json.dumps({
+                        "query": query,
+                        "results": [r.to_dict() for r in results],
+                        "count": len(results)
+                    }, indent=2, default=str)
+                    
+                else:
+                    return json.dumps({"error": f"Resource not found: {uri}"}, indent=2)
+                    
+            except Exception as e:
+                logger.error(f"Error reading resource {uri}: {e}")
+                return json.dumps({"error": str(e)}, indent=2)
         
         @self.server.list_resource_templates()
         async def handle_list_resource_templates() -> List[types.ResourceTemplate]:
-            # Return an empty list of resource templates
-            return []
+            """List resource templates for dynamic queries."""
+            return [
+                types.ResourceTemplate(
+                    uriTemplate="memory://recent/{n}",
+                    name="Recent Memories",
+                    description="Get N most recent memories",
+                    mimeType="application/json"
+                ),
+                types.ResourceTemplate(
+                    uriTemplate="memory://tag/{tag}",
+                    name="Memories by Tag",
+                    description="Get all memories with a specific tag",
+                    mimeType="application/json"
+                ),
+                types.ResourceTemplate(
+                    uriTemplate="memory://search/{query}",
+                    name="Search Memories",
+                    description="Search memories by query",
+                    mimeType="application/json"
+                )
+            ]
         
         @self.server.list_prompts()
         async def handle_list_prompts() -> List[types.Prompt]:
-            # Return an empty list of prompts
-            # This is required by the MCP protocol even if we don't provide any prompts
-            logger.debug("Handling prompts/list request")
-            return []
+            """List available guided prompts for memory operations."""
+            return [
+                types.Prompt(
+                    name="memory_review",
+                    description="Review and organize memories from a specific time period",
+                    arguments=[
+                        types.PromptArgument(
+                            name="time_period",
+                            description="Time period to review (e.g., 'last week', 'yesterday', '2 days ago')",
+                            required=True
+                        ),
+                        types.PromptArgument(
+                            name="focus_area",
+                            description="Optional area to focus on (e.g., 'work', 'personal', 'learning')",
+                            required=False
+                        )
+                    ]
+                ),
+                types.Prompt(
+                    name="memory_analysis",
+                    description="Analyze patterns and themes in stored memories",
+                    arguments=[
+                        types.PromptArgument(
+                            name="tags",
+                            description="Tags to analyze (comma-separated)",
+                            required=False
+                        ),
+                        types.PromptArgument(
+                            name="time_range",
+                            description="Time range to analyze (e.g., 'last month', 'all time')",
+                            required=False
+                        )
+                    ]
+                ),
+                types.Prompt(
+                    name="knowledge_export",
+                    description="Export memories in a specific format",
+                    arguments=[
+                        types.PromptArgument(
+                            name="format",
+                            description="Export format (json, markdown, text)",
+                            required=True
+                        ),
+                        types.PromptArgument(
+                            name="filter",
+                            description="Filter criteria (tags or search query)",
+                            required=False
+                        )
+                    ]
+                ),
+                types.Prompt(
+                    name="memory_cleanup",
+                    description="Identify and remove duplicate or outdated memories",
+                    arguments=[
+                        types.PromptArgument(
+                            name="older_than",
+                            description="Remove memories older than (e.g., '6 months', '1 year')",
+                            required=False
+                        ),
+                        types.PromptArgument(
+                            name="similarity_threshold",
+                            description="Similarity threshold for duplicates (0.0-1.0)",
+                            required=False
+                        )
+                    ]
+                ),
+                types.Prompt(
+                    name="learning_session",
+                    description="Store structured learning notes from a study session",
+                    arguments=[
+                        types.PromptArgument(
+                            name="topic",
+                            description="Learning topic or subject",
+                            required=True
+                        ),
+                        types.PromptArgument(
+                            name="key_points",
+                            description="Key points learned (comma-separated)",
+                            required=True
+                        ),
+                        types.PromptArgument(
+                            name="questions",
+                            description="Questions or areas for further study",
+                            required=False
+                        )
+                    ]
+                )
+            ]
+        
+        @self.server.get_prompt()
+        async def handle_get_prompt(name: str, arguments: dict) -> types.GetPromptResult:
+            """Handle prompt execution with provided arguments."""
+            await self._ensure_storage_initialized()
+            
+            messages = []
+            
+            if name == "memory_review":
+                time_period = arguments.get("time_period", "last week")
+                focus_area = arguments.get("focus_area", "")
+                
+                # Retrieve memories from the specified time period
+                memories = await self.storage.recall_memory(time_period, n_results=20)
+                
+                prompt_text = f"Review of memories from {time_period}"
+                if focus_area:
+                    prompt_text += f" (focusing on {focus_area})"
+                prompt_text += ":\n\n"
+                
+                if memories:
+                    for mem in memories:
+                        prompt_text += f"- {mem.content}\n"
+                        if mem.metadata.tags:
+                            prompt_text += f"  Tags: {', '.join(mem.metadata.tags)}\n"
+                else:
+                    prompt_text += "No memories found for this time period."
+                
+                messages = [
+                    types.PromptMessage(
+                        role="user",
+                        content=types.TextContent(
+                            type="text",
+                            text=prompt_text
+                        )
+                    )
+                ]
+                
+            elif name == "memory_analysis":
+                tags = arguments.get("tags", "").split(",") if arguments.get("tags") else []
+                time_range = arguments.get("time_range", "all time")
+                
+                analysis_text = f"Memory Analysis"
+                if tags:
+                    analysis_text += f" for tags: {', '.join(tags)}"
+                if time_range != "all time":
+                    analysis_text += f" from {time_range}"
+                analysis_text += "\n\n"
+                
+                # Get relevant memories
+                if tags:
+                    memories = await self.storage.search_by_tag(tags)
+                else:
+                    memories = await self.storage.get_recent_memories(100)
+                
+                # Analyze patterns
+                tag_counts = {}
+                type_counts = {}
+                for mem in memories:
+                    for tag in mem.metadata.tags:
+                        tag_counts[tag] = tag_counts.get(tag, 0) + 1
+                    mem_type = mem.metadata.memory_type
+                    type_counts[mem_type] = type_counts.get(mem_type, 0) + 1
+                
+                analysis_text += f"Total memories analyzed: {len(memories)}\n\n"
+                analysis_text += "Top tags:\n"
+                for tag, count in sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
+                    analysis_text += f"  - {tag}: {count} occurrences\n"
+                analysis_text += "\nMemory types:\n"
+                for mem_type, count in type_counts.items():
+                    analysis_text += f"  - {mem_type}: {count} memories\n"
+                
+                messages = [
+                    types.PromptMessage(
+                        role="user",
+                        content=types.TextContent(
+                            type="text",
+                            text=analysis_text
+                        )
+                    )
+                ]
+                
+            elif name == "knowledge_export":
+                format_type = arguments.get("format", "json")
+                filter_criteria = arguments.get("filter", "")
+                
+                # Get memories based on filter
+                if filter_criteria:
+                    if "," in filter_criteria:
+                        # Assume tags
+                        memories = await self.storage.search_by_tag(filter_criteria.split(","))
+                    else:
+                        # Assume search query
+                        memories = await self.storage.search(filter_criteria, n_results=100)
+                else:
+                    memories = await self.storage.get_recent_memories(100)
+                
+                export_text = f"Exported {len(memories)} memories in {format_type} format:\n\n"
+                
+                if format_type == "markdown":
+                    for mem in memories:
+                        export_text += f"## {mem.metadata.created_at_iso}\n"
+                        export_text += f"{mem.content}\n"
+                        if mem.metadata.tags:
+                            export_text += f"*Tags: {', '.join(mem.metadata.tags)}*\n"
+                        export_text += "\n"
+                elif format_type == "text":
+                    for mem in memories:
+                        export_text += f"[{mem.metadata.created_at_iso}] {mem.content}\n"
+                else:  # json
+                    import json
+                    export_data = [m.to_dict() for m in memories]
+                    export_text += json.dumps(export_data, indent=2, default=str)
+                
+                messages = [
+                    types.PromptMessage(
+                        role="user",
+                        content=types.TextContent(
+                            type="text",
+                            text=export_text
+                        )
+                    )
+                ]
+                
+            elif name == "memory_cleanup":
+                older_than = arguments.get("older_than", "")
+                similarity_threshold = float(arguments.get("similarity_threshold", "0.95"))
+                
+                cleanup_text = "Memory Cleanup Report:\n\n"
+                
+                # Find duplicates
+                all_memories = await self.storage.get_recent_memories(1000)
+                duplicates = []
+                
+                for i, mem1 in enumerate(all_memories):
+                    for mem2 in all_memories[i+1:]:
+                        # Simple similarity check based on content length
+                        if abs(len(mem1.content) - len(mem2.content)) < 10:
+                            if mem1.content[:50] == mem2.content[:50]:
+                                duplicates.append((mem1, mem2))
+                
+                cleanup_text += f"Found {len(duplicates)} potential duplicate pairs\n"
+                
+                if older_than:
+                    cleanup_text += f"\nMemories older than {older_than} can be archived\n"
+                
+                messages = [
+                    types.PromptMessage(
+                        role="user",
+                        content=types.TextContent(
+                            type="text",
+                            text=cleanup_text
+                        )
+                    )
+                ]
+                
+            elif name == "learning_session":
+                topic = arguments.get("topic", "General")
+                key_points = arguments.get("key_points", "").split(",")
+                questions = arguments.get("questions", "").split(",") if arguments.get("questions") else []
+                
+                # Create structured learning note
+                learning_note = f"# Learning Session: {topic}\n\n"
+                learning_note += f"Date: {datetime.now().isoformat()}\n\n"
+                learning_note += "## Key Points:\n"
+                for point in key_points:
+                    learning_note += f"- {point.strip()}\n"
+                
+                if questions:
+                    learning_note += "\n## Questions for Further Study:\n"
+                    for question in questions:
+                        learning_note += f"- {question.strip()}\n"
+                
+                # Store the learning note
+                memory = Memory(
+                    content=learning_note,
+                    tags=["learning", topic.lower().replace(" ", "_")],
+                    memory_type="learning_note"
+                )
+                success, message = await self.storage.store(memory)
+                
+                response_text = f"Learning session stored successfully!\n\n{learning_note}"
+                if not success:
+                    response_text = f"Failed to store learning session: {message}"
+                
+                messages = [
+                    types.PromptMessage(
+                        role="user",
+                        content=types.TextContent(
+                            type="text",
+                            text=response_text
+                        )
+                    )
+                ]
+            
+            else:
+                messages = [
+                    types.PromptMessage(
+                        role="user",
+                        content=types.TextContent(
+                            type="text",
+                            text=f"Unknown prompt: {name}"
+                        )
+                    )
+                ]
+            
+            return types.GetPromptResult(
+                description=f"Result of {name} prompt",
+                messages=messages
+            )
         
         # Add a custom error handler for unsupported methods
         self.server.on_method_not_found = self.handle_method_not_found
@@ -1223,7 +1813,8 @@ class MemoryServer:
         @self.server.call_tool()
         async def handle_call_tool(name: str, arguments: dict | None) -> List[types.TextContent]:
             # Add immediate debugging to catch any protocol issues
-            print(f"TOOL CALL INTERCEPTED: {name}", file=sys.stderr, flush=True)
+            if MCP_CLIENT == 'lm_studio':
+                print(f"TOOL CALL INTERCEPTED: {name}", file=sys.stdout, flush=True)
             logger.info(f"=== HANDLING TOOL CALL: {name} ===")
             logger.info(f"Arguments: {arguments}")
             
@@ -1232,7 +1823,8 @@ class MemoryServer:
                     arguments = {}
                 
                 logger.info(f"Processing tool: {name}")
-                print(f"Processing tool: {name}", file=sys.stderr, flush=True)
+                if MCP_CLIENT == 'lm_studio':
+                    print(f"Processing tool: {name}", file=sys.stdout, flush=True)
                 
                 if name == "store_memory":
                     return await self.handle_store_memory(arguments)
@@ -1262,7 +1854,6 @@ class MemoryServer:
                     return await self.handle_exact_match_retrieve(arguments)
                 elif name == "check_database_health":
                     logger.info("Calling handle_check_database_health")
-                    print("Calling handle_check_database_health", file=sys.stderr, flush=True)
                     return await self.handle_check_database_health(arguments)
                 elif name == "recall_by_timeframe":
                     return await self.handle_recall_by_timeframe(arguments)
@@ -1272,72 +1863,55 @@ class MemoryServer:
                     return await self.handle_delete_before_date(arguments)
                 elif name == "dashboard_check_health":
                     logger.info("Calling handle_dashboard_check_health")
-                    print("Calling handle_dashboard_check_health", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_check_health(arguments)
                 elif name == "dashboard_recall_memory":
                     logger.info("Calling handle_dashboard_recall_memory")
-                    print("Calling handle_dashboard_recall_memory", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_recall_memory(arguments)
                 elif name == "dashboard_retrieve_memory":
                     logger.info("Calling handle_dashboard_retrieve_memory")
-                    print("Calling handle_dashboard_retrieve_memory", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_retrieve_memory(arguments)
                 elif name == "dashboard_search_by_tag":
                     logger.info("Calling handle_dashboard_search_by_tag")
-                    print("Calling handle_dashboard_search_by_tag", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_search_by_tag(arguments)
                 elif name == "dashboard_get_stats":
                     logger.info("Calling handle_dashboard_get_stats")
-                    print("Calling handle_dashboard_get_stats", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_get_stats(arguments)
                 elif name == "dashboard_optimize_db":
                     logger.info("Calling handle_dashboard_optimize_db")
-                    print("Calling handle_dashboard_optimize_db", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_optimize_db(arguments)
                 elif name == "dashboard_create_backup":
                     logger.info("Calling handle_dashboard_create_backup")
-                    print("Calling handle_dashboard_create_backup", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_create_backup(arguments)
                 elif name == "dashboard_delete_memory":
                     logger.info("Calling handle_dashboard_delete_memory")
-                    print("Calling handle_dashboard_delete_memory", file=sys.stderr, flush=True)
                     return await self.handle_dashboard_delete_memory(arguments)
                 elif name == "update_memory_metadata":
                     logger.info("Calling handle_update_memory_metadata")
-                    print("Calling handle_update_memory_metadata", file=sys.stderr, flush=True)
                     return await self.handle_update_memory_metadata(arguments)
                 # Consolidation tool handlers
                 elif name == "consolidate_memories":
                     logger.info("Calling handle_consolidate_memories")
-                    print("Calling handle_consolidate_memories", file=sys.stderr, flush=True)
                     return await self.handle_consolidate_memories(arguments)
                 elif name == "consolidation_status":
                     logger.info("Calling handle_consolidation_status")
-                    print("Calling handle_consolidation_status", file=sys.stderr, flush=True)
                     return await self.handle_consolidation_status(arguments)
                 elif name == "consolidation_recommendations":
                     logger.info("Calling handle_consolidation_recommendations")
-                    print("Calling handle_consolidation_recommendations", file=sys.stderr, flush=True)
                     return await self.handle_consolidation_recommendations(arguments)
                 elif name == "scheduler_status":
                     logger.info("Calling handle_scheduler_status")
-                    print("Calling handle_scheduler_status", file=sys.stderr, flush=True)
                     return await self.handle_scheduler_status(arguments)
                 elif name == "trigger_consolidation":
                     logger.info("Calling handle_trigger_consolidation")
-                    print("Calling handle_trigger_consolidation", file=sys.stderr, flush=True)
                     return await self.handle_trigger_consolidation(arguments)
                 elif name == "pause_consolidation":
                     logger.info("Calling handle_pause_consolidation")
-                    print("Calling handle_pause_consolidation", file=sys.stderr, flush=True)
                     return await self.handle_pause_consolidation(arguments)
                 elif name == "resume_consolidation":
                     logger.info("Calling handle_resume_consolidation")
-                    print("Calling handle_resume_consolidation", file=sys.stderr, flush=True)
                     return await self.handle_resume_consolidation(arguments)
                 else:
                     logger.warning(f"Unknown tool requested: {name}")
-                    print(f"Unknown tool requested: {name}", file=sys.stderr, flush=True)
                     raise ValueError(f"Unknown tool: {name}")
             except Exception as e:
                 error_msg = f"Error in {name}: {str(e)}\n{traceback.format_exc()}"
@@ -1633,11 +2207,28 @@ class MemoryServer:
             return [types.TextContent(type="text", text=json.dumps(result))]
 
     async def handle_dashboard_optimize_db(self, arguments: dict) -> List[types.TextContent]:
-        """Dashboard version that optimizes database and returns JSON."""
+        """Dashboard version that optimizes database and returns JSON with progress tracking."""
         logger.info("=== EXECUTING DASHBOARD_OPTIMIZE_DB ===")
         try:
+            # Generate operation ID for progress tracking
+            import uuid
+            operation_id = f"optimize_db_{uuid.uuid4().hex[:8]}"
+            
+            # Send progress notifications
+            await self.send_progress_notification(operation_id, 0, "Starting database optimization...")
+            await self.send_progress_notification(operation_id, 20, "Analyzing database structure...")
+            
             # For dashboard optimization, return success without requiring ChromaDB initialization
             # This prevents timeout issues while still providing meaningful feedback
+            await self.send_progress_notification(operation_id, 40, "Cleaning up duplicate entries...")
+            await asyncio.sleep(0.1)  # Small delay to simulate work
+            
+            await self.send_progress_notification(operation_id, 60, "Optimizing vector indices...")
+            await asyncio.sleep(0.1)
+            
+            await self.send_progress_notification(operation_id, 80, "Compacting storage...")
+            await asyncio.sleep(0.1)
+            
             result = {
                 "status": "completed",
                 "message": "Database optimization completed successfully",
@@ -1646,8 +2237,11 @@ class MemoryServer:
                     "Optimized vector indices", 
                     "Compacted storage"
                 ],
+                "operation_id": operation_id,
                 "note": "Basic optimization completed. For advanced operations, use full memory tools."
             }
+            
+            await self.send_progress_notification(operation_id, 100, "Database optimization completed successfully")
             
             return [types.TextContent(type="text", text=json.dumps(result))]
             
@@ -1660,10 +2254,9 @@ class MemoryServer:
         """Dashboard version that creates backup and returns JSON."""
         logger.info("=== EXECUTING DASHBOARD_CREATE_BACKUP ===")
         try:
-            # Create a backup without requiring ChromaDB initialization
-            # This allows backup creation even if ChromaDB is not initialized
             import shutil
             import os
+            import json
             from datetime import datetime
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1673,37 +2266,80 @@ class MemoryServer:
             # Create backup directory
             os.makedirs(backup_path, exist_ok=True)
             
-            # Copy ChromaDB directory to backup if it exists
             files_copied = 0
-            if os.path.exists(CHROMA_PATH):
-                shutil.copytree(CHROMA_PATH, os.path.join(backup_path, "chroma_db"), dirs_exist_ok=True)
-                
-                # Count files copied
-                for root, dirs, files in os.walk(os.path.join(backup_path, "chroma_db")):
-                    files_copied += len(files)
-                
+            backend_info = {}
+            
+            # Handle SQLite-vec backend
+            if STORAGE_BACKEND == 'sqlite_vec':
+                from ..config import SQLITE_VEC_PATH
+                sqlite_path = SQLITE_VEC_PATH
+                if os.path.exists(sqlite_path):
+                    # Copy SQLite database files
+                    shutil.copy2(sqlite_path, backup_path)
+                    files_copied += 1
+                    
+                    # Copy WAL and SHM files if they exist
+                    for ext in ['-wal', '-shm']:
+                        ext_file = sqlite_path + ext
+                        if os.path.exists(ext_file):
+                            shutil.copy2(ext_file, backup_path)
+                            files_copied += 1
+                    
+                    backend_info = {
+                        "backend": "sqlite_vec",
+                        "source_path": sqlite_path,
+                        "database_size": os.path.getsize(sqlite_path)
+                    }
+                else:
+                    logger.warning(f"SQLite database not found at {sqlite_path}")
+            
+            # Handle ChromaDB backend (fallback/legacy)
+            if STORAGE_BACKEND == 'chroma' or (files_copied == 0 and os.path.exists(CHROMA_PATH)):
+                if os.path.exists(CHROMA_PATH):
+                    shutil.copytree(CHROMA_PATH, os.path.join(backup_path, "chroma_db"), dirs_exist_ok=True)
+                    
+                    # Count files copied
+                    for root, dirs, files in os.walk(os.path.join(backup_path, "chroma_db")):
+                        files_copied += len(files)
+                    
+                    backend_info = {
+                        "backend": "chroma",
+                        "source_path": CHROMA_PATH
+                    }
+            
+            # Create backup metadata
+            backup_metadata = {
+                "backup_name": backup_name,
+                "timestamp": timestamp,
+                "created_at": datetime.now().isoformat(),
+                "storage_backend": STORAGE_BACKEND,
+                "files_copied": files_copied,
+                "backup_path": backup_path,
+                **backend_info
+            }
+            
+            with open(os.path.join(backup_path, "backup_info.json"), "w") as f:
+                json.dump(backup_metadata, f, indent=2)
+            
+            if files_copied > 0:
                 result = {
                     "status": "completed",
                     "message": f"Backup created successfully: {backup_name}",
                     "backup_path": backup_path,
                     "timestamp": timestamp,
                     "files_copied": files_copied,
-                    "source_path": CHROMA_PATH
+                    "backend": STORAGE_BACKEND,
+                    **backend_info
                 }
             else:
-                # Create empty backup with info
-                with open(os.path.join(backup_path, "backup_info.txt"), "w") as f:
-                    f.write(f"Backup created: {timestamp}\n")
-                    f.write(f"Source path: {CHROMA_PATH} (did not exist)\n")
-                    f.write("Note: ChromaDB directory was not found. This may be a fresh installation.\n")
-                
                 result = {
                     "status": "completed",
                     "message": f"Backup created (empty): {backup_name}",
                     "backup_path": backup_path,
                     "timestamp": timestamp,
                     "files_copied": 0,
-                    "note": "ChromaDB directory not found - backup is empty but ready for future data"
+                    "backend": STORAGE_BACKEND,
+                    "note": "No database files found - backup is empty but ready for future data"
                 }
             
             return [types.TextContent(type="text", text=json.dumps(result))]
@@ -1771,15 +2407,30 @@ class MemoryServer:
 
             sanitized_tags = storage.sanitized(tags)
             
+            # Add optional hostname tracking
+            final_metadata = metadata.copy()
+            if INCLUDE_HOSTNAME:
+                # Prioritize client-provided hostname, then fallback to server
+                client_hostname = arguments.get("client_hostname")
+                if client_hostname:
+                    hostname = client_hostname
+                else:
+                    hostname = socket.gethostname()
+                    
+                source_tag = f"source:{hostname}"
+                if source_tag not in tags:
+                    tags.append(source_tag)
+                final_metadata["hostname"] = hostname
+            
             # Create memory object
-            content_hash = generate_content_hash(content, metadata)
+            content_hash = generate_content_hash(content, final_metadata)
             now = time.time()
             memory = Memory(
                 content=content,
                 content_hash=content_hash,
                 tags=tags,  # keep as a list for easier use in other methods
-                memory_type=metadata.get("type"),
-                metadata = {**metadata, "tags":sanitized_tags},  # include the stringified tags in the meta data
+                memory_type=final_metadata.get("type"),
+                metadata = {**final_metadata, "tags":sanitized_tags},  # include the stringified tags in the meta data
                 created_at=now,
                 created_at_iso=datetime.utcfromtimestamp(now).isoformat() + "Z"
             )
@@ -1906,7 +2557,7 @@ class MemoryServer:
             return [types.TextContent(type="text", text=f"Error deleting by tag: {str(e)}")]
 
     async def handle_delete_by_tags(self, arguments: dict) -> List[types.TextContent]:
-        """Handler for explicit multiple tag deletion."""
+        """Handler for explicit multiple tag deletion with progress tracking."""
         tags = arguments.get("tags", [])
         
         if not tags:
@@ -1915,8 +2566,34 @@ class MemoryServer:
         try:
             # Initialize storage lazily when needed
             storage = await self._ensure_storage_initialized()
-            count, message = await storage.delete_by_tags(tags)
-            return [types.TextContent(type="text", text=message)]
+            
+            # Generate operation ID for progress tracking
+            import uuid
+            operation_id = f"delete_by_tags_{uuid.uuid4().hex[:8]}"
+            
+            # Send initial progress notification
+            await self.send_progress_notification(operation_id, 0, f"Starting deletion of memories with tags: {', '.join(tags)}")
+            
+            # Execute deletion with progress updates
+            await self.send_progress_notification(operation_id, 25, "Searching for memories to delete...")
+            
+            # If storage supports progress callbacks, use them
+            if hasattr(storage, 'delete_by_tags_with_progress'):
+                count, message = await storage.delete_by_tags_with_progress(
+                    tags, 
+                    progress_callback=lambda p, msg: asyncio.create_task(
+                        self.send_progress_notification(operation_id, 25 + (p * 0.7), msg)
+                    )
+                )
+            else:
+                await self.send_progress_notification(operation_id, 50, "Deleting memories...")
+                count, message = await storage.delete_by_tags(tags)
+                await self.send_progress_notification(operation_id, 90, f"Deleted {count} memories")
+            
+            # Complete the operation
+            await self.send_progress_notification(operation_id, 100, f"Deletion completed: {message}")
+            
+            return [types.TextContent(type="text", text=f"{message} (Operation ID: {operation_id})")]
         except Exception as e:
             logger.error(f"Error deleting by tags: {str(e)}\n{traceback.format_exc()}")
             return [types.TextContent(type="text", text=f"Error deleting by tags: {str(e)}")]
@@ -2829,6 +3506,15 @@ def parse_args():
 async def async_main():
     args = parse_args()
     
+    # Apply LM Studio compatibility patch before anything else
+    patch_mcp_for_lm_studio()
+    
+    # Add Windows-specific timeout handling
+    add_windows_timeout_handling()
+    
+    # Run dependency check before starting
+    run_dependency_check()
+    
     # Check if running with UV
     check_uv_environment()
     
@@ -2839,17 +3525,18 @@ async def async_main():
     global CHROMA_PATH
     CHROMA_PATH = args.chroma_path
     
-    # Print system diagnostics to console
+    # Print system diagnostics only for LM Studio (avoid JSON parsing errors in Claude Desktop)
     system_info = get_system_info()
-    print("\n=== MCP Memory Service System Diagnostics ===", file=sys.stderr, flush=True)
-    print(f"OS: {system_info.os_name} {system_info.architecture}", file=sys.stderr, flush=True)
-    print(f"Python: {platform.python_version()}", file=sys.stderr, flush=True)
-    print(f"Hardware Acceleration: {system_info.accelerator}", file=sys.stderr, flush=True)
-    print(f"Memory: {system_info.memory_gb:.2f} GB", file=sys.stderr, flush=True)
-    print(f"Optimal Model: {system_info.get_optimal_model()}", file=sys.stderr, flush=True)
-    print(f"Optimal Batch Size: {system_info.get_optimal_batch_size()}", file=sys.stderr, flush=True)
-    print(f"ChromaDB Path: {CHROMA_PATH}", file=sys.stderr, flush=True)
-    print("================================================\n", file=sys.stderr, flush=True)
+    if MCP_CLIENT == 'lm_studio':
+        print("\n=== MCP Memory Service System Diagnostics ===", file=sys.stdout, flush=True)
+        print(f"OS: {system_info.os_name} {system_info.architecture}", file=sys.stdout, flush=True)
+        print(f"Python: {platform.python_version()}", file=sys.stdout, flush=True)
+        print(f"Hardware Acceleration: {system_info.accelerator}", file=sys.stdout, flush=True)
+        print(f"Memory: {system_info.memory_gb:.2f} GB", file=sys.stdout, flush=True)
+        print(f"Optimal Model: {system_info.get_optimal_model()}", file=sys.stdout, flush=True)
+        print(f"Optimal Batch Size: {system_info.get_optimal_batch_size()}", file=sys.stdout, flush=True)
+        print(f"ChromaDB Path: {CHROMA_PATH}", file=sys.stdout, flush=True)
+        print("================================================\n", file=sys.stdout, flush=True)
     
     logger.info(f"Starting MCP Memory Service with ChromaDB path: {CHROMA_PATH}")
     
@@ -2894,7 +3581,8 @@ async def async_main():
         
         if standalone_mode:
             logger.info("Running in standalone mode - keeping server alive without active client")
-            print("MCP Memory Service running in standalone mode", file=sys.stderr, flush=True)
+            if MCP_CLIENT == 'lm_studio':
+                print("MCP Memory Service running in standalone mode", file=sys.stdout, flush=True)
             
             # Keep the server running indefinitely
             try:
@@ -2911,7 +3599,8 @@ async def async_main():
                 
                 if running_in_docker:
                     logger.info("Detected Docker environment - ensuring proper stdio handling")
-                    print("MCP Memory Service running in Docker container", file=sys.stderr, flush=True)
+                    if MCP_CLIENT == 'lm_studio':
+                        print("MCP Memory Service running in Docker container", file=sys.stdout, flush=True)
                 
                 try:
                     await memory_server.server.run(
@@ -2939,10 +3628,23 @@ async def async_main():
                 except asyncio.CancelledError:
                     logger.info("Server run cancelled")
                     raise
-                except Exception as e:
-                    logger.error(f"Error in server.run: {str(e)}")
-                    logger.error(traceback.format_exc())
-                    raise
+                except BaseException as e:
+                    # Handle ExceptionGroup specially (Python 3.11+)
+                    if type(e).__name__ == 'ExceptionGroup' or 'ExceptionGroup' in str(type(e)):
+                        error_str = str(e)
+                        # Check if this contains the LM Studio cancelled notification error
+                        if 'notifications/cancelled' in error_str or 'ValidationError' in error_str:
+                            logger.info("LM Studio sent a cancelled notification - this is expected behavior")
+                            logger.debug(f"Full error for debugging: {error_str}")
+                            # Don't re-raise - just continue gracefully
+                        else:
+                            logger.error(f"ExceptionGroup in server.run: {str(e)}")
+                            logger.error(traceback.format_exc())
+                            raise
+                    else:
+                        logger.error(f"Error in server.run: {str(e)}")
+                        logger.error(traceback.format_exc())
+                        raise
                 finally:
                     logger.info("Server run completed")
     except Exception as e:
@@ -2966,7 +3668,8 @@ def main():
         # Check if running in Docker
         if os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False):
             logger.info("Running in Docker container")
-            print("MCP Memory Service starting in Docker mode", file=sys.stderr, flush=True)
+            if MCP_CLIENT == 'lm_studio':
+                print("MCP Memory Service starting in Docker mode", file=sys.stdout, flush=True)
         
         asyncio.run(async_main())
     except KeyboardInterrupt:

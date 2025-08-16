@@ -68,23 +68,28 @@ jobs:
         file: ./tools/docker/Dockerfile
         platforms: linux/amd64
         push: false
+        load: true
         tags: mcp-memory-service:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
     - name: Test Docker image
       run: |
-        # Test image can be created
-        docker run --rm mcp-memory-service:test python -c "print('✓ Docker image works')"
+        # Test image can be created (override entrypoint to run python directly)
+        docker run --rm --entrypoint="" mcp-memory-service:test python -c "print('✓ Docker image works')"
         
-        # Test standalone mode
-        docker run --rm -e MCP_STANDALONE_MODE=1 mcp-memory-service:test timeout 5s python -m mcp_memory_service.server || echo "✓ Standalone mode works"
+        # Test that the server can show help
+        docker run --rm mcp-memory-service:test --help > /dev/null && echo "✓ Server help works"
 
   publish-docker:
     needs: [test-uvx-compatibility, test-docker-build]
     runs-on: ubuntu-latest
     name: Publish Docker image
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     
     steps:
     - name: Checkout repository

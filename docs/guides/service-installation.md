@@ -194,13 +194,77 @@ The service inherits these environment variables:
 - `MCP_HTTPS_ENABLED`: Enable HTTPS (default: `true`)
 - `MCP_MDNS_ENABLED`: Enable mDNS discovery (default: `true`)
 - `MCP_CONSOLIDATION_ENABLED`: Enable memory consolidation (default: `true`)
+- `MCP_API_KEY`: API key for HTTP authentication (optional, auto-generated during install)
 
 ### API Key
 
-The installer automatically generates a secure API key. You can find it:
-1. In the installation output
-2. In the config file: `~/.mcp_memory_service/service_config.json`
-3. By running: `python install_service.py --status`
+The installer automatically generates a secure API key for HTTP authentication. This key protects your memory service from unauthorized access when running as a service.
+
+#### Finding Your API Key
+
+You can find your API key in several ways:
+
+1. **Installation Output**: The key is displayed during installation
+2. **Config File**: Located in `~/.mcp_memory_service/service_config.json`
+3. **Status Command**: Run `python install_service.py --status`
+4. **Service File**: Check the systemd/service configuration file directly
+
+#### Generating a New API Key
+
+To generate a new secure API key:
+
+```bash
+# Generate a 32-byte base64 encoded key
+openssl rand -base64 32
+
+# Or generate a hex key
+openssl rand -hex 32
+```
+
+#### Updating the API Key
+
+To change your API key after installation:
+
+1. **Stop the service**:
+   ```bash
+   python install_service.py --stop
+   ```
+
+2. **Edit the service configuration**:
+   - **Linux**: Edit `/etc/systemd/system/mcp-memory.service` or `~/.config/systemd/user/mcp-memory.service`
+   - **macOS**: Edit `~/Library/LaunchAgents/com.mcp.memory-service.plist`
+   - **Windows**: Use `sc config` or Services Manager
+
+3. **Update the environment variable**:
+   ```bash
+   # Find the line with MCP_API_KEY and replace the value
+   Environment=MCP_API_KEY=your-new-api-key-here
+   ```
+
+4. **Reload and restart the service**:
+   ```bash
+   # Linux (system service)
+   sudo systemctl daemon-reload
+   sudo systemctl restart mcp-memory
+   
+   # Linux (user service)
+   systemctl --user daemon-reload
+   systemctl --user restart mcp-memory
+   
+   # macOS
+   launchctl unload ~/Library/LaunchAgents/com.mcp.memory-service.plist
+   launchctl load ~/Library/LaunchAgents/com.mcp.memory-service.plist
+   
+   # Or use the installer
+   python install_service.py --restart
+   ```
+
+#### Security Best Practices
+
+- **Keep it Secret**: Never share your API key in logs, emails, or version control
+- **Regular Rotation**: Consider rotating your API key periodically
+- **Secure Storage**: Ensure proper file permissions on configuration files
+- **Environment-Specific Keys**: Use different keys for development, staging, and production
 
 ## User vs System Services
 

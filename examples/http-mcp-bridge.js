@@ -48,6 +48,7 @@ const https = require('https');
 const { URL } = require('url');
 const dgram = require('dgram');
 const dns = require('dns');
+const tls = require('tls');
 
 /**
  * Simple mDNS service discovery implementation
@@ -246,77 +247,145 @@ class HTTPMCPBridge {
     }
 
     /**
-     * Make HTTP request to the MCP Memory Service
+     * Make HTTP request to the MCP Memory Service with retry logic
      */
-    async makeRequest(path, method = 'GET', data = null) {
-        return this.makeRequestInternal(path, method, data);
+    async makeRequest(path, method = 'GET', data = null, maxRetries = 3) {
+        let lastError;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.error(`Attempt ${attempt}/${maxRetries} for ${method} ${path}`);
+                const result = await this.makeRequestInternal(path, method, data);
+                
+                if (attempt > 1) {
+                    console.error(`Request succeeded on attempt ${attempt}`);
+                }
+                
+                return result;
+            } catch (error) {
+                lastError = error;
+                console.error(`Attempt ${attempt} failed: ${error.message}`);
+                
+                if (attempt < maxRetries) {
+                    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff, max 5s
+                    console.error(`Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    console.error(`All ${maxRetries} attempts failed. Last error: ${error.message}`);
+                }
+            }
+        }
+        
+        throw lastError;
     }
 
     /**
-     * Internal HTTP request method with timeout support
+     * Internal HTTP request method with timeout support and comprehensive logging
      */
-    async makeRequestInternal(path, method = 'GET', data = null, timeout = 30000) {
+    async makeRequestInternal(path, method = 'GET', data = null, timeout = 10000) {
+        const startTime = Date.now();
+        const requestId = Math.random().toString(36).substr(2, 9);
+        
+        console.error(`[${requestId}] Starting ${method} request to ${path}`);
+        
         return new Promise((resolve, reject) => {
             const url = new URL(path, this.endpoint);
             const protocol = url.protocol === 'https:' ? https : http;
             
+            console.error(`[${requestId}] Full URL: ${url.toString()}`);
+            console.error(`[${requestId}] Using protocol: ${url.protocol}`);
+            
             const options = {
                 hostname: url.hostname,
-                port: url.port,
+                port: url.port || (url.protocol === 'https:' ? 443 : 80),
                 path: url.pathname + url.search,
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'User-Agent': 'MCP-HTTP-Bridge/2.0'
+                    'User-Agent': 'MCP-HTTP-Bridge/2.0',
+                    'Connection': 'close'
                 },
-                timeout: timeout
+                timeout: timeout,
+                keepAlive: false
             };
 
-            // For HTTPS, allow self-signed certificates in development
+            // For HTTPS, create custom agent for self-signed certificates with TLS 1.3
             if (url.protocol === 'https:') {
-                options.rejectUnauthorized = false;
+                const agent = new https.Agent({
+                    rejectUnauthorized: false,
+                    requestCert: false,
+                    checkServerIdentity: () => undefined,
+                    keepAlive: false
+                });
+                options.agent = agent;
+                console.error(`[${requestId}] Using custom HTTPS agent with default TLS settings`);
             }
 
             if (this.apiKey) {
                 options.headers['Authorization'] = `Bearer ${this.apiKey}`;
+                console.error(`[${requestId}] API key added to headers`);
             }
 
             if (data) {
                 const postData = JSON.stringify(data);
                 options.headers['Content-Length'] = Buffer.byteLength(postData);
+                console.error(`[${requestId}] Request body size: ${Buffer.byteLength(postData)} bytes`);
             }
 
+            console.error(`[${requestId}] Request options:`, JSON.stringify(options, null, 2));
+
             const req = protocol.request(options, (res) => {
+                const responseStartTime = Date.now();
+                console.error(`[${requestId}] Response received after ${responseStartTime - startTime}ms`);
+                console.error(`[${requestId}] Status code: ${res.statusCode}`);
+                console.error(`[${requestId}] Response headers:`, JSON.stringify(res.headers, null, 2));
+                
                 let responseData = '';
                 
                 res.on('data', (chunk) => {
                     responseData += chunk;
+                    console.error(`[${requestId}] Received ${chunk.length} bytes`);
                 });
                 
                 res.on('end', () => {
+                    const endTime = Date.now();
+                    console.error(`[${requestId}] Response completed after ${endTime - startTime}ms total`);
+                    console.error(`[${requestId}] Response body: ${responseData}`);
+                    
                     try {
                         const result = JSON.parse(responseData);
                         resolve({ statusCode: res.statusCode, data: result });
                     } catch (error) {
+                        console.error(`[${requestId}] JSON parse error: ${error.message}`);
                         reject(new Error(`Invalid JSON response: ${responseData}`));
                     }
                 });
             });
 
             req.on('error', (error) => {
+                const errorTime = Date.now();
+                console.error(`[${requestId}] Request error after ${errorTime - startTime}ms: ${error.message}`);
+                console.error(`[${requestId}] Error details:`, error);
                 reject(error);
             });
 
             req.on('timeout', () => {
+                const timeoutTime = Date.now();
+                console.error(`[${requestId}] Request timeout after ${timeoutTime - startTime}ms (limit: ${timeout}ms)`);
                 req.destroy();
-                reject(new Error('Request timeout'));
+                reject(new Error(`Request timeout after ${timeout}ms`));
             });
 
+            console.error(`[${requestId}] Sending request...`);
+            
             if (data) {
-                req.write(JSON.stringify(data));
+                const postData = JSON.stringify(data);
+                console.error(`[${requestId}] Writing request body: ${postData}`);
+                req.write(postData);
             }
             
             req.end();
+            console.error(`[${requestId}] Request sent, waiting for response...`);
         });
     }
 
@@ -454,6 +523,135 @@ class HTTPMCPBridge {
         let result;
         try {
             switch (method) {
+                case 'initialize':
+                    result = {
+                        protocolVersion: "2024-11-05",
+                        capabilities: {
+                            tools: {
+                                listChanged: false
+                            }
+                        },
+                        serverInfo: {
+                            name: "mcp-memory-service",
+                            version: "2.0.0"
+                        }
+                    };
+                    break;
+                case 'notifications/initialized':
+                    // No response needed for notifications
+                    return null;
+                case 'tools/list':
+                    result = {
+                        tools: [
+                            {
+                                name: "store_memory",
+                                description: "Store a memory with content and optional metadata",
+                                inputSchema: {
+                                    type: "object",
+                                    properties: {
+                                        content: { type: "string", description: "The content to store" },
+                                        metadata: { 
+                                            type: "object", 
+                                            properties: {
+                                                tags: { type: "array", items: { type: "string" } },
+                                                type: { type: "string" }
+                                            }
+                                        }
+                                    },
+                                    required: ["content"]
+                                }
+                            },
+                            {
+                                name: "retrieve_memory",
+                                description: "Retrieve memories based on a query",
+                                inputSchema: {
+                                    type: "object", 
+                                    properties: {
+                                        query: { type: "string", description: "Search query" },
+                                        n_results: { type: "integer", description: "Number of results to return" }
+                                    },
+                                    required: ["query"]
+                                }
+                            },
+                            {
+                                name: "search_by_tag",
+                                description: "Search memories by tags",
+                                inputSchema: {
+                                    type: "object",
+                                    properties: {
+                                        tags: { 
+                                            oneOf: [
+                                                { type: "string" },
+                                                { type: "array", items: { type: "string" } }
+                                            ]
+                                        }
+                                    },
+                                    required: ["tags"]
+                                }
+                            },
+                            {
+                                name: "delete_memory",
+                                description: "Delete a memory by content hash",
+                                inputSchema: {
+                                    type: "object",
+                                    properties: {
+                                        content_hash: { type: "string", description: "Hash of the content to delete" }
+                                    },
+                                    required: ["content_hash"]
+                                }
+                            },
+                            {
+                                name: "check_database_health",
+                                description: "Check the health of the memory database",
+                                inputSchema: {
+                                    type: "object",
+                                    properties: {}
+                                }
+                            }
+                        ]
+                    };
+                    break;
+                case 'tools/call':
+                    const toolName = params.name;
+                    const toolParams = params.arguments || {};
+                    
+                    console.error(`Processing tool call: ${toolName} with params:`, JSON.stringify(toolParams));
+                    
+                    let toolResult;
+                    switch (toolName) {
+                        case 'store_memory':
+                            toolResult = await this.storeMemory(toolParams);
+                            break;
+                        case 'retrieve_memory':
+                            toolResult = await this.retrieveMemory(toolParams);
+                            break;
+                        case 'search_by_tag':
+                            toolResult = await this.searchByTag(toolParams);
+                            break;
+                        case 'delete_memory':
+                            toolResult = await this.deleteMemory(toolParams);
+                            break;
+                        case 'check_database_health':
+                            toolResult = await this.checkHealth(toolParams);
+                            break;
+                        default:
+                            throw new Error(`Unknown tool: ${toolName}`);
+                    }
+                    
+                    console.error(`Tool result:`, JSON.stringify(toolResult));
+                    
+                    return {
+                        jsonrpc: "2.0",
+                        id: id,
+                        result: {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: JSON.stringify(toolResult, null, 2)
+                                }
+                            ]
+                        }
+                    };
                 case 'store_memory':
                     result = await this.storeMemory(params);
                     break;

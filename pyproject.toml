@@ -4,10 +4,31 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-memory-service"
-version = "3.3.2"  
-description = "An intelligent semantic memory service with dream-inspired autonomous consolidation using ChromaDB and sentence-transformers"
+version = "5.0.1"  
+description = "Universal MCP memory service with semantic search, multi-client support, and autonomous consolidation for Claude Desktop, VS Code, and 13+ AI applications"
 readme = "README.md"
 requires-python = ">=3.10"
+keywords = [
+    "mcp", "model-context-protocol", "claude-desktop", "semantic-memory", 
+    "vector-database", "ai-assistant", "sqlite-vec", "multi-client",
+    "semantic-search", "memory-consolidation", "ai-productivity", "vs-code",
+    "cursor", "continue", "fastapi", "developer-tools", "cross-platform"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database :: Database Engines/Servers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11", 
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Framework :: FastAPI"
+]
 authors = [
     { name = "Heinrich Krupp", email = "heinrich.krupp@gmail.com" }
 ]
@@ -18,7 +39,7 @@ dependencies = [
     "mcp>=1.0.0,<2.0.0",
     "sqlite-vec>=0.1.0",
     "sentence-transformers>=2.2.2",
-    "torch>=1.6.0",
+    "torch>=2.0.0",
     "build>=0.10.0",
     "aiohttp>=3.8.0",
     "fastapi>=0.115.0",
@@ -33,7 +54,7 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
     "sentence-transformers>=2.2.2",
-    "torch>=1.6.0"
+    "torch>=2.0.0"
 ]
 chromadb = [
     "chromadb==0.5.23"
@@ -44,6 +65,7 @@ sqlite = [
 
 [project.scripts]
 memory = "mcp_memory_service.server:main"
+mcp-memory-server = "mcp_memory_service.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_memory_service"]

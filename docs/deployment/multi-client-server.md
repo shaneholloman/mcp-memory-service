@@ -72,7 +72,7 @@ export MCP_HTTP_PORT=8000
 export MCP_CORS_ORIGINS="*"
 
 # Set API key for authentication (recommended)
-export MCP_API_KEY="your-secure-api-key"
+export MCP_API_KEY="$(openssl rand -base64 32)"  # Generate secure key
 
 # Configure database location
 export MCP_MEMORY_SQLITE_PATH="/path/to/shared/memory.db"
@@ -633,14 +633,92 @@ sudo systemctl start mcp-memory
 
 ### API Authentication
 
+#### Generating API Keys
+
+Always use a secure API key for production deployments:
+
 ```bash
-# Generate secure API key
+# Generate a secure 32-byte base64 encoded key (recommended)
 export MCP_API_KEY="$(openssl rand -base64 32)"
 
-# Use in client requests
+# Alternative: Generate a hex key
+export MCP_API_KEY="$(openssl rand -hex 32)"
+
+# Manual key (ensure it's secure)
+export MCP_API_KEY="your-very-secure-random-key-here"
+```
+
+#### Using API Keys in Requests
+
+All HTTP requests must include the API key in the Authorization header:
+
+```bash
+# Store memory with API key
+curl -X POST http://your-server:8000/api/memories \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "test memory", "tags": ["test"]}'
+
+# Retrieve memories with API key
 curl -H "Authorization: Bearer $MCP_API_KEY" \
   http://your-server:8000/api/memories
 ```
+
+#### Client Configuration with API Keys
+
+Ensure all clients are configured with the same API key:
+
+**JavaScript/Web Clients:**
+```javascript
+const headers = {
+  'Authorization': `Bearer ${process.env.MCP_API_KEY}`,
+  'Content-Type': 'application/json'
+};
+```
+
+**Claude Desktop Configuration:**
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "node",
+      "args": ["/path/to/http-mcp-bridge.js"],
+      "env": {
+        "MCP_MEMORY_HTTP_ENDPOINT": "http://your-server:8000/api",
+        "MCP_MEMORY_API_KEY": "your-actual-api-key-here"
+      }
+    }
+  }
+}
+```
+
+#### API Key Security Best Practices
+
+1. **Environment Variables**: Store API keys in environment variables, never in code
+2. **Unique Keys**: Use different API keys for different environments (dev/staging/prod)
+3. **Key Rotation**: Rotate API keys regularly, especially after team changes
+4. **Secure Storage**: Use secrets management systems for production deployments
+5. **Monitoring**: Log failed authentication attempts (but not the keys themselves)
+
+#### Troubleshooting Authentication
+
+**Common Authentication Errors:**
+
+```bash
+# 401 Unauthorized - Missing or invalid API key
+curl -v http://your-server:8000/api/memories  # No auth header
+
+# 403 Forbidden - API key provided but incorrect
+curl -H "Authorization: Bearer wrong-key" http://your-server:8000/api/memories
+
+# Success - Correct API key format
+curl -H "Authorization: Bearer $MCP_API_KEY" http://your-server:8000/api/memories
+```
+
+**Server Logs for Debugging:**
+- Check server logs for authentication failures
+- Verify the API key is properly set in server environment
+- Ensure clients are sending the correct Authorization header format
 
 ### Network Security
 

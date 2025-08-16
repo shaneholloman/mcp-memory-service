@@ -103,7 +103,7 @@ def main():
     repo_root = Path(__file__).parent.parent
     md_files = find_markdown_files(str(repo_root))
     
-    print(f"🔍 Checking {len(md_files)} markdown files for broken links...\n")
+    print(f"Checking {len(md_files)} markdown files for broken links...\n")
     
     broken_links = []
     total_links = 0
@@ -117,21 +117,21 @@ def main():
             file_results[str(rel_path)] = link_results
             
             if args.verbose or any(not exists for _, _, _, exists in link_results):
-                print(f"\n📄 {rel_path}")
+                print(f"\n[FILE] {rel_path}")
                 
             for link_text, link, target, exists in link_results:
                 total_links += 1
-                status = "✅" if exists else "❌"
+                status = "[OK]" if exists else "[ERROR]"
                 
                 if args.verbose or not exists:
                     print(f"  {status} [{link_text}]({link})")
                     if not exists:
-                        print(f"     → Target: {target}")
+                        print(f"     -> Target: {target}")
                         broken_links.append((str(rel_path), link_text, link, target))
     
     # Summary
     print(f"\n" + "="*60)
-    print(f"📊 SUMMARY:")
+    print(f"SUMMARY:")
     print(f"Total internal links checked: {total_links}")
     print(f"Broken links found: {len(broken_links)}")
     

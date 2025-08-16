@@ -137,17 +137,28 @@ class SystemInfo:
         try:
             # Try to import torch and check for CUDA
             import torch
-            return torch.cuda.is_available()
-        except ImportError:
-            # If torch is not installed, try to check for CUDA using environment
+            # Check if torch is properly installed with CUDA support
+            if hasattr(torch, 'cuda'):
+                return torch.cuda.is_available()
+            else:
+                logger.warning("PyTorch installed but appears broken (no cuda attribute)")
+                return False
+        except (ImportError, AttributeError) as e:
+            logger.debug(f"CUDA check failed: {e}")
+            # If torch is not installed or broken, try to check for CUDA using environment
             return 'CUDA_HOME' in os.environ or 'CUDA_PATH' in os.environ
             
     def _check_mps_available(self) -> bool:
         """Check if Apple MPS is available."""
         try:
             import torch
-            return hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
-        except (ImportError, AttributeError):
+            if hasattr(torch, 'backends') and hasattr(torch.backends, 'mps'):
+                return torch.backends.mps.is_available()
+            else:
+                logger.warning("PyTorch installed but appears broken (no backends attribute)")
+                return False
+        except (ImportError, AttributeError) as e:
+            logger.debug(f"MPS check failed: {e}")
             # Check for Metal support using system profiler
             try:
                 output = subprocess.check_output(
@@ -313,8 +324,12 @@ def get_optimal_embedding_settings() -> Dict[str, Any]:
     }
 
 
-def print_system_diagnostics():
-    """Print detailed system diagnostics for troubleshooting."""
+def print_system_diagnostics(client_type: str = 'lm_studio'):
+    """Print detailed system diagnostics for troubleshooting, conditionally based on client."""
+    # Only print for LM Studio to avoid JSON parsing errors in Claude Desktop
+    if client_type != 'lm_studio':
+        return
+        
     system_info = get_system_info()
     
     print("\n=== System Diagnostics ===")

@@ -83,7 +83,20 @@
       "Bash(git tag:*)",
       "Bash(avahi-browse:*)",
       "Bash(avahi-resolve-host-name:*)",
-      "Bash(systemctl status:*)"
+      "Bash(systemctl status:*)",
+      "Bash(gh issue view:*)",
+      "Bash(/home/hkr/.local/bin/uv run --no-sync python run_server.py)",
+      "Bash(nmap:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(ssh-keygen:*)",
+      "Bash(ssh-copy-id:*)",
+      "Bash(git pull:*)",
+      "mcp__code-context__search_code",
+      "Bash(ssh:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh api:*)",
+      "Bash(git stash:*)"
     ],
     "deny": []
   },

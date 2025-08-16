@@ -249,8 +249,40 @@ class SqliteVecMemoryStorage(MemoryStorage):
             logger.info(f"Loading embedding model: {self.embedding_model_name}")
             logger.info(f"Using device: {device}")
             
-            # Load model with optimal settings
-            self.embedding_model = SentenceTransformer(self.embedding_model_name, device=device)
+            # Configure for offline mode if models are cached
+            import os
+            # Only set offline mode if we detect cached models to prevent initial downloads
+            hf_home = os.environ.get('HF_HOME', os.path.expanduser("~/.cache/huggingface"))
+            model_cache_path = os.path.join(hf_home, "hub", f"models--sentence-transformers--{self.embedding_model_name.replace('/', '--')}")
+            if os.path.exists(model_cache_path):
+                os.environ['HF_HUB_OFFLINE'] = '1'
+                os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            
+            # Try to load from cache first, fallback to direct model name
+            try:
+                # First try loading from Hugging Face cache
+                hf_home = os.environ.get('HF_HOME', os.path.expanduser("~/.cache/huggingface"))
+                cache_path = os.path.join(hf_home, "hub", f"models--sentence-transformers--{self.embedding_model_name.replace('/', '--')}")
+                if os.path.exists(cache_path):
+                    # Find the snapshot directory
+                    snapshots_path = os.path.join(cache_path, "snapshots")
+                    if os.path.exists(snapshots_path):
+                        snapshot_dirs = [d for d in os.listdir(snapshots_path) if os.path.isdir(os.path.join(snapshots_path, d))]
+                        if snapshot_dirs:
+                            model_path = os.path.join(snapshots_path, snapshot_dirs[0])
+                            logger.info(f"Loading model from cache: {model_path}")
+                            self.embedding_model = SentenceTransformer(model_path, device=device)
+                        else:
+                            raise FileNotFoundError("No snapshot found")
+                    else:
+                        raise FileNotFoundError("No snapshots directory")
+                else:
+                    raise FileNotFoundError("No cache found")
+            except Exception as cache_error:
+                logger.warning(f"Failed to load from cache: {cache_error}")
+                # Fallback to normal loading (may fail if offline)
+                logger.info("Attempting normal model loading...")
+                self.embedding_model = SentenceTransformer(self.embedding_model_name, device=device)
             
             # Update embedding dimension based on actual model
             test_embedding = self.embedding_model.encode(["test"], convert_to_numpy=True)
@@ -953,6 +985,60 @@ class SqliteVecMemoryStorage(MemoryStorage):
             logger.error(traceback.format_exc())
             return []
     
+    async def get_all_memories(self) -> List[Memory]:
+        """
+        Get all memories from the database.
+        
+        Returns:
+            List of all Memory objects in the database.
+        """
+        try:
+            if not self.conn:
+                logger.error("Database not initialized, cannot retrieve memories")
+                return []
+            
+            cursor = self.conn.execute('''
+                SELECT content_hash, content, tags, memory_type, metadata,
+                       created_at, updated_at, created_at_iso, updated_at_iso
+                FROM memories
+                ORDER BY created_at DESC
+            ''')
+            
+            results = []
+            for row in cursor.fetchall():
+                try:
+                    content_hash, content, tags_str, memory_type, metadata_str = row[:5]
+                    created_at, updated_at, created_at_iso, updated_at_iso = row[5:]
+                    
+                    # Parse tags and metadata
+                    tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
+                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    
+                    memory = Memory(
+                        content=content,
+                        content_hash=content_hash,
+                        tags=tags,
+                        memory_type=memory_type,
+                        metadata=metadata,
+                        created_at=created_at,
+                        updated_at=updated_at,
+                        created_at_iso=created_at_iso,
+                        updated_at_iso=updated_at_iso
+                    )
+                    
+                    results.append(memory)
+                    
+                except Exception as parse_error:
+                    logger.warning(f"Failed to parse memory result: {parse_error}")
+                    continue
+            
+            logger.info(f"Retrieved {len(results)} total memories")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error getting all memories: {str(e)}")
+            return []
+
     def close(self):
         """Close the database connection."""
         if self.conn:

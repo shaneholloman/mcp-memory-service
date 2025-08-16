@@ -79,3 +79,29 @@ class MemoryStorage(ABC):
             - created_at is preserved unless preserve_timestamps=False
         """
         pass
+    
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get storage statistics. Override for specific implementations."""
+        return {
+            "total_memories": 0,
+            "storage_backend": self.__class__.__name__,
+            "status": "operational"
+        }
+    
+    async def get_all_tags(self) -> List[str]:
+        """Get all unique tags in the storage. Override for specific implementations."""
+        return []
+    
+    async def get_recent_memories(self, n: int = 10) -> List[Memory]:
+        """Get n most recent memories. Override for specific implementations."""
+        return []
+    
+    async def recall_memory(self, query: str, n_results: int = 5) -> List[Memory]:
+        """Recall memories based on natural language time expression. Override for specific implementations."""
+        # Default implementation just uses regular search
+        results = await self.retrieve(query, n_results)
+        return [r.memory for r in results]
+    
+    async def search(self, query: str, n_results: int = 5) -> List[MemoryQueryResult]:
+        """Search memories. Default implementation uses retrieve."""
+        return await self.retrieve(query, n_results)

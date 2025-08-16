@@ -177,8 +177,6 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      with:
-        driver: docker  # Use docker driver for local loading compatibility
 
     - name: Build Docker image
       uses: docker/build-push-action@v5
@@ -189,6 +187,8 @@ jobs:
         push: false
         load: true
         tags: mcp-memory-service:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Test Docker image
       run: |

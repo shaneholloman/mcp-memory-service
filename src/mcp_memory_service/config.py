@@ -156,7 +156,7 @@ SERVER_VERSION = "0.2.2"
 
 # Storage backend configuration
 SUPPORTED_BACKENDS = ['chroma', 'sqlite_vec', 'sqlite-vec']
-STORAGE_BACKEND = os.getenv('MCP_MEMORY_STORAGE_BACKEND', 'chroma').lower()
+STORAGE_BACKEND = os.getenv('MCP_MEMORY_STORAGE_BACKEND', 'sqlite_vec').lower()
 
 # Normalize backend names (sqlite-vec -> sqlite_vec)
 if STORAGE_BACKEND == 'sqlite-vec':
@@ -164,8 +164,8 @@ if STORAGE_BACKEND == 'sqlite-vec':
 
 # Validate backend selection
 if STORAGE_BACKEND not in SUPPORTED_BACKENDS:
-    logger.warning(f"Unknown storage backend: {STORAGE_BACKEND}, falling back to chroma")
-    STORAGE_BACKEND = 'chroma'
+    logger.warning(f"Unknown storage backend: {STORAGE_BACKEND}, falling back to sqlite_vec")
+    STORAGE_BACKEND = 'sqlite_vec'
 
 logger.info(f"Using storage backend: {STORAGE_BACKEND}")
 
@@ -242,6 +242,9 @@ EMBEDDING_MODEL_NAME = os.getenv('MCP_EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
 
 # Dream-inspired consolidation configuration
 CONSOLIDATION_ENABLED = os.getenv('MCP_CONSOLIDATION_ENABLED', 'false').lower() == 'true'
+
+# Machine identification configuration
+INCLUDE_HOSTNAME = os.getenv('MCP_MEMORY_INCLUDE_HOSTNAME', 'false').lower() == 'true'
 
 # Consolidation archive location
 consolidation_archive_path = None

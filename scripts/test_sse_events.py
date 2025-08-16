@@ -27,7 +27,7 @@ import time
 import threading
 from typing import Optional
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://10.0.1.30:8000"
 
 class SSETestClient:
     """Simple SSE test client."""

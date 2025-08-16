@@ -26,6 +26,143 @@ import argparse
 import shutil
 from pathlib import Path
 
+# Fix Windows console encoding issues
+if platform.system() == "Windows":
+    # Ensure stdout uses UTF-8 on Windows to prevent character encoding issues in logs
+    if hasattr(sys.stdout, 'reconfigure'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+            sys.stderr.reconfigure(encoding='utf-8')
+        except AttributeError:
+            pass
+
+# Enhanced logging system for installer
+import logging
+from datetime import datetime
+
+class DualOutput:
+    """Class to handle both console and file output simultaneously."""
+    def __init__(self, log_file_path):
+        self.console = sys.stdout
+        self.log_file = None
+        self.log_file_path = log_file_path
+        self._setup_log_file()
+    
+    def _setup_log_file(self):
+        """Set up the log file with proper encoding."""
+        try:
+            # Create log file with UTF-8 encoding
+            self.log_file = open(self.log_file_path, 'w', encoding='utf-8')
+            # Write header
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Fix Windows version display in log header
+            platform_info = f"{platform.system()} {platform.release()}"
+            if platform.system() == "Windows":
+                try:
+                    import winreg
+                    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
+                    build_number = winreg.QueryValueEx(key, "CurrentBuildNumber")[0]
+                    winreg.CloseKey(key)
+                    
+                    # Windows 11 has build number >= 22000
+                    if int(build_number) >= 22000:
+                        platform_info = f"Windows 11"
+                    else:
+                        platform_info = f"Windows {platform.release()}"
+                except (ImportError, OSError, ValueError):
+                    pass  # Use default
+            
+            header = f"""
+================================================================================
+MCP Memory Service Installation Log
+Started: {timestamp}
+Platform: {platform_info} ({platform.machine()})
+Python: {sys.version}
+================================================================================
+
+"""
+            self.log_file.write(header)
+            self.log_file.flush()
+        except Exception as e:
+            print(f"Warning: Could not create log file {self.log_file_path}: {e}")
+            self.log_file = None
+    
+    def write(self, text):
+        """Write to both console and log file."""
+        # Write to console
+        self.console.write(text)
+        self.console.flush()
+        
+        # Write to log file if available
+        if self.log_file:
+            try:
+                self.log_file.write(text)
+                self.log_file.flush()
+            except Exception:
+                pass  # Silently ignore log file write errors
+    
+    def flush(self):
+        """Flush both outputs."""
+        self.console.flush()
+        if self.log_file:
+            try:
+                self.log_file.flush()
+            except Exception:
+                pass
+    
+    def close(self):
+        """Close the log file."""
+        if self.log_file:
+            try:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                footer = f"""
+================================================================================
+Installation completed: {timestamp}
+================================================================================
+"""
+                self.log_file.write(footer)
+                self.log_file.close()
+            except Exception:
+                pass
+
+# Global dual output instance
+_dual_output = None
+
+def setup_installer_logging():
+    """Set up the installer logging system."""
+    global _dual_output
+    
+    # Create log file path
+    log_file = Path.cwd() / "installation.log"
+    
+    # Remove old log file if it exists
+    if log_file.exists():
+        try:
+            log_file.unlink()
+        except Exception:
+            pass
+    
+    # Set up dual output
+    _dual_output = DualOutput(str(log_file))
+    
+    # Redirect stdout to dual output
+    sys.stdout = _dual_output
+    
+    print(f"Installation log will be saved to: {log_file}")
+    
+    return str(log_file)
+
+def cleanup_installer_logging():
+    """Clean up the installer logging system."""
+    global _dual_output
+    
+    if _dual_output:
+        # Restore original stdout
+        sys.stdout = _dual_output.console
+        _dual_output.close()
+        _dual_output = None
+
 # Import Claude commands utilities
 try:
     from scripts.claude_commands_utils import install_claude_commands, check_claude_code_cli
@@ -68,8 +205,15 @@ def print_warning(text):
     """Print formatted warning text."""
     print(f"  [WARNING]  {text}")
 
+# Cache for system detection to avoid duplicate calls
+_system_info_cache = None
+
 def detect_system():
     """Detect the system architecture and platform."""
+    global _system_info_cache
+    if _system_info_cache is not None:
+        return _system_info_cache
+    
     system = platform.system().lower()
     machine = platform.machine().lower()
     python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
@@ -80,7 +224,26 @@ def detect_system():
     is_arm = machine in ("arm64", "aarch64")
     is_x86 = machine in ("x86_64", "amd64", "x64")
     
-    print_info(f"System: {platform.system()} {platform.release()}")
+    # Fix Windows version detection - Windows 11 reports as Windows 10
+    if is_windows:
+        try:
+            import winreg
+            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
+            build_number = winreg.QueryValueEx(key, "CurrentBuildNumber")[0]
+            winreg.CloseKey(key)
+            
+            # Windows 11 has build number >= 22000
+            if int(build_number) >= 22000:
+                windows_version = "11"
+            else:
+                windows_version = platform.release()
+        except (ImportError, OSError, ValueError):
+            windows_version = platform.release()
+        
+        print_info(f"System: {platform.system()} {windows_version}")
+    else:
+        print_info(f"System: {platform.system()} {platform.release()}")
+    
     print_info(f"Architecture: {machine}")
     print_info(f"Python: {python_version}")
     
@@ -115,7 +278,7 @@ def detect_system():
         except (subprocess.SubprocessError, FileNotFoundError):
             pass
     
-    return {
+    _system_info_cache = {
         "system": system,
         "machine": machine,
         "python_version": python_version,
@@ -128,6 +291,7 @@ def detect_system():
         "has_homebrew_pytorch": has_homebrew_pytorch,
         "homebrew_pytorch_version": homebrew_pytorch_version
     }
+    return _system_info_cache
 
 def detect_gpu():
     """Detect GPU and acceleration capabilities."""
@@ -358,6 +522,8 @@ def install_pytorch_platform_specific(system_info, gpu_info, args=None):
         return install_pytorch_windows(gpu_info)
     elif system_info["is_macos"] and system_info["is_x86"]:
         return install_pytorch_macos_intel()
+    elif system_info["is_macos"] and system_info["is_arm"]:
+        return install_pytorch_macos_arm64()
     else:
         # For other platforms, let the regular installer handle it
         return True
@@ -451,10 +617,112 @@ def install_pytorch_macos_intel():
         
         return False
 
+def install_pytorch_macos_arm64():
+    """Install PyTorch specifically for macOS with ARM64 (Apple Silicon)."""
+    print_step("3a", "Installing PyTorch for macOS ARM64 (Apple Silicon)")
+    
+    try:
+        # For Apple Silicon, we can use the latest PyTorch with MPS support
+        print_info("Installing PyTorch with Metal Performance Shaders (MPS) support...")
+        
+        # Install PyTorch with MPS support - let pip choose the best compatible version
+        cmd = [
+            sys.executable, '-m', 'pip', 'install',
+            'torch>=2.0.0',
+            'torchvision',
+            'torchaudio'
+        ]
+        
+        print_info(f"Running: {' '.join(cmd)}")
+        subprocess.check_call(cmd)
+        
+        # Install sentence-transformers
+        print_info("Installing sentence-transformers...")
+        cmd = [
+            sys.executable, '-m', 'pip', 'install',
+            'sentence-transformers>=2.2.2'
+        ]
+        
+        print_info(f"Running: {' '.join(cmd)}")
+        subprocess.check_call(cmd)
+        
+        print_success("PyTorch and sentence-transformers installed successfully for macOS ARM64")
+        print_info("MPS (Metal Performance Shaders) acceleration is available for GPU compute")
+        
+        return True
+    except subprocess.SubprocessError as e:
+        print_error(f"Failed to install PyTorch for macOS ARM64: {e}")
+        
+        # Provide fallback instructions
+        print_warning("You may need to manually install PyTorch for Apple Silicon:")
+        print_info("pip install torch torchvision torchaudio")
+        print_info("pip install sentence-transformers")
+        print_info("")
+        print_info("If you encounter issues, try:")
+        print_info("pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu")
+        
+        return False
+
 def install_pytorch_windows(gpu_info):
     """Install PyTorch on Windows using the appropriate index URL."""
     print_step("3a", "Installing PyTorch for Windows")
     
+    # Check if PyTorch is already installed and compatible
+    pytorch_installed = False
+    torch_version_installed = None
+    directml_compatible = False
+    
+    try:
+        import torch
+        torch_version_installed = torch.__version__
+        pytorch_installed = True
+        print_info(f"PyTorch {torch_version_installed} is already installed")
+        
+        # Check if version is compatible with DirectML (2.4.x works, 2.5.x doesn't)
+        version_parts = torch_version_installed.split('.')
+        major, minor = int(version_parts[0]), int(version_parts[1])
+        
+        if gpu_info["has_directml"]:
+            if major == 2 and minor == 4:
+                directml_compatible = True
+                print_success(f"PyTorch {torch_version_installed} is compatible with DirectML")
+                
+                # Check if torch-directml is also installed
+                try:
+                    import torch_directml
+                    directml_version = getattr(torch_directml, '__version__', 'Unknown version')
+                    print_success(f"torch-directml {directml_version} is already installed")
+                    return True  # Everything is compatible, no need to reinstall
+                except ImportError:
+                    print_info("torch-directml not found, will install it")
+                    # Install torch-directml only
+                    try:
+                        subprocess.check_call([
+                            sys.executable, '-m', 'pip', 'install', 'torch-directml==0.2.5.dev240914'
+                        ])
+                        print_success("torch-directml installed successfully")
+                        return True
+                    except subprocess.SubprocessError:
+                        print_warning("Failed to install torch-directml - DirectML support will be limited")
+                        return True  # Still return True since PyTorch works
+                        
+            elif major == 2 and minor >= 5:
+                print_warning(f"PyTorch {torch_version_installed} is not compatible with torch-directml")
+                print_info("torch-directml requires PyTorch 2.4.x, but 2.5.x is installed")
+                print_info("Keeping existing PyTorch installation - DirectML support will be limited")
+                return True  # Don't break existing installation
+            else:
+                print_info(f"PyTorch {torch_version_installed} compatibility with DirectML is unknown")
+        else:
+            # No DirectML needed, check if current version is reasonable
+            if major == 2 and minor >= 4:
+                print_success(f"PyTorch {torch_version_installed} is acceptable for CPU usage")
+                return True  # Keep existing installation
+                
+    except ImportError:
+        print_info("PyTorch not found, will install compatible version")
+    
+    # If we get here, we need to install PyTorch
     # Determine the appropriate PyTorch index URL based on GPU
     if gpu_info["has_cuda"]:
         # Get CUDA version and determine appropriate index URL
@@ -492,10 +760,19 @@ def install_pytorch_windows(gpu_info):
     
     # Install PyTorch with the appropriate index URL
     try:
-        # Use compatible versions that are available in the CPU index
-        torch_version = "2.5.1"
-        torchvision_version = "0.20.1"  # Compatible with torch 2.5.1
-        torchaudio_version = "2.5.1"
+        # Use versions compatible with DirectML if needed
+        if gpu_info["has_directml"]:
+            # Use PyTorch 2.4.x which is compatible with torch-directml
+            torch_version = "2.4.1"
+            torchvision_version = "0.19.1"  # Compatible with torch 2.4.1
+            torchaudio_version = "2.4.1"
+            print_info("Using PyTorch 2.4.1 for DirectML compatibility")
+        else:
+            # Use latest version for non-DirectML systems
+            torch_version = "2.5.1"
+            torchvision_version = "0.20.1"  # Compatible with torch 2.5.1
+            torchaudio_version = "2.5.1"
+            print_info("Using PyTorch 2.5.1 for optimal performance")
         
         cmd = [
             sys.executable, '-m', 'pip', 'install',
@@ -532,8 +809,8 @@ def detect_storage_backend_compatibility(system_info, gpu_info):
     print_step("3a", "Analyzing storage backend compatibility")
     
     compatibility = {
-        "chromadb": {"supported": True, "issues": [], "recommendation": "default"},
-        "sqlite_vec": {"supported": True, "issues": [], "recommendation": "lightweight"}
+        "chromadb": {"supported": True, "issues": [], "recommendation": "legacy"},
+        "sqlite_vec": {"supported": True, "issues": [], "recommendation": "default"}
     }
     
     # Check ChromaDB compatibility issues
@@ -620,7 +897,7 @@ def choose_storage_backend(system_info, gpu_info, args):
             break
     
     if not recommended_backend:
-        recommended_backend = "chromadb"  # Default fallback
+        recommended_backend = "sqlite_vec"  # Default fallback
     
     # Interactive selection if no auto-recommendation is clear
     if compatibility["chromadb"]["recommendation"] == "problematic":
@@ -1036,7 +1313,7 @@ def configure_paths(args):
         base_dir = home_dir / '.local' / 'share' / 'mcp-memory'
     
     # Create directories based on storage backend
-    storage_backend = args.storage_backend or os.environ.get('MCP_MEMORY_STORAGE_BACKEND', 'chromadb')
+    storage_backend = args.storage_backend or os.environ.get('MCP_MEMORY_STORAGE_BACKEND', 'sqlite_vec')
     
     if storage_backend == 'sqlite_vec':
         # For sqlite-vec, we need a database file path
@@ -1409,18 +1686,18 @@ def recommend_backend_intelligent(system_info, gpu_info, memory_gb, args):
                 os.environ['MCP_MEMORY_USE_ONNX'] = '1'
             return "sqlite_vec"
     
-    # Hardware with GPU acceleration - ChromaDB can utilize this
+    # Hardware with GPU acceleration - SQLite-vec still recommended for simplicity
     if gpu_info.get("has_cuda") or gpu_info.get("has_mps") or gpu_info.get("has_directml"):
         gpu_type = "CUDA" if gpu_info.get("has_cuda") else "MPS" if gpu_info.get("has_mps") else "DirectML"
-        print_info(f"[GPU] {gpu_type} acceleration detected - ChromaDB recommended for performance")
-        return "chromadb"
+        print_info(f"[GPU] {gpu_type} acceleration detected - SQLite-vec recommended for simplicity and speed")
+        return "sqlite_vec"
     
     # High memory systems without GPU - explain the choice
     if memory_gb >= 16:
         print_info("[CHOICE] High-memory system without GPU detected")
-        print_info("  -> ChromaDB: Better for large datasets (10K+ memories), production use")
-        print_info("  -> SQLite-vec: Faster startup, simpler setup, same features for typical use")
-        print_info("  -> Defaulting to SQLite-vec for simplicity (use --storage-backend chromadb to override)")
+        print_info("  -> SQLite-vec: Faster startup, simpler setup, no network dependencies")
+        print_info("  -> ChromaDB: Legacy option, being deprecated in v6.0.0")
+        print_info("  -> Defaulting to SQLite-vec (recommended for all users)")
         return "sqlite_vec"
     
     # Default recommendation for most users
@@ -1458,16 +1735,16 @@ def show_detailed_help():
         print_success("Apple Silicon Mac - Modern Hardware Path")
         print_info("  Recommended: python install.py")
         print_info("  This will:")
-        print_info("    • Use ChromaDB backend (full-featured)")
+        print_info("    • Use SQLite-vec backend (fast and efficient)")
         print_info("    • Enable MPS acceleration")
-        print_info("    • Install latest PyTorch with MPS support")
+        print_info("    • Zero network dependencies")
     elif system_info["is_windows"] and gpu_info.get("has_cuda"):
         print_success("Windows with CUDA GPU - High Performance Path")
         print_info("  Recommended: python install.py")
         print_info("  This will:")
-        print_info("    • Use ChromaDB backend (GPU acceleration advantage)")
+        print_info("    • Use SQLite-vec backend (fast and efficient)")
         print_info("    • Enable CUDA acceleration")
-        print_info("    • Install PyTorch with CUDA support")
+        print_info("    • Zero network dependencies")
     elif memory_gb > 0 and memory_gb < 4:
         print_success("Low-Memory System")
         print_info("  Recommended: python install.py --storage-backend sqlite_vec")
@@ -1487,9 +1764,9 @@ def show_detailed_help():
         print_success(f"GPU-Accelerated System ({gpu_type}) - High Performance Path")
         print_info("  Recommended: python install.py")
         print_info("  This will:")
-        print_info(f"    • Use ChromaDB backend (takes advantage of {gpu_type})")
-        print_info("    • Enable hardware acceleration")
-        print_info("    • Optimize for performance and large datasets")
+        print_info(f"    • Use SQLite-vec backend (fast and efficient)")
+        print_info(f"    • Enable {gpu_type} hardware acceleration")
+        print_info("    • Zero network dependencies")
     else:
         print_success("Standard Installation")
         print_info("  Recommended: python install.py")
@@ -1827,23 +2104,23 @@ def should_offer_multi_client_setup(args, final_backend):
     # Always beneficial for development environments - any future MCP client can benefit
     return True
 
-def configure_detected_clients(clients, system_info):
+def configure_detected_clients(clients, system_info, storage_backend="sqlite_vec"):
     """Configure each detected client for multi-client access."""
     success_count = 0
     
     for client_type, config_path in clients.items():
         try:
             if client_type == 'claude_desktop':
-                if configure_claude_desktop_multi_client(config_path, system_info):
+                if configure_claude_desktop_multi_client(config_path, system_info, storage_backend):
                     success_count += 1
             elif client_type == 'vscode_mcp' or client_type == 'cursor':
-                if configure_vscode_like_multi_client(config_path, client_type):
+                if configure_vscode_like_multi_client(config_path, client_type, storage_backend):
                     success_count += 1
             elif client_type == 'continue':
-                if configure_continue_multi_client(config_path):
+                if configure_continue_multi_client(config_path, storage_backend):
                     success_count += 1
             elif client_type == 'generic_mcp':
-                if configure_generic_mcp_multi_client(config_path):
+                if configure_generic_mcp_multi_client(config_path, storage_backend):
                     success_count += 1
             elif client_type == 'claude_code':
                 # Claude Code uses project-level .mcp.json, handle separately
@@ -1854,7 +2131,7 @@ def configure_detected_clients(clients, system_info):
     
     return success_count
 
-def configure_claude_desktop_multi_client(config_path, system_info):
+def configure_claude_desktop_multi_client(config_path, system_info, storage_backend="sqlite_vec"):
     """Configure Claude Desktop for multi-client access."""
     try:
         import json
@@ -1870,14 +2147,24 @@ def configure_claude_desktop_multi_client(config_path, system_info):
         # Update memory server configuration with multi-client settings
         repo_path = str(Path.cwd()).replace('\\', '\\\\')  # Escape backslashes for JSON
         
+        # Build environment configuration based on storage backend
+        env_config = {
+            "MCP_MEMORY_STORAGE_BACKEND": storage_backend,
+            "LOG_LEVEL": "INFO"
+        }
+        
+        # Add backend-specific configuration
+        if storage_backend == "sqlite_vec":
+            env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
+            # SQLite path will be auto-determined by the service
+        else:  # chromadb
+            # ChromaDB path will be auto-determined by the service
+            pass
+        
         config['mcpServers']['memory'] = {
             "command": UV_EXECUTABLE_PATH or "uv",
             "args": ["--directory", repo_path, "run", "memory"],
-            "env": {
-                "MCP_MEMORY_STORAGE_BACKEND": "sqlite_vec",
-                "MCP_MEMORY_SQLITE_PRAGMAS": "busy_timeout=15000,cache_size=20000",
-                "LOG_LEVEL": "INFO"
-            }
+            "env": env_config
         }
         
         # Write updated configuration
@@ -1891,7 +2178,7 @@ def configure_claude_desktop_multi_client(config_path, system_info):
         print_warning(f"  -> Claude Desktop configuration failed: {e}")
         return False
 
-def configure_vscode_like_multi_client(config_path, client_type):
+def configure_vscode_like_multi_client(config_path, client_type, storage_backend="sqlite_vec"):
     """Configure VS Code or Cursor for multi-client access."""
     try:
         import json
@@ -1902,8 +2189,11 @@ def configure_vscode_like_multi_client(config_path, client_type):
         client_name = "VS Code" if client_type == 'vscode_mcp' else "Cursor"
         print_info(f"  -> {client_name}: MCP extension detected")
         print_info(f"    Add memory server to your MCP extension with these settings:")
-        print_info(f"    - Backend: sqlite_vec")
-        print_info(f"    - Database: shared SQLite-vec database")
+        print_info(f"    - Backend: {storage_backend}")
+        if storage_backend == "sqlite_vec":
+            print_info(f"    - Database: shared SQLite-vec database")
+        else:
+            print_info(f"    - Database: shared ChromaDB database")
         print_info(f"    - See generic configuration below for details")
         return True
         
@@ -1911,7 +2201,7 @@ def configure_vscode_like_multi_client(config_path, client_type):
         print_warning(f"  -> {client_type} configuration failed: {e}")
         return False
 
-def configure_continue_multi_client(config_path):
+def configure_continue_multi_client(config_path, storage_backend="sqlite_vec"):
     """Configure Continue IDE for multi-client access."""
     try:
         import json
@@ -1926,14 +2216,20 @@ def configure_continue_multi_client(config_path):
         
         repo_path = str(Path.cwd())
         
+        # Build environment configuration based on storage backend
+        env_config = {
+            "MCP_MEMORY_STORAGE_BACKEND": storage_backend,
+            "LOG_LEVEL": "INFO"
+        }
+        
+        # Add backend-specific configuration
+        if storage_backend == "sqlite_vec":
+            env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
+        
         config['mcpServers']['memory'] = {
             "command": UV_EXECUTABLE_PATH or "uv",
             "args": ["--directory", repo_path, "run", "memory"],
-            "env": {
-                "MCP_MEMORY_STORAGE_BACKEND": "sqlite_vec",
-                "MCP_MEMORY_SQLITE_PRAGMAS": "busy_timeout=15000,cache_size=20000",
-                "LOG_LEVEL": "INFO"
-            }
+            "env": env_config
         }
         
         # Write updated configuration
@@ -1947,7 +2243,7 @@ def configure_continue_multi_client(config_path):
         print_warning(f"  -> Continue IDE configuration failed: {e}")
         return False
 
-def configure_generic_mcp_multi_client(config_path):
+def configure_generic_mcp_multi_client(config_path, storage_backend="sqlite_vec"):
     """Configure generic MCP client for multi-client access."""
     try:
         import json
@@ -1962,14 +2258,20 @@ def configure_generic_mcp_multi_client(config_path):
         
         repo_path = str(Path.cwd())
         
+        # Build environment configuration based on storage backend
+        env_config = {
+            "MCP_MEMORY_STORAGE_BACKEND": storage_backend,
+            "LOG_LEVEL": "INFO"
+        }
+        
+        # Add backend-specific configuration
+        if storage_backend == "sqlite_vec":
+            env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
+        
         config['mcpServers']['memory'] = {
             "command": UV_EXECUTABLE_PATH or "uv",
             "args": ["--directory", repo_path, "run", "memory"],
-            "env": {
-                "MCP_MEMORY_STORAGE_BACKEND": "sqlite_vec",
-                "MCP_MEMORY_SQLITE_PRAGMAS": "busy_timeout=15000,cache_size=20000",
-                "LOG_LEVEL": "INFO"
-            }
+            "env": env_config
         }
         
         # Write updated configuration
@@ -2106,7 +2408,7 @@ def setup_shared_environment():
         print_warning(f"  -> Environment setup failed: {e}")
         return False
 
-def provide_generic_configuration():
+def provide_generic_configuration(storage_backend="sqlite_vec"):
     """Provide configuration instructions for any MCP client."""
     print_info("")
     print_info("Universal MCP Client Configuration:")
@@ -2128,18 +2430,27 @@ def provide_generic_configuration():
     
     print_info("")
     print_info("Environment Variables:")
-    print_info("  MCP_MEMORY_STORAGE_BACKEND=sqlite_vec")
-    print_info("  MCP_MEMORY_SQLITE_PRAGMAS=busy_timeout=15000,cache_size=20000")
+    print_info(f"  MCP_MEMORY_STORAGE_BACKEND={storage_backend}")
+    if storage_backend == "sqlite_vec":
+        print_info("  MCP_MEMORY_SQLITE_PRAGMAS=busy_timeout=15000,cache_size=20000")
     print_info("  LOG_LEVEL=INFO")
     
     print_info("")
     print_info("Shared Database Location:")
-    if platform.system() == 'Windows':
-        print_info("  %LOCALAPPDATA%\\mcp-memory\\sqlite_vec.db")
-    elif platform.system() == 'Darwin':
-        print_info("  ~/Library/Application Support/mcp-memory/sqlite_vec.db")
-    else:
-        print_info("  ~/.local/share/mcp-memory/sqlite_vec.db")
+    if storage_backend == "sqlite_vec":
+        if platform.system() == 'Windows':
+            print_info("  %LOCALAPPDATA%\\mcp-memory\\sqlite_vec.db")
+        elif platform.system() == 'Darwin':
+            print_info("  ~/Library/Application Support/mcp-memory/sqlite_vec.db")
+        else:
+            print_info("  ~/.local/share/mcp-memory/sqlite_vec.db")
+    else:  # chromadb
+        if platform.system() == 'Windows':
+            print_info("  %LOCALAPPDATA%\\mcp-memory\\chroma_db")
+        elif platform.system() == 'Darwin':
+            print_info("  ~/Library/Application Support/mcp-memory/chroma_db")
+        else:
+            print_info("  ~/.local/share/mcp-memory/chroma_db")
     
     print_info("")
     print_info("Claude Code Project Configuration (.mcp.json):")
@@ -2149,15 +2460,16 @@ def provide_generic_configuration():
     print_info(f"        \"command\": \"{UV_EXECUTABLE_PATH or 'uv'}\",")
     print_info(f"        \"args\": [\"--directory\", \"{repo_path}\", \"run\", \"memory\"],")
     print_info("        \"env\": {")
-    print_info("          \"MCP_MEMORY_STORAGE_BACKEND\": \"sqlite_vec\",")
-    print_info("          \"MCP_MEMORY_SQLITE_PRAGMAS\": \"busy_timeout=15000,cache_size=20000\",")
+    print_info(f"          \"MCP_MEMORY_STORAGE_BACKEND\": \"{storage_backend}\",")
+    if storage_backend == "sqlite_vec":
+        print_info("          \"MCP_MEMORY_SQLITE_PRAGMAS\": \"busy_timeout=15000,cache_size=20000\",")
     print_info("          \"LOG_LEVEL\": \"INFO\"")
     print_info("        }")
     print_info("      }")
     print_info("    }")
     print_info("  }")
 
-def setup_universal_multi_client_access(system_info, args):
+def setup_universal_multi_client_access(system_info, args, storage_backend="sqlite_vec"):
     """Configure multi-client access for any MCP-compatible clients."""
     print_step("7", "Configuring Universal Multi-Client Access")
     
@@ -2168,16 +2480,17 @@ def setup_universal_multi_client_access(system_info, args):
     print_info("  • Single source of truth for all your project memories")
     print_info("")
     
-    # Test WAL mode coordination
-    try:
-        import asyncio
-        wal_success = asyncio.run(test_wal_mode_coordination())
-        if not wal_success:
-            print_error("WAL mode coordination test failed")
+    # Test WAL mode coordination only for sqlite_vec
+    if storage_backend == "sqlite_vec":
+        try:
+            import asyncio
+            wal_success = asyncio.run(test_wal_mode_coordination())
+            if not wal_success:
+                print_error("WAL mode coordination test failed")
+                return False
+        except Exception as e:
+            print_error(f"Failed to test WAL mode coordination: {e}")
             return False
-    except Exception as e:
-        print_error(f"Failed to test WAL mode coordination: {e}")
-        return False
     
     # Detect available MCP clients
     detected_clients = detect_mcp_clients()
@@ -2186,13 +2499,13 @@ def setup_universal_multi_client_access(system_info, args):
     
     # Configure each detected client
     print_info("Configuring detected clients...")
-    success_count = configure_detected_clients(detected_clients, system_info)
+    success_count = configure_detected_clients(detected_clients, system_info, storage_backend)
     
     # Set up shared environment variables
     setup_shared_environment()
     
     # Provide generic configuration for manual setup
-    provide_generic_configuration()
+    provide_generic_configuration(storage_backend)
     
     print_info("")
     print_success(f"Multi-client setup complete! {success_count} clients configured automatically.")
@@ -2258,6 +2571,13 @@ def main():
     if args.generate_docs:
         generate_personalized_docs()
         sys.exit(0)
+    
+    # Set up logging system to capture installation output
+    try:
+        log_file_path = setup_installer_logging()
+    except Exception as e:
+        print(f"Warning: Could not set up logging: {e}")
+        log_file_path = None
     
     print_header("MCP Memory Service Installation")
     
@@ -2511,7 +2831,7 @@ def main():
         if args.setup_multi_client:
             # User explicitly requested multi-client setup
             try:
-                setup_universal_multi_client_access(system_info, args)
+                setup_universal_multi_client_access(system_info, args, final_backend)
             except Exception as e:
                 print_error(f"Multi-client setup failed: {e}")
                 print_info("You can set up multi-client access manually using:")
@@ -2535,7 +2855,7 @@ def main():
                 if response in ['y', 'yes']:
                     print_info("")
                     try:
-                        setup_universal_multi_client_access(system_info, args)
+                        setup_universal_multi_client_access(system_info, args, final_backend)
                     except Exception as e:
                         print_error(f"Multi-client setup failed: {e}")
                         print_info("You can set up multi-client access manually using:")
@@ -2605,6 +2925,23 @@ def main():
         print_info("- To completely skip PyTorch installation, use: --skip-pytorch")
         print_info("- To force the SQLite-vec backend, use: --storage-backend sqlite_vec")
         print_info("- For a quick test, try running: python test_memory.py")
+    
+    # Clean up logging system
+    try:
+        cleanup_installer_logging()
+        if log_file_path:
+            print(f"\nInstallation log saved to: {log_file_path}")
+    except Exception:
+        pass  # Silently ignore cleanup errors
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nInstallation interrupted by user")
+        cleanup_installer_logging()
+        sys.exit(1)
+    except Exception as e:
+        print(f"\nInstallation failed with error: {e}")
+        cleanup_installer_logging()
+        sys.exit(1)

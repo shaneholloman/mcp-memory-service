@@ -17,7 +17,7 @@ I'll help you capture the current conversation and project context as a memory t
    - Action items or next steps identified
    - Code changes or configurations applied
 
-4. **Smart Tagging**: I'll automatically generate relevant tags based on the session content and project context.
+4. **Smart Tagging**: I'll automatically generate relevant tags based on the session content and project context, including the machine hostname as a source identifier.
 
 5. **Memory Storage**: I'll store the session summary with appropriate metadata for easy future retrieval.
 
@@ -32,7 +32,7 @@ claude /memory-context --include-files --include-commits
 
 ## Implementation:
 
-I'll automatically analyze our current session and project state:
+I'll automatically analyze our current session and project state, then store it to your MCP Memory Service at `https://memory.local:8443/`:
 
 1. **Conversation Analysis**: Extract key topics, decisions, and insights from our current chat
 2. **Project State Capture**: 
@@ -40,10 +40,13 @@ I'll automatically analyze our current session and project state:
    - Recent commits and file changes
    - Branch information and repository state
 3. **Context Synthesis**: Combine conversation and project context into a coherent summary
-4. **Memory Creation**: Store the context with automatic tags and metadata
-5. **Confirmation**: Provide summary of what was stored for review
+4. **Memory Creation**: Store the context with automatic tags including machine hostname
+5. **Auto-Save**: Memory is stored immediately without confirmation prompts
+
+The service uses HTTPS with curl `-k` flag for secure communication and automatically detects client hostname using the `X-Client-Hostname` header.
 
 The stored memory will include:
+- **Source Machine**: Hostname tag for tracking memory origin (e.g., "source:your-machine-name")
 - **Session Summary**: Concise overview of our conversation
 - **Key Decisions**: Important choices or conclusions reached
 - **Technical Details**: Code changes, configurations, or technical insights

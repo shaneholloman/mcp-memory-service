@@ -44,6 +44,7 @@ from .api.health import router as health_router
 from .api.memories import router as memories_router
 from .api.search import router as search_router
 from .api.events import router as events_router
+from .api.mcp import router as mcp_router
 from .sse import sse_manager
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,9 @@ def create_app() -> FastAPI:
     app.include_router(memories_router, prefix="/api", tags=["memories"])
     app.include_router(search_router, prefix="/api", tags=["search"])
     app.include_router(events_router, prefix="/api", tags=["events"])
+    
+    # Include MCP protocol router
+    app.include_router(mcp_router, tags=["mcp-protocol"])
     
     # Serve static files (dashboard)
     static_path = os.path.join(os.path.dirname(__file__), "static")

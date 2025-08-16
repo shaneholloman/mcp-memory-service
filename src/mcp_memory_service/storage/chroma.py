@@ -26,6 +26,7 @@ import sys
 import os
 import time
 import traceback
+import warnings
 from chromadb.utils import embedding_functions
 import logging
 from typing import List, Dict, Any, Tuple, Set, Optional
@@ -78,6 +79,19 @@ MODEL_FALLBACKS = [
 class ChromaMemoryStorage(MemoryStorage):
     def __init__(self, path: str, preload_model: bool = True):
         """Initialize ChromaDB storage with hardware-aware embedding function and performance optimizations."""
+        # Issue deprecation warning
+        warnings.warn(
+            "ChromaDB backend is deprecated and will be removed in v6.0.0. "
+            "Please migrate to SQLite-vec backend for better performance and reliability. "
+            "See migration guide at: https://github.com/doobidoo/mcp-memory-service#migration",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        logger.warning(
+            "DEPRECATION: ChromaDB backend is deprecated. Consider migrating to SQLite-vec backend. "
+            "Run 'python scripts/migrate_to_sqlite_vec.py' to migrate your data."
+        )
+        
         self.path = path
         self.model = None
         self.embedding_function = None
@@ -191,6 +205,14 @@ class ChromaMemoryStorage(MemoryStorage):
         device = self.embedding_settings["device"]
         batch_size = self.embedding_settings["batch_size"]
         
+        # Configure offline mode if models are cached
+        hf_home = os.environ.get('HF_HOME', os.path.expanduser("~/.cache/huggingface"))
+        model_cache_path = os.path.join(hf_home, "hub", f"models--sentence-transformers--{preferred_model.replace('/', '--')}")
+        if os.path.exists(model_cache_path):
+            os.environ['HF_HUB_OFFLINE'] = '1'
+            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            logger.info(f"Using offline mode for cached model: {preferred_model}")
+        
         # Try the preferred model first, then fall back to alternatives
         models_to_try = [preferred_model] + [m for m in MODEL_FALLBACKS if m != preferred_model]
         
@@ -301,6 +323,15 @@ class ChromaMemoryStorage(MemoryStorage):
             self.model = None
             self.embedding_function = embedding_functions.DefaultEmbeddingFunction()
             return
+            
+        # Configure offline mode for cached models
+        preferred_model = self.embedding_settings.get("model_name", "all-MiniLM-L6-v2")
+        hf_home = os.environ.get('HF_HOME', os.path.expanduser("~/.cache/huggingface"))
+        model_cache_path = os.path.join(hf_home, "hub", f"models--sentence-transformers--{preferred_model.replace('/', '--')}")
+        if os.path.exists(model_cache_path):
+            os.environ['HF_HUB_OFFLINE'] = '1'
+            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            logger.info(f"Using offline mode for cached model: {preferred_model}")
             
         # Start with the optimal model for this system
         preferred_model = self.embedding_settings["model_name"]

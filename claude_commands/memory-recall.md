@@ -29,13 +29,19 @@ claude /memory-recall --project "mcp-memory-service" "last month's progress"
 
 ## Implementation:
 
-I'll connect to your MCP Memory Service using auto-discovery or configured endpoints. The recall process involves:
+I'll connect to your MCP Memory Service at `https://memory.local:8443/` and use its API endpoints. The recall process involves:
 
 1. **Query Processing**: Parse the natural language time expression and extract context clues
-2. **Memory Retrieval**: Use the MCP service's recall_memory function with the processed query
+2. **Memory Retrieval**: Use the appropriate API endpoints:
+   - `POST /api/search/by-time` - Natural language time-based queries
+   - `POST /api/search` - Semantic search for context-based recall
+   - `GET /api/memories` - List memories with pagination and filtering
+   - `GET /api/memories/{hash}` - Retrieve specific memory by hash
 3. **Context Matching**: Filter results based on current project and directory context
-4. **Relevance Scoring**: Rank memories by temporal and semantic relevance
+4. **Relevance Scoring**: Use similarity scores from the API responses
 5. **Result Presentation**: Format memories with timestamps, tags, and relevance context
+
+All requests use curl with `-k` flag for HTTPS and proper JSON formatting.
 
 For each recalled memory, I'll show:
 - **Content**: The actual memory content
@@ -48,6 +54,8 @@ For each recalled memory, I'll show:
 
 - **Relative**: "yesterday", "last week", "two days ago", "this month"
 - **Seasonal**: "last summer", "this winter", "spring 2024"
+
+**Note**: Some expressions like "last hour" may not be supported by the time parser. Standard expressions like "today", "yesterday", "last week" work reliably.
 - **Event-based**: "before the refactor", "since we switched to SQLite", "during the testing phase"
 - **Specific**: "January 15th", "last Tuesday morning", "end of last month"
 

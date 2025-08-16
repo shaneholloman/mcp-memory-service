@@ -25,16 +25,19 @@ claude /memory-search --project "mcp-memory-service" --type "note"
 
 ## Implementation:
 
-I'll connect to your MCP Memory Service and use its search capabilities:
+I'll connect to your MCP Memory Service at `https://memory.local:8443/` and use its search API endpoints:
 
 1. **Query Processing**: Parse your search criteria (tags, content, filters)
-2. **Search Execution**: Use appropriate MCP search functions:
-   - `search_by_tag` for tag-based queries
-   - `retrieve_memory` for content-based semantic search
-   - Combined searches for complex queries
-3. **Result Aggregation**: Merge and deduplicate results from multiple search methods
-4. **Relevance Scoring**: Calculate combined relevance scores
+2. **Search Execution**: Use appropriate API endpoints:
+   - `POST /api/search` - Semantic similarity search
+   - `POST /api/search/by-tag` - Tag-based search (AND/OR matching)
+   - `POST /api/search/by-time` - Time-based natural language queries
+   - `GET /api/search/similar/{hash}` - Find similar memories
+3. **Result Aggregation**: Process search responses with similarity scores
+4. **Relevance Scoring**: Use returned similarity scores and match reasons
 5. **Context Highlighting**: Show why each result matches your query
+
+All requests use curl with `-k` flag for HTTPS and proper JSON formatting.
 
 For each search result, I'll display:
 - **Content**: The memory content with search terms highlighted
@@ -49,6 +52,7 @@ For each search result, I'll display:
 ### Tag Search
 - **Exact**: `--tags "architecture"` - memories with exact tag match
 - **Multiple**: `--tags "database,performance"` - memories with any of these tags
+- **Machine Source**: `--tags "source:machine-name"` - memories from specific machine
 - **Partial**: `--tags "*arch*"` - memories with tags containing "arch"
 
 ### Content Search
@@ -76,6 +80,7 @@ For each search result, I'll display:
 
 ## Advanced Features:
 
+- **Machine Source Tracking**: Search for memories by originating machine
 - **Fuzzy Matching**: Handle typos and variations in search terms
 - **Context Expansion**: Find related memories based on current project context
 - **Search History**: Remember recent searches for quick re-execution

@@ -235,3 +235,17 @@ class MemoryQueryResult:
     memory: Memory
     relevance_score: float
     debug_info: Dict[str, Any] = field(default_factory=dict)
+    
+    @property
+    def similarity_score(self) -> float:
+        """Alias for relevance_score for backward compatibility."""
+        return self.relevance_score
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "memory": self.memory.to_dict(),
+            "relevance_score": self.relevance_score,
+            "similarity_score": self.relevance_score,
+            "debug_info": self.debug_info
+        }

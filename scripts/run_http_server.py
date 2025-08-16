@@ -67,10 +67,58 @@ def generate_self_signed_cert():
             'openssl', 'genrsa', '-out', key_file, '2048'
         ], check=True, capture_output=True)
         
-        # Generate certificate
+        # Generate certificate with Subject Alternative Names for better compatibility
+        # Get local IP addresses dynamically
+        import socket
+        local_ips = []
+        try:
+            # Get primary local IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            local_ips.append(local_ip)
+        except Exception:
+            pass
+        
+        # Build SAN list with common names and detected IPs
+        san_entries = [
+            "DNS:memory.local",
+            "DNS:localhost", 
+            "DNS:*.local",
+            "IP:127.0.0.1",
+            "IP:::1"  # IPv6 localhost
+        ]
+        
+        # Add detected local IPs
+        for ip in local_ips:
+            if ip not in ["127.0.0.1"]:
+                san_entries.append(f"IP:{ip}")
+        
+        # Add additional IPs from environment variable if specified
+        additional_ips = os.getenv('MCP_SSL_ADDITIONAL_IPS', '')
+        if additional_ips:
+            for ip in additional_ips.split(','):
+                ip = ip.strip()
+                if ip and ip not in [entry.split(':')[1] for entry in san_entries if entry.startswith('IP:')]:
+                    san_entries.append(f"IP:{ip}")
+        
+        # Add additional hostnames from environment variable if specified  
+        additional_hostnames = os.getenv('MCP_SSL_ADDITIONAL_HOSTNAMES', '')
+        if additional_hostnames:
+            for hostname in additional_hostnames.split(','):
+                hostname = hostname.strip()
+                if hostname and f"DNS:{hostname}" not in san_entries:
+                    san_entries.append(f"DNS:{hostname}")
+        
+        san_string = ",".join(san_entries)
+        
+        print(f"Generating certificate with SANs: {san_string}")
+        
         subprocess.run([
             'openssl', 'req', '-new', '-x509', '-key', key_file, '-out', cert_file,
-            '-days', '365', '-subj', '/C=US/ST=Local/L=Local/O=MCP Memory Service/CN=localhost'
+            '-days', '365', '-subj', '/C=US/ST=Local/L=Local/O=MCP Memory Service/CN=memory.local',
+            '-addext', f'subjectAltName={san_string}'
         ], check=True, capture_output=True)
         
         print(f"Generated self-signed certificate: {cert_file}")

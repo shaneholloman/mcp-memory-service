@@ -85,6 +85,15 @@ test_*.py.backup
 *_test.py.old
 development_notes.md
 
+# Temporary MCP test files
+/tmp/test_mcp*.py
+test_mcp*.py
+debug_mcp*.py
+
+# Migration artifacts
+migration_*.log
+deploy_test*.sh
+
 # Optional: VSCode debugging & Python caches
 *.coverage
 coverage.*
