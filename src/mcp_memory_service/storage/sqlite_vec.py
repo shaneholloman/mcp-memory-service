@@ -25,6 +25,7 @@ import time
 import os
 import sys
 import platform
+from collections import Counter
 from typing import List, Dict, Any, Tuple, Optional, Set, Callable
 from datetime import datetime
 import asyncio
@@ -1475,16 +1476,9 @@ SOLUTIONS:
         """Convert database row to Memory object."""
         try:
             content_hash, content, tags_str, memory_type, metadata_str, created_at, updated_at, created_at_iso, updated_at_iso = row
-            
-            # Parse tags
-            tags = []
-            if tags_str:
-                try:
-                    tags = json.loads(tags_str)
-                    if not isinstance(tags, list):
-                        tags = []
-                except json.JSONDecodeError:
-                    tags = []
+
+            # Parse tags (comma-separated format)
+            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
             
             # Parse metadata
             metadata = {}
@@ -1613,6 +1607,39 @@ SOLUTIONS:
         except Exception as e:
             logger.error(f"Error counting memories: {str(e)}")
             return 0
+
+    async def get_all_tags_with_counts(self) -> List[Dict[str, Any]]:
+        """
+        Get all tags with their usage counts.
+
+        Returns:
+            List of dictionaries with 'tag' and 'count' keys, sorted by count descending
+        """
+        try:
+            await self.initialize()
+
+            # Get all tags from the database
+            cursor = self.conn.execute('''
+                SELECT tags
+                FROM memories
+                WHERE tags IS NOT NULL AND tags != ''
+            ''')
+
+            # Use Counter with generator expression for memory efficiency
+            tag_counter = Counter(
+                tag.strip()
+                for (tag_string,) in cursor
+                if tag_string
+                for tag in tag_string.split(",")
+                if tag.strip()
+            )
+
+            # Return as list of dicts sorted by count descending
+            return [{"tag": tag, "count": count} for tag, count in tag_counter.most_common()]
+
+        except Exception as e:
+            logger.error(f"Error getting tags with counts: {str(e)}")
+            return []
 
     def close(self):
         """Close the database connection."""

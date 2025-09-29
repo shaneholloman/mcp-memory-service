@@ -20,7 +20,7 @@ import time
 import platform
 import psutil
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -30,9 +30,13 @@ from ..dependencies import get_storage
 from ... import __version__
 from ...config import OAUTH_ENABLED
 
-# Import OAuth dependencies only when needed
-if OAUTH_ENABLED:
+# OAuth authentication imports (conditional)
+if OAUTH_ENABLED or TYPE_CHECKING:
     from ..oauth.middleware import require_read_access, AuthenticationResult
+else:
+    # Provide type stubs when OAuth is disabled
+    AuthenticationResult = None
+    require_read_access = None
 
 router = APIRouter()
 

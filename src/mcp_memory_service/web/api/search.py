@@ -19,7 +19,7 @@ Provides semantic search, tag-based search, and time-based recall functionality.
 """
 
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Depends, Query
@@ -33,8 +33,12 @@ from .memories import MemoryResponse, memory_to_response
 from ..sse import sse_manager, create_search_completed_event
 
 # OAuth authentication imports (conditional)
-if OAUTH_ENABLED:
+if OAUTH_ENABLED or TYPE_CHECKING:
     from ..oauth.middleware import require_read_access, AuthenticationResult
+else:
+    # Provide type stubs when OAuth is disabled
+    AuthenticationResult = None
+    require_read_access = None
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
