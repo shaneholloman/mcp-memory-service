@@ -350,11 +350,8 @@ async def update_memory(
     """
     try:
         # First, check if the memory exists
-        try:
-            existing_memory = await storage.get_by_hash(content_hash)
-            if not existing_memory:
-                raise HTTPException(status_code=404, detail=f"Memory with hash {content_hash} not found")
-        except Exception:
+        existing_memory = await storage.get_by_hash(content_hash)
+        if not existing_memory:
             raise HTTPException(status_code=404, detail=f"Memory with hash {content_hash} not found")
 
         # Build the updates dictionary with only provided fields

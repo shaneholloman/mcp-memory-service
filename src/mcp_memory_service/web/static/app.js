@@ -1145,18 +1145,29 @@ class MemoryDashboard {
     updateConnectionStatus(status) {
         const statusElement = document.getElementById('connectionStatus');
         if (statusElement) {
+            const indicator = statusElement.querySelector('.status-indicator');
+            const text = statusElement.querySelector('.status-text');
+            if (!indicator || !text) return;
+
+            // Reset indicator classes
+            indicator.className = 'status-indicator';
+
             switch (status) {
                 case 'connected':
-                    statusElement.textContent = 'Connected';
+                    text.textContent = 'Connected';
+                    // Connected uses default green color (no additional class needed)
                     break;
                 case 'connecting':
-                    statusElement.textContent = 'Connecting...';
+                    text.textContent = 'Connecting...';
+                    indicator.classList.add('connecting');
                     break;
                 case 'disconnected':
-                    statusElement.textContent = 'Disconnected';
+                    text.textContent = 'Disconnected';
+                    indicator.classList.add('disconnected');
                     break;
                 default:
-                    statusElement.textContent = 'Unknown';
+                    text.textContent = 'Unknown';
+                    indicator.classList.add('disconnected');
             }
         }
     }
@@ -1210,7 +1221,7 @@ class MemoryDashboard {
      */
     setLoading(loading) {
         this.isLoading = loading;
-        const indicator = document.getElementById('loadingIndicator');
+        const indicator = document.getElementById('loadingOverlay');
         if (indicator) {
             if (loading) {
                 indicator.classList.remove('hidden');
