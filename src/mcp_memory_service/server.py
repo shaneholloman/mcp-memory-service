@@ -2733,10 +2733,17 @@ class MemoryServer:
             for i, result in enumerate(results):
                 memory_info = [
                     f"Memory {i+1}:",
+                ]
+
+                # Add timestamp if available
+                if hasattr(result.memory, 'timestamp') and result.memory.timestamp:
+                    memory_info.append(f"Timestamp: {result.memory.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+
+                memory_info.extend([
                     f"Content: {result.memory.content}",
                     f"Hash: {result.memory.content_hash}",
                     f"Relevance Score: {result.relevance_score:.2f}"
-                ]
+                ])
                 if result.memory.tags:
                     memory_info.append(f"Tags: {', '.join(result.memory.tags)}")
                 memory_info.append("---")
@@ -2772,10 +2779,17 @@ class MemoryServer:
             for i, memory in enumerate(memories):
                 memory_info = [
                     f"Memory {i+1}:",
+                ]
+
+                # Add timestamp if available
+                if hasattr(memory, 'timestamp') and memory.timestamp:
+                    memory_info.append(f"Timestamp: {memory.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+
+                memory_info.extend([
                     f"Content: {memory.content}",
                     f"Hash: {memory.content_hash}",
                     f"Tags: {', '.join(memory.tags)}"
-                ]
+                ])
                 if memory.memory_type:
                     memory_info.append(f"Type: {memory.memory_type}")
                 memory_info.append("---")
