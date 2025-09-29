@@ -142,7 +142,7 @@ class CloudflareStorage(MemoryStorage):
     async def _generate_embedding(self, text: str) -> List[float]:
         """Generate embedding using Workers AI or cache."""
         # Check cache first
-        text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+        text_hash = hashlib.sha256(text.encode()).hexdigest()
         if text_hash in self._embedding_cache:
             return self._embedding_cache[text_hash]
         
