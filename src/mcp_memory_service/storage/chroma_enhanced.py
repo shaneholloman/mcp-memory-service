@@ -82,9 +82,15 @@ async def delete_by_tag(self, tag_or_tags) -> Tuple[int, str]:
         
         return len(ids_to_delete), message
         
+    except chromadb.errors.ChromaError as e:
+        logger.error(f"ChromaDB error deleting memories by tag(s): {e}")
+        return 0, f"ChromaDB error deleting memories by tag(s): {e}"
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error during tag deletion: {e}")
+        return 0, f"JSON parsing error during tag deletion: {e}"
     except Exception as e:
-        logger.error(f"Error deleting memories by tag(s): {e}")
-        return 0, f"Error deleting memories by tag(s): {e}"
+        logger.error(f"Unexpected error deleting memories by tag(s): {type(e).__name__}: {e}")
+        return 0, f"Unexpected error deleting memories by tag(s): {e}"
 
 async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str]:
     """
@@ -156,6 +162,12 @@ async def delete_by_all_tags(self, tags: List[str]) -> Tuple[int, str]:
         
         return len(ids_to_delete), message
         
+    except chromadb.errors.ChromaError as e:
+        logger.error(f"ChromaDB error deleting memories by all tags: {e}")
+        return 0, f"ChromaDB error deleting memories by all tags: {e}"
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error during all tags deletion: {e}")
+        return 0, f"JSON parsing error during all tags deletion: {e}"
     except Exception as e:
-        logger.error(f"Error deleting memories by all tags: {e}")
-        return 0, f"Error deleting memories by all tags: {e}"
+        logger.error(f"Unexpected error deleting memories by all tags: {type(e).__name__}: {e}")
+        return 0, f"Unexpected error deleting memories by all tags: {e}"
