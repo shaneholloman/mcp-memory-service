@@ -44,12 +44,21 @@ async def delete_by_tag(self, tag_or_tags) -> Tuple[int, str]:
         
         if results["ids"]:
             for i, meta in enumerate(results["metadatas"]):
-                try:
-                    retrieved_tags_string = meta.get("tags", "[]")
-                    retrieved_tags = json.loads(retrieved_tags_string)
-                except json.JSONDecodeError:
+                # Parse tags consistently with standard ChromaDB format (comma-separated)
+                tags_string = meta.get("tags", "")
+                if tags_string:
+                    # Handle both comma-separated (standard) and JSON formats (legacy)
+                    if tags_string.startswith("[") and tags_string.endswith("]"):
+                        try:
+                            retrieved_tags = json.loads(tags_string)
+                        except json.JSONDecodeError:
+                            retrieved_tags = []
+                    else:
+                        # Standard comma-separated format
+                        retrieved_tags = [tag.strip() for tag in tags_string.split(",") if tag.strip()]
+                else:
                     retrieved_tags = []
-                
+
                 # Check if any of the tags to delete are in this memory's tags
                 for tag_to_delete in tags_to_delete:
                     if tag_to_delete in retrieved_tags:
@@ -73,9 +82,15 @@ async def delete_by_tag(self, tag_or_tags) -> Tuple[int, str]:
         
         return len(ids_to_delete), message
         
+    except chromadb.errors.ChromaError as e:
+        logger.error(f"ChromaDB error deleting memories by tag(s): {e}")
+        return 0, f"ChromaDB error deleting memories by tag(s): {e}"
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error during tag deletion: {e}")
+        return 0, f"JSON parsing error during tag deletion: {e}"
     except Exception as e:
-        logger.error(f"Error deleting memories by tag(s): {e}")
-        return 0, f"Error deleting memories by tag(s): {e}"
+        logger.error(f"Unexpected error deleting memories by tag(s): {type(e).__name__}: {e}")
+        return 0, f"Unexpected error deleting memories by tag(s): {e}"
 
 async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str]:
     """
@@ -116,12 +131,21 @@ async def delete_by_all_tags(self, tags: List[str]) -> Tuple[int, str]:
         
         if results["ids"]:
             for i, meta in enumerate(results["metadatas"]):
-                try:
-                    retrieved_tags_string = meta.get("tags", "[]")
-                    retrieved_tags = json.loads(retrieved_tags_string)
-                except json.JSONDecodeError:
+                # Parse tags consistently with standard ChromaDB format (comma-separated)
+                tags_string = meta.get("tags", "")
+                if tags_string:
+                    # Handle both comma-separated (standard) and JSON formats (legacy)
+                    if tags_string.startswith("[") and tags_string.endswith("]"):
+                        try:
+                            retrieved_tags = json.loads(tags_string)
+                        except json.JSONDecodeError:
+                            retrieved_tags = []
+                    else:
+                        # Standard comma-separated format
+                        retrieved_tags = [tag.strip() for tag in tags_string.split(",") if tag.strip()]
+                else:
                     retrieved_tags = []
-                
+
                 # Check if ALL tags are present in this memory
                 if all(tag in retrieved_tags for tag in tags_to_match):
                     ids_to_delete.append(results["ids"][i])
@@ -138,6 +162,12 @@ async def delete_by_all_tags(self, tags: List[str]) -> Tuple[int, str]:
         
         return len(ids_to_delete), message
         
+    except chromadb.errors.ChromaError as e:
+        logger.error(f"ChromaDB error deleting memories by all tags: {e}")
+        return 0, f"ChromaDB error deleting memories by all tags: {e}"
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error during all tags deletion: {e}")
+        return 0, f"JSON parsing error during all tags deletion: {e}"
     except Exception as e:
-        logger.error(f"Error deleting memories by all tags: {e}")
-        return 0, f"Error deleting memories by all tags: {e}"
+        logger.error(f"Unexpected error deleting memories by all tags: {type(e).__name__}: {e}")
+        return 0, f"Unexpected error deleting memories by all tags: {e}"

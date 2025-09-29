@@ -53,7 +53,8 @@ def detect_mcp_client():
                     return 'claude_desktop'
                 if 'lmstudio' in cmdline_str or 'lm-studio' in cmdline_str:
                     return 'lm_studio'
-            except:
+            except (OSError, IndexError, AttributeError) as e:
+                logger.debug(f"Could not detect client from process: {e}")
                 pass
         
         # Fallback: check environment variables
@@ -830,8 +831,12 @@ class MemoryServer:
                         description=f"All memories with tag '{tag}'",
                         mimeType="application/json"
                     ))
-            except:
-                pass  # If get_all_tags not available, skip
+            except AttributeError:
+                # get_all_tags method not available on this storage backend
+                pass
+            except Exception as e:
+                logger.warning(f"Failed to load tag resources: {e}")
+                pass
             
             return resources
         
@@ -2349,6 +2354,7 @@ class MemoryServer:
         # Initialize default values
         total_memories = 0
         unique_tags = 0
+        memories_this_week = 0
         database_size = "unknown"
         database_path = "unknown"
         database_exists = False
@@ -2372,6 +2378,12 @@ class MemoryServer:
                             tags = [tag.strip() for tag in tag_string.split(',') if tag.strip()]
                             all_tags.update(tags)
                     unique_tags = len(all_tags)
+
+                    # Count memories from this week (last 7 days)
+                    import time
+                    week_ago = time.time() - (7 * 24 * 60 * 60)
+                    cursor = storage.conn.execute('SELECT COUNT(*) FROM memories WHERE created_at >= ?', (week_ago,))
+                    memories_this_week = cursor.fetchone()[0]
                     
                     # Get database file info
                     if hasattr(storage, 'db_path') and storage.db_path:
@@ -2454,8 +2466,9 @@ class MemoryServer:
         
         # Format for dashboard with proper numeric types
         result = {
-            "total_memories": total_memories,  # Always a number
-            "unique_tags": unique_tags,        # Always a number  
+            "total_memories": total_memories,      # Always a number
+            "unique_tags": unique_tags,            # Always a number
+            "memories_this_week": memories_this_week,  # Always a number
             "database_size": database_size,
             "database_path": database_path,
             "database_exists": database_exists,

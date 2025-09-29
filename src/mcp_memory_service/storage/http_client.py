@@ -59,7 +59,27 @@ class HTTPClientStorage(MemoryStorage):
         self._initialized = False
         
         logger.info(f"Initialized HTTP client storage for: {self.base_url}")
-    
+
+    def _handle_http_error(self, e: Exception, operation: str, return_empty_list: bool = False):
+        """Centralized HTTP error handling with context-specific logging."""
+        if isinstance(e, aiohttp.ClientError):
+            error_msg = f"HTTP client connection error during {operation}: {str(e)}"
+        elif isinstance(e, aiohttp.ServerTimeoutError):
+            error_msg = f"HTTP server timeout during {operation}: {str(e)}"
+        elif isinstance(e, asyncio.TimeoutError):
+            error_msg = f"{operation.capitalize()} operation timeout: {str(e)}"
+        elif isinstance(e, json.JSONDecodeError):
+            error_msg = f"Invalid JSON response during {operation}: {str(e)}"
+        else:
+            error_msg = f"Unexpected {operation} error: {type(e).__name__}: {str(e)}"
+
+        logger.error(error_msg)
+
+        if return_empty_list:
+            return []
+        else:
+            return False, error_msg
+
     async def initialize(self):
         """Initialize the HTTP client session."""
         try:
@@ -75,7 +95,15 @@ class HTTPClientStorage(MemoryStorage):
                 else:
                     raise RuntimeError(f"Health check failed: HTTP {response.status}")
         except Exception as e:
-            error_msg = f"Failed to initialize HTTP client storage: {str(e)}"
+            if isinstance(e, aiohttp.ClientError):
+                error_msg = f"HTTP client connection error during initialization: {str(e)}"
+            elif isinstance(e, aiohttp.ServerTimeoutError):
+                error_msg = f"HTTP server timeout during initialization: {str(e)}"
+            elif isinstance(e, asyncio.TimeoutError):
+                error_msg = f"Initialization timeout: {str(e)}"
+            else:
+                error_msg = f"Unexpected error during HTTP client initialization: {type(e).__name__}: {str(e)}"
+
             logger.error(error_msg)
             if self.session:
                 await self.session.close()
@@ -108,9 +136,7 @@ class HTTPClientStorage(MemoryStorage):
                     return False, error_msg
                     
         except Exception as e:
-            error_msg = f"HTTP store error: {str(e)}"
-            logger.error(error_msg)
-            return False, error_msg
+            return self._handle_http_error(e, "store")
     
     async def retrieve(self, query: str, n_results: int = 5) -> List[MemoryQueryResult]:
         """Retrieve memories using semantic search via HTTP API."""
@@ -158,8 +184,7 @@ class HTTPClientStorage(MemoryStorage):
                     return []
                     
         except Exception as e:
-            logger.error(f"HTTP retrieve error: {str(e)}")
-            return []
+            return self._handle_http_error(e, "retrieve", return_empty_list=True)
     
     async def search_by_tag(self, tags: List[str]) -> List[Memory]:
         """Search memories by tags via HTTP API."""
@@ -200,8 +225,7 @@ class HTTPClientStorage(MemoryStorage):
                     return []
                     
         except Exception as e:
-            logger.error(f"HTTP tag search error: {str(e)}")
-            return []
+            return self._handle_http_error(e, "tag search", return_empty_list=True)
     
     async def delete(self, content_hash: str) -> Tuple[bool, str]:
         """Delete a memory by content hash via HTTP API."""
@@ -225,9 +249,7 @@ class HTTPClientStorage(MemoryStorage):
                     return False, error_msg
                     
         except Exception as e:
-            error_msg = f"HTTP delete error: {str(e)}"
-            logger.error(error_msg)
-            return False, error_msg
+            return self._handle_http_error(e, "delete")
     
     async def delete_by_tag(self, tag: str) -> Tuple[int, str]:
         """Delete memories by tag (not implemented via HTTP - would be dangerous)."""
@@ -292,8 +314,7 @@ class HTTPClientStorage(MemoryStorage):
                     return []
                     
         except Exception as e:
-            logger.error(f"HTTP recall error: {str(e)}")
-            return []
+            return self._handle_http_error(e, "recall", return_empty_list=True)
     
     def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics (placeholder - could call stats endpoint)."""
@@ -304,10 +325,10 @@ class HTTPClientStorage(MemoryStorage):
             "note": "Statistics from remote server not implemented yet"
         }
     
-    def close(self):
+    async def close(self):
         """Close the HTTP client session."""
         if self.session:
-            asyncio.create_task(self.session.close())
+            await self.session.close()
             self.session = None
             self._initialized = False
             logger.info("HTTP client storage connection closed")

@@ -91,11 +91,17 @@ class Memory:
                         dt = datetime.fromisoformat(iso_str)
                         import calendar
                         return calendar.timegm(dt.timetuple()) + dt.microsecond / 1000000.0
-                except:
+                except (ValueError, TypeError) as e:
                     # Last resort: try strptime and treat as UTC
-                    dt = datetime.strptime(iso_str[:19], "%Y-%m-%dT%H:%M:%S")
-                    import calendar
-                    return calendar.timegm(dt.timetuple())
+                    try:
+                        dt = datetime.strptime(iso_str[:19], "%Y-%m-%dT%H:%M:%S")
+                        import calendar
+                        return calendar.timegm(dt.timetuple())
+                    except (ValueError, TypeError):
+                        # If all parsing fails, return current timestamp
+                        import logging
+                        logging.warning(f"Failed to parse timestamp '{iso_str}', using current time")
+                        return datetime.now().timestamp()
 
         def float_to_iso(ts: float) -> str:
             """Convert float timestamp to ISO string."""

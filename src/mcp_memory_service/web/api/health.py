@@ -20,7 +20,7 @@ import time
 import platform
 import psutil
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -30,9 +30,13 @@ from ..dependencies import get_storage
 from ... import __version__
 from ...config import OAUTH_ENABLED
 
-# Import OAuth dependencies only when needed
-if OAUTH_ENABLED:
+# OAuth authentication imports (conditional)
+if OAUTH_ENABLED or TYPE_CHECKING:
     from ..oauth.middleware import require_read_access, AuthenticationResult
+else:
+    # Provide type stubs when OAuth is disabled
+    AuthenticationResult = None
+    require_read_access = None
 
 router = APIRouter()
 
@@ -136,6 +140,7 @@ async def detailed_health_check(
     statistics = {
         "total_memories": storage_info.get("total_memories", 0),
         "unique_tags": storage_info.get("unique_tags", 0),
+        "memories_this_week": storage_info.get("memories_this_week", 0),
         "database_size_mb": storage_info.get("database_size_mb", 0),
         "backend": storage_info.get("backend", "sqlite-vec")
     }

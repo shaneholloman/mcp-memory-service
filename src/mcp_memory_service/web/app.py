@@ -770,7 +770,22 @@ def create_app() -> FastAPI:
         </body>
         </html>
         """
-        return html_template
+        # Serve the migrated interactive dashboard instead of hardcoded template
+        try:
+            # Path to the migrated dashboard HTML file
+            dashboard_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+
+            if os.path.exists(dashboard_path):
+                # Read and serve the migrated dashboard
+                with open(dashboard_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            else:
+                # Fallback to original template if dashboard not found
+                return html_template
+        except Exception as e:
+            # Error fallback to original template
+            logger.warning(f"Error loading migrated dashboard: {e}")
+            return html_template
     
     return app
 

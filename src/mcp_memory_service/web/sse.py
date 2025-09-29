@@ -158,7 +158,7 @@ class SSEManager:
                 try:
                     await self.connections[connection_id]['queue'].put(event)
                 except Exception as e:
-                    logger.warning(f"Failed to send event to {connection_id}: {e}")
+                    logger.error(f"Failed to send event to {connection_id}: {e}")
                     await self._remove_connection(connection_id)
     
     async def _heartbeat_loop(self):
