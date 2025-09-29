@@ -53,7 +53,7 @@ def cli(ctx):
 @click.option('--debug', is_flag=True, help='Enable debug logging')
 @click.option('--chroma-path', type=str, help='Path to ChromaDB storage')
 @click.option('--storage-backend', '-s', default=None,
-              type=click.Choice(['sqlite_vec', 'chromadb', 'cloudflare']), help='Storage backend to use (defaults to environment or sqlite_vec)')
+              type=click.Choice(['sqlite_vec', 'chromadb', 'cloudflare', 'hybrid']), help='Storage backend to use (defaults to environment or sqlite_vec)')
 def server(debug, chroma_path, storage_backend):
     """
     Start the MCP Memory Service server.
@@ -80,8 +80,8 @@ def server(debug, chroma_path, storage_backend):
 
 
 @cli.command()
-@click.option('--storage-backend', '-s', default='sqlite_vec', 
-              type=click.Choice(['sqlite_vec', 'chromadb', 'cloudflare']), help='Storage backend to use')
+@click.option('--storage-backend', '-s', default='sqlite_vec',
+              type=click.Choice(['sqlite_vec', 'chromadb', 'cloudflare', 'hybrid']), help='Storage backend to use')
 def status():
     """
     Show memory service status and statistics.
