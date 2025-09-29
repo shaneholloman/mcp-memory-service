@@ -157,7 +157,8 @@ async def semantic_search(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Semantic search failed: {str(e)}")
+        logger.error(f"Semantic search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Search operation failed. Please try again.")
 
 
 @router.post("/search/by-tag", response_model=SearchResponse, tags=["search"])

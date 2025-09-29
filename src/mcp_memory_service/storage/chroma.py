@@ -461,7 +461,7 @@ class ChromaMemoryStorage(MemoryStorage):
         return json.dumps(tags)
 
     @staticmethod
-    def normalize_timestamp(ts) -> float:
+    def normalize_timestamp(ts: Union[datetime, float, int, str]) -> float:
         """Convert datetime or float-like timestamp into float seconds."""
         if isinstance(ts, datetime):
             return time.mktime(ts.timetuple())

@@ -215,7 +215,8 @@ async def store_memory(
             )
             
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to store memory: {str(e)}")
+        logger.error(f"Failed to store memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to store memory. Please try again.")
 
 
 @router.get("/memories", response_model=MemoryListResponse, tags=["memories"])
@@ -332,7 +333,8 @@ async def delete_memory(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete memory: {str(e)}")
+        logger.error(f"Failed to delete memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete memory. Please try again.")
 
 
 @router.put("/memories/{content_hash}", response_model=MemoryUpdateResponse, tags=["memories"])
