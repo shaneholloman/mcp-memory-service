@@ -18,6 +18,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import time
 import logging
+import calendar
 
 # Try to import dateutil, but fall back to standard datetime parsing if not available
 try:
@@ -89,17 +90,14 @@ class Memory:
                     else:
                         # No timezone info, assume UTC
                         dt = datetime.fromisoformat(iso_str)
-                        import calendar
                         return calendar.timegm(dt.timetuple()) + dt.microsecond / 1000000.0
                 except (ValueError, TypeError) as e:
                     # Last resort: try strptime and treat as UTC
                     try:
                         dt = datetime.strptime(iso_str[:19], "%Y-%m-%dT%H:%M:%S")
-                        import calendar
                         return calendar.timegm(dt.timetuple())
                     except (ValueError, TypeError):
                         # If all parsing fails, return current timestamp
-                        import logging
                         logging.warning(f"Failed to parse timestamp '{iso_str}', using current time")
                         return datetime.now().timestamp()
 
