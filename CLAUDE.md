@@ -8,7 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop using ChromaDB and sentence transformers.
 
-> **🚀 v6.20.0**: Now features **Dual Protocol Memory Hooks** for Claude Code with automatic HTTP/MCP protocol detection and smart fallback!
+> **🧠 v7.1.0**: Now features **Natural Memory Triggers** with intelligent automatic memory retrieval, 85%+ trigger accuracy, and multi-tier performance optimization!
+
+> **🚀 v7.0.0**: Features **OAuth 2.1 Dynamic Client Registration** and **Dual Protocol Memory Hooks** for Claude Code with automatic HTTP/MCP protocol detection.
 
 ## Essential Commands
 
@@ -39,6 +41,12 @@ python scripts/sync/claude_sync_commands.py restore     # SQLite → Cloudflare
 # Service Management
 scripts/service/memory_service_manager.sh status       # Check service status
 scripts/service/memory_service_manager.sh start-cloudflare # Start with Cloudflare
+
+# Natural Memory Triggers v7.1.0 (Latest)
+node ~/.claude/hooks/memory-mode-controller.js status   # Check trigger system status
+node ~/.claude/hooks/memory-mode-controller.js profile balanced  # Switch performance profile
+node ~/.claude/hooks/memory-mode-controller.js sensitivity 0.7   # Adjust trigger sensitivity
+node ~/.claude/hooks/test-natural-triggers.js          # Test trigger system
 
 # Debug & Troubleshooting
 npx @modelcontextprotocol/inspector uv run memory server # MCP Inspector
@@ -95,7 +103,53 @@ export MCP_API_KEY="$(openssl rand -base64 32)" # Generate secure API key
 
 ## Claude Code Hooks Configuration 🆕
 
-**Dual Protocol Memory Hooks** (v6.20.0+) provide intelligent memory awareness with automatic protocol detection:
+### Natural Memory Triggers v7.1.0 (Latest)
+
+**Intelligent automatic memory retrieval** with advanced semantic analysis and multi-tier performance optimization:
+
+```bash
+# Installation (Zero-restart required)
+cd claude-hooks && python install_hooks.py --natural-triggers
+
+# CLI Management
+node ~/.claude/hooks/memory-mode-controller.js status
+node ~/.claude/hooks/memory-mode-controller.js profile balanced
+node ~/.claude/hooks/memory-mode-controller.js sensitivity 0.6
+```
+
+**Key Features:**
+- ✅ **85%+ trigger accuracy** for memory-seeking pattern detection
+- ✅ **Multi-tier processing**: 50ms instant → 150ms fast → 500ms intensive
+- ✅ **CLI management system** for real-time configuration without restart
+- ✅ **Git-aware context** integration for enhanced memory relevance
+- ✅ **Adaptive learning** based on user preferences and usage patterns
+
+**Configuration (`~/.claude/hooks/config.json`):**
+```json
+{
+  "naturalTriggers": {
+    "enabled": true,
+    "triggerThreshold": 0.6,
+    "cooldownPeriod": 30000,
+    "maxMemoriesPerTrigger": 5
+  },
+  "performance": {
+    "defaultProfile": "balanced",
+    "enableMonitoring": true,
+    "autoAdjust": true
+  }
+}
+```
+
+**Performance Profiles:**
+- `speed_focused`: <100ms, instant tier only - minimal memory awareness for speed
+- `balanced`: <200ms, instant + fast tiers - optimal for general development (recommended)
+- `memory_aware`: <500ms, all tiers - maximum context awareness for complex work
+- `adaptive`: Dynamic adjustment based on usage patterns and user feedback
+
+### Dual Protocol Memory Hooks (Legacy)
+
+**Dual Protocol Memory Hooks** (v7.0.0+) provide intelligent memory awareness with automatic protocol detection:
 
 ```json
 {
@@ -255,3 +309,5 @@ tail -50 ~/Library/Logs/Claude/mcp-server-memory.log | grep -E "(🚀|☁️|✅
 ```
 
 > **For detailed troubleshooting, architecture, and deployment guides, retrieve memories tagged with `claude-code-reference` or visit the project wiki.**
+- always use "/gemini review" when commenting on a PR
+- make sure to have commited and pushed every change to the branch before commenting on the PR and before triggering gemini Code Assist

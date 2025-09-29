@@ -31,6 +31,7 @@ Licensed under the Apache License, Version 2.0
 """
 import os
 import sys
+import secrets
 from pathlib import Path
 import time
 import logging
@@ -47,6 +48,70 @@ except ImportError:
     pass
 
 logger = logging.getLogger(__name__)
+
+def safe_get_int_env(env_var: str, default: int, min_value: int = None, max_value: int = None) -> int:
+    """
+    Safely parse an integer environment variable with validation and error handling.
+
+    Args:
+        env_var: Environment variable name
+        default: Default value if not set or invalid
+        min_value: Minimum allowed value (optional)
+        max_value: Maximum allowed value (optional)
+
+    Returns:
+        Parsed and validated integer value
+
+    Raises:
+        ValueError: If the value is outside the specified range
+    """
+    env_value = os.getenv(env_var)
+    if not env_value:
+        return default
+
+    try:
+        value = int(env_value)
+
+        # Validate range if specified
+        if min_value is not None and value < min_value:
+            logger.error(f"Environment variable {env_var}={value} is below minimum {min_value}, using default {default}")
+            return default
+
+        if max_value is not None and value > max_value:
+            logger.error(f"Environment variable {env_var}={value} is above maximum {max_value}, using default {default}")
+            return default
+
+        logger.debug(f"Environment variable {env_var}={value} parsed successfully")
+        return value
+
+    except ValueError as e:
+        logger.error(f"Invalid integer value for {env_var}='{env_value}': {e}. Using default {default}")
+        return default
+
+def safe_get_bool_env(env_var: str, default: bool) -> bool:
+    """
+    Safely parse a boolean environment variable with validation and error handling.
+
+    Args:
+        env_var: Environment variable name
+        default: Default value if not set or invalid
+
+    Returns:
+        Parsed boolean value
+    """
+    env_value = os.getenv(env_var)
+    if not env_value:
+        return default
+
+    env_value_lower = env_value.lower().strip()
+
+    if env_value_lower in ('true', '1', 'yes', 'on', 'enabled'):
+        return True
+    elif env_value_lower in ('false', '0', 'no', 'off', 'disabled'):
+        return False
+    else:
+        logger.error(f"Invalid boolean value for {env_var}='{env_value}'. Expected true/false, 1/0, yes/no, on/off, enabled/disabled. Using default {default}")
+        return default
 
 def validate_and_create_path(path: str) -> str:
     """Validate and create a directory path, ensuring it's writable.
@@ -359,10 +424,10 @@ COLLECTION_METADATA = {
 
 # HTTP Server Configuration
 HTTP_ENABLED = os.getenv('MCP_HTTP_ENABLED', 'false').lower() == 'true'
-HTTP_PORT = int(os.getenv('MCP_HTTP_PORT', '8000'))
+HTTP_PORT = safe_get_int_env('MCP_HTTP_PORT', 8000, min_value=1024, max_value=65535)  # Non-privileged ports only
 HTTP_HOST = os.getenv('MCP_HTTP_HOST', '0.0.0.0')
 CORS_ORIGINS = os.getenv('MCP_CORS_ORIGINS', '*').split(',')
-SSE_HEARTBEAT_INTERVAL = int(os.getenv('MCP_SSE_HEARTBEAT', '30'))
+SSE_HEARTBEAT_INTERVAL = safe_get_int_env('MCP_SSE_HEARTBEAT', 30, min_value=5, max_value=300)  # 5 seconds to 5 minutes
 API_KEY = os.getenv('MCP_API_KEY', None)  # Optional authentication
 
 # HTTPS Configuration
@@ -458,3 +523,211 @@ logger.info(f"Consolidation enabled: {CONSOLIDATION_ENABLED}")
 if CONSOLIDATION_ENABLED:
     logger.info(f"Consolidation configuration: {CONSOLIDATION_CONFIG}")
     logger.info(f"Consolidation schedule: {CONSOLIDATION_SCHEDULE}")
+
+# OAuth 2.1 Configuration
+OAUTH_ENABLED = safe_get_bool_env('MCP_OAUTH_ENABLED', True)
+
+# RSA key pair configuration for JWT signing (RS256)
+# Private key for signing tokens
+OAUTH_PRIVATE_KEY = os.getenv('MCP_OAUTH_PRIVATE_KEY')
+# Public key for verifying tokens
+OAUTH_PUBLIC_KEY = os.getenv('MCP_OAUTH_PUBLIC_KEY')
+
+# Generate RSA key pair if not provided
+if not OAUTH_PRIVATE_KEY or not OAUTH_PUBLIC_KEY:
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.backends import default_backend
+
+        # Generate 2048-bit RSA key pair
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend()
+        )
+
+        # Serialize private key to PEM format
+        OAUTH_PRIVATE_KEY = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        ).decode('utf-8')
+
+        # Serialize public key to PEM format
+        public_key = private_key.public_key()
+        OAUTH_PUBLIC_KEY = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ).decode('utf-8')
+
+        logger.info("Generated RSA key pair for OAuth JWT signing (set MCP_OAUTH_PRIVATE_KEY and MCP_OAUTH_PUBLIC_KEY for persistence)")
+
+    except ImportError:
+        logger.warning("cryptography package not available, falling back to HS256 symmetric key")
+        # Fallback to symmetric key for HS256
+        OAUTH_SECRET_KEY = os.getenv('MCP_OAUTH_SECRET_KEY')
+        if not OAUTH_SECRET_KEY:
+            OAUTH_SECRET_KEY = secrets.token_urlsafe(32)
+            logger.info("Generated random OAuth secret key (set MCP_OAUTH_SECRET_KEY for persistence)")
+        OAUTH_PRIVATE_KEY = None
+        OAUTH_PUBLIC_KEY = None
+
+# JWT algorithm and key helper functions
+def get_jwt_algorithm() -> str:
+    """Get the JWT algorithm to use based on available keys."""
+    return "RS256" if OAUTH_PRIVATE_KEY and OAUTH_PUBLIC_KEY else "HS256"
+
+def get_jwt_signing_key() -> str:
+    """Get the appropriate key for JWT signing."""
+    if OAUTH_PRIVATE_KEY and OAUTH_PUBLIC_KEY:
+        return OAUTH_PRIVATE_KEY
+    elif hasattr(globals(), 'OAUTH_SECRET_KEY'):
+        return OAUTH_SECRET_KEY
+    else:
+        raise ValueError("No JWT signing key available")
+
+def get_jwt_verification_key() -> str:
+    """Get the appropriate key for JWT verification."""
+    if OAUTH_PRIVATE_KEY and OAUTH_PUBLIC_KEY:
+        return OAUTH_PUBLIC_KEY
+    elif hasattr(globals(), 'OAUTH_SECRET_KEY'):
+        return OAUTH_SECRET_KEY
+    else:
+        raise ValueError("No JWT verification key available")
+
+def validate_oauth_configuration() -> None:
+    """
+    Validate OAuth configuration at startup.
+
+    Raises:
+        ValueError: If OAuth configuration is invalid
+    """
+    if not OAUTH_ENABLED:
+        logger.info("OAuth validation skipped: OAuth disabled")
+        return
+
+    errors = []
+    warnings = []
+
+    # Validate issuer URL
+    if not OAUTH_ISSUER:
+        errors.append("OAuth issuer URL is not configured")
+    elif not OAUTH_ISSUER.startswith(('http://', 'https://')):
+        errors.append(f"OAuth issuer URL must start with http:// or https://: {OAUTH_ISSUER}")
+
+    # Validate JWT configuration
+    try:
+        algorithm = get_jwt_algorithm()
+        logger.debug(f"OAuth JWT algorithm validation: {algorithm}")
+
+        # Test key access
+        signing_key = get_jwt_signing_key()
+        verification_key = get_jwt_verification_key()
+
+        if algorithm == "RS256":
+            if not OAUTH_PRIVATE_KEY or not OAUTH_PUBLIC_KEY:
+                errors.append("RS256 algorithm selected but RSA keys are missing")
+            elif len(signing_key) < 100:  # Basic length check for PEM format
+                warnings.append("RSA private key appears to be too short")
+        elif algorithm == "HS256":
+            if not hasattr(globals(), 'OAUTH_SECRET_KEY') or not OAUTH_SECRET_KEY:
+                errors.append("HS256 algorithm selected but secret key is missing")
+            elif len(signing_key) < 32:  # Basic length check for symmetric key
+                warnings.append("OAuth secret key is shorter than recommended (32+ characters)")
+
+    except Exception as e:
+        errors.append(f"JWT configuration error: {e}")
+
+    # Validate token expiry settings
+    if OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES <= 0:
+        errors.append(f"OAuth access token expiry must be positive: {OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES}")
+    elif OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES > 1440:  # 24 hours
+        warnings.append(f"OAuth access token expiry is very long: {OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES} minutes")
+
+    if OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES <= 0:
+        errors.append(f"OAuth authorization code expiry must be positive: {OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES}")
+    elif OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES > 60:  # 1 hour
+        warnings.append(f"OAuth authorization code expiry is longer than recommended: {OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES} minutes")
+
+    # Validate security settings
+    if "localhost" in OAUTH_ISSUER or "127.0.0.1" in OAUTH_ISSUER:
+        if not os.getenv('MCP_OAUTH_ISSUER'):
+            warnings.append("OAuth issuer contains localhost/127.0.0.1. For production, set MCP_OAUTH_ISSUER to external URL")
+
+    # Check for production readiness
+    if ALLOW_ANONYMOUS_ACCESS:
+        warnings.append("Anonymous access is enabled - consider disabling for production")
+
+    # Check for insecure transport in production
+    if OAUTH_ISSUER.startswith('http://') and not ("localhost" in OAUTH_ISSUER or "127.0.0.1" in OAUTH_ISSUER):
+        warnings.append("OAuth issuer uses HTTP (non-encrypted) transport - use HTTPS for production")
+
+    # Check for weak algorithm in production environments
+    if get_jwt_algorithm() == "HS256" and not os.getenv('MCP_OAUTH_SECRET_KEY'):
+        warnings.append("Using auto-generated HS256 secret key - set MCP_OAUTH_SECRET_KEY for production")
+
+    # Log validation results
+    if errors:
+        error_msg = "OAuth configuration validation failed:\n" + "\n".join(f"  - {err}" for err in errors)
+        logger.error(error_msg)
+        raise ValueError(f"Invalid OAuth configuration: {'; '.join(errors)}")
+
+    if warnings:
+        warning_msg = "OAuth configuration warnings:\n" + "\n".join(f"  - {warn}" for warn in warnings)
+        logger.warning(warning_msg)
+
+    logger.info("OAuth configuration validation successful")
+
+# OAuth server configuration
+def get_oauth_issuer() -> str:
+    """
+    Get the OAuth issuer URL based on server configuration.
+
+    For reverse proxy deployments, set MCP_OAUTH_ISSUER environment variable
+    to override auto-detection (e.g., "https://api.example.com").
+
+    This ensures OAuth discovery endpoints return the correct external URLs
+    that clients can actually reach, rather than internal server addresses.
+    """
+    scheme = "https" if HTTPS_ENABLED else "http"
+    host = "localhost" if HTTP_HOST == "0.0.0.0" else HTTP_HOST
+
+    # Only include port if it's not the standard port for the scheme
+    if (scheme == "https" and HTTP_PORT != 443) or (scheme == "http" and HTTP_PORT != 80):
+        return f"{scheme}://{host}:{HTTP_PORT}"
+    else:
+        return f"{scheme}://{host}"
+
+# OAuth issuer URL - CRITICAL for reverse proxy deployments
+# Production: Set MCP_OAUTH_ISSUER to external URL (e.g., "https://api.example.com")
+# Development: Auto-detects from server configuration
+OAUTH_ISSUER = os.getenv('MCP_OAUTH_ISSUER') or get_oauth_issuer()
+
+# OAuth token configuration
+OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES = safe_get_int_env('MCP_OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES', 60, min_value=1, max_value=1440)  # 1 minute to 24 hours
+OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES = safe_get_int_env('MCP_OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES', 10, min_value=1, max_value=60)  # 1 minute to 1 hour
+
+# OAuth security configuration
+ALLOW_ANONYMOUS_ACCESS = safe_get_bool_env('MCP_ALLOW_ANONYMOUS_ACCESS', False)
+
+logger.info(f"OAuth enabled: {OAUTH_ENABLED}")
+if OAUTH_ENABLED:
+    logger.info(f"OAuth issuer: {OAUTH_ISSUER}")
+    logger.info(f"OAuth JWT algorithm: {get_jwt_algorithm()}")
+    logger.info(f"OAuth access token expiry: {OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES} minutes")
+    logger.info(f"Anonymous access allowed: {ALLOW_ANONYMOUS_ACCESS}")
+
+    # Warn about potential reverse proxy configuration issues
+    if not os.getenv('MCP_OAUTH_ISSUER') and ("localhost" in OAUTH_ISSUER or "127.0.0.1" in OAUTH_ISSUER):
+        logger.warning(
+            "OAuth issuer contains localhost/127.0.0.1. For reverse proxy deployments, "
+            "set MCP_OAUTH_ISSUER to the external URL (e.g., 'https://api.example.com')"
+        )
+
+    # Validate OAuth configuration at startup
+    try:
+        validate_oauth_configuration()
+    except ValueError as e:
+        logger.error(f"OAuth configuration validation failed: {e}")
+        raise

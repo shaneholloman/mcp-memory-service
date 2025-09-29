@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-memory-service"
-version = "6.22.1"
+version = "7.0.0"
 description = "Universal MCP memory service with semantic search, multi-client support, and autonomous consolidation for Claude Desktop, VS Code, and 13+ AI applications"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,7 +34,6 @@ authors = [
 ]
 license = { text = "Apache-2.0" }
 dependencies = [
-    "chromadb==0.5.23",
     "tokenizers==0.20.3",
     "mcp>=1.0.0,<2.0.0",
     "sqlite-vec>=0.1.0",
@@ -49,10 +48,12 @@ dependencies = [
     "aiofiles>=23.2.1",
     "psutil>=5.9.0",
     "zeroconf>=0.130.0",
-    "PyPDF2>=3.0.0",
+    "pypdf2>=3.0.0",
     "chardet>=5.0.0",
     "click>=8.0.0",
     "httpx>=0.24.0",
+    "authlib>=1.2.0",
+    "python-jose[cryptography]>=3.3.0",
 ]
 
 [project.optional-dependencies]
@@ -60,11 +61,11 @@ ml = [
     "sentence-transformers>=2.2.2",
     "torch>=2.0.0"
 ]
-chromadb = [
-    "chromadb==0.5.23"
-]
 sqlite = [
     "sqlite-vec>=0.1.0"
+]
+chromadb = [
+    "chromadb>=0.5.0"
 ]
 
 [project.scripts]

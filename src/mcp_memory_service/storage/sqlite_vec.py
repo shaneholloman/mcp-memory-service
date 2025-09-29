@@ -171,8 +171,18 @@ class SqliteVecMemoryStorage(MemoryStorage):
             if not SQLITE_VEC_AVAILABLE:
                 raise ImportError("sqlite-vec is not available. Install with: pip install sqlite-vec")
             
-            if not SENTENCE_TRANSFORMERS_AVAILABLE:
-                raise ImportError("sentence-transformers is not available. Install with: pip install sentence-transformers torch")
+            # Check if ONNX embeddings are enabled (preferred for Docker)
+            from ..config import USE_ONNX
+            if USE_ONNX:
+                logger.info("ONNX embeddings enabled - skipping sentence-transformers installation")
+                # ONNX embeddings don't require sentence-transformers, but we still need to initialize the database
+                # Continue with database initialization below
+                
+            # Check sentence-transformers availability (only if ONNX disabled)
+            if not USE_ONNX:
+                global SENTENCE_TRANSFORMERS_AVAILABLE
+                if not SENTENCE_TRANSFORMERS_AVAILABLE:
+                    raise ImportError("sentence-transformers is not available. Install with: pip install sentence-transformers torch")
             
             # Check if extension loading is supported
             extension_supported, support_message = self._check_extension_support()
@@ -773,12 +783,89 @@ SOLUTIONS:
             
             logger.info(f"Found {len(results)} memories with tags: {tags} (operation: {operation})")
             return results
-            
+
         except Exception as e:
             logger.error(f"Failed to search by tags with operation {operation}: {str(e)}")
             logger.error(traceback.format_exc())
             return []
-    
+
+    async def search_by_tag_chronological(self, tags: List[str], limit: int = None, offset: int = 0) -> List[Memory]:
+        """
+        Search memories by tags with chronological ordering and database-level pagination.
+
+        This method addresses Gemini Code Assist's performance concern by pushing
+        ordering and pagination to the database level instead of doing it in Python.
+
+        Args:
+            tags: List of tags to search for
+            limit: Maximum number of memories to return (None for all)
+            offset: Number of memories to skip (for pagination)
+
+        Returns:
+            List of Memory objects ordered by created_at DESC
+        """
+        try:
+            if not self.conn:
+                logger.error("Database not initialized")
+                return []
+
+            if not tags:
+                return []
+
+            # Build query for tag search (OR logic) with database-level ordering and pagination
+            tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
+            tag_params = [f"%{tag}%" for tag in tags]
+
+            # Build pagination clauses
+            limit_clause = f"LIMIT {limit}" if limit is not None else ""
+            offset_clause = f"OFFSET {offset}" if offset > 0 else ""
+
+            query = f'''
+                SELECT content_hash, content, tags, memory_type, metadata,
+                       created_at, updated_at, created_at_iso, updated_at_iso
+                FROM memories
+                WHERE {tag_conditions}
+                ORDER BY created_at DESC
+                {limit_clause} {offset_clause}
+            '''
+
+            cursor = self.conn.execute(query, tag_params)
+            results = []
+
+            for row in cursor.fetchall():
+                try:
+                    content_hash, content, tags_str, memory_type, metadata_str, created_at, updated_at, created_at_iso, updated_at_iso = row
+
+                    # Parse tags and metadata
+                    memory_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
+                    metadata = json.loads(metadata_str) if metadata_str else {}
+
+                    memory = Memory(
+                        content=content,
+                        content_hash=content_hash,
+                        tags=memory_tags,
+                        memory_type=memory_type,
+                        metadata=metadata,
+                        created_at=created_at,
+                        updated_at=updated_at,
+                        created_at_iso=created_at_iso,
+                        updated_at_iso=updated_at_iso
+                    )
+
+                    results.append(memory)
+
+                except Exception as parse_error:
+                    logger.warning(f"Failed to parse memory result: {parse_error}")
+                    continue
+
+            logger.info(f"Found {len(results)} memories with tags: {tags} using database-level pagination (limit={limit}, offset={offset})")
+            return results
+
+        except Exception as e:
+            logger.error(f"Failed to search by tags chronologically: {str(e)}")
+            logger.error(traceback.format_exc())
+            return []
+
     async def delete(self, content_hash: str) -> Tuple[bool, str]:
         """Delete a memory by its content hash."""
         try:
@@ -1425,7 +1512,7 @@ SOLUTIONS:
             logger.error(f"Error converting row to memory: {str(e)}")
             return None
 
-    async def get_all_memories(self, limit: int = None, offset: int = 0, memory_type: Optional[str] = None) -> List[Memory]:
+    async def get_all_memories(self, limit: int = None, offset: int = 0, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> List[Memory]:
         """
         Get all memories in storage ordered by creation time (newest first).
 
@@ -1433,14 +1520,15 @@ SOLUTIONS:
             limit: Maximum number of memories to return (None for all)
             offset: Number of memories to skip (for pagination)
             memory_type: Optional filter by memory type
+            tags: Optional filter by tags (matches ANY of the provided tags)
 
         Returns:
-            List of Memory objects ordered by created_at DESC, optionally filtered by type
+            List of Memory objects ordered by created_at DESC, optionally filtered by type and tags
         """
         try:
             await self.initialize()
 
-            # Build query with optional memory_type filter
+            # Build query with optional memory_type and tags filters
             query = '''
                 SELECT content_hash, content, tags, memory_type, metadata,
                        created_at, updated_at, created_at_iso, updated_at_iso
@@ -1448,9 +1536,22 @@ SOLUTIONS:
             '''
 
             params = []
+            where_conditions = []
+
+            # Add memory_type filter if specified
             if memory_type is not None:
-                query += ' WHERE memory_type = ?'
+                where_conditions.append('memory_type = ?')
                 params.append(memory_type)
+
+            # Add tags filter if specified (using database-level filtering like search_by_tag_chronological)
+            if tags and len(tags) > 0:
+                tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
+                where_conditions.append(f"({tag_conditions})")
+                params.extend([f"%{tag}%" for tag in tags])
+
+            # Apply WHERE clause if we have any conditions
+            if where_conditions:
+                query += ' WHERE ' + ' AND '.join(where_conditions)
 
             query += ' ORDER BY created_at DESC'
 

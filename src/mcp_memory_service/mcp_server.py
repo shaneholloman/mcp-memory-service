@@ -419,6 +419,72 @@ async def check_database_health(ctx: Context) -> Dict[str, Any]:
             "error": f"Health check failed: {str(e)}"
         }
 
+@mcp.tool()
+async def list_memories(
+    ctx: Context,
+    page: int = 1,
+    page_size: int = 10,
+    tag: Optional[str] = None,
+    memory_type: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    List memories with pagination and optional filtering.
+    
+    Args:
+        page: Page number (1-based)
+        page_size: Number of memories per page
+        tag: Filter by specific tag
+        memory_type: Filter by memory type
+    
+    Returns:
+        Dictionary with memories and pagination info
+    """
+    try:
+        storage = ctx.request_context.lifespan_context.storage
+        
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Use database-level filtering for better performance
+        tags_list = [tag] if tag else None
+        memories = await storage.get_all_memories(
+            limit=page_size,
+            offset=offset,
+            memory_type=memory_type,
+            tags=tags_list
+        )
+        
+        # Format results
+        results = []
+        for memory in memories:
+            results.append({
+                "content": memory.content,
+                "content_hash": memory.content_hash,
+                "tags": memory.tags,
+                "memory_type": memory.memory_type,
+                "metadata": memory.metadata,
+                "created_at": memory.created_at_iso,
+                "updated_at": memory.updated_at_iso
+            })
+        
+        return {
+            "memories": results,
+            "page": page,
+            "page_size": page_size,
+            "total_found": len(results)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error listing memories: {e}")
+        return {
+            "memories": [],
+            "page": page,
+            "page_size": page_size,
+            "error": f"Failed to list memories: {str(e)}"
+        }
+
+
+
 # =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
