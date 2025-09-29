@@ -94,7 +94,24 @@ class SqliteVecMemoryStorage(MemoryStorage):
         os.makedirs(os.path.dirname(self.db_path) if os.path.dirname(self.db_path) else '.', exist_ok=True)
         
         logger.info(f"Initialized SQLite-vec storage at: {self.db_path}")
-    
+
+    def _safe_json_loads(self, json_str: str, context: str = "") -> dict:
+        """Safely parse JSON with comprehensive error handling and logging."""
+        if not json_str:
+            return {}
+        try:
+            result = json.loads(json_str)
+            if not isinstance(result, dict):
+                logger.warning(f"Non-dict JSON in {context}: {type(result)}")
+                return {}
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error in {context}: {e}, data: {json_str[:100]}...")
+            return {}
+        except TypeError as e:
+            logger.error(f"JSON type error in {context}: {e}")
+            return {}
+
     async def _execute_with_retry(self, operation: Callable, max_retries: int = 3, initial_delay: float = 0.1):
         """
         Execute a database operation with exponential backoff retry logic.
@@ -633,7 +650,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     # Create Memory object
                     memory = Memory(
@@ -699,7 +716,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     memory_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -761,7 +778,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     memory_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -838,7 +855,7 @@ SOLUTIONS:
 
                     # Parse tags and metadata
                     memory_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
 
                     memory = Memory(
                         content=content,
@@ -917,7 +934,7 @@ SOLUTIONS:
             
             # Parse tags and metadata
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-            metadata = json.loads(metadata_str) if metadata_str else {}
+            metadata = self._safe_json_loads(metadata_str, "memory_retrieval")
             
             memory = Memory(
                 content=content,
@@ -1016,7 +1033,7 @@ SOLUTIONS:
             content, current_tags, current_type, current_metadata_str, created_at, created_at_iso = row
             
             # Parse current metadata
-            current_metadata = json.loads(current_metadata_str) if current_metadata_str else {}
+            current_metadata = self._safe_json_loads(current_metadata_str, "update_memory_metadata")
             
             # Apply updates
             new_tags = current_tags
@@ -1222,7 +1239,7 @@ SOLUTIONS:
                             
                             # Parse tags and metadata
                             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                            metadata = json.loads(metadata_str) if metadata_str else {}
+                            metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                             
                             # Create Memory object
                             memory = Memory(
@@ -1283,7 +1300,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -1343,7 +1360,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -1390,7 +1407,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -1487,14 +1504,7 @@ SOLUTIONS:
                     tags = []
             
             # Parse metadata
-            metadata = {}
-            if metadata_str:
-                try:
-                    metadata = json.loads(metadata_str)
-                    if not isinstance(metadata, dict):
-                        metadata = {}
-                except json.JSONDecodeError:
-                    metadata = {}
+            metadata = self._safe_json_loads(metadata_str, "get_by_hash")
             
             return Memory(
                 content=content,
