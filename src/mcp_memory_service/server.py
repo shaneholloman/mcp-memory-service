@@ -2739,13 +2739,10 @@ class MemoryServer:
             
             formatted_results = []
             for i, result in enumerate(results):
-                memory_info = [
-                    f"Memory {i+1}:",
-                ]
-
-                # Add timestamp if available
-                if hasattr(result.memory, 'timestamp') and result.memory.timestamp:
-                    memory_info.append(f"Timestamp: {result.memory.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+                memory_info = [f"Memory {i+1}:"]
+                timestamp = getattr(result.memory, "timestamp", None)
+                if timestamp:
+                    memory_info.append(f"Timestamp: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
 
                 memory_info.extend([
                     f"Content: {result.memory.content}",
@@ -2785,13 +2782,10 @@ class MemoryServer:
             
             formatted_results = []
             for i, memory in enumerate(memories):
-                memory_info = [
-                    f"Memory {i+1}:",
-                ]
-
-                # Add timestamp if available
-                if hasattr(memory, 'timestamp') and memory.timestamp:
-                    memory_info.append(f"Timestamp: {memory.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+                memory_info = [f"Memory {i+1}:"]
+                timestamp = getattr(memory, "timestamp", None)
+                if timestamp:
+                    memory_info.append(f"Timestamp: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
 
                 memory_info.extend([
                     f"Content: {memory.content}",
