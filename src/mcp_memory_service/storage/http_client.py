@@ -325,10 +325,10 @@ class HTTPClientStorage(MemoryStorage):
             "note": "Statistics from remote server not implemented yet"
         }
     
-    def close(self):
+    async def close(self):
         """Close the HTTP client session."""
         if self.session:
-            asyncio.create_task(self.session.close())
+            await self.session.close()
             self.session = None
             self._initialized = False
             logger.info("HTTP client storage connection closed")
