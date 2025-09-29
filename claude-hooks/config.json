@@ -11,7 +11,7 @@
     },
     "mcp": {
       "serverCommand": ["uv", "run", "memory", "server", "-s", "cloudflare"],
-      "serverWorkingDir": "/Users/hkr/Documents/GitHub/mcp-memory-service",
+      "serverWorkingDir": "C:/REPOSITORIES/mcp-memory-service",
       "connectionTimeout": 5000,
       "toolCallTimeout": 10000
     },
