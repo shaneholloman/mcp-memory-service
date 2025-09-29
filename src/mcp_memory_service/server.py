@@ -53,7 +53,8 @@ def detect_mcp_client():
                     return 'claude_desktop'
                 if 'lmstudio' in cmdline_str or 'lm-studio' in cmdline_str:
                     return 'lm_studio'
-            except:
+            except (OSError, IndexError, AttributeError) as e:
+                logger.debug(f"Could not detect client from process: {e}")
                 pass
         
         # Fallback: check environment variables
@@ -830,8 +831,12 @@ class MemoryServer:
                         description=f"All memories with tag '{tag}'",
                         mimeType="application/json"
                     ))
-            except:
-                pass  # If get_all_tags not available, skip
+            except AttributeError:
+                # get_all_tags method not available on this storage backend
+                pass
+            except Exception as e:
+                logger.warning(f"Failed to load tag resources: {e}")
+                pass
             
             return resources
         
