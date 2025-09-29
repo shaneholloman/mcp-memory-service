@@ -18,7 +18,7 @@
         "-s",
         "cloudflare"
       ],
-      "serverWorkingDir": "{{REPO_ROOT_PLACEHOLDER}}",
+      "serverWorkingDir": "C:/REPOSITORIES/mcp-memory-service",
       "connectionTimeout": 5000,
       "toolCallTimeout": 10000
     },
