@@ -1135,13 +1135,20 @@ SOLUTIONS:
                 if tag.strip()
             ))
             
+            # Count memories from this week (last 7 days)
+            import time
+            week_ago = time.time() - (7 * 24 * 60 * 60)
+            cursor = self.conn.execute('SELECT COUNT(*) FROM memories WHERE created_at >= ?', (week_ago,))
+            memories_this_week = cursor.fetchone()[0]
+
             # Get database file size
             file_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
-            
+
             return {
                 "backend": "sqlite-vec",
                 "total_memories": total_memories,
                 "unique_tags": unique_tags,
+                "memories_this_week": memories_this_week,
                 "database_size_bytes": file_size,
                 "database_size_mb": round(file_size / (1024 * 1024), 2),
                 "embedding_model": self.embedding_model_name,

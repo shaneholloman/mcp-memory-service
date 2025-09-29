@@ -140,6 +140,7 @@ async def detailed_health_check(
     statistics = {
         "total_memories": storage_info.get("total_memories", 0),
         "unique_tags": storage_info.get("unique_tags", 0),
+        "memories_this_week": storage_info.get("memories_this_week", 0),
         "database_size_mb": storage_info.get("database_size_mb", 0),
         "backend": storage_info.get("backend", "sqlite-vec")
     }

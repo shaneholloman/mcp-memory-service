@@ -787,12 +787,55 @@ class MemoryDashboard {
 
                 ${memory.metadata ? `
                     <div class="memory-metadata">
-                        <h4>Metadata</h4>
-                        <pre>${JSON.stringify(memory.metadata, null, 2)}</pre>
+                        <h4 class="metadata-toggle" onclick="this.parentElement.classList.toggle('expanded')" style="cursor: pointer; user-select: none;">
+                            <span class="toggle-icon">▶</span> Metadata
+                        </h4>
+                        <div class="metadata-content">
+                            ${this.renderMetadata(memory.metadata)}
+                        </div>
                     </div>
                 ` : ''}
             </div>
         `;
+    }
+
+    /**
+     * Render metadata in a prettier format
+     */
+    renderMetadata(metadata) {
+        if (!metadata || typeof metadata !== 'object') {
+            return '<p class="metadata-empty">No metadata available</p>';
+        }
+
+        let html = '<div class="metadata-items">';
+
+        for (const [key, value] of Object.entries(metadata)) {
+            let displayValue;
+
+            if (typeof value === 'string') {
+                displayValue = `<span class="metadata-string">"${this.escapeHtml(value)}"</span>`;
+            } else if (typeof value === 'number') {
+                displayValue = `<span class="metadata-number">${value}</span>`;
+            } else if (typeof value === 'boolean') {
+                displayValue = `<span class="metadata-boolean">${value}</span>`;
+            } else if (Array.isArray(value)) {
+                displayValue = `<span class="metadata-array">[${value.map(v =>
+                    typeof v === 'string' ? `"${this.escapeHtml(v)}"` : v
+                ).join(', ')}]</span>`;
+            } else {
+                displayValue = `<span class="metadata-object">${JSON.stringify(value)}</span>`;
+            }
+
+            html += `
+                <div class="metadata-item">
+                    <span class="metadata-key">${this.escapeHtml(key)}:</span>
+                    <span class="metadata-value">${displayValue}</span>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        return html;
     }
 
     /**
@@ -1084,9 +1127,14 @@ class MemoryDashboard {
             totalMemoriesEl.textContent = stats.total_memories || '0';
         }
 
-        const totalTagsEl = document.getElementById('totalTags');
-        if (totalTagsEl) {
-            totalTagsEl.textContent = stats.unique_tags || '0';
+        const recentMemoriesEl = document.getElementById('recentMemories');
+        if (recentMemoriesEl) {
+            recentMemoriesEl.textContent = stats.memories_this_week || '0';
+        }
+
+        const uniqueTagsEl = document.getElementById('uniqueTags');
+        if (uniqueTagsEl) {
+            uniqueTagsEl.textContent = stats.unique_tags || '0';
         }
 
         const storageBackendEl = document.getElementById('storageBackend');

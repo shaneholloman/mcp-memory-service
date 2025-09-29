@@ -929,6 +929,117 @@ h3 { font-size: var(--text-xl); }
     font-weight: 600;
 }
 
+/* Memory Details Metadata Styles */
+.memory-metadata {
+    margin-top: var(--space-4);
+    border: 1px solid var(--neutral-200);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.metadata-toggle {
+    background: var(--neutral-50);
+    padding: var(--space-3) var(--space-4);
+    margin: 0;
+    border-bottom: 1px solid var(--neutral-200);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--neutral-700);
+    transition: background-color 0.2s ease;
+}
+
+.metadata-toggle:hover {
+    background: var(--neutral-100);
+}
+
+.toggle-icon {
+    display: inline-block;
+    margin-right: var(--space-2);
+    transition: transform 0.2s ease;
+    font-size: 0.8em;
+}
+
+.memory-metadata.expanded .toggle-icon {
+    transform: rotate(90deg);
+}
+
+.metadata-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.memory-metadata.expanded .metadata-content {
+    max-height: 500px;
+    padding: var(--space-4);
+}
+
+.metadata-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.metadata-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    background: var(--neutral-50);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+}
+
+.metadata-key {
+    font-weight: 600;
+    color: var(--neutral-700);
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.metadata-value {
+    color: var(--neutral-600);
+    word-break: break-word;
+}
+
+.metadata-string {
+    color: var(--success);
+}
+
+.metadata-number {
+    color: var(--primary);
+}
+
+.metadata-boolean {
+    color: var(--warning);
+}
+
+.metadata-array {
+    color: var(--secondary);
+}
+
+.metadata-object {
+    color: var(--neutral-500);
+}
+
+.metadata-empty {
+    color: var(--neutral-400);
+    font-style: italic;
+    padding: var(--space-4);
+    text-align: center;
+}
+
+/* Memory Type Styling */
+.memory-meta p {
+    margin-bottom: var(--space-2);
+}
+
+.memory-meta strong {
+    color: var(--neutral-700);
+    margin-right: var(--space-2);
+}
+
 /* Print Styles */
 @media print {
     .app-header,

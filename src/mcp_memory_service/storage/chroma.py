@@ -29,7 +29,7 @@ import traceback
 import warnings
 from chromadb.utils import embedding_functions
 import logging
-from typing import List, Dict, Any, Tuple, Set, Optional
+from typing import List, Dict, Any, Tuple, Set, Optional, Union
 from datetime import datetime, date
 
 # Try to import SentenceTransformer, but don't fail if it's not available
