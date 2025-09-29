@@ -1108,8 +1108,15 @@ SOLUTIONS:
             cursor = self.conn.execute('SELECT COUNT(*) FROM memories')
             total_memories = cursor.fetchone()[0]
             
-            cursor = self.conn.execute('SELECT COUNT(DISTINCT tags) FROM memories WHERE tags != ""')
-            unique_tags = cursor.fetchone()[0]
+            # Count unique individual tags (not tag sets)
+            cursor = self.conn.execute('SELECT tags FROM memories WHERE tags IS NOT NULL AND tags != ""')
+            unique_tags = len(set(
+                tag.strip()
+                for (tag_string,) in cursor
+                if tag_string
+                for tag in tag_string.split(",")
+                if tag.strip()
+            ))
             
             # Get database file size
             file_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
@@ -1124,9 +1131,15 @@ SOLUTIONS:
                 "embedding_dimension": self.embedding_dimension
             }
             
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting stats: {str(e)}")
+            return {"error": f"Database error: {str(e)}"}
+        except OSError as e:
+            logger.error(f"File system error getting stats: {str(e)}")
+            return {"error": f"File system error: {str(e)}"}
         except Exception as e:
-            logger.error(f"Failed to get stats: {str(e)}")
-            return {"error": str(e)}
+            logger.error(f"Unexpected error getting stats: {str(e)}")
+            return {"error": f"Unexpected error: {str(e)}"}
     
     def sanitized(self, tags):
         """Sanitize and normalize tags to a JSON string.
@@ -1637,9 +1650,12 @@ SOLUTIONS:
             # Return as list of dicts sorted by count descending
             return [{"tag": tag, "count": count} for tag, count in tag_counter.most_common()]
 
-        except Exception as e:
-            logger.error(f"Error getting tags with counts: {str(e)}")
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting tags with counts: {str(e)}")
             return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting tags with counts: {str(e)}")
+            raise
 
     def close(self):
         """Close the database connection."""

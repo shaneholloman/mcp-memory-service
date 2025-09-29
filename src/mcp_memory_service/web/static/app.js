@@ -28,6 +28,7 @@ class MemoryDashboard {
     async init() {
         this.setupEventListeners();
         this.setupSSE();
+        await this.loadVersion();
         await this.loadDashboardData();
         this.updateConnectionStatus('connected');
     }
@@ -217,6 +218,25 @@ class MemoryDashboard {
     }
 
     /**
+     * Load application version from health endpoint
+     */
+    async loadVersion() {
+        try {
+            const healthResponse = await this.apiCall('/health');
+            const versionBadge = document.getElementById('versionBadge');
+            if (versionBadge && healthResponse.version) {
+                versionBadge.textContent = `v${healthResponse.version}`;
+            }
+        } catch (error) {
+            console.error('Error loading version:', error);
+            const versionBadge = document.getElementById('versionBadge');
+            if (versionBadge) {
+                versionBadge.textContent = 'v?.?.?';
+            }
+        }
+    }
+
+    /**
      * Load initial dashboard data
      */
     async loadDashboardData() {
@@ -236,11 +256,6 @@ class MemoryDashboard {
                 this.updateDashboardStats(statsResponse.storage);
             }
 
-            // Load tags for sidebar
-            const tagsResponse = await this.apiCall('/tags');
-            if (tagsResponse.tags) {
-                this.renderTagsSidebar(tagsResponse.tags);
-            }
 
         } catch (error) {
             console.error('Error loading dashboard data:', error);
