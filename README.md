@@ -60,8 +60,21 @@ claude mcp add --transport http memory-service http://localhost:8000/mcp
 # Clone and install with automatic platform detection
 git clone https://github.com/doobidoo/mcp-memory-service.git
 cd mcp-memory-service
+
+# Lightweight installation (SQLite-vec with ONNX embeddings - recommended)
 python install.py
+
+# Add full ML capabilities (torch + sentence-transformers for advanced features)
+python install.py --with-ml
+
+# Add ChromaDB backend support (includes full ML stack - for multi-client setups)
+python install.py --with-chromadb
 ```
+
+**📝 Installation Options Explained:**
+- **Default (recommended)**: Lightweight SQLite-vec with ONNX embeddings - fast, works offline, <100MB dependencies
+- **`--with-ml`**: Adds PyTorch + sentence-transformers for advanced ML features - heavier but more capable
+- **`--with-chromadb`**: Multi-client local server support - use only if you need shared team access
 
 **Docker (Fastest):**
 ```bash
@@ -101,7 +114,7 @@ These warnings disappear after the first successful run. The service is working 
 **sqlite-vec** may not have pre-built wheels for Python 3.13 yet. If installation fails:
 - The installer will automatically try multiple installation methods
 - Consider using Python 3.12 for the smoothest experience: `brew install python@3.12`
-- Alternative: Use ChromaDB backend with `--storage-backend chromadb`
+- Alternative: Use ChromaDB backend with `--storage-backend chromadb --with-chromadb`
 - See [Troubleshooting Guide](docs/troubleshooting/general.md#python-313-sqlite-vec-issues) for details
 
 ### 🍎 macOS SQLite Extension Support
@@ -110,7 +123,7 @@ These warnings disappear after the first successful run. The service is working 
 - **System Python** on macOS lacks SQLite extension support by default
 - **Solution**: Use Homebrew Python: `brew install python && rehash`
 - **Alternative**: Use pyenv: `PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' pyenv install 3.12.0`
-- **Fallback**: Use ChromaDB backend: `export MCP_MEMORY_STORAGE_BACKEND=chromadb`
+- **Fallback**: Use sqlite_vec backend (default) or install ChromaDB with `--with-chromadb`
 - See [Troubleshooting Guide](docs/troubleshooting/general.md#macos-sqlite-extension-issues) for details
 
 ## 📚 Complete Documentation
@@ -163,10 +176,12 @@ These warnings disappear after the first successful run. The service is working 
 - **13+ AI applications** - REST API compatibility
 
 ### 💾 **Flexible Storage**
-- **SQLite-vec** - Fast local storage (recommended)
-- **ChromaDB** - Multi-client collaboration
+- **SQLite-vec** - Fast local storage (recommended, lightweight ONNX embeddings)
+- **ChromaDB** - Multi-client collaboration (optional, heavy dependencies)
 - **Cloudflare** - Global edge distribution
 - **Automatic backups** and synchronization
+
+> **Note**: All heavy ML dependencies (PyTorch, sentence-transformers, ChromaDB) are now optional to dramatically reduce build times and image sizes. SQLite-vec uses lightweight ONNX embeddings by default. Install with `--with-ml` for full ML capabilities or `--with-chromadb` for multi-client features.
 
 ### 🚀 **Production Ready**
 - **Cross-platform** - Windows, macOS, Linux
