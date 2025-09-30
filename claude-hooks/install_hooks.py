@@ -8,8 +8,12 @@ Cross-platform installer for Claude Code memory awareness hooks with support for
 - Natural Memory Triggers v7.1.3 (intelligent automatic memory awareness)
 - Mid-conversation hooks for real-time memory injection
 - Performance optimization and CLI management tools
+- Smart MCP detection and DRY configuration
 
 Replaces multiple platform-specific installers with a single Python solution.
+Implements DRY principle by detecting and reusing existing Claude Code MCP configurations.
+
+Version: Dynamically synced with main project version
 """
 
 import os
@@ -21,6 +25,21 @@ import argparse
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+# Dynamic version detection from main project
+def get_project_version() -> str:
+    """Get version dynamically from main project."""
+    try:
+        # Add the src directory to the path to import version
+        src_path = Path(__file__).parent.parent / "src"
+        if str(src_path) not in sys.path:
+            sys.path.insert(0, str(src_path))
+
+        from mcp_memory_service import __version__
+        return __version__
+    except ImportError:
+        # Fallback for standalone installations
+        return "7.2.0"
 
 
 class Colors:
@@ -963,7 +982,7 @@ Features:
     # Create installer instance
     installer = HookInstaller()
 
-    installer.header("Claude Code Memory Awareness Hooks Installer v7.1.3")
+    installer.header(f"Claude Code Memory Awareness Hooks Installer v{get_project_version()}")
     installer.info(f"Script location: {installer.script_dir}")
     installer.info(f"Target hooks directory: {installer.claude_hooks_dir}")
     installer.info(f"Platform: {installer.platform_name}")
