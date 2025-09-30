@@ -4,6 +4,45 @@ All notable changes to the MCP Memory Service project will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.5] - 2025-09-29
+
+### 🔧 **Improvements**
+
+- **Enhanced timestamp consistency across memory retrieval methods** - All memory retrieval endpoints now display consistent timestamp information:
+  - `retrieve_memory` now shows timestamps in "YYYY-MM-DD HH:MM:SS" format matching `recall_memory`
+  - `search_by_tag` now shows timestamps in same consistent format
+  - Improved code quality using `getattr` pattern instead of `hasattr` checks
+  - Resolves timestamp metadata inconsistency reported in issue #126
+
+- **Enhanced CLI hybrid backend support** - CLI commands now fully support hybrid storage backend:
+  - Added 'hybrid' option to `--storage-backend` choices for both `server` and `status` commands
+  - Completes hybrid backend integration across all system components
+  - Enables seamless CLI usage with hybrid SQLite-vec + Cloudflare architecture
+
+- **Hybrid storage backend server integration** - Server.py now fully supports hybrid backend operations:
+  - Added `sanitized` method to hybrid storage for tag handling compatibility
+  - Enhanced initialization and health check support for hybrid backend
+  - Maintains performance optimization with Cloudflare synchronization
+
+### 🛡️ **Security Fixes**
+
+- **Credential exposure prevention** - Enhanced security measures to prevent accidental credential exposure:
+  - Improved handling of environment variables in logging and error messages
+  - Additional safeguards against sensitive configuration leakage
+  - Follows security best practices for credential management
+
+- **Resource leak fixes** - Memory and resource management improvements:
+  - Enhanced connection cleanup in storage backends
+  - Improved async resource handling to prevent leaks
+  - Better error recovery and cleanup procedures
+
+### 🎯 **Code Quality**
+
+- **Implemented Gemini Code Assistant improvements** - Enhanced code maintainability and safety:
+  - Replaced `hasattr` + direct attribute access with safer `getattr(obj, "attr", None)` pattern
+  - Cleaner, more readable code with consistent error handling
+  - Improved null safety and defensive programming practices
+
 ## [7.1.4] - 2025-09-28
 
 ### 🚀 **Major Feature: Unified Cross-Platform Hook Installer**
