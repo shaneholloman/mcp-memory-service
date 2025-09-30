@@ -154,6 +154,12 @@ These warnings disappear after the first successful run. The service is working 
 - **[❓ FAQ](https://github.com/doobidoo/mcp-memory-service/wiki/08-FAQ)** - Frequently asked questions
 - **[📝 Examples](https://github.com/doobidoo/mcp-memory-service/wiki/09-Examples)** - Practical code examples and workflows
 
+### 📂 Internal Documentation
+- **[🏗️ Architecture Specs](docs/architecture/)** - Search enhancement specifications and design documents
+- **[👩‍💻 Development Docs](docs/development/)** - AI agent instructions, release checklist, refactoring notes
+- **[🚀 Deployment Guides](docs/deployment/)** - Docker, dual-service, and production deployment
+- **[📚 Additional Guides](docs/guides/)** - Storage backends, migration, mDNS discovery
+
 ## ✨ Key Features
 
 ### 🔐 **Enterprise Authentication & Team Collaboration** 🆕
