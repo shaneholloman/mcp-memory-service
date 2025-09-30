@@ -150,6 +150,241 @@ class HookInstaller:
 
         return all_good
 
+    def detect_claude_mcp_configuration(self) -> Optional[Dict]:
+        """Detect existing Claude Code MCP memory server configuration."""
+        self.info("Detecting existing Claude Code MCP configuration...")
+
+        try:
+            # Check if memory server is configured in Claude Code
+            result = subprocess.run(['claude', 'mcp', 'get', 'memory'],
+                                  capture_output=True, text=True, timeout=10)
+
+            if result.returncode == 0:
+                # Parse the output to extract configuration details
+                config_info = self._parse_mcp_get_output(result.stdout)
+                if config_info:
+                    self.success(f"Found existing memory server: {config_info.get('command', 'Unknown')}")
+                    self.success(f"Status: {config_info.get('status', 'Unknown')}")
+                    self.success(f"Type: {config_info.get('type', 'Unknown')}")
+                    return config_info
+                else:
+                    self.warn("Memory server found but configuration could not be parsed")
+            else:
+                self.info("No existing memory server found in Claude Code MCP configuration")
+
+        except subprocess.TimeoutExpired:
+            self.warn("Claude MCP command timed out")
+        except FileNotFoundError:
+            self.warn("Claude Code CLI not found - cannot detect existing MCP configuration")
+        except Exception as e:
+            self.warn(f"Failed to detect MCP configuration: {e}")
+
+        return None
+
+    def _parse_mcp_get_output(self, output: str) -> Optional[Dict]:
+        """Parse the output of 'claude mcp get memory' command."""
+        config = {}
+
+        try:
+            lines = output.strip().split('\n')
+            for line in lines:
+                line = line.strip()
+                if line.startswith('Status:'):
+                    config['status'] = line.replace('Status:', '').strip()
+                elif line.startswith('Type:'):
+                    config['type'] = line.replace('Type:', '').strip()
+                elif line.startswith('Command:'):
+                    config['command'] = line.replace('Command:', '').strip()
+                elif line.startswith('Scope:'):
+                    config['scope'] = line.replace('Scope:', '').strip()
+                elif line.startswith('Environment:'):
+                    config['environment'] = line.replace('Environment:', '').strip()
+
+            # Only return config if we found essential information
+            if 'command' in config and 'status' in config:
+                return config
+
+        except Exception as e:
+            self.warn(f"Failed to parse MCP output: {e}")
+
+        return None
+
+    def validate_mcp_prerequisites(self, detected_config: Optional[Dict] = None) -> Tuple[bool, List[str]]:
+        """Validate that MCP memory service is properly configured."""
+        issues = []
+
+        if not detected_config:
+            detected_config = self.detect_claude_mcp_configuration()
+
+        if not detected_config:
+            issues.append("No memory server found in Claude Code MCP configuration")
+            return False, issues
+
+        # Check if server is connected
+        status = detected_config.get('status', '')
+        if '✓ Connected' not in status and 'Connected' not in status:
+            issues.append(f"Memory server is not connected. Status: {status}")
+
+        # Validate command format
+        command = detected_config.get('command', '')
+        if not command:
+            issues.append("Memory server command is empty")
+        elif 'mcp_memory_service' not in command:
+            issues.append(f"Unexpected memory server command: {command}")
+
+        # Check server type
+        server_type = detected_config.get('type', '')
+        if server_type not in ['stdio', 'http']:
+            issues.append(f"Unsupported server type: {server_type}")
+
+        return len(issues) == 0, issues
+
+    def generate_hooks_config_from_mcp(self, detected_config: Dict) -> Dict:
+        """Generate hooks configuration based on detected Claude Code MCP setup."""
+        command = detected_config.get('command', '')
+        server_type = detected_config.get('type', 'stdio')
+
+        if server_type == 'stdio':
+            # For stdio servers, we'll reference the existing server
+            mcp_config = {
+                "useExistingServer": True,
+                "serverName": "memory",
+                "connectionTimeout": 5000,
+                "toolCallTimeout": 10000
+            }
+        else:
+            # For HTTP servers, extract endpoint information
+            mcp_config = {
+                "useExistingServer": True,
+                "serverName": "memory",
+                "connectionTimeout": 5000,
+                "toolCallTimeout": 10000
+            }
+
+        config = {
+            "memoryService": {
+                "protocol": "mcp",
+                "preferredProtocol": "mcp",
+                "fallbackEnabled": True,
+                "http": {
+                    "endpoint": "https://localhost:8443",
+                    "apiKey": "auto-detect",
+                    "healthCheckTimeout": 3000,
+                    "useDetailedHealthCheck": True
+                },
+                "mcp": mcp_config,
+                "defaultTags": ["claude-code", "auto-generated"],
+                "maxMemoriesPerSession": 8,
+                "enableSessionConsolidation": True,
+                "injectAfterCompacting": False,
+                "recentFirstMode": True,
+                "recentMemoryRatio": 0.6,
+                "recentTimeWindow": "last-week",
+                "fallbackTimeWindow": "last-month",
+                "showStorageSource": True,
+                "sourceDisplayMode": "brief"
+            }
+        }
+
+        return config
+
+    def generate_basic_config(self) -> Dict:
+        """Generate basic configuration when no template is available."""
+        return {
+            "memoryService": {
+                "protocol": "auto",
+                "preferredProtocol": "mcp",
+                "fallbackEnabled": True,
+                "http": {
+                    "endpoint": "https://localhost:8443",
+                    "apiKey": "auto-detect",
+                    "healthCheckTimeout": 3000,
+                    "useDetailedHealthCheck": True
+                },
+                "mcp": {
+                    "serverCommand": ["uv", "run", "python", "-m", "mcp_memory_service.server"],
+                    "serverWorkingDir": str(self.script_dir.parent),
+                    "connectionTimeout": 5000,
+                    "toolCallTimeout": 10000
+                },
+                "defaultTags": ["claude-code", "auto-generated"],
+                "maxMemoriesPerSession": 8,
+                "enableSessionConsolidation": True,
+                "injectAfterCompacting": False,
+                "recentFirstMode": True,
+                "recentMemoryRatio": 0.6,
+                "recentTimeWindow": "last-week",
+                "fallbackTimeWindow": "last-month",
+                "showStorageSource": True,
+                "sourceDisplayMode": "brief"
+            },
+            "projectDetection": {
+                "gitRepository": True,
+                "packageFiles": ["package.json", "pyproject.toml", "Cargo.toml", "go.mod", "pom.xml"],
+                "frameworkDetection": True,
+                "languageDetection": True,
+                "confidenceThreshold": 0.3
+            },
+            "output": {
+                "verbose": True,
+                "showMemoryDetails": True,
+                "showProjectDetails": True,
+                "cleanMode": False
+            }
+        }
+
+    def enhance_config_for_natural_triggers(self, config: Dict) -> Dict:
+        """Enhance configuration with Natural Memory Triggers settings."""
+        # Add natural triggers configuration
+        config["naturalTriggers"] = {
+            "enabled": True,
+            "triggerThreshold": 0.6,
+            "cooldownPeriod": 30000,
+            "maxMemoriesPerTrigger": 5
+        }
+
+        # Add performance configuration
+        config["performance"] = {
+            "defaultProfile": "balanced",
+            "enableMonitoring": True,
+            "autoAdjust": True,
+            "profiles": {
+                "speed_focused": {
+                    "maxLatency": 100,
+                    "enabledTiers": ["instant"],
+                    "backgroundProcessing": False,
+                    "degradeThreshold": 200,
+                    "description": "Fastest response, minimal memory awareness"
+                },
+                "balanced": {
+                    "maxLatency": 200,
+                    "enabledTiers": ["instant", "fast"],
+                    "backgroundProcessing": True,
+                    "degradeThreshold": 400,
+                    "description": "Moderate latency, smart memory triggers"
+                },
+                "memory_aware": {
+                    "maxLatency": 500,
+                    "enabledTiers": ["instant", "fast", "intensive"],
+                    "backgroundProcessing": True,
+                    "degradeThreshold": 1000,
+                    "description": "Full memory awareness, accept higher latency"
+                }
+            }
+        }
+
+        # Add other advanced settings
+        config["gitAnalysis"] = {
+            "enabled": True,
+            "commitLookback": 14,
+            "maxCommits": 20,
+            "includeChangelog": True,
+            "maxGitMemories": 3,
+            "gitContextWeight": 1.2
+        }
+
+        return config
+
     def create_backup(self) -> None:
         """Create backup of existing hooks installation."""
         if not self.claude_hooks_dir.exists():
@@ -303,7 +538,7 @@ class HookInstaller:
             self.error(f"Failed to install Natural Memory Triggers: {e}")
             return False
 
-    def install_configuration(self, install_natural_triggers: bool = False) -> bool:
+    def install_configuration(self, install_natural_triggers: bool = False, detected_mcp: Optional[Dict] = None) -> bool:
         """Install or update configuration files."""
         self.info("Installing configuration...")
 
@@ -324,24 +559,43 @@ class HookInstaller:
                 shutil.copy2(config_dst, backup_config)
                 self.info("Existing configuration backed up")
 
-            if config_src.exists():
-                shutil.copy2(config_src, config_dst)
-
-                # Update paths for current system
-                try:
-                    with open(config_dst, 'r') as f:
+            # Generate configuration based on detected MCP or fallback to template
+            try:
+                if detected_mcp:
+                    # Use smart configuration generation for existing MCP
+                    config = self.generate_hooks_config_from_mcp(detected_mcp)
+                    self.success("Generated configuration based on detected MCP setup")
+                elif config_src.exists():
+                    # Use template configuration and update paths
+                    with open(config_src, 'r') as f:
                         config = json.load(f)
 
-                    # Update server working directory path
+                    # Update server working directory path for independent setup
                     if 'memoryService' in config and 'mcp' in config['memoryService']:
                         config['memoryService']['mcp']['serverWorkingDir'] = str(self.script_dir.parent)
 
-                    with open(config_dst, 'w') as f:
-                        json.dump(config, f, indent=2)
+                    self.success("Generated configuration using template with updated paths")
+                else:
+                    # Generate basic configuration
+                    config = self.generate_basic_config()
+                    self.success("Generated basic configuration")
 
-                    self.success("Configuration installed and updated for current system")
-                except Exception as e:
-                    self.warn(f"Failed to update configuration paths: {e}")
+                # Add additional configuration based on installation options
+                if install_natural_triggers:
+                    config = self.enhance_config_for_natural_triggers(config)
+
+                # Write the final configuration
+                with open(config_dst, 'w') as f:
+                    json.dump(config, f, indent=2)
+
+                self.success("Configuration installed successfully")
+
+            except Exception as e:
+                self.warn(f"Failed to generate configuration: {e}")
+                # Fallback to template copy if available
+                if config_src.exists():
+                    shutil.copy2(config_src, config_dst)
+                    self.warn("Fell back to template configuration")
 
             return True
 
@@ -737,6 +991,32 @@ Features:
         installer.error("Prerequisites check failed. Use --force to continue anyway.")
         sys.exit(1)
 
+    # Enhanced MCP Detection and Configuration
+    installer.header("MCP Configuration Detection")
+    detected_mcp = installer.detect_claude_mcp_configuration()
+
+    use_existing_mcp = False
+    if detected_mcp:
+        # Validate MCP prerequisites
+        is_valid, issues = installer.validate_mcp_prerequisites(detected_mcp)
+
+        if is_valid:
+            installer.success("✅ Valid MCP configuration detected!")
+            installer.info("📋 Configuration Options:")
+            installer.info("  [1] Use existing MCP setup (recommended) - DRY principle ✨")
+            installer.info("  [2] Create independent hooks setup - legacy fallback")
+
+            # For now, we'll default to using existing MCP (can be made interactive later)
+            use_existing_mcp = True
+            installer.info("Using existing MCP configuration (option 1)")
+        else:
+            installer.warn("⚠️  MCP configuration found but has issues:")
+            for issue in issues:
+                installer.warn(f"    - {issue}")
+            installer.info("Will use independent setup as fallback")
+    else:
+        installer.info("No existing MCP configuration found - using independent setup")
+
     # Determine what to install
     install_all = not (args.basic or args.natural_triggers) or args.all
     install_basic = args.basic or install_all
@@ -774,8 +1054,9 @@ Features:
         if not installer.install_natural_triggers():
             overall_success = False
 
-    # Install configuration (always needed)
-    if not installer.install_configuration(install_natural_triggers=install_natural_triggers):
+    # Install configuration (always needed) with MCP awareness
+    if not installer.install_configuration(install_natural_triggers=install_natural_triggers,
+                                         detected_mcp=detected_mcp if use_existing_mcp else None):
         overall_success = False
 
     # Configure Claude Code settings
