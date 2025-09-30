@@ -142,7 +142,7 @@ class CloudflareStorage(MemoryStorage):
     async def _generate_embedding(self, text: str) -> List[float]:
         """Generate embedding using Workers AI or cache."""
         # Check cache first
-        text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+        text_hash = hashlib.sha256(text.encode()).hexdigest()
         if text_hash in self._embedding_cache:
             return self._embedding_cache[text_hash]
         
@@ -341,11 +341,13 @@ class CloudflareStorage(MemoryStorage):
                 headers=headers
             )
             
-            # Log the full response for debugging
+            # Log response status for debugging (avoid logging headers/body for security)
             logger.info(f"Vectorize response status: {response.status_code}")
-            logger.info(f"Vectorize response headers: {dict(response.headers)}")
             response_text = response.text
-            logger.info(f"Vectorize response body: {response_text}")
+            if response.status_code != 200:
+                # Only log response body on errors, and truncate to avoid credential exposure
+                truncated_response = response_text[:200] + "..." if len(response_text) > 200 else response_text
+                logger.warning(f"Vectorize error response (truncated): {truncated_response}")
             
             if response.status_code != 200:
                 raise ValueError(f"HTTP {response.status_code}: {response_text}")
