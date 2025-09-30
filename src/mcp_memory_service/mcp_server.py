@@ -46,7 +46,7 @@ from .config import (
 )
 from .storage.base import MemoryStorage
 
-def _get_sqlite_vec_storage(error_message="Failed to import SQLite-vec storage"):
+def _get_sqlite_vec_storage(error_message: str = "Failed to import SQLite-vec storage") -> type:
     """Helper function to import SqliteVecMemoryStorage with consistent error handling."""
     try:
         from .storage.sqlite_vec import SqliteVecMemoryStorage
@@ -55,7 +55,7 @@ def _get_sqlite_vec_storage(error_message="Failed to import SQLite-vec storage")
         logger.error(f"{error_message}: {e}")
         raise
 
-def get_storage_backend():
+def get_storage_backend() -> type:
     """Dynamically select and import storage backend based on configuration and availability."""
     backend = STORAGE_BACKEND.lower()
 
@@ -65,8 +65,10 @@ def get_storage_backend():
         try:
             from .storage.chroma import ChromaStorage
             return ChromaStorage
-        except ImportError:
-            logger.warning("ChromaDB not available, falling back to SQLite-vec")
+        except ImportError as e:
+            logger.error(f"ChromaDB not installed. Install with: pip install mcp-memory-service[chromadb]")
+            logger.error(f"Import error: {str(e)}")
+            logger.warning("Falling back to SQLite-vec storage")
             return _get_sqlite_vec_storage("Failed to import fallback SQLite-vec storage")
     elif backend == "cloudflare":
         try:

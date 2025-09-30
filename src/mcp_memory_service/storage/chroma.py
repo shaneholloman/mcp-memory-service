@@ -29,7 +29,7 @@ import traceback
 import warnings
 from chromadb.utils import embedding_functions
 import logging
-from typing import List, Dict, Any, Tuple, Set, Optional
+from typing import List, Dict, Any, Tuple, Set, Optional, Union
 from datetime import datetime, date
 
 # Try to import SentenceTransformer, but don't fail if it's not available
@@ -461,7 +461,7 @@ class ChromaMemoryStorage(MemoryStorage):
         return json.dumps(tags)
 
     @staticmethod
-    def normalize_timestamp(ts) -> float:
+    def normalize_timestamp(ts: Union[datetime, float, int, str]) -> float:
         """Convert datetime or float-like timestamp into float seconds."""
         if isinstance(ts, datetime):
             return time.mktime(ts.timetuple())

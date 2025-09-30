@@ -18,7 +18,7 @@ Memory CRUD endpoints for the HTTP interface.
 
 import logging
 import socket
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
@@ -32,8 +32,13 @@ from ..dependencies import get_storage
 from ..sse import sse_manager, create_memory_stored_event, create_memory_deleted_event
 
 # OAuth authentication imports (conditional)
-if OAUTH_ENABLED:
+if OAUTH_ENABLED or TYPE_CHECKING:
     from ..oauth.middleware import require_read_access, require_write_access, AuthenticationResult
+else:
+    # Provide type stubs when OAuth is disabled
+    AuthenticationResult = None
+    require_read_access = None
+    require_write_access = None
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -47,6 +52,13 @@ class MemoryCreateRequest(BaseModel):
     memory_type: Optional[str] = Field(None, description="Type of memory (e.g., 'note', 'reminder', 'fact')")
     metadata: Dict[str, Any] = Field(default={}, description="Additional metadata for the memory")
     client_hostname: Optional[str] = Field(None, description="Client machine hostname for source tracking")
+
+
+class MemoryUpdateRequest(BaseModel):
+    """Request model for updating memory metadata (tags, type, metadata only)."""
+    tags: Optional[List[str]] = Field(None, description="Updated tags to categorize the memory")
+    memory_type: Optional[str] = Field(None, description="Updated memory type (e.g., 'note', 'reminder', 'fact')")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Updated metadata for the memory")
 
 
 class MemoryResponse(BaseModel):
@@ -84,6 +96,25 @@ class MemoryDeleteResponse(BaseModel):
     success: bool
     message: str
     content_hash: str
+
+
+class MemoryUpdateResponse(BaseModel):
+    """Response model for memory update."""
+    success: bool
+    message: str
+    content_hash: str
+    memory: Optional[MemoryResponse] = None
+
+
+class TagResponse(BaseModel):
+    """Response model for a single tag with its count."""
+    tag: str
+    count: int
+
+
+class TagListResponse(BaseModel):
+    """Response model for tags list."""
+    tags: List[TagResponse]
 
 
 def memory_to_response(memory: Memory) -> MemoryResponse:
@@ -184,7 +215,8 @@ async def store_memory(
             )
             
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to store memory: {str(e)}")
+        logger.error(f"Failed to store memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to store memory. Please try again.")
 
 
 @router.get("/memories", response_model=MemoryListResponse, tags=["memories"])
@@ -299,6 +331,101 @@ async def delete_memory(
             message=message,
             content_hash=content_hash
         )
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete memory: {str(e)}")
+        logger.error(f"Failed to delete memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete memory. Please try again.")
+
+
+@router.put("/memories/{content_hash}", response_model=MemoryUpdateResponse, tags=["memories"])
+async def update_memory(
+    content_hash: str,
+    request: MemoryUpdateRequest,
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """
+    Update memory metadata (tags, type, metadata) without changing content or timestamps.
+
+    This endpoint allows updating only the metadata aspects of a memory while preserving
+    the original content and creation timestamp. Only provided fields will be updated.
+    """
+    try:
+        # First, check if the memory exists
+        existing_memory = await storage.get_by_hash(content_hash)
+        if not existing_memory:
+            raise HTTPException(status_code=404, detail=f"Memory with hash {content_hash} not found")
+
+        # Build the updates dictionary with only provided fields
+        updates = {}
+        if request.tags is not None:
+            updates['tags'] = request.tags
+        if request.memory_type is not None:
+            updates['memory_type'] = request.memory_type
+        if request.metadata is not None:
+            updates['metadata'] = request.metadata
+
+        # If no updates provided, return current memory
+        if not updates:
+            return MemoryUpdateResponse(
+                success=True,
+                message="No updates provided - memory unchanged",
+                content_hash=content_hash,
+                memory=memory_to_response(existing_memory)
+            )
+
+        # Perform the update
+        success, message = await storage.update_memory_metadata(
+            content_hash=content_hash,
+            updates=updates,
+            preserve_timestamps=True
+        )
+
+        if success:
+            # Get the updated memory
+            updated_memory = await storage.get_by_hash(content_hash)
+
+            return MemoryUpdateResponse(
+                success=True,
+                message=message,
+                content_hash=content_hash,
+                memory=memory_to_response(updated_memory) if updated_memory else None
+            )
+        else:
+            return MemoryUpdateResponse(
+                success=False,
+                message=message,
+                content_hash=content_hash
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update memory: {str(e)}")
+
+
+@router.get("/tags", response_model=TagListResponse, tags=["tags"])
+async def get_tags(
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
+):
+    """
+    Get all tags with their usage counts.
+
+    Returns a list of all unique tags along with how many memories use each tag,
+    sorted by count in descending order.
+    """
+    try:
+        # Get tags with counts from storage
+        tag_data = await storage.get_all_tags_with_counts()
+
+        # Convert to response format
+        tags = [TagResponse(tag=item["tag"], count=item["count"]) for item in tag_data]
+
+        return TagListResponse(tags=tags)
+
+    except AttributeError as e:
+        # Handle case where storage backend doesn't implement get_all_tags_with_counts
+        raise HTTPException(status_code=501, detail=f"Tags endpoint not supported by current storage backend: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get tags: {str(e)}")

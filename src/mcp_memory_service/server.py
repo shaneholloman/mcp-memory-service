@@ -197,7 +197,11 @@ from .config import (
     CLOUDFLARE_EMBEDDING_MODEL,
     CLOUDFLARE_LARGE_CONTENT_THRESHOLD,
     CLOUDFLARE_MAX_RETRIES,
-    CLOUDFLARE_BASE_DELAY
+    CLOUDFLARE_BASE_DELAY,
+    # Hybrid backend configuration
+    HYBRID_SYNC_INTERVAL,
+    HYBRID_BATCH_SIZE,
+    HYBRID_SYNC_ON_STARTUP
 )
 # Storage imports will be done conditionally in the server class
 from .models.memory import Memory
@@ -484,12 +488,52 @@ class MemoryServer:
                     base_delay=CLOUDFLARE_BASE_DELAY
                 )
                 logger.info(f"✅ EAGER INIT: CloudflareStorage instance created with index: {CLOUDFLARE_VECTORIZE_INDEX}")
+            elif STORAGE_BACKEND == 'hybrid':
+                # Initialize Hybrid storage (SQLite-vec + Cloudflare)
+                logger.info(f"🔄 EAGER INIT: Using Hybrid storage...")
+                from .storage.hybrid import HybridMemoryStorage
+
+                # Prepare Cloudflare configuration dict
+                cloudflare_config = None
+                if all([CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_VECTORIZE_INDEX, CLOUDFLARE_D1_DATABASE_ID]):
+                    cloudflare_config = {
+                        'api_token': CLOUDFLARE_API_TOKEN,
+                        'account_id': CLOUDFLARE_ACCOUNT_ID,
+                        'vectorize_index': CLOUDFLARE_VECTORIZE_INDEX,
+                        'd1_database_id': CLOUDFLARE_D1_DATABASE_ID,
+                        'r2_bucket': CLOUDFLARE_R2_BUCKET,
+                        'embedding_model': CLOUDFLARE_EMBEDDING_MODEL,
+                        'large_content_threshold': CLOUDFLARE_LARGE_CONTENT_THRESHOLD,
+                        'max_retries': CLOUDFLARE_MAX_RETRIES,
+                        'base_delay': CLOUDFLARE_BASE_DELAY
+                    }
+                    logger.info(f"🔄 EAGER INIT: Cloudflare config prepared for hybrid storage")
+                else:
+                    logger.warning("🔄 EAGER INIT: Incomplete Cloudflare config, hybrid will run in SQLite-only mode")
+
+                self.storage = HybridMemoryStorage(
+                    sqlite_db_path=SQLITE_VEC_PATH,
+                    embedding_model="all-MiniLM-L6-v2",
+                    cloudflare_config=cloudflare_config,
+                    sync_interval=HYBRID_SYNC_INTERVAL or 300,
+                    batch_size=HYBRID_BATCH_SIZE or 50
+                )
+                logger.info(f"✅ EAGER INIT: HybridMemoryStorage instance created")
             else:
                 # Initialize ChromaDB with preload_model=True for caching
                 logger.info(f"🗄️  EAGER INIT: Using ChromaDB storage...")
-                from .storage.chroma import ChromaMemoryStorage
-                self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=True)
-                logger.info(f"✅ EAGER INIT: ChromaDB storage created at {CHROMA_PATH}")
+                try:
+                    from .storage.chroma import ChromaMemoryStorage
+                    self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=True)
+                    logger.info(f"✅ EAGER INIT: ChromaDB storage created at {CHROMA_PATH}")
+                except ImportError as e:
+                    logger.error(f"❌ EAGER INIT: ChromaDB not installed. Install with: pip install mcp-memory-service[chromadb]")
+                    logger.error(f"❌ EAGER INIT: Import error details: {str(e)}")
+                    raise ImportError(
+                        "ChromaDB backend selected but chromadb package not installed. "
+                        "Install with: pip install mcp-memory-service[chromadb] or "
+                        "switch to sqlite_vec backend by setting MCP_MEMORY_STORAGE_BACKEND=sqlite_vec"
+                    ) from e
             
             # Initialize the storage backend
             logger.info(f"🔧 EAGER INIT: Calling storage.initialize()...")
@@ -585,6 +629,38 @@ class MemoryServer:
                         base_delay=CLOUDFLARE_BASE_DELAY
                     )
                     logger.info(f"✅ LAZY INIT: Created Cloudflare storage with Vectorize index: {CLOUDFLARE_VECTORIZE_INDEX}")
+                elif STORAGE_BACKEND == 'hybrid':
+                    # Hybrid backend using SQLite-vec as primary and Cloudflare as secondary
+                    logger.info(f"🔄 LAZY INIT: Importing HybridMemoryStorage...")
+                    from .storage.hybrid import HybridMemoryStorage
+
+                    # Prepare Cloudflare configuration dict
+                    cloudflare_config = None
+                    if all([CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_VECTORIZE_INDEX, CLOUDFLARE_D1_DATABASE_ID]):
+                        cloudflare_config = {
+                            'api_token': CLOUDFLARE_API_TOKEN,
+                            'account_id': CLOUDFLARE_ACCOUNT_ID,
+                            'vectorize_index': CLOUDFLARE_VECTORIZE_INDEX,
+                            'd1_database_id': CLOUDFLARE_D1_DATABASE_ID,
+                            'r2_bucket': CLOUDFLARE_R2_BUCKET,
+                            'embedding_model': CLOUDFLARE_EMBEDDING_MODEL,
+                            'large_content_threshold': CLOUDFLARE_LARGE_CONTENT_THRESHOLD,
+                            'max_retries': CLOUDFLARE_MAX_RETRIES,
+                            'base_delay': CLOUDFLARE_BASE_DELAY
+                        }
+                        logger.info(f"🔄 LAZY INIT: Cloudflare config prepared for hybrid storage")
+                    else:
+                        logger.warning("🔄 LAZY INIT: Incomplete Cloudflare config, hybrid will run in SQLite-only mode")
+
+                    logger.info(f"🔄 LAZY INIT: Creating HybridMemoryStorage instance...")
+                    self.storage = HybridMemoryStorage(
+                        sqlite_db_path=SQLITE_VEC_PATH,
+                        embedding_model="all-MiniLM-L6-v2",
+                        cloudflare_config=cloudflare_config,
+                        sync_interval=HYBRID_SYNC_INTERVAL or 300,
+                        batch_size=HYBRID_BATCH_SIZE or 50
+                    )
+                    logger.info(f"✅ LAZY INIT: Created Hybrid storage at: {SQLITE_VEC_PATH} with Cloudflare sync")
                 else:
                     # ChromaDB backend (deprecated) - Check for migration
                     logger.warning("=" * 70)
@@ -609,9 +685,18 @@ class MemoryServer:
                         logger.warning("Continuing with ChromaDB for now...")
                         logger.warning("")
                     
-                    from .storage.chroma import ChromaMemoryStorage
-                    self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=False)
-                    logger.info(f"✅ LAZY INIT: Created ChromaDB storage at: {CHROMA_PATH}")
+                    try:
+                        from .storage.chroma import ChromaMemoryStorage
+                        self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=False)
+                        logger.info(f"✅ LAZY INIT: Created ChromaDB storage at: {CHROMA_PATH}")
+                    except ImportError as e:
+                        logger.error(f"❌ LAZY INIT: ChromaDB not installed. Install with: pip install mcp-memory-service[chromadb]")
+                        logger.error(f"❌ LAZY INIT: Import error details: {str(e)}")
+                        raise ImportError(
+                            "ChromaDB backend selected but chromadb package not installed. "
+                            "Install with: pip install mcp-memory-service[chromadb] or "
+                            "switch to sqlite_vec backend by setting MCP_MEMORY_STORAGE_BACKEND=sqlite_vec"
+                        ) from e
                 
                 # Initialize the storage backend
                 logger.info(f"🔧 LAZY INIT: Calling storage.initialize()...")
@@ -2354,6 +2439,7 @@ class MemoryServer:
         # Initialize default values
         total_memories = 0
         unique_tags = 0
+        memories_this_week = 0
         database_size = "unknown"
         database_path = "unknown"
         database_exists = False
@@ -2377,6 +2463,12 @@ class MemoryServer:
                             tags = [tag.strip() for tag in tag_string.split(',') if tag.strip()]
                             all_tags.update(tags)
                     unique_tags = len(all_tags)
+
+                    # Count memories from this week (last 7 days)
+                    import time
+                    week_ago = time.time() - (7 * 24 * 60 * 60)
+                    cursor = storage.conn.execute('SELECT COUNT(*) FROM memories WHERE created_at >= ?', (week_ago,))
+                    memories_this_week = cursor.fetchone()[0]
                     
                     # Get database file info
                     if hasattr(storage, 'db_path') and storage.db_path:
@@ -2459,8 +2551,9 @@ class MemoryServer:
         
         # Format for dashboard with proper numeric types
         result = {
-            "total_memories": total_memories,  # Always a number
-            "unique_tags": unique_tags,        # Always a number  
+            "total_memories": total_memories,      # Always a number
+            "unique_tags": unique_tags,            # Always a number
+            "memories_this_week": memories_this_week,  # Always a number
             "database_size": database_size,
             "database_path": database_path,
             "database_exists": database_exists,

@@ -764,3 +764,11 @@ class HybridMemoryStorage(MemoryStorage):
             }
 
         return await self.sync_service.force_sync()
+
+    def sanitized(self, tags):
+        """Sanitize and normalize tags to a JSON string.
+
+        This method provides compatibility with the storage interface.
+        Delegates to primary storage for consistent tag handling.
+        """
+        return self.primary.sanitized(tags)
