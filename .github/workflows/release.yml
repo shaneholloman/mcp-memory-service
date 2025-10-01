@@ -37,7 +37,7 @@ jobs:
       run: python -m build
 
     - name: Python Semantic Release
-      uses: python-semantic-release/python-semantic-release@master
+      uses: python-semantic-release/python-semantic-release@v9.14.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         verbosity: 2

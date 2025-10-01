@@ -518,7 +518,9 @@ class HTTPMCPBridge {
                 return { status: 'unhealthy', backend: 'unknown', statistics: {} };
             }
         } catch (error) {
-            return { status: 'error', backend: 'unknown', statistics: {}, error: error.message };
+            // Handle errors that may not have a message property (like ECONNREFUSED)
+            const errorMessage = error.message || error.code || error.toString() || 'Unknown error';
+            return { status: 'error', backend: 'unknown', statistics: {}, error: errorMessage };
         }
     }
 
