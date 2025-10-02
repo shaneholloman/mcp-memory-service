@@ -4,6 +4,69 @@ All notable changes to the MCP Memory Service project will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.0] - 2025-10-02
+
+### 🎉 **API Documentation Restoration**
+
+**Successfully restored comprehensive API documentation with interactive dashboard integration following PR #121.**
+
+### ✅ **Key Features**
+
+#### 🔍 **Dual Interface Solution**
+- **Dedicated `/api-overview` route** - Standalone comprehensive API documentation page
+- **API Documentation tab** - Integrated dashboard tab for seamless user experience
+- **Unified navigation** - Consistent access to API information across both interfaces
+
+#### ⚡ **Dynamic Content Loading**
+- **Real-time version display** - Dynamic version loading via `/api/health/detailed` endpoint
+- **Backend status integration** - Live backend information display
+- **Enhanced user awareness** - Always shows current system state
+
+#### 📱 **Enhanced User Experience**
+- **Responsive design** - Organized endpoint sections with mobile compatibility
+- **Performance optimized** - CSS transitions optimized for better performance
+- **Consistent navigation** - Fixed naming conflicts for seamless tab switching
+
+### 🛠️ **Technical Improvements**
+
+#### 🔧 **API Consistency**
+- **Fixed endpoint path documentation** - Updated from `{hash}` to `{content_hash}` for accuracy
+- **Comprehensive endpoint coverage** - All API endpoints properly documented
+- **Organized by functionality** - Logical grouping of endpoints for easy navigation
+
+#### 🎨 **Performance Optimization**
+- **CSS performance** - Replaced `transition: all` with specific `border-color` and `box-shadow` transitions
+- **Load time maintained** - 25ms page load performance preserved
+- **Memory operation speed** - 26ms operation performance maintained
+
+### 📊 **Restored Functionality**
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| API Overview Page | ✅ RESTORED | `/api-overview` route with full documentation |
+| Dashboard Integration | ✅ NEW | API docs tab in interactive dashboard |
+| Dynamic Content | ✅ ENHANCED | Real-time version and backend display |
+| Mobile Responsive | ✅ MAINTAINED | CSS breakpoints preserved |
+| Performance | ✅ OPTIMIZED | Enhanced CSS transitions |
+
+### 🔄 **Architecture**
+
+#### **Dual Interface Implementation**
+- **FastAPI Integration** - `get_api_overview_html()` function with embedded JavaScript
+- **Dashboard Enhancement** - Additional navigation tab with organized content sections
+- **Unified Styling** - Consistent CSS styling across both interfaces
+- **Protocol Independence** - Works with both HTTP and MCP protocols
+
+### 🎯 **User Impact**
+
+**Addresses critical missing functionality:**
+- Restores API documentation that was missing after v7.2.2 interactive dashboard
+- Provides both standalone and integrated access to API information
+- Maintains excellent performance benchmarks while adding functionality
+- Enhances developer experience with comprehensive endpoint documentation
+
+**This release ensures users have complete access to API documentation through multiple interfaces while preserving the performance excellence of the interactive dashboard.**
+
 ## [7.2.2] - 2025-09-30
 
 ### 🎉 **Interactive Dashboard Validation Complete**
