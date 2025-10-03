@@ -16,23 +16,44 @@
 FastAPI dependencies for the HTTP interface.
 """
 
+import logging
 from typing import Optional
 from fastapi import HTTPException
 
-from ..storage.sqlite_vec import SqliteVecMemoryStorage
+from ..storage.base import MemoryStorage
+
+logger = logging.getLogger(__name__)
 
 # Global storage instance
-_storage: Optional[SqliteVecMemoryStorage] = None
+_storage: Optional[MemoryStorage] = None
 
 
-def set_storage(storage: SqliteVecMemoryStorage) -> None:
+def set_storage(storage: MemoryStorage) -> None:
     """Set the global storage instance."""
     global _storage
     _storage = storage
 
 
-def get_storage() -> SqliteVecMemoryStorage:
+def get_storage() -> MemoryStorage:
     """Get the global storage instance."""
     if _storage is None:
         raise HTTPException(status_code=503, detail="Storage not initialized")
     return _storage
+
+
+
+
+async def create_storage_backend() -> MemoryStorage:
+    """
+    Create and initialize storage backend for web interface based on configuration.
+
+    Returns:
+        Initialized storage backend
+    """
+    from ..config import DATABASE_PATH
+    from ..storage.factory import create_storage_instance
+
+    logger.info("Creating storage backend for web interface...")
+
+    # Use shared factory with DATABASE_PATH for web interface
+    return await create_storage_instance(DATABASE_PATH)
