@@ -533,8 +533,30 @@ class MemoryDashboard {
         try {
             let results = [];
 
-            if (tagFilter && tagFilter.trim()) {
-                // If we have tags, use tag search (works with or without main query)
+            // Priority 1: If we have a semantic query, start with semantic search
+            if (query) {
+                const filters = {};
+                if (typeFilter) filters.type = typeFilter;
+                results = await this.searchMemories(query, filters);
+
+                // Apply tag filtering to semantic search results if tags are specified
+                if (tagFilter && tagFilter.trim()) {
+                    const tags = tagFilter.split(',').map(t => t.trim()).filter(t => t);
+                    if (tags.length > 0) {
+                        results = results.filter(result => {
+                            const memoryTags = result.memory.tags || [];
+                            // Check if any of the specified tags match memory tags (case-insensitive)
+                            return tags.some(filterTag =>
+                                memoryTags.some(memoryTag =>
+                                    memoryTag.toLowerCase().includes(filterTag.toLowerCase())
+                                )
+                            );
+                        });
+                    }
+                }
+            }
+            // Priority 2: Tag-only search (when no semantic query)
+            else if (tagFilter && tagFilter.trim()) {
                 const tags = tagFilter.split(',').map(t => t.trim()).filter(t => t);
 
                 if (tags.length > 0) {
@@ -546,14 +568,17 @@ class MemoryDashboard {
                     const response = await this.apiCall('/search/by-tag', 'POST', payload);
                     results = response.results || [];
 
-                    // If we also have a main query, filter results further with semantic search
-                    if (query) {
-                        // TODO: Could implement hybrid search here
-                        // For now, tag search takes precedence
+                    // Apply type filter if present
+                    if (typeFilter && typeFilter.trim()) {
+                        results = results.filter(result => {
+                            const memoryType = result.memory.memory_type || 'note';
+                            return memoryType === typeFilter;
+                        });
                     }
                 }
-            } else if (dateFilter && dateFilter.trim()) {
-                // Date filter only - use time-based search
+            }
+            // Priority 3: Date-based search
+            else if (dateFilter && dateFilter.trim()) {
                 const payload = {
                     query: dateFilter,
                     n_results: 100
@@ -568,13 +593,9 @@ class MemoryDashboard {
                         return memoryType === typeFilter;
                     });
                 }
-            } else if (query) {
-                // Semantic search with optional type filter
-                const filters = {};
-                if (typeFilter) filters.type = typeFilter;
-                results = await this.searchMemories(query, filters);
-            } else if (typeFilter && typeFilter.trim()) {
-                // Only type filter - get all memories and filter by type
+            }
+            // Priority 4: Type-only filter
+            else if (typeFilter && typeFilter.trim()) {
                 const allMemoriesResponse = await this.apiCall('/memories?page=1&page_size=1000');
                 if (allMemoriesResponse.memories) {
                     results = allMemoriesResponse.memories
