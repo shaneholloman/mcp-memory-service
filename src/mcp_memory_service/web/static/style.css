@@ -1493,12 +1493,12 @@ h3 { font-size: var(--text-xl); }
 }
 
 input:checked + .slider {
-    background-color: var(--primary-500);
+    background-color: #2563eb;
 }
 
 input:checked + .slider:before {
     transform: translateX(32px);
-    background-color: #1a1a1a;
+    background-color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
