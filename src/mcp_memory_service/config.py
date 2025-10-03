@@ -33,6 +33,7 @@ import os
 import sys
 import secrets
 from pathlib import Path
+from typing import Optional
 import time
 import logging
 
@@ -86,6 +87,46 @@ def safe_get_int_env(env_var: str, default: int, min_value: int = None, max_valu
 
     except ValueError as e:
         logger.error(f"Invalid integer value for {env_var}='{env_value}': {e}. Using default {default}")
+        return default
+
+def safe_get_optional_int_env(env_var: str, default: Optional[int] = None, min_value: int = None, max_value: int = None, none_values: tuple = ('none', 'null', 'unlimited', '')) -> Optional[int]:
+    """
+    Safely parse an optional integer environment variable with validation and error handling.
+
+    Args:
+        env_var: Environment variable name
+        default: Default value if not set or invalid (None for unlimited)
+        min_value: Minimum allowed value (optional)
+        max_value: Maximum allowed value (optional)
+        none_values: Tuple of string values that should be interpreted as None
+
+    Returns:
+        Parsed and validated integer value, or None if explicitly set to a none_value
+    """
+    env_value = os.getenv(env_var)
+    if not env_value:
+        return default
+
+    # Check if value should be interpreted as None/unlimited
+    if env_value.lower().strip() in none_values:
+        return None
+
+    try:
+        value = int(env_value.strip())
+
+        # Validate range if specified
+        if min_value is not None and value < min_value:
+            logger.warning(f"Environment variable {env_var}={value} is below minimum {min_value}. Using default {default}")
+            return default
+
+        if max_value is not None and value > max_value:
+            logger.warning(f"Environment variable {env_var}={value} is above maximum {max_value}. Using default {default}")
+            return default
+
+        return value
+
+    except ValueError:
+        logger.warning(f"Invalid value for {env_var}='{env_value}'. Expected integer or {'/'.join(none_values)}. Using default {default}")
         return default
 
 def safe_get_bool_env(env_var: str, default: bool) -> bool:
@@ -257,6 +298,69 @@ if STORAGE_BACKEND not in SUPPORTED_BACKENDS:
     STORAGE_BACKEND = 'sqlite_vec'
 
 logger.info(f"Using storage backend: {STORAGE_BACKEND}")
+
+# =============================================================================
+# Content Length Limits Configuration (v7.5.0+)
+# =============================================================================
+
+# Backend-specific content length limits based on embedding model constraints
+# These limits prevent embedding failures and enable automatic content splitting
+
+# Cloudflare: BGE-base-en-v1.5 model has 512 token limit
+# Using 800 characters as safe limit (~400 tokens with overhead)
+CLOUDFLARE_MAX_CONTENT_LENGTH = safe_get_int_env(
+    'MCP_CLOUDFLARE_MAX_CONTENT_LENGTH',
+    default=800,
+    min_value=100,
+    max_value=10000
+)
+
+# ChromaDB: all-MiniLM-L6-v2 model has 384 token max_seq_length
+# Using 1500 characters as safe limit (~750 tokens with overhead)
+CHROMADB_MAX_CONTENT_LENGTH = safe_get_int_env(
+    'MCP_CHROMADB_MAX_CONTENT_LENGTH',
+    default=1500,
+    min_value=100,
+    max_value=10000
+)
+
+# SQLite-vec: No inherent limit (local storage)
+# Set to None for unlimited, or configure via environment variable
+SQLITEVEC_MAX_CONTENT_LENGTH = safe_get_optional_int_env(
+    'MCP_SQLITEVEC_MAX_CONTENT_LENGTH',
+    default=None,
+    min_value=100,
+    max_value=10000
+)
+
+# Hybrid: Constrained by Cloudflare secondary storage (configurable)
+HYBRID_MAX_CONTENT_LENGTH = safe_get_int_env(
+    'MCP_HYBRID_MAX_CONTENT_LENGTH',
+    default=CLOUDFLARE_MAX_CONTENT_LENGTH,
+    min_value=100,
+    max_value=10000
+)
+
+# Enable automatic content splitting when limits are exceeded
+ENABLE_AUTO_SPLIT = safe_get_bool_env('MCP_ENABLE_AUTO_SPLIT', default=True)
+
+# Content splitting configuration
+CONTENT_SPLIT_OVERLAP = safe_get_int_env(
+    'MCP_CONTENT_SPLIT_OVERLAP',
+    default=50,
+    min_value=0,
+    max_value=500
+)
+CONTENT_PRESERVE_BOUNDARIES = safe_get_bool_env('MCP_CONTENT_PRESERVE_BOUNDARIES', default=True)
+
+logger.info(f"Content length limits - Cloudflare: {CLOUDFLARE_MAX_CONTENT_LENGTH}, "
+           f"ChromaDB: {CHROMADB_MAX_CONTENT_LENGTH}, "
+           f"SQLite-vec: {'unlimited' if SQLITEVEC_MAX_CONTENT_LENGTH is None else SQLITEVEC_MAX_CONTENT_LENGTH}, "
+           f"Auto-split: {ENABLE_AUTO_SPLIT}")
+
+# =============================================================================
+# End Content Length Limits Configuration
+# =============================================================================
 
 # SQLite-vec specific configuration (also needed for hybrid backend)
 if STORAGE_BACKEND == 'sqlite_vec' or STORAGE_BACKEND == 'hybrid':

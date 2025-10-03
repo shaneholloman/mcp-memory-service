@@ -57,6 +57,7 @@ from ..utils.system_detection import (
     get_torch_device,
     AcceleratorType
 )
+from ..config import SQLITEVEC_MAX_CONTENT_LENGTH
 
 logger = logging.getLogger(__name__)
 
@@ -68,15 +69,25 @@ _EMBEDDING_CACHE = {}
 class SqliteVecMemoryStorage(MemoryStorage):
     """
     SQLite-vec based memory storage implementation.
-    
+
     This backend provides a lightweight alternative to ChromaDB using sqlite-vec
     for vector similarity search while maintaining the same interface.
     """
-    
+
+    @property
+    def max_content_length(self) -> Optional[int]:
+        """SQLite-vec content length limit from configuration (default: unlimited)."""
+        return SQLITEVEC_MAX_CONTENT_LENGTH
+
+    @property
+    def supports_chunking(self) -> bool:
+        """SQLite-vec backend supports content chunking with metadata linking."""
+        return True
+
     def __init__(self, db_path: str, embedding_model: str = "all-MiniLM-L6-v2"):
         """
         Initialize SQLite-vec storage.
-        
+
         Args:
             db_path: Path to SQLite database file
             embedding_model: Name of sentence transformer model to use
@@ -86,14 +97,14 @@ class SqliteVecMemoryStorage(MemoryStorage):
         self.conn = None
         self.embedding_model = None
         self.embedding_dimension = 384  # Default for all-MiniLM-L6-v2
-        
+
         # Performance settings
         self.enable_cache = True
         self.batch_size = 32
-        
+
         # Ensure directory exists
         os.makedirs(os.path.dirname(self.db_path) if os.path.dirname(self.db_path) else '.', exist_ok=True)
-        
+
         logger.info(f"Initialized SQLite-vec storage at: {self.db_path}")
 
     def _safe_json_loads(self, json_str: str, context: str = "") -> dict:

@@ -17,6 +17,7 @@ MCP Memory Service
 Copyright (c) 2024 Heinrich Krupp
 Licensed under the MIT License. See LICENSE file in the project root for full license text.
 """
+import asyncio
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
@@ -24,7 +25,30 @@ from ..models.memory import Memory, MemoryQueryResult
 
 class MemoryStorage(ABC):
     """Abstract base class for memory storage implementations."""
-    
+
+    @property
+    @abstractmethod
+    def max_content_length(self) -> Optional[int]:
+        """
+        Maximum content length supported by this storage backend.
+
+        Returns:
+            Maximum number of characters allowed in memory content, or None for unlimited.
+            This limit is based on the underlying embedding model's token limits.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def supports_chunking(self) -> bool:
+        """
+        Whether this backend supports automatic content chunking.
+
+        Returns:
+            True if the backend can store chunked memories with linking metadata.
+        """
+        pass
+
     @abstractmethod
     async def initialize(self) -> None:
         """Initialize the storage backend."""
@@ -34,6 +58,38 @@ class MemoryStorage(ABC):
     async def store(self, memory: Memory) -> Tuple[bool, str]:
         """Store a memory. Returns (success, message)."""
         pass
+
+    async def store_batch(self, memories: List[Memory]) -> List[Tuple[bool, str]]:
+        """
+        Store multiple memories in a single operation.
+
+        Default implementation calls store() for each memory concurrently using asyncio.gather.
+        Override this method in concrete storage backends to provide true batch operations
+        for improved performance (e.g., single database transaction, bulk network request).
+
+        Args:
+            memories: List of Memory objects to store
+
+        Returns:
+            A list of (success, message) tuples, one for each memory in the batch.
+        """
+        if not memories:
+            return []
+
+        results = await asyncio.gather(
+            *(self.store(memory) for memory in memories),
+            return_exceptions=True
+        )
+
+        # Process results to handle potential exceptions from gather
+        final_results = []
+        for res in results:
+            if isinstance(res, Exception):
+                # If a store operation failed with an exception, record it as a failure
+                final_results.append((False, f"Failed to store memory: {res}"))
+            else:
+                final_results.append(res)
+        return final_results
     
     @abstractmethod
     async def retrieve(self, query: str, n_results: int = 5) -> List[MemoryQueryResult]:
