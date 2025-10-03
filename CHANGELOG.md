@@ -8,6 +8,28 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.1] - 2025-10-03
+
+### 🛠️ **Linux Enhancements**
+
+#### 🔄 **Manual Sync Utilities for Hybrid Storage**
+- **`sync_now.py` script** - Manual on-demand synchronization for hybrid storage on Linux
+  - Type-safe data structures with `TypedDict` (SyncResult, SyncStatus)
+  - Comprehensive logging with configurable levels
+  - Verbose mode (`--verbose`) for detailed error tracebacks
+  - Robust status validation prevents misleading success reports
+  - Proper error handling with specific exception types
+- **Systemd integration** - Automated hourly background synchronization
+  - `mcp-memory-sync.service` - Systemd service for executing sync operations
+  - `mcp-memory-sync.timer` - Systemd timer triggering hourly syncs (5min after boot, persistent across reboots)
+- **Security improvement** - API key moved to separate environment file in systemd service template
+
+### 🔧 **Code Quality**
+- Enhanced error handling throughout sync utilities
+- Improved type safety with typed dictionaries for API results
+- Better logging practices using `logger.exception()` for verbose errors
+- Modular import structure following Python best practices
+
 ## [7.5.0] - 2025-10-03
 
 ### ✨ **New Features**
