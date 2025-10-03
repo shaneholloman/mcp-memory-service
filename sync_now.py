@@ -15,6 +15,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 # Configure logging
 logging.basicConfig(
@@ -23,16 +24,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Import from installed package (assumes package is installed in editable mode)
-try:
-    from dotenv import load_dotenv
-    from mcp_memory_service.storage.factory import create_storage_instance
-    from mcp_memory_service.storage.hybrid import HybridMemoryStorage
-    from mcp_memory_service.config import SQLITE_VEC_PATH
-except ImportError as e:
-    logger.error(f"❌ Import error: {e}")
-    logger.error("Make sure the package is installed: pip install -e .")
-    sys.exit(1)
+
+class SyncResult(TypedDict, total=False):
+    """Type-safe structure for sync operation results."""
+    status: str
+    synced_to_secondary: int
+    duration: float
+    failed: int
+    error: str
+
+
+class SyncStatus(TypedDict, total=False):
+    """Type-safe structure for sync status information."""
+    queue_size: int
+    cloudflare_available: bool
+    failed_operations: int
 
 
 async def main(db_path: str | None = None, verbose: bool = False) -> int:
@@ -43,7 +49,21 @@ async def main(db_path: str | None = None, verbose: bool = False) -> int:
         db_path: Optional path to SQLite database. If not provided,
                 uses MCP_MEMORY_SQLITE_PATH env var or default config.
         verbose: Enable verbose error reporting with full tracebacks.
+
+    Returns:
+        0 on success, 1 on failure
     """
+    # Check imports
+    try:
+        from dotenv import load_dotenv
+        from mcp_memory_service.storage.factory import create_storage_instance
+        from mcp_memory_service.storage.hybrid import HybridMemoryStorage
+        from mcp_memory_service.config import SQLITE_VEC_PATH
+    except ImportError as e:
+        logger.error(f"❌ Import error: {e}")
+        logger.error("Make sure the package is installed: pip install -e .")
+        return 1
+
     # Load environment variables
     load_dotenv()
 
@@ -61,7 +81,7 @@ async def main(db_path: str | None = None, verbose: bool = False) -> int:
     # Create storage instance
     try:
         storage = await create_storage_instance(str(sqlite_path))
-    except Exception as e:
+    except (ValueError, RuntimeError, FileNotFoundError, OSError) as e:
         logger.error(f"❌ Failed to create storage instance: {e}")
         if verbose:
             logger.exception("Full traceback for failed storage instance creation:")
