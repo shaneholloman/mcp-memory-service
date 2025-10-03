@@ -166,22 +166,24 @@
                 <div class="search-layout">
                     <!-- Advanced Search Panel -->
                     <aside class="search-filters">
-                        <h3>Search Filters
-                            <span class="tooltip" title="Filters work together: combine tags, dates, and types to narrow your search">ℹ️</span>
-                        </h3>
-
-                        <!-- Search Mode Toggle -->
-                        <div class="search-mode-section">
-                            <div class="mode-toggle">
+                        <div class="filters-header">
+                            <h3>Search Filters
+                                <span class="tooltip" title="Filters work together: combine tags, dates, and types to narrow your search">ℹ️</span>
+                            </h3>
+                            <div class="mode-toggle-compact">
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="liveSearchToggle" checked>
                                     <span class="slider"></span>
                                 </label>
-                                <span class="mode-label">
-                                    <span id="searchModeText">Live Search</span>
-                                    <span class="tooltip" title="Live search updates results as you type. Turn off for manual search mode.">ℹ️</span>
-                                </span>
+                                <span class="tooltip" title="Toggle between live search (updates as you type) and manual search mode">⚡</span>
                             </div>
+                        </div>
+
+                        <!-- Search Mode Indicator -->
+                        <div class="search-mode-indicator">
+                            <span class="mode-status">
+                                <span id="searchModeText">Live Search</span> mode
+                            </span>
                         </div>
 
                         <div class="filter-section">
