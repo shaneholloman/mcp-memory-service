@@ -8,6 +8,40 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.2] - 2025-10-03
+
+### 🐛 **Critical Bug Fixes**
+
+#### 🔧 **HybridMemoryStorage Import Missing**
+- **Fixed critical import error** - Added missing `HybridMemoryStorage` import in `storage/__init__.py` after v7.3.0 update
+- **Symptom resolved** - "Unknown storage type: HybridMemoryStorage" error no longer occurs
+- **Health check restored** - HTTP dashboard now properly displays hybrid backend status
+- **Backwards compatibility** - Import follows same conditional pattern as other storage backends
+
+#### 🛡️ **Enhanced Cloudflare Token Authentication**
+- **Resolved token endpoint confusion** - Clear guidance on using account-scoped vs generic verification endpoints
+- **Documentation improvements** - Comprehensive `.env.example` with correct curl examples and warnings
+- **Enhanced diagnostics** - `diagnose_backend_config.py` now tests both token verification endpoints
+- **Developer experience** - New troubleshooting guide prevents common authentication mistakes
+
+### 📚 **Documentation Enhancements**
+
+#### 🔍 **Comprehensive Troubleshooting Guide**
+- **New guide:** `docs/troubleshooting/cloudflare-authentication.md` with complete Cloudflare setup guidance
+- **Token verification clarity** - Explains difference between account-scoped and generic API endpoints
+- **Common errors documented** - Solutions for "Invalid API Token" and related authentication failures
+- **Step-by-step checklist** - Systematic approach to diagnosing token and authentication issues
+
+#### ⚙️ **Enhanced Configuration Examples**
+- **Improved .env.example** - Combines comprehensive v7.3.1 configuration with token verification guidance
+- **Clear warnings** - Explicit guidance on which endpoints to use and avoid
+- **Security best practices** - Token handling and verification recommendations
+
+### 🔗 **References**
+- Closes critical post-v7.3.0 hybrid storage import issue
+- Addresses developer confusion around Cloudflare token verification endpoints
+- PR #139: Fix HybridMemoryStorage import + Add comprehensive Cloudflare token verification guide
+
 ## [7.3.1] - 2025-10-03
 
 ### 🐛 **Bug Fixes**
