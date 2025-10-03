@@ -11,6 +11,8 @@ class MemoryDashboard {
         this.currentView = 'dashboard';
         this.searchResults = [];
         this.isLoading = false;
+        this.liveSearchEnabled = true;
+        this.debounceTimer = null;
 
         // Bind methods
         this.handleSearch = this.handleSearch.bind(this);
@@ -107,9 +109,13 @@ class MemoryDashboard {
             });
         });
 
+        // Live search toggle handler
+        const liveSearchToggle = document.getElementById('liveSearchToggle');
+        liveSearchToggle?.addEventListener('change', this.handleLiveSearchToggle.bind(this));
+
         // Filter handlers for search view
         const tagFilterInput = document.getElementById('tagFilter');
-        tagFilterInput?.addEventListener('input', this.handleFilterChange.bind(this));
+        tagFilterInput?.addEventListener('input', this.handleDebouncedFilterChange.bind(this));
         tagFilterInput?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.handleFilterChange();
@@ -1313,6 +1319,40 @@ class MemoryDashboard {
         this.updateActiveFilters();
 
         this.showToast('All filters cleared', 'info');
+    }
+
+    /**
+     * Handle live search toggle
+     */
+    handleLiveSearchToggle(event) {
+        this.liveSearchEnabled = event.target.checked;
+        const modeText = document.getElementById('searchModeText');
+        if (modeText) {
+            modeText.textContent = this.liveSearchEnabled ? 'Live Search' : 'Manual Search';
+        }
+
+        // Show a toast to indicate the mode change
+        this.showToast(
+            `Search mode: ${this.liveSearchEnabled ? 'Live (searches as you type)' : 'Manual (click Search button)'}`,
+            'info'
+        );
+    }
+
+    /**
+     * Handle debounced filter changes for live search
+     */
+    handleDebouncedFilterChange() {
+        // Clear any existing timer
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
+
+        // Only trigger search if live search is enabled
+        if (this.liveSearchEnabled) {
+            this.debounceTimer = setTimeout(() => {
+                this.handleFilterChange();
+            }, 300); // 300ms debounce
+        }
     }
 
     /**

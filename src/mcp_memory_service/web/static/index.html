@@ -170,6 +170,20 @@
                             <span class="tooltip" title="Filters work together: combine tags, dates, and types to narrow your search">ℹ️</span>
                         </h3>
 
+                        <!-- Search Mode Toggle -->
+                        <div class="search-mode-section">
+                            <div class="mode-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="liveSearchToggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="mode-label">
+                                    <span id="searchModeText">Live Search</span>
+                                    <span class="tooltip" title="Live search updates results as you type. Turn off for manual search mode.">ℹ️</span>
+                                </span>
+                            </div>
+                        </div>
+
                         <div class="filter-section">
                             <label for="tagFilter">Tags
                                 <span class="tooltip" title="Enter tags separated by commas (e.g., work, coding, important)">ℹ️</span>
@@ -185,8 +199,10 @@
                             <select id="dateFilter">
                                 <option value="">All time</option>
                                 <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
                                 <option value="week">This week</option>
                                 <option value="month">This month</option>
+                                <option value="quarter">Last quarter</option>
                                 <option value="year">This year</option>
                             </select>
                             <small class="help-text">Select a time period to filter memories</small>
