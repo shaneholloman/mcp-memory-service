@@ -1498,6 +1498,8 @@ input:checked + .slider {
 
 input:checked + .slider:before {
     transform: translateX(32px);
+    background-color: #1a1a1a;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .mode-label {
