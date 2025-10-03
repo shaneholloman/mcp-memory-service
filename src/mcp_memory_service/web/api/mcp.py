@@ -169,13 +169,14 @@ async def mcp_endpoint(
             
             result = await handle_tool_call(storage, tool_name, arguments)
             
+            import json
             return MCPResponse(
                 id=request.id,
                 result={
                     "content": [
                         {
                             "type": "text",
-                            "text": str(result)
+                            "text": json.dumps(result)
                         }
                     ]
                 }
@@ -248,7 +249,7 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
     elif tool_name == "retrieve_memory":
         query = arguments.get("query")
         limit = arguments.get("limit", 10)
-        similarity_threshold = arguments.get("similarity_threshold", 0.7)
+        similarity_threshold = arguments.get("similarity_threshold", 0.0)
         
         # Get results from storage (no similarity filtering at storage level)
         results = await storage.retrieve(query=query, n_results=limit)

@@ -8,6 +8,30 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.2] - 2025-10-03
+
+### 🐛 **Bug Fixes**
+
+#### 🔧 **MCP HTTP Endpoint Fixes**
+- **Fixed JSON serialization** - Changed `str(result)` to `json.dumps(result)` for proper client parsing
+  - MCP endpoint was returning Python dict string representation (`{'key': 'value'}`) instead of valid JSON (`{"key": "value"}`)
+  - Caused hook clients to fail parsing responses with "Expected ',' or '}'" errors
+- **Fixed similarity threshold** - Changed default from `0.7` to `0.0` to return all relevant memories
+  - 70% similarity threshold was too restrictive, filtering out memories with scores 0.2-0.5
+  - Now returns all results, allowing client-side scoring to determine relevance
+
+#### 🔌 **Memory Hooks HTTP/HTTPS Protocol Detection**
+- **Fixed protocol detection** in `claude-hooks/utilities/memory-client.js`
+  - Added `http` module import alongside existing `https` module
+  - Implemented dynamic protocol selection: `const protocol = url.protocol === 'https:' ? https : http`
+  - Previously hardcoded `https.request()` failed for `http://` endpoints
+
+### 🎯 **Impact**
+- ✅ Session-start hooks now properly inject memory context on Claude Code startup
+- ✅ HTTP memory server (port 8888) connectivity fully restored
+- ✅ Relevant memories (score 0.2-0.5) no longer filtered out by overly restrictive threshold
+- ✅ JSON parsing errors resolved for all memory retrieval operations
+
 ## [7.5.1] - 2025-10-03
 
 ### 🛠️ **Linux Enhancements**

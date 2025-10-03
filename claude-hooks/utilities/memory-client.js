@@ -4,6 +4,7 @@
  */
 
 const https = require('https');
+const http = require('http');
 const { MCPClient } = require('./mcp-client');
 
 class MemoryClient {
@@ -144,7 +145,8 @@ class MemoryClient {
                     rejectUnauthorized: false
                 };
 
-                const req = https.request(requestOptions, (res) => {
+                const protocol = url.protocol === 'https:' ? https : http;
+                const req = protocol.request(requestOptions, (res) => {
                     let data = '';
                     res.on('data', (chunk) => data += chunk);
                     res.on('end', () => {
@@ -236,7 +238,8 @@ class MemoryClient {
                 rejectUnauthorized: false
             };
 
-            const req = https.request(options, (res) => {
+            const protocol = url.protocol === 'https:' ? https : http;
+            const req = protocol.request(options, (res) => {
                 let data = '';
                 res.on('data', (chunk) => data += chunk);
                 res.on('end', () => {
