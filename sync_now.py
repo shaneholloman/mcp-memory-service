@@ -35,7 +35,7 @@ except ImportError as e:
     sys.exit(1)
 
 
-async def main(db_path: str | None = None, verbose: bool = False):
+async def main(db_path: str | None = None, verbose: bool = False) -> int:
     """
     Run immediate sync.
 
@@ -64,8 +64,7 @@ async def main(db_path: str | None = None, verbose: bool = False):
     except Exception as e:
         logger.error(f"❌ Failed to create storage instance: {e}")
         if verbose:
-            import traceback
-            traceback.print_exc()
+            logger.exception("Full traceback for failed storage instance creation:")
         return 1
 
     # Type-safe check for hybrid storage
@@ -93,8 +92,7 @@ async def main(db_path: str | None = None, verbose: bool = False):
     except Exception as e:
         logger.error(f"❌ Sync failed: {e}")
         if verbose:
-            import traceback
-            traceback.print_exc()
+            logger.exception("Full traceback for sync failure:")
         return 1
 
     # Get sync status after
