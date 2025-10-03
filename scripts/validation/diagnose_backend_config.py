@@ -203,6 +203,52 @@ def test_storage_creation():
         traceback.print_exc()
         return None
 
+def _verify_token_endpoint(endpoint_url, endpoint_type, api_token, requests):
+    """
+    Helper function to verify a Cloudflare API token against a specific endpoint.
+
+    Args:
+        endpoint_url: The URL to test the token against
+        endpoint_type: Description of the endpoint type (e.g., "Account-scoped", "Generic user")
+        api_token: The Cloudflare API token to verify
+        requests: The requests module
+
+    Returns:
+        tuple: (success: bool, result: dict or None)
+    """
+    print(f"\nTesting {endpoint_type} token verification...")
+    try:
+        response = requests.get(
+            endpoint_url,
+            headers={"Authorization": f"Bearer {api_token}"},
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("success"):
+                result = data.get("result", {})
+                print_status("success", f"{endpoint_type} verification successful")
+                print(f"   Token ID: {result.get('id', 'N/A')}")
+                print(f"   Status: {result.get('status', 'N/A')}")
+                print(f"   Expires: {result.get('expires_on', 'N/A')}")
+                return True, result
+            else:
+                errors = data.get("errors", [])
+                print_status("error", f"{endpoint_type} verification failed")
+                for error in errors:
+                    print(f"   Error {error.get('code')}: {error.get('message')}")
+                return False, None
+        else:
+            print_status("error", f"{endpoint_type} verification failed: HTTP {response.status_code}")
+            print(f"   Response: {response.text}")
+            return False, None
+
+    except Exception as e:
+        print_status("error", f"{endpoint_type} verification error: {e}")
+        return False, None
+
+
 def test_cloudflare_token():
     """Test Cloudflare API token with both endpoints to help identify token type."""
     print_separator("CLOUDFLARE TOKEN VERIFICATION")
@@ -223,65 +269,20 @@ def test_cloudflare_token():
         print_status("warning", "requests not available, skipping token verification")
         return False
 
+    token_verified = False
+
     # Test 1: Account-scoped endpoint (recommended for scoped tokens)
     if account_id:
-        print("Testing account-scoped token verification...")
-        try:
-            response = requests.get(
-                f"https://api.cloudflare.com/client/v4/accounts/{account_id}/tokens/verify",
-                headers={"Authorization": f"Bearer {api_token}"},
-                timeout=10
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("success"):
-                    result = data.get("result", {})
-                    print_status("success", "Account-scoped verification successful")
-                    print(f"   Token ID: {result.get('id', 'N/A')}")
-                    print(f"   Status: {result.get('status', 'N/A')}")
-                    print(f"   Expires: {result.get('expires_on', 'N/A')}")
-                    return True
-                else:
-                    errors = data.get("errors", [])
-                    print_status("error", "Account-scoped verification failed")
-                    for error in errors:
-                        print(f"   Error {error.get('code')}: {error.get('message')}")
-            else:
-                print_status("error", f"Account-scoped verification failed: HTTP {response.status_code}")
-                print(f"   Response: {response.text}")
-
-        except Exception as e:
-            print_status("error", f"Account-scoped verification error: {e}")
+        endpoint_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/tokens/verify"
+        success, _ = _verify_token_endpoint(endpoint_url, "account-scoped", api_token, requests)
+        if success:
+            token_verified = True
 
     # Test 2: Generic user endpoint (works for global tokens)
-    print("\nTesting generic user token verification...")
-    try:
-        response = requests.get(
-            "https://api.cloudflare.com/client/v4/user/tokens/verify",
-            headers={"Authorization": f"Bearer {api_token}"},
-            timeout=10
-        )
-
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("success"):
-                result = data.get("result", {})
-                print_status("success", "Generic user verification successful")
-                print(f"   Token ID: {result.get('id', 'N/A')}")
-                print(f"   Status: {result.get('status', 'N/A')}")
-                return True
-            else:
-                errors = data.get("errors", [])
-                print_status("error", "Generic user verification failed")
-                for error in errors:
-                    print(f"   Error {error.get('code')}: {error.get('message')}")
-        else:
-            print_status("error", f"Generic user verification failed: HTTP {response.status_code}")
-            print(f"   Response: {response.text}")
-
-    except Exception as e:
-        print_status("error", f"Generic user verification error: {e}")
+    endpoint_url = "https://api.cloudflare.com/client/v4/user/tokens/verify"
+    success, _ = _verify_token_endpoint(endpoint_url, "generic user", api_token, requests)
+    if success:
+        token_verified = True
 
     # Provide guidance
     print("\nTOKEN VERIFICATION GUIDANCE:")
@@ -295,7 +296,7 @@ def test_cloudflare_token():
     print("❌ Common mistake: Using wrong endpoint for token type")
     print("📖 See docs/troubleshooting/cloudflare-authentication.md for details")
 
-    return False
+    return token_verified
 
 def main():
     """Run all diagnostic tests."""
