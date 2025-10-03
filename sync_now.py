@@ -69,26 +69,20 @@ async def main(db_path: str | None = None):
 
     # Get sync status before
     try:
-        status_before = storage.sync_service.get_status()
+        status_before = await storage.get_sync_status()
         print(f"📊 Before sync:")
         print(f"   Queue size: {status_before['queue_size']}")
         print(f"   Cloudflare available: {status_before['cloudflare_available']}")
     except Exception as e:
         print(f"⚠️  Could not get sync status: {e}")
 
-    # Trigger immediate sync using public method
+    # Trigger immediate sync
     print("\n⏳ Triggering sync...")
     try:
-        # Check if there's a public sync method, otherwise use the internal one
-        if hasattr(storage.sync_service, 'sync_now'):
-            await storage.sync_service.sync_now()
-        elif hasattr(storage.sync_service, '_sync_batch'):
-            # Fallback to internal method if public method doesn't exist yet
-            await storage.sync_service._sync_batch()
-        else:
-            print("❌ No sync method available on sync service")
-            return 1
+        result = await storage.force_sync()
         print("✅ Sync completed successfully!")
+        print(f"   Synced: {result.get('synced', 0)} operations")
+        print(f"   Duration: {result.get('duration', 0):.2f}s")
     except Exception as e:
         print(f"❌ Sync failed: {e}")
         import traceback
@@ -97,11 +91,10 @@ async def main(db_path: str | None = None):
 
     # Get sync status after
     try:
-        status_after = storage.sync_service.get_status()
+        status_after = await storage.get_sync_status()
         print(f"\n📊 After sync:")
-        print(f"   Operations processed: {status_after['stats']['operations_processed']}")
-        print(f"   Last sync duration: {status_after['stats']['last_sync_duration']:.2f}s")
         print(f"   Queue size: {status_after['queue_size']}")
+        print(f"   Failed operations: {status_after['failed_operations']}")
     except Exception as e:
         print(f"⚠️  Could not get final sync status: {e}")
 
