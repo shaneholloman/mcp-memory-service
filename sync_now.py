@@ -86,9 +86,21 @@ async def main(db_path: str | None = None, verbose: bool = False) -> int:
     logger.info("\n⏳ Triggering sync...")
     try:
         result = await storage.force_sync()
+
+        # Check sync status
+        if result.get('status') != 'completed':
+            logger.error(f"❌ Sync failed with status: {result.get('status')}")
+            if result.get('error'):
+                logger.error(f"   Error: {result.get('error')}")
+            return 1
+
         logger.info("✅ Sync completed successfully!")
         logger.info(f"   Synced: {result.get('synced_to_secondary', 0)} operations")
         logger.info(f"   Duration: {result.get('duration', 0):.2f}s")
+
+        # Report any failed operations
+        if result.get('failed', 0) > 0:
+            logger.warning(f"   ⚠️  Failed operations: {result.get('failed', 0)}")
     except Exception as e:
         logger.error(f"❌ Sync failed: {e}")
         if verbose:
