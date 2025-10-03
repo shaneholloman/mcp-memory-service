@@ -25,6 +25,7 @@ import time
 import os
 import sys
 import platform
+from collections import Counter
 from typing import List, Dict, Any, Tuple, Optional, Set, Callable
 from datetime import datetime
 import asyncio
@@ -56,6 +57,7 @@ from ..utils.system_detection import (
     get_torch_device,
     AcceleratorType
 )
+from ..config import SQLITEVEC_MAX_CONTENT_LENGTH
 
 logger = logging.getLogger(__name__)
 
@@ -67,15 +69,25 @@ _EMBEDDING_CACHE = {}
 class SqliteVecMemoryStorage(MemoryStorage):
     """
     SQLite-vec based memory storage implementation.
-    
+
     This backend provides a lightweight alternative to ChromaDB using sqlite-vec
     for vector similarity search while maintaining the same interface.
     """
-    
+
+    @property
+    def max_content_length(self) -> Optional[int]:
+        """SQLite-vec content length limit from configuration (default: unlimited)."""
+        return SQLITEVEC_MAX_CONTENT_LENGTH
+
+    @property
+    def supports_chunking(self) -> bool:
+        """SQLite-vec backend supports content chunking with metadata linking."""
+        return True
+
     def __init__(self, db_path: str, embedding_model: str = "all-MiniLM-L6-v2"):
         """
         Initialize SQLite-vec storage.
-        
+
         Args:
             db_path: Path to SQLite database file
             embedding_model: Name of sentence transformer model to use
@@ -85,16 +97,33 @@ class SqliteVecMemoryStorage(MemoryStorage):
         self.conn = None
         self.embedding_model = None
         self.embedding_dimension = 384  # Default for all-MiniLM-L6-v2
-        
+
         # Performance settings
         self.enable_cache = True
         self.batch_size = 32
-        
+
         # Ensure directory exists
         os.makedirs(os.path.dirname(self.db_path) if os.path.dirname(self.db_path) else '.', exist_ok=True)
-        
+
         logger.info(f"Initialized SQLite-vec storage at: {self.db_path}")
-    
+
+    def _safe_json_loads(self, json_str: str, context: str = "") -> dict:
+        """Safely parse JSON with comprehensive error handling and logging."""
+        if not json_str:
+            return {}
+        try:
+            result = json.loads(json_str)
+            if not isinstance(result, dict):
+                logger.warning(f"Non-dict JSON in {context}: {type(result)}")
+                return {}
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error in {context}: {e}, data: {json_str[:100]}...")
+            return {}
+        except TypeError as e:
+            logger.error(f"JSON type error in {context}: {e}")
+            return {}
+
     async def _execute_with_retry(self, operation: Callable, max_retries: int = 3, initial_delay: float = 0.1):
         """
         Execute a database operation with exponential backoff retry logic.
@@ -347,27 +376,50 @@ SOLUTIONS:
             logger.error(traceback.format_exc())
             raise RuntimeError(error_msg)
     
+    def _is_docker_environment(self) -> bool:
+        """Detect if running inside a Docker container."""
+        # Check for Docker-specific files/environment
+        if os.path.exists('/.dockerenv'):
+            return True
+        if os.environ.get('DOCKER_CONTAINER'):
+            return True
+        # Check if running in common container environments
+        if any(os.environ.get(var) for var in ['KUBERNETES_SERVICE_HOST', 'MESOS_SANDBOX']):
+            return True
+        # Check cgroup for docker/containerd/podman
+        try:
+            with open('/proc/self/cgroup', 'r') as f:
+                return any('docker' in line or 'containerd' in line for line in f)
+        except (IOError, FileNotFoundError):
+            pass
+        return False
+
     async def _initialize_embedding_model(self):
         """Initialize the embedding model (ONNX or SentenceTransformer based on configuration)."""
         global _MODEL_CACHE
-        
+
+        # Detect if we're in Docker
+        is_docker = self._is_docker_environment()
+        if is_docker:
+            logger.info("🐳 Docker environment detected - adjusting model loading strategy")
+
         try:
             # Check if we should use ONNX
             use_onnx = os.environ.get('MCP_MEMORY_USE_ONNX', '').lower() in ('1', 'true', 'yes')
-            
+
             if use_onnx:
                 # Try to use ONNX embeddings
                 logger.info("Attempting to use ONNX embeddings (PyTorch-free)")
                 try:
                     from ..embeddings import get_onnx_embedding_model
-                    
+
                     # Check cache first
                     cache_key = f"onnx_{self.embedding_model_name}"
                     if cache_key in _MODEL_CACHE:
                         self.embedding_model = _MODEL_CACHE[cache_key]
                         logger.info(f"Using cached ONNX embedding model: {self.embedding_model_name}")
                         return
-                    
+
                     # Create ONNX model
                     onnx_model = get_onnx_embedding_model(self.embedding_model_name)
                     if onnx_model:
@@ -382,25 +434,25 @@ SOLUTIONS:
                     logger.warning(f"ONNX dependencies not available: {e}")
                 except Exception as e:
                     logger.warning(f"Failed to initialize ONNX embeddings: {e}")
-            
+
             # Fall back to SentenceTransformer
             if not SENTENCE_TRANSFORMERS_AVAILABLE:
                 raise RuntimeError("Neither ONNX nor sentence-transformers available. Install one: pip install onnxruntime tokenizers OR pip install sentence-transformers torch")
-            
+
             # Check cache first
             cache_key = self.embedding_model_name
             if cache_key in _MODEL_CACHE:
                 self.embedding_model = _MODEL_CACHE[cache_key]
                 logger.info(f"Using cached embedding model: {self.embedding_model_name}")
                 return
-            
+
             # Get system info for optimal settings
             system_info = get_system_info()
             device = get_torch_device()
-            
+
             logger.info(f"Loading embedding model: {self.embedding_model_name}")
             logger.info(f"Using device: {device}")
-            
+
             # Configure for offline mode if models are cached
             # Only set offline mode if we detect cached models to prevent initial downloads
             hf_home = os.environ.get('HF_HOME', os.path.expanduser("~/.cache/huggingface"))
@@ -408,7 +460,8 @@ SOLUTIONS:
             if os.path.exists(model_cache_path):
                 os.environ['HF_HUB_OFFLINE'] = '1'
                 os.environ['TRANSFORMERS_OFFLINE'] = '1'
-            
+                logger.info("📦 Found cached model - enabling offline mode")
+
             # Try to load from cache first, fallback to direct model name
             try:
                 # First try loading from Hugging Face cache
@@ -429,25 +482,89 @@ SOLUTIONS:
                         raise FileNotFoundError("No snapshots directory")
                 else:
                     raise FileNotFoundError("No cache found")
+            except FileNotFoundError as cache_error:
+                logger.warning(f"Model not in cache: {cache_error}")
+                # Try to download the model (may fail in Docker without network)
+                try:
+                    logger.info("Attempting to download model from Hugging Face...")
+                    self.embedding_model = SentenceTransformer(self.embedding_model_name, device=device)
+                except OSError as download_error:
+                    # Check if this is a network connectivity issue
+                    error_msg = str(download_error)
+                    if any(phrase in error_msg.lower() for phrase in ['connection', 'network', 'couldn\'t connect', 'huggingface.co']):
+                        # Provide Docker-specific help
+                        docker_help = self._get_docker_network_help() if is_docker else ""
+                        raise RuntimeError(
+                            f"🔌 Model Download Error: Cannot connect to huggingface.co\n"
+                            f"{'='*60}\n"
+                            f"The model '{self.embedding_model_name}' needs to be downloaded but the connection failed.\n"
+                            f"{docker_help}"
+                            f"\n💡 Solutions:\n"
+                            f"1. Mount pre-downloaded models as a volume:\n"
+                            f"   # On host machine, download the model first:\n"
+                            f"   python -c \"from sentence_transformers import SentenceTransformer; SentenceTransformer('{self.embedding_model_name}')\"\n"
+                            f"   \n"
+                            f"   # Then run container with cache mount:\n"
+                            f"   docker run -v ~/.cache/huggingface:/root/.cache/huggingface ...\n"
+                            f"\n"
+                            f"2. Configure Docker network (if behind proxy):\n"
+                            f"   docker run -e HTTPS_PROXY=your-proxy -e HTTP_PROXY=your-proxy ...\n"
+                            f"\n"
+                            f"3. Use offline mode with pre-cached models:\n"
+                            f"   docker run -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 ...\n"
+                            f"\n"
+                            f"4. Use host network mode (if appropriate for your setup):\n"
+                            f"   docker run --network host ...\n"
+                            f"\n"
+                            f"📚 See docs: https://github.com/doobidoo/mcp-memory-service/blob/main/docs/deployment/docker.md#model-download-issues\n"
+                            f"{'='*60}"
+                        ) from download_error
+                    else:
+                        # Re-raise if not a network issue
+                        raise
             except Exception as cache_error:
                 logger.warning(f"Failed to load from cache: {cache_error}")
                 # Fallback to normal loading (may fail if offline)
                 logger.info("Attempting normal model loading...")
                 self.embedding_model = SentenceTransformer(self.embedding_model_name, device=device)
-            
+
             # Update embedding dimension based on actual model
             test_embedding = self.embedding_model.encode(["test"], convert_to_numpy=True)
             self.embedding_dimension = test_embedding.shape[1]
-            
+
             # Cache the model
             _MODEL_CACHE[cache_key] = self.embedding_model
-            
-            logger.info(f"Embedding model loaded successfully. Dimension: {self.embedding_dimension}")
-            
+
+            logger.info(f"✅ Embedding model loaded successfully. Dimension: {self.embedding_dimension}")
+
+        except RuntimeError:
+            # Re-raise our custom errors with helpful messages
+            raise
         except Exception as e:
             logger.error(f"Failed to initialize embedding model: {str(e)}")
             logger.error(traceback.format_exc())
             # Continue without embeddings - some operations may still work
+            logger.warning("⚠️ Continuing without embedding support - search functionality will be limited")
+
+    def _get_docker_network_help(self) -> str:
+        """Get Docker-specific network troubleshooting help."""
+        # Try to detect the Docker platform
+        docker_platform = "Docker"
+        if os.environ.get('DOCKER_DESKTOP_VERSION'):
+            docker_platform = "Docker Desktop"
+        elif os.path.exists('/proc/version'):
+            try:
+                with open('/proc/version', 'r') as f:
+                    version = f.read().lower()
+                    if 'microsoft' in version:
+                        docker_platform = "Docker Desktop for Windows"
+            except (IOError, FileNotFoundError):
+                pass
+
+        return (
+            f"\n🐳 Docker Environment Detected ({docker_platform})\n"
+            f"This appears to be a network connectivity issue common in Docker containers.\n"
+        )
     
     def _generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for text."""
@@ -633,7 +750,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     # Create Memory object
                     memory = Memory(
@@ -699,7 +816,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     memory_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -761,7 +878,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     memory_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -838,7 +955,7 @@ SOLUTIONS:
 
                     # Parse tags and metadata
                     memory_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
 
                     memory = Memory(
                         content=content,
@@ -917,7 +1034,7 @@ SOLUTIONS:
             
             # Parse tags and metadata
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-            metadata = json.loads(metadata_str) if metadata_str else {}
+            metadata = self._safe_json_loads(metadata_str, "memory_retrieval")
             
             memory = Memory(
                 content=content,
@@ -1016,7 +1133,7 @@ SOLUTIONS:
             content, current_tags, current_type, current_metadata_str, created_at, created_at_iso = row
             
             # Parse current metadata
-            current_metadata = json.loads(current_metadata_str) if current_metadata_str else {}
+            current_metadata = self._safe_json_loads(current_metadata_str, "update_memory_metadata")
             
             # Apply updates
             new_tags = current_tags
@@ -1107,25 +1224,45 @@ SOLUTIONS:
             cursor = self.conn.execute('SELECT COUNT(*) FROM memories')
             total_memories = cursor.fetchone()[0]
             
-            cursor = self.conn.execute('SELECT COUNT(DISTINCT tags) FROM memories WHERE tags != ""')
-            unique_tags = cursor.fetchone()[0]
+            # Count unique individual tags (not tag sets)
+            cursor = self.conn.execute('SELECT tags FROM memories WHERE tags IS NOT NULL AND tags != ""')
+            unique_tags = len(set(
+                tag.strip()
+                for (tag_string,) in cursor
+                if tag_string
+                for tag in tag_string.split(",")
+                if tag.strip()
+            ))
             
+            # Count memories from this week (last 7 days)
+            import time
+            week_ago = time.time() - (7 * 24 * 60 * 60)
+            cursor = self.conn.execute('SELECT COUNT(*) FROM memories WHERE created_at >= ?', (week_ago,))
+            memories_this_week = cursor.fetchone()[0]
+
             # Get database file size
             file_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
-            
+
             return {
                 "backend": "sqlite-vec",
                 "total_memories": total_memories,
                 "unique_tags": unique_tags,
+                "memories_this_week": memories_this_week,
                 "database_size_bytes": file_size,
                 "database_size_mb": round(file_size / (1024 * 1024), 2),
                 "embedding_model": self.embedding_model_name,
                 "embedding_dimension": self.embedding_dimension
             }
             
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting stats: {str(e)}")
+            return {"error": f"Database error: {str(e)}"}
+        except OSError as e:
+            logger.error(f"File system error getting stats: {str(e)}")
+            return {"error": f"File system error: {str(e)}"}
         except Exception as e:
-            logger.error(f"Failed to get stats: {str(e)}")
-            return {"error": str(e)}
+            logger.error(f"Unexpected error getting stats: {str(e)}")
+            return {"error": f"Unexpected error: {str(e)}"}
     
     def sanitized(self, tags):
         """Sanitize and normalize tags to a JSON string.
@@ -1222,7 +1359,7 @@ SOLUTIONS:
                             
                             # Parse tags and metadata
                             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                            metadata = json.loads(metadata_str) if metadata_str else {}
+                            metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                             
                             # Create Memory object
                             memory = Memory(
@@ -1283,7 +1420,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -1343,7 +1480,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -1390,7 +1527,7 @@ SOLUTIONS:
                     
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    metadata = self._safe_json_loads(metadata_str, "memory_metadata")
                     
                     memory = Memory(
                         content=content,
@@ -1475,26 +1612,12 @@ SOLUTIONS:
         """Convert database row to Memory object."""
         try:
             content_hash, content, tags_str, memory_type, metadata_str, created_at, updated_at, created_at_iso, updated_at_iso = row
-            
-            # Parse tags
-            tags = []
-            if tags_str:
-                try:
-                    tags = json.loads(tags_str)
-                    if not isinstance(tags, list):
-                        tags = []
-                except json.JSONDecodeError:
-                    tags = []
+
+            # Parse tags (comma-separated format)
+            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
             
             # Parse metadata
-            metadata = {}
-            if metadata_str:
-                try:
-                    metadata = json.loads(metadata_str)
-                    if not isinstance(metadata, dict):
-                        metadata = {}
-                except json.JSONDecodeError:
-                    metadata = {}
+            metadata = self._safe_json_loads(metadata_str, "get_by_hash")
             
             return Memory(
                 content=content,
@@ -1613,6 +1736,42 @@ SOLUTIONS:
         except Exception as e:
             logger.error(f"Error counting memories: {str(e)}")
             return 0
+
+    async def get_all_tags_with_counts(self) -> List[Dict[str, Any]]:
+        """
+        Get all tags with their usage counts.
+
+        Returns:
+            List of dictionaries with 'tag' and 'count' keys, sorted by count descending
+        """
+        try:
+            await self.initialize()
+
+            # Get all tags from the database
+            cursor = self.conn.execute('''
+                SELECT tags
+                FROM memories
+                WHERE tags IS NOT NULL AND tags != ''
+            ''')
+
+            # Use Counter with generator expression for memory efficiency
+            tag_counter = Counter(
+                tag.strip()
+                for (tag_string,) in cursor
+                if tag_string
+                for tag in tag_string.split(",")
+                if tag.strip()
+            )
+
+            # Return as list of dicts sorted by count descending
+            return [{"tag": tag, "count": count} for tag, count in tag_counter.most_common()]
+
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting tags with counts: {str(e)}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting tags with counts: {str(e)}")
+            raise
 
     def close(self):
         """Close the database connection."""

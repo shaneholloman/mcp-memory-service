@@ -40,8 +40,7 @@ from ..config import (
     HTTPS_ENABLED,
     OAUTH_ENABLED
 )
-from ..storage.sqlite_vec import SqliteVecMemoryStorage
-from .dependencies import set_storage, get_storage
+from .dependencies import set_storage, get_storage, create_storage_backend
 from .api.health import router as health_router
 from .api.memories import router as memories_router
 from .api.search import router as search_router
@@ -52,7 +51,7 @@ from .sse import sse_manager
 logger = logging.getLogger(__name__)
 
 # Global storage instance
-storage: Optional[SqliteVecMemoryStorage] = None
+storage: Optional["MemoryStorage"] = None
 
 # Global mDNS advertiser instance
 mdns_advertiser: Optional[Any] = None
@@ -91,13 +90,8 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting MCP Memory Service HTTP interface...")
     try:
-        storage = SqliteVecMemoryStorage(
-            db_path=DATABASE_PATH,
-            embedding_model=EMBEDDING_MODEL_NAME
-        )
-        await storage.initialize()
+        storage = await create_storage_backend()
         set_storage(storage)  # Set the global storage instance
-        logger.info(f"SQLite-vec storage initialized at {DATABASE_PATH}")
         
         # Start SSE manager
         await sse_manager.start()
@@ -217,10 +211,9 @@ def create_app() -> FastAPI:
     if os.path.exists(static_path):
         app.mount("/static", StaticFiles(directory=static_path), name="static")
     
-    @app.get("/", response_class=HTMLResponse)
-    async def dashboard():
-        """Serve the dashboard homepage."""
-        html_template = """
+    def get_api_overview_html():
+        """Generate the API overview HTML template."""
+        return """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -510,7 +503,42 @@ def create_app() -> FastAPI:
                     font-size: 0.875rem;
                     font-weight: 600;
                 }
-                
+
+                .nav-buttons {
+                    display: flex;
+                    gap: 1rem;
+                    margin-top: 1rem;
+                    justify-content: center;
+                }
+
+                .nav-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem 1.5rem;
+                    background: var(--primary);
+                    color: var(--white);
+                    text-decoration: none;
+                    border-radius: 0.5rem;
+                    font-weight: 600;
+                    transition: background-color 0.2s;
+                    box-shadow: var(--shadow);
+                }
+
+                .nav-btn:hover {
+                    background: var(--primary-dark);
+                    text-decoration: none;
+                    color: var(--white);
+                }
+
+                .nav-btn.secondary {
+                    background: var(--gray);
+                }
+
+                .nav-btn.secondary:hover {
+                    background: #475569;
+                }
+
                 .loading {
                     display: inline-block;
                     width: 1rem;
@@ -550,11 +578,25 @@ def create_app() -> FastAPI:
                         <div class="logo-icon">🧠</div>
                         <div>
                             <h1>MCP Memory Service</h1>
-                            <p class="subtitle">Intelligent Semantic Memory with SQLite-vec</p>
+                            <p class="subtitle" id="subtitle">Intelligent Semantic Memory with <span id="backend-name">Loading...</span></p>
                         </div>
                     </div>
                     <div class="version-badge">
-                        <span>✅</span> v""" + __version__ + """ - Latest Release
+                        <span>✅</span> <span id="version-display">Loading...</span> - Latest Release
+                    </div>
+                    <div class="nav-buttons">
+                        <a href="/" class="nav-btn">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/>
+                            </svg>
+                            Interactive Dashboard
+                        </a>
+                        <a href="/api/docs" class="nav-btn secondary" target="_blank">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14,17H7V15H14M17,13H7V11H17M17,9H7V7H17M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3Z"/>
+                            </svg>
+                            Swagger UI
+                        </a>
                     </div>
                 </header>
                 
@@ -767,10 +809,104 @@ def create_app() -> FastAPI:
                 // Update stats every 30 seconds
                 setInterval(updateStats, 30000);
             </script>
+
+            <script>
+                // Dynamic content loading for API overview
+                function getBackendDisplayName(backend) {
+                    const backendMap = {
+                        'sqlite-vec': 'SQLite-vec',
+                        'sqlite_vec': 'SQLite-vec',
+                        'cloudflare': 'Cloudflare D1 + Vectorize',
+                        'chromadb': 'ChromaDB',
+                        'hybrid': 'Hybrid (SQLite-vec + Cloudflare)'
+                    };
+                    return backendMap[backend] || backend || 'Unknown Backend';
+                }
+
+                async function loadDynamicInfo() {
+                    try {
+                        // Load detailed health information
+                        const response = await fetch('/api/health/detailed');
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        const healthData = await response.json();
+
+                        // Update version display
+                        const versionEl = document.getElementById('version-display');
+                        if (versionEl && healthData.version) {
+                            versionEl.textContent = `v${healthData.version}`;
+                        }
+
+                        // Update backend name and subtitle
+                        const backendNameEl = document.getElementById('backend-name');
+                        const subtitleEl = document.getElementById('subtitle');
+
+                        if (healthData.storage && healthData.storage.backend) {
+                            const backendDisplay = getBackendDisplayName(healthData.storage.backend);
+
+                            if (backendNameEl) {
+                                backendNameEl.textContent = backendDisplay;
+                            }
+
+                            if (subtitleEl) {
+                                subtitleEl.innerHTML = `Intelligent Semantic Memory with <span id="backend-name">${backendDisplay}</span>`;
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error('Error loading dynamic info:', error);
+
+                        // Fallback values on error
+                        const versionEl = document.getElementById('version-display');
+                        const backendNameEl = document.getElementById('backend-name');
+                        const subtitleEl = document.getElementById('subtitle');
+
+                        if (versionEl) {
+                            versionEl.textContent = 'v?.?.?';
+                        }
+
+                        if (backendNameEl) {
+                            backendNameEl.textContent = 'Unknown Backend';
+                        }
+
+                        if (subtitleEl) {
+                            subtitleEl.innerHTML = 'Intelligent Semantic Memory with <span id="backend-name">Unknown Backend</span>';
+                        }
+                    }
+                }
+
+                // Load dynamic content when page loads
+                document.addEventListener('DOMContentLoaded', loadDynamicInfo);
+            </script>
         </body>
         </html>
         """
-        return html_template
+
+    @app.get("/api-overview", response_class=HTMLResponse)
+    async def api_overview():
+        """Serve the API documentation overview page."""
+        return get_api_overview_html()
+
+    @app.get("/", response_class=HTMLResponse)
+    async def dashboard():
+        """Serve the dashboard homepage."""
+        # Serve the migrated interactive dashboard instead of hardcoded template
+        try:
+            # Path to the migrated dashboard HTML file
+            dashboard_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+
+            if os.path.exists(dashboard_path):
+                # Read and serve the migrated dashboard
+                with open(dashboard_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            else:
+                # Fallback to original template if dashboard not found
+                return html_template
+        except Exception as e:
+            # Error fallback to original template
+            logger.warning(f"Error loading migrated dashboard: {e}")
+            return html_template
     
     return app
 

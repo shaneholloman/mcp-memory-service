@@ -20,19 +20,23 @@ import time
 import platform
 import psutil
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from ...storage.sqlite_vec import SqliteVecMemoryStorage
+from ...storage.base import MemoryStorage
 from ..dependencies import get_storage
 from ... import __version__
 from ...config import OAUTH_ENABLED
 
-# Import OAuth dependencies only when needed
-if OAUTH_ENABLED:
+# OAuth authentication imports (conditional)
+if OAUTH_ENABLED or TYPE_CHECKING:
     from ..oauth.middleware import require_read_access, AuthenticationResult
+else:
+    # Provide type stubs when OAuth is disabled
+    AuthenticationResult = None
+    require_read_access = None
 
 router = APIRouter()
 
@@ -74,7 +78,7 @@ async def health_check():
 
 @router.get("/health/detailed", response_model=DetailedHealthResponse)
 async def detailed_health_check(
-    storage: SqliteVecMemoryStorage = Depends(get_storage),
+    storage: MemoryStorage = Depends(get_storage),
     user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
 ):
     """Detailed health check with system and storage information."""
@@ -96,32 +100,59 @@ async def detailed_health_check(
         "disk_percent": round((disk_info.used / disk_info.total) * 100, 2)
     }
     
-    # Get storage information
+    # Get storage information (support all storage backends)
     try:
-        # Get basic storage stats
-        storage_info = {
-            "backend": "sqlite-vec",
-            "database_path": storage.db_path,
-            "embedding_model": storage.embedding_model_name,
-            "status": "connected"
-        }
-        
-        # Try to get detailed statistics from storage
-        try:
-            stats = storage.get_stats()
-            if "error" not in stats:
-                storage_info.update(stats)
-                storage_info["accessible"] = True
+        # Get statistics from storage using universal get_stats() method
+        if hasattr(storage, 'get_stats') and callable(getattr(storage, 'get_stats')):
+            # Handle both sync and async get_stats methods
+            if hasattr(storage, '__class__') and 'Hybrid' in storage.__class__.__name__:
+                # HybridMemoryStorage.get_stats() is async
+                stats = await storage.get_stats()
             else:
-                storage_info["accessible"] = False
-                storage_info["stats_error"] = stats["error"]
-        except Exception as e:
-            storage_info["accessible"] = False
-            storage_info["error"] = str(e)
-            
+                # Other storage backends have sync get_stats()
+                stats = storage.get_stats()
+        else:
+            stats = {"error": "Storage backend doesn't support statistics"}
+
+        if "error" not in stats:
+            # Detect backend type from storage class or stats
+            backend_name = stats.get("storage_backend", storage.__class__.__name__)
+            if "sqlite" in backend_name.lower():
+                backend_type = "sqlite-vec"
+            elif "cloudflare" in backend_name.lower():
+                backend_type = "cloudflare"
+            elif "hybrid" in backend_name.lower():
+                backend_type = "hybrid"
+            elif "chroma" in backend_name.lower():
+                backend_type = "chromadb"
+            else:
+                backend_type = backend_name
+
+            storage_info = {
+                "backend": backend_type,
+                "status": "connected",
+                "accessible": True
+            }
+
+            # Add backend-specific information if available
+            if hasattr(storage, 'db_path'):
+                storage_info["database_path"] = storage.db_path
+            if hasattr(storage, 'embedding_model_name'):
+                storage_info["embedding_model"] = storage.embedding_model_name
+
+            # Merge all stats
+            storage_info.update(stats)
+        else:
+            storage_info = {
+                "backend": storage.__class__.__name__,
+                "status": "error",
+                "accessible": False,
+                "error": stats["error"]
+            }
+
     except Exception as e:
         storage_info = {
-            "backend": "sqlite-vec",
+            "backend": storage.__class__.__name__ if hasattr(storage, '__class__') else "unknown",
             "status": "error",
             "error": str(e)
         }
@@ -136,6 +167,7 @@ async def detailed_health_check(
     statistics = {
         "total_memories": storage_info.get("total_memories", 0),
         "unique_tags": storage_info.get("unique_tags", 0),
+        "memories_this_week": storage_info.get("memories_this_week", 0),
         "database_size_mb": storage_info.get("database_size_mb", 0),
         "backend": storage_info.get("backend", "sqlite-vec")
     }
@@ -150,6 +182,33 @@ async def detailed_health_check(
         performance=performance_info,
         statistics=statistics
     )
+
+
+@router.get("/health/sync-status")
+async def sync_status(
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
+):
+    """Get current initial sync status for hybrid storage."""
+
+    # Check if this is a hybrid storage that supports sync status
+    if hasattr(storage, 'get_initial_sync_status'):
+        sync_status = storage.get_initial_sync_status()
+        return {
+            "sync_supported": True,
+            "status": sync_status
+        }
+    else:
+        return {
+            "sync_supported": False,
+            "status": {
+                "in_progress": False,
+                "total": 0,
+                "completed": 0,
+                "finished": True,
+                "progress_percentage": 100
+            }
+        }
 
 
 def format_uptime(seconds: float) -> str:

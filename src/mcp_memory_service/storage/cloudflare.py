@@ -29,13 +29,27 @@ import httpx
 from .base import MemoryStorage
 from ..models.memory import Memory, MemoryQueryResult
 from ..utils.hashing import generate_content_hash
+from ..config import CLOUDFLARE_MAX_CONTENT_LENGTH
 
 logger = logging.getLogger(__name__)
 
 class CloudflareStorage(MemoryStorage):
     """Cloudflare-based storage backend using Vectorize, D1, and R2."""
-    
-    def __init__(self, 
+
+    # Content length limit from configuration
+    _MAX_CONTENT_LENGTH = CLOUDFLARE_MAX_CONTENT_LENGTH
+
+    @property
+    def max_content_length(self) -> Optional[int]:
+        """Maximum content length: 800 chars (BGE model 512 token limit)."""
+        return self._MAX_CONTENT_LENGTH
+
+    @property
+    def supports_chunking(self) -> bool:
+        """Cloudflare backend supports content chunking with metadata linking."""
+        return True
+
+    def __init__(self,
                  api_token: str,
                  account_id: str,
                  vectorize_index: str,
@@ -47,7 +61,7 @@ class CloudflareStorage(MemoryStorage):
                  base_delay: float = 1.0):
         """
         Initialize Cloudflare storage backend.
-        
+
         Args:
             api_token: Cloudflare API token
             account_id: Cloudflare account ID
@@ -68,20 +82,20 @@ class CloudflareStorage(MemoryStorage):
         self.large_content_threshold = large_content_threshold
         self.max_retries = max_retries
         self.base_delay = base_delay
-        
+
         # API endpoints
         self.base_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}"
         self.vectorize_url = f"{self.base_url}/vectorize/v2/indexes/{vectorize_index}"
         self.d1_url = f"{self.base_url}/d1/database/{d1_database_id}"
         self.ai_url = f"{self.base_url}/ai/run/{embedding_model}"
-        
+
         if r2_bucket:
             self.r2_url = f"{self.base_url}/r2/buckets/{r2_bucket}/objects"
-        
+
         # HTTP client with connection pooling
         self.client = None
         self._initialized = False
-        
+
         # Embedding cache for performance
         self._embedding_cache = {}
         self._cache_max_size = 1000
@@ -142,7 +156,7 @@ class CloudflareStorage(MemoryStorage):
     async def _generate_embedding(self, text: str) -> List[float]:
         """Generate embedding using Workers AI or cache."""
         # Check cache first
-        text_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+        text_hash = hashlib.sha256(text.encode()).hexdigest()
         if text_hash in self._embedding_cache:
             return self._embedding_cache[text_hash]
         
@@ -341,11 +355,13 @@ class CloudflareStorage(MemoryStorage):
                 headers=headers
             )
             
-            # Log the full response for debugging
+            # Log response status for debugging (avoid logging headers/body for security)
             logger.info(f"Vectorize response status: {response.status_code}")
-            logger.info(f"Vectorize response headers: {dict(response.headers)}")
             response_text = response.text
-            logger.info(f"Vectorize response body: {response_text}")
+            if response.status_code != 200:
+                # Only log response body on errors, and truncate to avoid credential exposure
+                truncated_response = response_text[:200] + "..." if len(response_text) > 200 else response_text
+                logger.warning(f"Vectorize error response (truncated): {truncated_response}")
             
             if response.status_code != 200:
                 raise ValueError(f"HTTP {response.status_code}: {response_text}")
@@ -1096,6 +1112,75 @@ class CloudflareStorage(MemoryStorage):
 
         except Exception as e:
             logger.error(f"Error getting all memories: {str(e)}")
+            return []
+
+    async def get_all_memories_cursor(self, limit: int = None, cursor: float = None, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> List[Memory]:
+        """
+        Get all memories using cursor-based pagination to avoid D1 OFFSET limitations.
+
+        This method uses timestamp-based cursors instead of OFFSET, which is more efficient
+        and avoids Cloudflare D1's OFFSET limitations that cause 400 Bad Request errors.
+
+        Args:
+            limit: Maximum number of memories to return (None for all)
+            cursor: Timestamp cursor for pagination (created_at value from last result)
+            memory_type: Optional filter by memory type
+            tags: Optional filter by tags (matches ANY of the provided tags)
+
+        Returns:
+            List of Memory objects ordered by created_at DESC, starting after cursor
+        """
+        try:
+            # Build SQL query with cursor-based pagination
+            sql = "SELECT * FROM memories"
+            params = []
+            where_conditions = []
+
+            # Add cursor condition (timestamp-based pagination)
+            if cursor is not None:
+                where_conditions.append("created_at < ?")
+                params.append(cursor)
+
+            # Add memory_type filter if specified
+            if memory_type is not None:
+                where_conditions.append("memory_type = ?")
+                params.append(memory_type)
+
+            # Add tags filter if specified (using LIKE for tag matching)
+            if tags and len(tags) > 0:
+                tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
+                where_conditions.append(f"({tag_conditions})")
+                params.extend([f"%{tag}%" for tag in tags])
+
+            # Apply WHERE clause if we have any conditions
+            if where_conditions:
+                sql += " WHERE " + " AND ".join(where_conditions)
+
+            sql += " ORDER BY created_at DESC"
+
+            if limit is not None:
+                sql += " LIMIT ?"
+                params.append(limit)
+
+            payload = {"sql": sql, "params": params}
+            response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+            result = response.json()
+
+            if not result.get("success"):
+                raise ValueError(f"D1 query failed: {result}")
+
+            memories = []
+            if result.get("result", [{}])[0].get("results"):
+                for row in result["result"][0]["results"]:
+                    memory = await self._load_memory_from_row(row)
+                    if memory:
+                        memories.append(memory)
+
+            logger.debug(f"Retrieved {len(memories)} memories from D1 with cursor-based pagination")
+            return memories
+
+        except Exception as e:
+            logger.error(f"Error getting memories with cursor: {str(e)}")
             return []
 
     async def count_all_memories(self, memory_type: Optional[str] = None) -> int:

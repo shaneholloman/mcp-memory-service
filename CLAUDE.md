@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop using ChromaDB and sentence transformers.
 
+> **🎉 v7.2.2**: **Interactive Dashboard Production-Ready** - Comprehensive validation complete with excellent performance (25ms page load, 26ms memory ops), advanced search capabilities, real-time SSE updates, and mobile responsiveness!
+
 > **🧠 v7.1.0**: Now features **Natural Memory Triggers** with intelligent automatic memory retrieval, 85%+ trigger accuracy, and multi-tier performance optimization!
 
 > **🚀 v7.0.0**: Features **OAuth 2.1 Dynamic Client Registration** and **Dual Protocol Memory Hooks** for Claude Code with automatic HTTP/MCP protocol detection.
@@ -48,11 +50,23 @@ node ~/.claude/hooks/memory-mode-controller.js profile balanced  # Switch perfor
 node ~/.claude/hooks/memory-mode-controller.js sensitivity 0.7   # Adjust trigger sensitivity
 node ~/.claude/hooks/test-natural-triggers.js          # Test trigger system
 
+# Context-Provider Integration (Latest)
+# Note: Context-provider commands are integrated into MCP client automatically
+# No manual commands needed - contexts activate automatically during sessions
+
 # Debug & Troubleshooting
 npx @modelcontextprotocol/inspector uv run memory server # MCP Inspector
 python scripts/database/simple_timestamp_check.py       # Database health check
 df -h /                                               # Check disk space (critical for Litestream)
 journalctl -u mcp-memory-service -f                   # Monitor service logs
+
+# Interactive Dashboard Testing & Validation
+curl "http://127.0.0.1:8888/api/health"              # Health check (expect 200 OK)
+curl "http://127.0.0.1:8888/api/search" -H "Content-Type: application/json" -d '{"query":"test"}' # Semantic search
+curl "http://127.0.0.1:8888/api/search/by-tag" -H "Content-Type: application/json" -d '{"tags":["test"]}' # Tag search
+curl "http://127.0.0.1:8888/api/search/by-time" -H "Content-Type: application/json" -d '{"query":"last week"}' # Time search
+curl -N "http://127.0.0.1:8888/api/events"           # Test SSE real-time updates
+time curl -s "http://127.0.0.1:8888/" > /dev/null     # Dashboard page load performance
 ```
 
 ## Architecture
@@ -73,6 +87,47 @@ journalctl -u mcp-memory-service -f                   # Monitor service logs
 - Platform detection for hardware optimization (CUDA, MPS, DirectML, ROCm)
 - Global model and embedding caches for performance
 - **Protocol Abstraction** 🆕: Single interface for multi-protocol memory operations
+
+## Interactive Dashboard (v7.2.2+) 🎉
+
+**Production-ready web interface** providing complete memory management capabilities with excellent performance.
+
+### ✅ **Core Features**
+- **Complete CRUD Operations**: Create, read, update, delete memories with intuitive UI
+- **Advanced Search**: Semantic search, tag-based filtering, and time-based queries
+- **Real-time Updates**: Server-Sent Events (SSE) with 30-second heartbeat for live dashboard updates
+- **Mobile Responsive**: CSS breakpoints for mobile (768px) and tablet (1024px) devices
+- **Security**: XSS protection via `escapeHtml()` function throughout frontend
+- **OAuth Integration**: Seamless conditional loading for both enabled/disabled OAuth modes
+
+### 📊 **Performance Benchmarks** (Validated v7.2.2)
+| Component | Target | Actual | Status |
+|-----------|--------|--------|--------|
+| Page Load | <2s | 25ms | ✅ EXCELLENT |
+| Memory Operations | <1s | 26ms | ✅ EXCELLENT |
+| Tag Search | <500ms | <100ms | ✅ EXCELLENT |
+| Large Dataset | 1000+ | 994+ tested | ✅ EXCELLENT |
+
+### 🔍 **Search API Endpoints**
+```bash
+# Semantic search (similarity-based)
+POST /api/search
+{"query": "documentation", "limit": 10}
+
+# Tag-based search (exact tag matching)
+POST /api/search/by-tag
+{"tags": ["important", "reference"], "limit": 10}
+
+# Time-based search (natural language)
+POST /api/search/by-time
+{"query": "last week", "n_results": 10}
+```
+
+### 🎯 **Usage**
+- **Dashboard Access**: `http://127.0.0.1:8888/` (HTTP) or `https://localhost:8443/` (HTTPS)
+- **API Base**: `/api/` for programmatic access
+- **SSE Events**: `/api/events` for real-time updates
+- **File Structure**: `src/mcp_memory_service/web/static/` (index.html, app.js, style.css)
 
 ## Environment Variables
 
@@ -146,6 +201,39 @@ node ~/.claude/hooks/memory-mode-controller.js sensitivity 0.6
 - `balanced`: <200ms, instant + fast tiers - optimal for general development (recommended)
 - `memory_aware`: <500ms, all tiers - maximum context awareness for complex work
 - `adaptive`: Dynamic adjustment based on usage patterns and user feedback
+
+### Context-Provider Integration 🆕
+
+**Rule-based context management** that complements Natural Memory Triggers with structured, project-specific patterns:
+
+```bash
+# Context-Provider Commands
+mcp context list                                # List available contexts
+mcp context status                             # Check session initialization status
+mcp context optimize                           # Get optimization suggestions
+```
+
+**Key Features:**
+- ✅ **Python MCP Memory Service Context**: Project-specific patterns for FastAPI, MCP protocol, and storage backends
+- ✅ **Enhanced Memory Context**: MCP-specific auto-store/retrieve triggers for development workflows
+- ✅ **Git Integration**: Automatic commit formatting and branch management aligned with project standards
+- ✅ **Seamless Coexistence**: Works alongside Natural Memory Triggers without conflicts
+
+**Auto-Store Patterns:**
+- **MCP Protocol Changes**: `MCP protocol`, `tool handler`, `storage backend switch`
+- **Performance Optimizations**: `25ms page load`, `embedding cache`, `async optimization`
+- **Configuration Updates**: `cloudflare configuration`, `hybrid backend setup`, `oauth integration`
+
+**Auto-Retrieve Patterns:**
+- **Troubleshooting**: `cloudflare backend error`, `MCP client connection`, `storage backend failed`
+- **Setup Queries**: `backend configuration`, `environment setup`, `claude desktop config`
+- **Development Patterns**: `MCP handler example`, `API endpoint pattern`, `async error handling`
+
+**Integration Benefits:**
+- **Structured Memory Management**: Rule-based triggers complement AI-based Natural Memory Triggers
+- **Project-Specific Intelligence**: Captures MCP Memory Service-specific terminology and workflows
+- **Enhanced Git Workflow**: Automatic semantic commit formatting and branch naming conventions
+- **Zero Performance Impact**: Lightweight rule processing with minimal overhead
 
 ### Dual Protocol Memory Hooks (Legacy)
 
@@ -233,21 +321,52 @@ export CLOUDFLARE_VECTORIZE_INDEX="mcp-memory-index"
 
 ## Development Guidelines
 
+### 🧠 **Memory & Documentation**
 - Use `claude /memory-store` to capture decisions during development
 - Memory operations handle duplicates via content hashing
 - Time parsing supports natural language ("yesterday", "last week")
+- Use semantic commit messages for version management
+
+### 🏗️ **Architecture & Testing**
 - Storage backends must implement abstract base class
 - All features require corresponding tests
-- Use semantic commit messages for version management
+- **Comprehensive UI Testing**: Validate performance benchmarks (page load <2s, operations <1s)
+- **Security Validation**: Verify XSS protection, input validation, and OAuth integration
+- **Mobile Testing**: Confirm responsive design at 768px and 1024px breakpoints
+
+### 🚀 **Version Management Best Practices**
+- Document major milestones in CHANGELOG.md with performance metrics
+- Create descriptive git tags for releases (`git tag -a v7.2.2 -m "description"`)
+- Sync develop/main branches after releases
+- Update version in both `__init__.py` and `pyproject.toml`
+
+### 🔧 **Configuration & Deployment**
 - Run `python scripts/validation/validate_configuration_complete.py` when troubleshooting setup issues
 - Use sync utilities for hybrid Cloudflare/SQLite deployments
+- Test both OAuth enabled/disabled modes for web interface
+- Validate search endpoints: semantic (`/api/search`), tag (`/api/search/by-tag`), time (`/api/search/by-time`)
 
 ## Key Endpoints
 
-- **Health**: `https://localhost:8443/api/health`
-- **Web UI**: `https://localhost:8443/`  
-- **API**: `https://localhost:8443/api/memories`
+### 🌐 **Web Interface**
+- **Dashboard**: `http://127.0.0.1:8888/` (HTTP) or `https://localhost:8443/` (HTTPS)
+- **Health Check**: `/api/health` - Server status and version
+- **SSE Events**: `/api/events` - Real-time updates via Server-Sent Events
+
+### 📋 **Memory Management**
+- **CRUD Operations**: `/api/memories` - Create, read, update, delete memories
+- **Memory Details**: `/api/memories/{hash}` - Get specific memory by content hash
+- **Tags**: `/api/tags` - Get all available tags with counts
+
+### 🔍 **Search APIs**
+- **Semantic Search**: `POST /api/search` - Similarity-based search
+- **Tag Search**: `POST /api/search/by-tag` - Filter by specific tags
+- **Time Search**: `POST /api/search/by-time` - Natural language time queries
+- **Similar**: `GET /api/search/similar/{hash}` - Find memories similar to given hash
+
+### 📚 **Documentation**
 - **Wiki**: `https://github.com/doobidoo/mcp-memory-service/wiki`
+- **API Reference**: Available in dashboard at `/api/docs` (when enabled)
 
 ## Configuration Management
 

@@ -19,7 +19,7 @@ import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, TypedDict, NotRequired
 import os
 import sys
 import socket
@@ -42,50 +42,11 @@ from .config import (
     CLOUDFLARE_D1_DATABASE_ID, CLOUDFLARE_R2_BUCKET, CLOUDFLARE_EMBEDDING_MODEL,
     CLOUDFLARE_LARGE_CONTENT_THRESHOLD, CLOUDFLARE_MAX_RETRIES, CLOUDFLARE_BASE_DELAY,
     HYBRID_SYNC_INTERVAL, HYBRID_BATCH_SIZE, HYBRID_MAX_QUEUE_SIZE,
-    HYBRID_SYNC_ON_STARTUP, HYBRID_FALLBACK_TO_PRIMARY
+    HYBRID_SYNC_ON_STARTUP, HYBRID_FALLBACK_TO_PRIMARY,
+    CONTENT_PRESERVE_BOUNDARIES, CONTENT_SPLIT_OVERLAP, ENABLE_AUTO_SPLIT
 )
 from .storage.base import MemoryStorage
-
-def _get_sqlite_vec_storage(error_message="Failed to import SQLite-vec storage"):
-    """Helper function to import SqliteVecMemoryStorage with consistent error handling."""
-    try:
-        from .storage.sqlite_vec import SqliteVecMemoryStorage
-        return SqliteVecMemoryStorage
-    except ImportError as e:
-        logger.error(f"{error_message}: {e}")
-        raise
-
-def get_storage_backend():
-    """Dynamically select and import storage backend based on configuration and availability."""
-    backend = STORAGE_BACKEND.lower()
-
-    if backend == "sqlite-vec" or backend == "sqlite_vec":
-        return _get_sqlite_vec_storage()
-    elif backend == "chroma":
-        try:
-            from .storage.chroma import ChromaStorage
-            return ChromaStorage
-        except ImportError:
-            logger.warning("ChromaDB not available, falling back to SQLite-vec")
-            return _get_sqlite_vec_storage("Failed to import fallback SQLite-vec storage")
-    elif backend == "cloudflare":
-        try:
-            from .storage.cloudflare import CloudflareStorage
-            return CloudflareStorage
-        except ImportError as e:
-            logger.error(f"Failed to import Cloudflare storage: {e}")
-            raise
-    elif backend == "hybrid":
-        try:
-            from .storage.hybrid import HybridMemoryStorage
-            return HybridMemoryStorage
-        except ImportError as e:
-            logger.error(f"Failed to import Hybrid storage: {e}")
-            logger.warning("Falling back to SQLite-vec storage")
-            return _get_sqlite_vec_storage("Failed to import fallback SQLite-vec storage")
-    else:
-        logger.warning(f"Unknown storage backend '{backend}', defaulting to SQLite-vec")
-        return _get_sqlite_vec_storage("Failed to import default SQLite-vec storage")
+from .utils.content_splitter import split_content
 from .models.memory import Memory
 
 # Configure logging
@@ -102,57 +63,9 @@ async def mcp_server_lifespan(server: FastMCP) -> AsyncIterator[MCPServerContext
     """Manage MCP server lifecycle with proper resource initialization and cleanup."""
     logger.info("Initializing MCP Memory Service components...")
     
-    # Initialize storage backend based on configuration and availability
-    StorageClass = get_storage_backend()
-    
-    if StorageClass.__name__ == "SqliteVecMemoryStorage":
-        storage = StorageClass(
-            db_path=SQLITE_VEC_PATH,
-            embedding_model=EMBEDDING_MODEL_NAME
-        )
-    elif StorageClass.__name__ == "CloudflareStorage":
-        storage = StorageClass(
-            api_token=CLOUDFLARE_API_TOKEN,
-            account_id=CLOUDFLARE_ACCOUNT_ID,
-            vectorize_index=CLOUDFLARE_VECTORIZE_INDEX,
-            d1_database_id=CLOUDFLARE_D1_DATABASE_ID,
-            r2_bucket=CLOUDFLARE_R2_BUCKET,
-            embedding_model=CLOUDFLARE_EMBEDDING_MODEL,
-            large_content_threshold=CLOUDFLARE_LARGE_CONTENT_THRESHOLD,
-            max_retries=CLOUDFLARE_MAX_RETRIES,
-            base_delay=CLOUDFLARE_BASE_DELAY
-        )
-    elif StorageClass.__name__ == "HybridMemoryStorage":
-        # Prepare Cloudflare configuration dict
-        cloudflare_config = None
-        if all([CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_VECTORIZE_INDEX, CLOUDFLARE_D1_DATABASE_ID]):
-            cloudflare_config = {
-                'api_token': CLOUDFLARE_API_TOKEN,
-                'account_id': CLOUDFLARE_ACCOUNT_ID,
-                'vectorize_index': CLOUDFLARE_VECTORIZE_INDEX,
-                'd1_database_id': CLOUDFLARE_D1_DATABASE_ID,
-                'r2_bucket': CLOUDFLARE_R2_BUCKET,
-                'embedding_model': CLOUDFLARE_EMBEDDING_MODEL,
-                'large_content_threshold': CLOUDFLARE_LARGE_CONTENT_THRESHOLD,
-                'max_retries': CLOUDFLARE_MAX_RETRIES,
-                'base_delay': CLOUDFLARE_BASE_DELAY
-            }
-
-        storage = StorageClass(
-            sqlite_db_path=SQLITE_VEC_PATH,
-            embedding_model=EMBEDDING_MODEL_NAME,
-            cloudflare_config=cloudflare_config,
-            sync_interval=HYBRID_SYNC_INTERVAL,
-            batch_size=HYBRID_BATCH_SIZE
-        )
-    else:  # ChromaStorage
-        storage = StorageClass(
-            path=str(CHROMA_PATH),
-            collection_name=COLLECTION_METADATA.get("name", "memories")
-        )
-    
-    # Initialize storage backend
-    await storage.initialize()
+    # Initialize storage backend using shared factory
+    from .storage.factory import create_storage_instance
+    storage = await create_storage_instance(SQLITE_VEC_PATH)
     
     try:
         yield MCPServerContext(
@@ -174,6 +87,30 @@ mcp = FastMCP(
 )
 
 # =============================================================================
+# TYPE DEFINITIONS
+# =============================================================================
+
+class StoreMemorySuccess(TypedDict):
+    """Return type for successful single memory storage."""
+    success: bool
+    message: str
+    content_hash: str
+
+class StoreMemorySplitSuccess(TypedDict):
+    """Return type for successful chunked memory storage."""
+    success: bool
+    message: str
+    chunks_created: int
+    chunk_hashes: List[str]
+
+class StoreMemoryFailure(TypedDict):
+    """Return type for failed memory storage."""
+    success: bool
+    message: str
+    chunks_created: NotRequired[int]
+    chunk_hashes: NotRequired[List[str]]
+
+# =============================================================================
 # CORE MEMORY OPERATIONS
 # =============================================================================
 
@@ -185,56 +122,136 @@ async def store_memory(
     memory_type: str = "note",
     metadata: Optional[Dict[str, Any]] = None,
     client_hostname: Optional[str] = None
-) -> Dict[str, Union[bool, str]]:
+) -> Union[StoreMemorySuccess, StoreMemorySplitSuccess, StoreMemoryFailure]:
     """
     Store a new memory with content and optional metadata.
-    
+
+    **IMPORTANT - Content Length Limits:**
+    - Cloudflare backend: 800 characters max (BGE model 512 token limit)
+    - ChromaDB backend: 1500 characters max (384 token model limit)
+    - SQLite-vec backend: No limit (local storage)
+    - Hybrid backend: 800 characters max (constrained by Cloudflare sync)
+
+    If content exceeds the backend's limit, it will be automatically split into
+    multiple linked memory chunks with preserved context (50-char overlap).
+    The splitting respects natural boundaries: paragraphs → sentences → words.
+
     Args:
         content: The content to store as memory
         tags: Optional tags to categorize the memory
         memory_type: Type of memory (note, decision, task, reference)
         metadata: Additional metadata for the memory
         client_hostname: Client machine hostname for source tracking
-    
+
     Returns:
-        Dictionary with success status and message
+        Dictionary with:
+        - success: Boolean indicating if storage succeeded
+        - message: Status message
+        - content_hash: Hash of original content (for single memory)
+        - chunks_created: Number of chunks (if content was split)
+        - chunk_hashes: List of content hashes (if content was split)
     """
     try:
         storage = ctx.request_context.lifespan_context.storage
-        
+
         # Prepare tags and metadata with optional hostname
         final_tags = tags or []
         final_metadata = metadata or {}
-        
+
         if INCLUDE_HOSTNAME:
             # Prioritize client-provided hostname, then fallback to server
             if client_hostname:
                 hostname = client_hostname
             else:
                 hostname = socket.gethostname()
-                
+
             source_tag = f"source:{hostname}"
             if source_tag not in final_tags:
                 final_tags.append(source_tag)
             final_metadata["hostname"] = hostname
-        
-        # Create memory object
-        memory = Memory(
-            content=content,
-            tags=final_tags,
-            memory_type=memory_type,
-            metadata=final_metadata
-        )
-        
-        # Store memory
-        success, message = await storage.store(memory)
-        
-        return {
-            "success": success,
-            "message": message,
-            "content_hash": memory.content_hash
-        }
-        
+
+        # Check if content needs splitting
+        max_length = storage.max_content_length
+        if max_length and len(content) > max_length:
+            if not ENABLE_AUTO_SPLIT:
+                logger.warning(f"Content length {len(content)} exceeds limit {max_length}, and auto-split is disabled.")
+                return {
+                    "success": False,
+                    "message": f"Content length {len(content)} exceeds backend limit of {max_length}. Auto-splitting is disabled.",
+                }
+            # Content exceeds limit - split into chunks
+            logger.info(f"Content length {len(content)} exceeds backend limit {max_length}, splitting...")
+
+            chunks = split_content(content, max_length, preserve_boundaries=CONTENT_PRESERVE_BOUNDARIES, overlap=CONTENT_SPLIT_OVERLAP)
+            total_chunks = len(chunks)
+            chunk_memories = []
+
+            # Create all chunk memories
+            for i, chunk in enumerate(chunks):
+                # Add chunk metadata
+                chunk_metadata = final_metadata.copy()
+                chunk_metadata.update({
+                    "is_chunk": True,
+                    "chunk_index": i + 1,
+                    "total_chunks": total_chunks,
+                    "original_length": len(content)
+                })
+
+                # Add chunk indicator to tags
+                chunk_tags = final_tags.copy()
+                chunk_tags.append(f"chunk:{i+1}/{total_chunks}")
+
+                # Create chunk memory object
+                chunk_memory = Memory(
+                    content=chunk,
+                    tags=chunk_tags,
+                    memory_type=memory_type,
+                    metadata=chunk_metadata
+                )
+                chunk_memories.append(chunk_memory)
+
+            # Store all chunks in a single batch operation
+            results = await storage.store_batch(chunk_memories)
+
+            successful_chunks = [mem for mem, (success, _) in zip(chunk_memories, results) if success]
+            failed_count = len(chunk_memories) - len(successful_chunks)
+
+            if failed_count == 0:
+                chunk_hashes = [mem.content_hash for mem in successful_chunks]
+                return {
+                    "success": True,
+                    "message": f"Content split into {total_chunks} chunks and stored successfully",
+                    "chunks_created": total_chunks,
+                    "chunk_hashes": chunk_hashes
+                }
+            else:
+                error_messages = [msg for success, msg in results if not success]
+                logger.error(f"Failed to store {failed_count} chunks: {error_messages}")
+                return {
+                    "success": False,
+                    "message": f"Failed to store {failed_count}/{total_chunks} chunks. Errors: {error_messages}",
+                    "chunks_created": len(successful_chunks),
+                    "chunk_hashes": [mem.content_hash for mem in successful_chunks]
+                }
+
+        else:
+            # Content within limit - store as single memory
+            memory = Memory(
+                content=content,
+                tags=final_tags,
+                memory_type=memory_type,
+                metadata=final_metadata
+            )
+
+            # Store memory
+            success, message = await storage.store(memory)
+
+            return {
+                "success": success,
+                "message": message,
+                "content_hash": memory.content_hash
+            }
+
     except Exception as e:
         logger.error(f"Error storing memory: {e}")
         return {

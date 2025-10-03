@@ -7,7 +7,7 @@ to directly access memory operations using the MCP standard.
 
 import asyncio
 import logging
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional, Union, TYPE_CHECKING
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -17,8 +17,13 @@ from ...utils.hashing import generate_content_hash
 from ...config import OAUTH_ENABLED
 
 # Import OAuth dependencies only when needed
-if OAUTH_ENABLED:
+if OAUTH_ENABLED or TYPE_CHECKING:
     from ..oauth.middleware import require_read_access, require_write_access, AuthenticationResult
+else:
+    # Provide type stubs when OAuth is disabled
+    AuthenticationResult = None
+    require_read_access = None
+    require_write_access = None
 
 logger = logging.getLogger(__name__)
 

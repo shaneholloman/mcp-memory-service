@@ -355,7 +355,7 @@ def ingest_directory(directory_path: Path, tags: tuple, recursive: bool, extensi
 
 
 @click.command()
-def list_formats():
+def list_formats() -> None:
     """
     List all supported document formats for ingestion.
     

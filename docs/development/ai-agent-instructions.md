@@ -1,4 +1,4 @@
-# AGENTS.md
+# AI Agent Instructions
 
 AI coding agent instructions for MCP Memory Service - a universal memory service providing semantic search and persistent storage for AI assistants.
 
