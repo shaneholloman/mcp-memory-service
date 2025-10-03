@@ -17,6 +17,16 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
+try:
+    from dotenv import load_dotenv
+    from mcp_memory_service.storage.factory import create_storage_instance
+    from mcp_memory_service.storage.hybrid import HybridMemoryStorage
+    from mcp_memory_service.config import SQLITE_VEC_PATH
+except ImportError as e:
+    print(f"❌ Import error: {e}", file=sys.stderr)
+    print("Make sure the package is installed: pip install -e .", file=sys.stderr)
+    sys.exit(1)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -53,17 +63,6 @@ async def main(db_path: str | None = None, verbose: bool = False) -> int:
     Returns:
         0 on success, 1 on failure
     """
-    # Check imports
-    try:
-        from dotenv import load_dotenv
-        from mcp_memory_service.storage.factory import create_storage_instance
-        from mcp_memory_service.storage.hybrid import HybridMemoryStorage
-        from mcp_memory_service.config import SQLITE_VEC_PATH
-    except ImportError as e:
-        logger.error(f"❌ Import error: {e}")
-        logger.error("Make sure the package is installed: pip install -e .")
-        return 1
-
     # Load environment variables
     load_dotenv()
 
