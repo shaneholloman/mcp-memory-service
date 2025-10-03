@@ -20,7 +20,7 @@ Environment=MCP_HTTP_ENABLED=true
 Environment=MCP_SERVER_HOST=0.0.0.0
 Environment=MCP_SERVER_PORT=8000
 Environment=MCP_MEMORY_STORAGE_BACKEND=sqlite_vec
-Environment=MCP_API_KEY=mcp-b4355ff15f1ca18747730ecaf73d127a
+Environment=MCP_API_KEY=mcp-1d928186d354e3fc445e23c117ce9606
 ExecStart=/home/hkr/repositories/mcp-memory-service/venv/bin/python -m mcp_memory_service.mcp_server
 Restart=always
 RestartSec=10
