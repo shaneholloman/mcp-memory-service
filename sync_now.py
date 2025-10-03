@@ -41,12 +41,7 @@ async def main(db_path: str | None = None):
     print("🔄 Starting manual sync...")
 
     # Determine database path
-    if db_path:
-        sqlite_path = Path(db_path)
-    elif os.getenv('MCP_MEMORY_SQLITE_PATH'):
-        sqlite_path = Path(os.getenv('MCP_MEMORY_SQLITE_PATH'))
-    else:
-        sqlite_path = Path(SQLITE_VEC_PATH)
+    sqlite_path = Path(db_path or os.getenv('MCP_MEMORY_SQLITE_PATH') or SQLITE_VEC_PATH)
 
     if not sqlite_path.exists():
         print(f"❌ Database not found: {sqlite_path}")
