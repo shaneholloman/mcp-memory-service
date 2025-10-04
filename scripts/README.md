@@ -10,6 +10,7 @@ scripts/
 ├── database/        # Database analysis and health monitoring
 ├── development/     # Development tools and debugging utilities
 ├── installation/    # Setup and installation scripts
+├── linux/           # Linux service management shortcuts (v7.5.1+)
 ├── maintenance/     # Database cleanup and repair operations
 ├── migration/       # Data migration and schema updates
 ├── server/          # Server runtime and operational scripts
@@ -35,9 +36,11 @@ scripts/
 ./sync/claude_sync_commands.py status               # Check sync status
 ./sync/claude_sync_commands.py backup               # Backup Cloudflare → SQLite
 ./sync/claude_sync_commands.py sync                 # Bidirectional sync
+./sync/sync_now.py --verbose                        # Manual on-demand hybrid sync (v7.5.1+)
 
 # Configuration Validation
-./validation/validate_config.py                     # Validate MCP configuration
+./validation/validate_configuration_complete.py     # Comprehensive config validation
+./validation/diagnose_backend_config.py             # Cloudflare backend diagnostics
 ./validation/verify_environment.py                  # Check environment setup
 
 # Database Health
@@ -54,6 +57,7 @@ Essential for managing dual-backend setups and data synchronization.
 |--------|---------|-------------|
 | `sync_memory_backends.py` | Core bidirectional sync engine | `python sync/sync_memory_backends.py --status` |
 | `claude_sync_commands.py` | User-friendly sync wrapper | `python sync/claude_sync_commands.py backup` |
+| `sync_now.py` | Manual on-demand hybrid sync (v7.5.1+) | `python sync/sync_now.py --verbose` |
 | `export_memories.py` | Export memories to JSON | `python sync/export_memories.py` |
 | `import_memories.py` | Import memories from JSON | `python sync/import_memories.py data.json` |
 
@@ -85,11 +89,14 @@ Ensure proper setup and configuration.
 
 | Script | Purpose | Quick Usage |
 |--------|---------|-------------|
-| `validate_config.py` | MCP configuration validator | `python validation/validate_config.py` |
+| `validate_configuration_complete.py` | Comprehensive config validation | `python validation/validate_configuration_complete.py` |
+| `diagnose_backend_config.py` | Cloudflare backend diagnostics | `python validation/diagnose_backend_config.py` |
 | `validate_memories.py` | Memory data validation | `python validation/validate_memories.py` |
+| `validate_migration.py` | Migration validation | `python validation/validate_migration.py` |
 | `verify_environment.py` | Environment setup checker | `python validation/verify_environment.py` |
-| `check_documentation_links.py` | Documentation link validator | `python validation/check_documentation_links.py` |
 | `verify_pytorch_windows.py` | PyTorch Windows validation | `python validation/verify_pytorch_windows.py` |
+| `verify_torch.py` | PyTorch installation check | `python validation/verify_torch.py` |
+| `check_documentation_links.py` | Documentation link validator | `python validation/check_documentation_links.py` |
 
 **Key Features:**
 - ✅ Claude Code global configuration validation
@@ -157,11 +164,31 @@ Platform-specific installation and setup scripts.
 
 | Script | Purpose | Quick Usage |
 |--------|---------|-------------|
+| `install.py` | Platform-aware installer with backend selection | `python installation/install.py --storage-backend hybrid` |
 | `install_linux_service.py` | Linux service installation | `python installation/install_linux_service.py` |
 | `install_macos_service.py` | macOS service setup | `python installation/install_macos_service.py` |
 | `install_windows_service.py` | Windows service installation | `python installation/install_windows_service.py` |
+| `install_uv.py` | UV package manager installation | `python installation/install_uv.py` |
 | `setup_cloudflare_resources.py` | Cloudflare resource setup | `python installation/setup_cloudflare_resources.py` |
+| `setup_claude_mcp.sh` | Claude MCP configuration | `./installation/setup_claude_mcp.sh` |
 | `setup_backup_cron.sh` | Automated backup scheduling | `./installation/setup_backup_cron.sh` |
+
+### 🐧 **linux/** - Linux Service Management Shortcuts
+Quick service management wrappers for Linux systemd deployments (v7.5.1+).
+
+| Script | Purpose | Quick Usage |
+|--------|---------|-------------|
+| `service_status.sh` | Check systemd service status | `./linux/service_status.sh` |
+| `start_service.sh` | Start mcp-memory service | `./linux/start_service.sh` |
+| `stop_service.sh` | Stop mcp-memory service | `./linux/stop_service.sh` |
+| `view_logs.sh` | View service logs | `./linux/view_logs.sh` |
+| `uninstall_service.sh` | Remove systemd service | `./linux/uninstall_service.sh` |
+
+**Key Features:**
+- ✅ Simple wrappers for systemd service management
+- ✅ User-level service control (~/.config/systemd/user/)
+- ✅ Quick status and log viewing
+- ✅ Clean uninstall capabilities
 
 ### 🖥️ **server/** - Server Runtime & Operations
 Scripts for running and managing the memory server.
