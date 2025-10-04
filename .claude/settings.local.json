@@ -88,7 +88,15 @@
       "Read(//private/tmp/**)",
       "Bash(pkill:*)",
       "Bash(gh pr create:*)",
-      "Bash(gh pr comment:*)"
+      "Bash(gh pr comment:*)",
+      "Read(//home/hkr/.claude/**)",
+      "Bash(cat:*)",
+      "Read(//home/hkr/.config/**)",
+      "Read(//home/hkr/**)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": [],
