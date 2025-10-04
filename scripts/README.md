@@ -53,6 +53,7 @@ scripts/
 ### 🔄 **sync/** - Backend Synchronization
 Essential for managing dual-backend setups and data synchronization.
 
+#### Cloudflare Hybrid Sync (Cloud Backend)
 | Script | Purpose | Quick Usage |
 |--------|---------|-------------|
 | `sync_memory_backends.py` | Core bidirectional sync engine | `python sync/sync_memory_backends.py --status` |
@@ -66,6 +67,28 @@ Essential for managing dual-backend setups and data synchronization.
 - ✅ Intelligent deduplication using content hashing
 - ✅ Dry-run mode for safe testing
 - ✅ Comprehensive status reporting
+
+#### Litestream Sync (Local Network HTTP API)
+Located in `sync/litestream/` - Git-like staging workflow for syncing to central SQLite-vec HTTP API server.
+
+| Script | Purpose | Quick Usage |
+|--------|---------|-------------|
+| `memory_sync.sh` | Main sync orchestrator (stash → pull → apply → push) | `./sync/litestream/memory_sync.sh sync` |
+| `push_to_remote.sh` | Push staged changes to remote API | `./sync/litestream/push_to_remote.sh` |
+| `pull_remote_changes.sh` | Pull latest from remote | `./sync/litestream/pull_remote_changes.sh` |
+| `stash_local_changes.sh` | Stash local changes to staging | `./sync/litestream/stash_local_changes.sh` |
+| `apply_local_changes.sh` | Apply staged changes locally | `./sync/litestream/apply_local_changes.sh` |
+| `setup_local_litestream.sh` | Initialize local Litestream setup | `./sync/litestream/setup_local_litestream.sh` |
+| `setup_remote_litestream.sh` | Setup remote API server | `./sync/litestream/setup_remote_litestream.sh` |
+
+**Key Features:**
+- ✅ Git-like staging database workflow
+- ✅ Conflict detection and resolution
+- ✅ Multi-device local network synchronization
+- ✅ Sync to central HTTP API (e.g., `https://narrowbox.local:8443/api/memories`)
+- ✅ macOS launchd service for automatic replication
+
+**Note:** Litestream sync (local network) is separate from Cloudflare hybrid sync (cloud backend)
 
 ### 🛠️ **service/** - Service Management
 Linux service management for production deployments.
