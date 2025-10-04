@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-memory-service"
-version = "7.6.0"
+version = "8.0.0"
 description = "Universal MCP memory service with semantic search, multi-client support, and autonomous consolidation for Claude Desktop, VS Code, and 13+ AI applications"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -68,14 +68,9 @@ sqlite = [
 sqlite-ml = [
     "mcp-memory-service[sqlite,ml]"
 ]
-# ChromaDB backend with required ML dependencies
-chromadb = [
-    "chromadb>=0.5.0",
-    "mcp-memory-service[ml]"
-]
-# Full installation including all backends and capabilities
+# Full installation including all optional dependencies
 full = [
-    "mcp-memory-service[sqlite,chromadb]"
+    "mcp-memory-service[sqlite,ml]"
 ]
 
 [project.scripts]

@@ -662,41 +662,23 @@ class MemoryServer:
                     )
                     logger.info(f"✅ LAZY INIT: Created Hybrid storage at: {SQLITE_VEC_PATH} with Cloudflare sync")
                 else:
-                    # ChromaDB backend (deprecated) - Check for migration
-                    logger.warning("=" * 70)
-                    logger.warning("DEPRECATION WARNING: ChromaDB backend is deprecated!")
-                    logger.warning("ChromaDB will be removed in v6.0.0.")
-                    logger.warning("Please migrate to SQLite-vec for better performance and reliability.")
-                    logger.warning("To migrate your data, run: python scripts/migrate_to_sqlite_vec.py")
-                    logger.warning("=" * 70)
-                    
-                    # Check if ChromaDB has existing data
-                    if os.path.exists(CHROMA_PATH) and os.listdir(CHROMA_PATH):
-                        logger.warning("")
-                        logger.warning("MIGRATION RECOMMENDED: Existing ChromaDB data detected!")
-                        logger.warning("Your memories are stored in the deprecated ChromaDB format.")
-                        logger.warning("")
-                        logger.warning("To migrate now (recommended):")
-                        logger.warning("  1. Stop this server (Ctrl+C)")
-                        logger.warning("  2. Run: python scripts/migrate_to_sqlite_vec.py")
-                        logger.warning("  3. Set environment: export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec")
-                        logger.warning("  4. Restart the server")
-                        logger.warning("")
-                        logger.warning("Continuing with ChromaDB for now...")
-                        logger.warning("")
-                    
-                    try:
-                        from .storage.chroma import ChromaMemoryStorage
-                        self.storage = ChromaMemoryStorage(CHROMA_PATH, preload_model=False)
-                        logger.info(f"✅ LAZY INIT: Created ChromaDB storage at: {CHROMA_PATH}")
-                    except ImportError as e:
-                        logger.error(f"❌ LAZY INIT: ChromaDB not installed. Install with: pip install mcp-memory-service[chromadb]")
-                        logger.error(f"❌ LAZY INIT: Import error details: {str(e)}")
-                        raise ImportError(
-                            "ChromaDB backend selected but chromadb package not installed. "
-                            "Install with: pip install mcp-memory-service[chromadb] or "
-                            "switch to sqlite_vec backend by setting MCP_MEMORY_STORAGE_BACKEND=sqlite_vec"
-                        ) from e
+                    # Unknown/unsupported backend
+                    logger.error("=" * 70)
+                    logger.error(f"❌ LAZY INIT: Unsupported storage backend: {STORAGE_BACKEND}")
+                    logger.error("")
+                    logger.error("Supported backends:")
+                    logger.error("  - sqlite_vec (recommended for single-device use)")
+                    logger.error("  - cloudflare (cloud storage)")
+                    logger.error("  - hybrid (recommended for multi-device use)")
+                    logger.error("")
+                    logger.error("NOTE: ChromaDB backend was removed in v8.0.0")
+                    logger.error("For ChromaDB migration, see: https://github.com/doobidoo/mcp-memory-service/tree/chromadb-legacy")
+                    logger.error("=" * 70)
+                    raise ValueError(
+                        f"Unsupported storage backend: {STORAGE_BACKEND}. "
+                        "Use 'sqlite_vec', 'cloudflare', or 'hybrid'. "
+                        "ChromaDB was removed in v8.0.0 - see migration guide on chromadb-legacy branch."
+                    )
                 
                 # Initialize the storage backend
                 logger.info(f"🔧 LAZY INIT: Calling storage.initialize()...")

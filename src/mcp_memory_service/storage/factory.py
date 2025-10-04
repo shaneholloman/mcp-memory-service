@@ -53,14 +53,6 @@ def get_storage_backend_class() -> Type[MemoryStorage]:
     if backend == "sqlite-vec" or backend == "sqlite_vec":
         from .sqlite_vec import SqliteVecMemoryStorage
         return SqliteVecMemoryStorage
-    elif backend == "chroma":
-        try:
-            from .chroma import ChromaStorage
-            return ChromaStorage
-        except ImportError as e:
-            logger.error(f"ChromaDB not installed. Install with: pip install mcp-memory-service[chromadb]")
-            logger.error(f"Import error: {str(e)}")
-            return _fallback_to_sqlite_vec()
     elif backend == "cloudflare":
         try:
             from .cloudflare import CloudflareStorage
@@ -153,12 +145,10 @@ async def create_storage_instance(sqlite_path: str) -> MemoryStorage:
         )
         logger.info(f"Initialized hybrid storage with SQLite at {sqlite_path}")
 
-    else:  # ChromaStorage
-        storage = StorageClass(
-            path=str(CHROMA_PATH),
-            collection_name=COLLECTION_METADATA.get("name", "memories")
-        )
-        logger.info(f"Initialized ChromaDB storage at {CHROMA_PATH}")
+    else:
+        # Unknown storage backend - this should not happen as get_storage_backend_class
+        # already handles unknown backends by falling back to SQLite-vec
+        raise ValueError(f"Unsupported storage backend class: {StorageClass.__name__}")
 
     # Initialize storage backend
     await storage.initialize()
