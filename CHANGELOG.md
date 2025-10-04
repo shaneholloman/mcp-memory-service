@@ -8,6 +8,49 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.4] - 2025-10-04
+
+### ✨ **Configurable Hybrid Sync Break Conditions**
+
+#### 🔄 **Enhanced Synchronization Control**
+- **Configurable early break conditions** - Made hybrid sync termination thresholds configurable via environment variables
+  - `MCP_HYBRID_MAX_EMPTY_BATCHES` - Stop after N consecutive batches without new syncs (default: 20, was hardcoded 5)
+  - `MCP_HYBRID_MIN_CHECK_COUNT` - Minimum memories to check before early stop (default: 1000, was hardcoded 200)
+- **Increased default thresholds** - Quadrupled default values (5→20 batches, 200→1000 memories) to ensure complete synchronization
+- **Enhanced logging** - Added detailed sync progress logging every 100 memories with consecutive empty batch tracking
+- **Threshold visibility** - Break condition log messages now display threshold values for better diagnostics
+
+#### 🐛 **Bug Fix - Incomplete Synchronization**
+- **Resolved incomplete sync issue** - Dashboard was showing only 1040 memories instead of 1200+ from Cloudflare
+- **Root cause** - Hardcoded early break conditions triggered prematurely causing missing memories
+- **Impact** - Missing memories distributed throughout Cloudflare dataset were never synced to local SQLite
+
+#### ⚙️ **Configuration**
+```bash
+# Environment variables for tuning sync behavior
+export MCP_HYBRID_MAX_EMPTY_BATCHES=20     # Stop after N empty batches (min: 1)
+export MCP_HYBRID_MIN_CHECK_COUNT=1000     # Min memories to check before early stop (min: 1)
+```
+
+#### 🔧 **Code Quality Improvements**
+- **Added input validation** - `min_value=1` constraint prevents zero values that would break sync
+- **Fixed progress logging** - Prevents misleading initial log message at `processed_count=0`
+- **Eliminated duplicate defaults** - Refactored to use `getattr` pattern for config imports
+- **Improved maintainability** - Centralized default values in config.py
+
+#### ✅ **Benefits**
+- Complete synchronization of all Cloudflare memories to SQLite
+- Configurable per deployment needs without code changes
+- Better diagnostics for troubleshooting sync issues
+- Maintains protection against infinite loops (early break still active)
+- Preserves Cloudflare API protection through configurable limits
+- No behavior change for deployments with small datasets
+
+#### 🔗 **References**
+- Closes issue: Incomplete hybrid sync (1040/1200+ memories)
+- PR #142: Configurable hybrid sync break conditions
+- All Gemini Code Assist feedback addressed
+
 ## [7.5.3] - 2025-10-04
 
 ### 🏗️ **Repository Organization**
