@@ -8,6 +8,33 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.1.1] - 2025-10-05
+
+### 🐛 **Bug Fixes**
+
+#### **Dark Mode Text Contrast Regression**
+- **Critical fix**: Memory card text barely visible in dark mode due to hardcoded white backgrounds
+- **Root cause**: CSS variable redefinition made text colors too faint when applied to white backgrounds
+- **Solution**: Override all major containers with dark backgrounds (`#1f2937`) and force bright text colors
+
+##### **Fixed Components**
+- Memory cards: Now use dark card backgrounds with bright white text (`#f9fafb`)
+- Memory metadata: Labels bright white (`#f9fafb`), values light gray (`#d1d5db`)
+- Action cards: Dark backgrounds for proper contrast
+- All containers: App header, welcome card, search filters, modals now properly dark
+
+##### **Technical Details**
+- Added `!important` overrides for 11 container backgrounds
+- Memory content text: `var(--neutral-900) !important` → `#f9fafb`
+- Memory meta labels: `var(--neutral-900) !important` → `#f9fafb`
+- Memory meta values: `var(--neutral-600) !important` → `#d1d5db`
+- Cache-busting comments to force browser reload
+
+##### **Impact**
+- ✅ Dark mode now fully readable across all dashboard views
+- ✅ Proper contrast ratios for accessibility
+- ✅ No visual regression from v8.1.0 light mode
+
 ## [8.1.0] - 2025-10-04
 
 ### ✨ **Dashboard Dark Mode & UX Enhancements**

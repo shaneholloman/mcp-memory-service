@@ -1645,7 +1645,31 @@ body.dark-mode {
     color: var(--neutral-600);
 }
 
-/* Specific overrides that can't use variables */
+/* Specific overrides that can't use variables - Cache bust: v8.1.1 fix */
+body.dark-mode .app-header,
+body.dark-mode .main-nav,
+body.dark-mode .welcome-card,
+body.dark-mode .recent-memories,
+body.dark-mode .quick-actions,
+body.dark-mode .memory-card,
+body.dark-mode .action-card,
+body.dark-mode .search-filters,
+body.dark-mode .search-results,
+body.dark-mode .modal-content,
+body.dark-mode .toast,
+body.dark-mode .endpoint-item {
+    background: var(--neutral-100) !important;  /* Dark card background */
+}
+
+body.dark-mode .memory-card,
+body.dark-mode .welcome-card,
+body.dark-mode .action-card,
+body.dark-mode .modal-content,
+body.dark-mode .search-filters,
+body.dark-mode .search-results {
+    border-color: var(--neutral-200) !important;
+}
+
 body.dark-mode .memory-card:hover,
 body.dark-mode .action-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -1661,13 +1685,17 @@ body.dark-mode .nav-item.active {
     border-bottom-color: var(--primary);
 }
 
-/* Override specific element colors that need explicit dark mode values */
+/* Override specific element colors that need explicit dark mode values - Cache bust: v8.1.1 */
 body.dark-mode .memory-content {
-    color: var(--neutral-900);  /* Brightest text for readability */
+    color: var(--neutral-900) !important;  /* Brightest text for readability */
 }
 
 body.dark-mode .memory-meta {
-    color: var(--neutral-600);  /* Lighter but still readable for metadata */
+    color: var(--neutral-600) !important;  /* Lighter but still readable for metadata */
+}
+
+body.dark-mode .memory-meta strong {
+    color: var(--neutral-900) !important;  /* Bright labels for readability */
 }
 
 body.dark-mode .action-card h3,
