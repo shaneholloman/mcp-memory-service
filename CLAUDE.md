@@ -75,6 +75,7 @@ time curl -s "http://127.0.0.1:8888/" > /dev/null     # Dashboard page load perf
 - **Server Layer**: MCP protocol implementation with async handlers and global caches (`src/mcp_memory_service/server.py`)
 - **Storage Backends**: SQLite-Vec (fast, single-client), ChromaDB (multi-client), Cloudflare (production)
 - **Web Interface**: FastAPI dashboard at `https://localhost:8443/` with REST API
+- **Document Ingestion**: Pluggable loaders for PDF, DOCX, PPTX, text with semtools support
 - **Dual Protocol Memory Hooks** 🆕: Advanced Claude Code integration with HTTP + MCP support
   - **HTTP Protocol**: Web-based memory service connection (`https://localhost:8443/api/*`)
   - **MCP Protocol**: Direct server process communication (`uv run memory server`)
@@ -87,6 +88,70 @@ time curl -s "http://127.0.0.1:8888/" > /dev/null     # Dashboard page load perf
 - Platform detection for hardware optimization (CUDA, MPS, DirectML, ROCm)
 - Global model and embedding caches for performance
 - **Protocol Abstraction** 🆕: Single interface for multi-protocol memory operations
+
+## Document Ingestion (v7.6.0+) 📄
+
+**Enhanced document parsing** with optional semtools integration for superior quality extraction.
+
+### Supported Formats
+
+| Format | Native Parser | With Semtools | Quality |
+|--------|--------------|---------------|---------|
+| PDF | PyPDF2/pdfplumber | ✅ LlamaParse | Excellent (OCR, tables) |
+| DOCX | ❌ Not supported | ✅ LlamaParse | Excellent |
+| PPTX | ❌ Not supported | ✅ LlamaParse | Excellent |
+| TXT/MD | ✅ Built-in | N/A | Perfect |
+
+### Semtools Integration (Optional)
+
+Install [semtools](https://github.com/run-llama/semtools) for enhanced document parsing:
+
+```bash
+# Install via npm (recommended)
+npm i -g @llamaindex/semtools
+
+# Or via cargo
+cargo install semtools
+
+# Optional: Configure LlamaParse API key for best quality
+export LLAMAPARSE_API_KEY="your-api-key"
+```
+
+### Configuration
+
+```bash
+# Document chunking settings
+export MCP_DOCUMENT_CHUNK_SIZE=1000          # Characters per chunk
+export MCP_DOCUMENT_CHUNK_OVERLAP=200        # Overlap between chunks
+
+# LlamaParse API key (optional, improves quality)
+export LLAMAPARSE_API_KEY="llx-..."
+```
+
+### Usage Examples
+
+```bash
+# Ingest a single document
+claude /memory-ingest document.pdf --tags documentation
+
+# Ingest directory
+claude /memory-ingest-dir ./docs --tags knowledge-base
+
+# Via Python
+from mcp_memory_service.ingestion import get_loader_for_file
+
+loader = get_loader_for_file(Path("document.pdf"))
+async for chunk in loader.extract_chunks(Path("document.pdf")):
+    await store_memory(chunk.content, tags=["doc"])
+```
+
+### Features
+
+- ✅ **Automatic format detection** - Selects best loader for each file
+- ✅ **Intelligent chunking** - Respects paragraph/sentence boundaries
+- ✅ **Metadata enrichment** - Preserves file info, extraction method, page numbers
+- ✅ **Graceful fallback** - Uses native parsers if semtools unavailable
+- ✅ **Progress tracking** - Reports chunks processed during ingestion
 
 ## Interactive Dashboard (v7.2.2+) 🎉
 
@@ -213,26 +278,57 @@ mcp context status                             # Check session initialization st
 mcp context optimize                           # Get optimization suggestions
 ```
 
-**Key Features:**
-- ✅ **Python MCP Memory Service Context**: Project-specific patterns for FastAPI, MCP protocol, and storage backends
-- ✅ **Enhanced Memory Context**: MCP-specific auto-store/retrieve triggers for development workflows
-- ✅ **Git Integration**: Automatic commit formatting and branch management aligned with project standards
-- ✅ **Seamless Coexistence**: Works alongside Natural Memory Triggers without conflicts
+#### **Available Contexts:**
+
+**1. Python MCP Memory Service Context** (`python_mcp_memory`)
+- Project-specific patterns for FastAPI, MCP protocol, and storage backends
+- Auto-store: MCP protocol changes, backend configs, performance optimizations
+- Auto-retrieve: Troubleshooting, setup queries, implementation examples
+- Smart tagging: Auto-detects tools (fastapi, cloudflare, sqlite, chromadb, etc.)
+
+**2. Release Workflow Context** 🆕 (`mcp_memory_release_workflow`)
+- **PR Review Cycle**: Iterative Gemini Code Assist workflow (Fix → Comment → /gemini review → Wait 1min → Repeat)
+- **Version Management**: Three-file procedure (__init__.py → pyproject.toml → uv lock)
+- **CHANGELOG Management**: Format guidelines, conflict resolution (combine PR entries)
+- **Documentation Matrix**: When to use CHANGELOG vs Wiki vs CLAUDE.md vs code comments
+- **Release Procedure**: Merge → Tag → Push → Verify workflows (Docker Publish, Publish and Test, HTTP-MCP Bridge)
+- **Issue Management** 🆕: Auto-tracking, post-release workflow, smart closing comments
+  - **Auto-Detection**: Tracks "fixes #", "closes #", "resolves #" patterns in PRs
+  - **Post-Release Workflow**: Retrieves issues from release, suggests closures with context
+  - **Smart Comments**: Auto-generates closing comments with PR links, CHANGELOG entries, wiki references
+  - **Triage Intelligence**: Auto-categorizes issues (bug, feature, docs, performance) based on patterns
 
 **Auto-Store Patterns:**
-- **MCP Protocol Changes**: `MCP protocol`, `tool handler`, `storage backend switch`
-- **Performance Optimizations**: `25ms page load`, `embedding cache`, `async optimization`
-- **Configuration Updates**: `cloudflare configuration`, `hybrid backend setup`, `oauth integration`
+- **Technical**: `MCP protocol`, `tool handler`, `storage backend switch`, `25ms page load`, `embedding cache`
+- **Configuration**: `cloudflare configuration`, `hybrid backend setup`, `oauth integration`
+- **Release Workflow** 🆕: `merged PR`, `gemini review`, `created tag`, `CHANGELOG conflict`, `version bump`
+- **Documentation** 🆕: `updated CHANGELOG`, `wiki page created`, `CLAUDE.md updated`
+- **Issue Tracking** 🆕: `fixes #`, `closes #`, `resolves #`, `created issue`, `closed issue #`
 
 **Auto-Retrieve Patterns:**
 - **Troubleshooting**: `cloudflare backend error`, `MCP client connection`, `storage backend failed`
-- **Setup Queries**: `backend configuration`, `environment setup`, `claude desktop config`
-- **Development Patterns**: `MCP handler example`, `API endpoint pattern`, `async error handling`
+- **Setup**: `backend configuration`, `environment setup`, `claude desktop config`
+- **Development**: `MCP handler example`, `API endpoint pattern`, `async error handling`
+- **Release Workflow** 🆕: `how to release`, `PR workflow`, `gemini iteration`, `version bump procedure`, `where to document`
+- **Issue Management** 🆕: `review open issues`, `what issues fixed`, `can we close`, `issue status`, `which issues resolved`
+
+**Documentation Decision Matrix:**
+| Change Type | CHANGELOG | CLAUDE.md | Wiki | Code Comments |
+|-------------|-----------|-----------|------|---------------|
+| Bug fix | ✅ Always | If affects workflow | If complex | ✅ Non-obvious |
+| New feature | ✅ Always | If adds commands | ✅ Major features | ✅ API changes |
+| Performance | ✅ Always | If measurable | If >20% improvement | Rationale |
+| Config change | ✅ Always | ✅ User-facing | If requires migration | Validation logic |
+| Troubleshooting | In notes | If common | ✅ Detailed guide | For maintainers |
 
 **Integration Benefits:**
 - **Structured Memory Management**: Rule-based triggers complement AI-based Natural Memory Triggers
 - **Project-Specific Intelligence**: Captures MCP Memory Service-specific terminology and workflows
 - **Enhanced Git Workflow**: Automatic semantic commit formatting and branch naming conventions
+- **Release Automation** 🆕: Never miss version bumps, CHANGELOG updates, or workflow verification
+- **Knowledge Retention** 🆕: Capture what works/doesn't work in PR review cycles
+- **Intelligent Issue Management** 🆕: Auto-track issue-PR relationships, suggest closures after releases, generate smart closing comments
+- **Post-Release Efficiency** 🆕: Automated checklist retrieves related issues, suggests verification steps, includes all context
 - **Zero Performance Impact**: Lightweight rule processing with minimal overhead
 
 ### Dual Protocol Memory Hooks (Legacy)

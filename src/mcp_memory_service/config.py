@@ -561,6 +561,30 @@ else:
 # Embedding model configuration
 EMBEDDING_MODEL_NAME = os.getenv('MCP_EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
 
+# =============================================================================
+# Document Processing Configuration (Semtools Integration)
+# =============================================================================
+
+# Semtools configuration for enhanced document parsing
+# LlamaParse API key for advanced OCR and table extraction
+LLAMAPARSE_API_KEY = os.getenv('LLAMAPARSE_API_KEY', None)
+
+# Document chunking configuration
+DOCUMENT_CHUNK_SIZE = safe_get_int_env('MCP_DOCUMENT_CHUNK_SIZE', 1000, min_value=100, max_value=10000)
+DOCUMENT_CHUNK_OVERLAP = safe_get_int_env('MCP_DOCUMENT_CHUNK_OVERLAP', 200, min_value=0, max_value=1000)
+
+# Log semtools configuration
+if LLAMAPARSE_API_KEY:
+    logger.info("LlamaParse API key configured - enhanced document parsing available")
+else:
+    logger.debug("LlamaParse API key not set - semtools will use basic parsing mode")
+
+logger.info(f"Document chunking: size={DOCUMENT_CHUNK_SIZE}, overlap={DOCUMENT_CHUNK_OVERLAP}")
+
+# =============================================================================
+# End Document Processing Configuration
+# =============================================================================
+
 # Dream-inspired consolidation configuration
 CONSOLIDATION_ENABLED = os.getenv('MCP_CONSOLIDATION_ENABLED', 'false').lower() == 'true'
 
