@@ -8,6 +8,66 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.3] - 2025-10-04
+
+### 🏗️ **Repository Organization**
+
+#### 📁 **Litestream Sync System Reorganization**
+- **Consolidated Litestream scripts** → `scripts/sync/litestream/`
+  - Moved 9 shell scripts from `/sync/` directory (git-like staging workflow)
+  - Relocated 4 root-level setup scripts (`enhanced_memory_store.sh`, `setup_local_litestream.sh`, etc.)
+  - Moved macOS launchd service (`io.litestream.replication.plist`)
+  - Moved staging database schema (`staging_db_init.sql`)
+- **Created comprehensive documentation** - `scripts/sync/litestream/README.md`
+  - Local network HTTP API sync architecture
+  - Git-like staging workflow guide
+  - Setup and configuration instructions
+  - Comparison with Cloudflare hybrid sync
+
+#### 📂 **Deployment Files Consolidation**
+- **Moved systemd service** → `scripts/service/mcp-memory.service`
+- **Archived unused configs** → `archive/deployment-configs/`
+  - `smithery.yaml`
+  - `empty_config.yml`
+- **Removed empty `/deployment/` directory**
+
+#### 🛠️ **Debug/Investigation Files Organization**
+- **Moved to `scripts/development/`**:
+  - `debug_server_initialization.py` - Cloudflare backend debugger
+  - `verify_hybrid_sync.py` - Hybrid storage verification
+- **Archived documentation** → `archive/`
+  - `MACOS_HOOKS_INVESTIGATION.md` → `archive/investigations/`
+  - `release-notes-v7.1.4.md` → `archive/release-notes/`
+
+#### 📚 **Documentation Updates**
+- **Enhanced `scripts/README.md`** with dual sync system documentation
+  - Cloudflare Hybrid Sync (cloud backend) section
+  - Litestream Sync (local network HTTP API) section
+  - Clear distinction between the two systems
+
+### 🎯 **Key Clarifications**
+- **Litestream sync**: Multi-device synchronization via central SQLite-vec HTTP API (local network)
+  - Use case: Privacy-focused, data stays on local network
+  - Architecture: Git-like staging workflow with conflict detection
+- **Cloudflare sync**: Cloud-based hybrid backend (internet)
+  - Use case: Global access, automatic cloud backup
+  - Architecture: Direct sync queue with background operations
+
+### 📦 **Files Affected**
+- 27 files changed, 594 insertions(+), 3 deletions(-)
+- 13 files renamed/relocated
+- 3 new documentation files
+- 3 new archive directories
+
+### ⚠️ **Breaking Changes**
+None - Purely organizational changes with no functional impact
+
+### 🔄 **Migration Notes**
+If using Litestream sync scripts:
+- Update script paths: `/sync/memory_sync.sh` → `scripts/sync/litestream/memory_sync.sh`
+- Launchd plist location: `/deployment/io.litestream.replication.plist` → `scripts/sync/litestream/io.litestream.replication.plist`
+- All scripts remain functionally identical
+
 ## [7.5.2] - 2025-10-03
 
 ### 🐛 **Bug Fixes**
