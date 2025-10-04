@@ -8,6 +8,141 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0] - 2025-10-04
+
+### 💥 **BREAKING CHANGE: ChromaDB Backend Removed**
+
+**This is a major breaking change release**. The ChromaDB backend has been completely removed from the codebase after being deprecated since v5.x.
+
+#### ❌ **Removed**
+
+##### **ChromaDB Backend Complete Removal**
+- **Deleted 2,841 lines** of ChromaDB-related code from the codebase
+- **Core files removed**:
+  - `src/mcp_memory_service/storage/chroma.py` (1,501 lines)
+  - `src/mcp_memory_service/storage/chroma_enhanced.py` (176 lines)
+  - `tests/unit/test_chroma.py`
+  - `tests/chromadb/test_chromadb_types.py`
+- **Dependencies removed**:
+  - `chromadb` optional dependency group from `pyproject.toml`
+  - ~2GB PyTorch + sentence-transformers dependency burden eliminated
+- **Factory updates**:
+  - Removed ChromaDB backend case from storage factory
+  - Removed ChromaStorage initialization logic
+  - Added clear error messages directing to migration guide
+
+#### 📦 **Migration & Legacy Support**
+
+##### **ChromaDB Legacy Branch**
+- **Branch**: [`chromadb-legacy`](https://github.com/doobidoo/mcp-memory-service/tree/chromadb-legacy)
+- **Tag**: `chromadb-legacy-final` - Final ChromaDB code snapshot before removal
+- **Status**: Frozen/Archived - No active maintenance
+- **Purpose**: Historical reference and migration support
+
+##### **Migration Script Preserved**
+- **Location**: `scripts/migration/legacy/migrate_chroma_to_sqlite.py`
+- **Status**: Moved to legacy folder, still functional for migrations
+- **Alternative**: Check chromadb-legacy branch for additional migration tools
+
+##### **Migration Guide**
+See **Issue #148** for comprehensive ChromaDB to Hybrid/SQLite-vec/Cloudflare migration instructions:
+- Step-by-step migration procedures
+- Data backup and validation steps
+- Recommended migration path: **ChromaDB → Hybrid Backend**
+
+#### ✅ **Supported Storage Backends (v8.0.0+)**
+
+| Backend | Status | Use Case | Performance |
+|---------|--------|----------|-------------|
+| **Hybrid** | ⭐ RECOMMENDED | Production, multi-device | 5ms (SQLite) + cloud sync |
+| **SQLite-vec** | ✅ Supported | Development, single-device | 5ms read/write |
+| **Cloudflare** | ✅ Supported | Cloud-native, serverless | Network dependent |
+| **HTTP Client** | ✅ Supported | Distributed, multi-client | Network dependent |
+| **ChromaDB** | ❌ REMOVED | N/A - See legacy branch | N/A |
+
+#### 📊 **Impact & Rationale**
+
+**Why Remove ChromaDB?**
+- **Performance**: ChromaDB 15ms vs SQLite-vec 5ms (3x slower)
+- **Dependencies**: ~2GB PyTorch download eliminated
+- **Maintenance**: 2,841 lines of code removed reduces complexity
+- **Better Alternatives**: Hybrid backend provides superior performance with cloud sync
+
+**For Existing ChromaDB Users:**
+- **No immediate action required** - Can continue using v7.x releases
+- **Upgrade path available** - Migration guide in Issue #148
+- **Legacy branch available** - Full code preserved for reference
+- **Support timeline**: v7.x will remain available, but no new features
+
+#### 🔧 **Technical Changes**
+
+**Code Removed:**
+- ChromaDB storage backend implementations
+- ChromaDB-specific tests and fixtures
+- ChromaDB configuration handling in factory
+- ChromaDB deprecation warnings in server.py
+
+**Error Handling:**
+- Attempting to use `MCP_MEMORY_STORAGE_BACKEND=chroma` now raises clear `ValueError`
+- Error message includes link to migration guide and legacy branch
+- Fallback logic removed - only valid backends accepted
+
+**Dependencies:**
+- Removed `chromadb>=0.5.0` from optional dependencies
+- Updated `full` dependency group to exclude chromadb
+- No impact on core dependencies - only optional dependency cleanup
+
+#### 🚀 **Upgrade Instructions**
+
+**For ChromaDB Users (REQUIRED MIGRATION):**
+1. **Backup your data**:
+   ```bash
+   # Use legacy migration script
+   git checkout chromadb-legacy
+   python scripts/migration/migrate_chroma_to_sqlite.py
+   ```
+
+2. **Switch backend**:
+   ```bash
+   # Recommended: Hybrid backend (best of both worlds)
+   export MCP_MEMORY_STORAGE_BACKEND=hybrid
+
+   # Or: SQLite-vec (local-only)
+   export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec
+
+   # Or: Cloudflare (cloud-only)
+   export MCP_MEMORY_STORAGE_BACKEND=cloudflare
+   ```
+
+3. **Update to v8.0.0**:
+   ```bash
+   git checkout main
+   git pull origin main
+   python install.py --storage-backend hybrid
+   ```
+
+4. **Validate migration**:
+   ```bash
+   python scripts/validation/validate_configuration_complete.py
+   ```
+
+**For Non-ChromaDB Users (No Action Required):**
+- Upgrade seamlessly - no breaking changes for SQLite-vec, Cloudflare, or Hybrid users
+- Enjoy reduced dependency footprint and simplified codebase
+
+#### 📚 **Documentation Updates**
+- Updated architecture diagrams to show ChromaDB as deprecated/removed
+- Updated storage backend comparison tables
+- Added migration guide in Issue #148
+- Legacy branch README updated with archive notice
+
+#### 🔗 **References**
+- **Issue**: #148 - Plan ChromaDB Backend Deprecation and Removal (→ v8.0.0)
+- **Legacy Branch**: https://github.com/doobidoo/mcp-memory-service/tree/chromadb-legacy
+- **Migration Guide**: See Issue #148 for detailed migration instructions
+
+---
+
 ## [7.6.0] - 2025-10-04
 
 ### ✨ **Enhanced Document Ingestion with Semtools Support**
