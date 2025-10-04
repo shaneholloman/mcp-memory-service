@@ -68,14 +68,9 @@ sqlite = [
 sqlite-ml = [
     "mcp-memory-service[sqlite,ml]"
 ]
-# ChromaDB backend with required ML dependencies
-chromadb = [
-    "chromadb>=0.5.0",
-    "mcp-memory-service[ml]"
-]
-# Full installation including all backends and capabilities
+# Full installation including all optional dependencies
 full = [
-    "mcp-memory-service[sqlite,chromadb]"
+    "mcp-memory-service[sqlite,ml]"
 ]
 
 [project.scripts]
