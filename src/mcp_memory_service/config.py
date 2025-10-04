@@ -457,6 +457,10 @@ if STORAGE_BACKEND == 'hybrid':
     HYBRID_HEALTH_CHECK_INTERVAL = int(os.getenv('MCP_HYBRID_HEALTH_CHECK_INTERVAL', '60'))  # 1 minute
     HYBRID_SYNC_ON_STARTUP = os.getenv('MCP_HYBRID_SYNC_ON_STARTUP', 'true').lower() == 'true'
 
+    # Initial sync behavior tuning (v7.5.4+)
+    HYBRID_MAX_EMPTY_BATCHES = safe_get_int_env('MCP_HYBRID_MAX_EMPTY_BATCHES', 20, min_value=1)  # Stop after N batches without new syncs
+    HYBRID_MIN_CHECK_COUNT = safe_get_int_env('MCP_HYBRID_MIN_CHECK_COUNT', 1000, min_value=1)  # Minimum memories to check before early stop
+
     # Fallback behavior
     HYBRID_FALLBACK_TO_PRIMARY = os.getenv('MCP_HYBRID_FALLBACK_TO_PRIMARY', 'true').lower() == 'true'
     HYBRID_WARN_ON_SECONDARY_FAILURE = os.getenv('MCP_HYBRID_WARN_ON_SECONDARY_FAILURE', 'true').lower() == 'true'
@@ -496,6 +500,8 @@ else:
     HYBRID_ENABLE_HEALTH_CHECKS = None
     HYBRID_HEALTH_CHECK_INTERVAL = None
     HYBRID_SYNC_ON_STARTUP = None
+    HYBRID_MAX_EMPTY_BATCHES = None
+    HYBRID_MIN_CHECK_COUNT = None
     HYBRID_FALLBACK_TO_PRIMARY = None
     HYBRID_WARN_ON_SECONDARY_FAILURE = None
 
@@ -554,6 +560,30 @@ else:
 
 # Embedding model configuration
 EMBEDDING_MODEL_NAME = os.getenv('MCP_EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
+
+# =============================================================================
+# Document Processing Configuration (Semtools Integration)
+# =============================================================================
+
+# Semtools configuration for enhanced document parsing
+# LlamaParse API key for advanced OCR and table extraction
+LLAMAPARSE_API_KEY = os.getenv('LLAMAPARSE_API_KEY', None)
+
+# Document chunking configuration
+DOCUMENT_CHUNK_SIZE = safe_get_int_env('MCP_DOCUMENT_CHUNK_SIZE', 1000, min_value=100, max_value=10000)
+DOCUMENT_CHUNK_OVERLAP = safe_get_int_env('MCP_DOCUMENT_CHUNK_OVERLAP', 200, min_value=0, max_value=1000)
+
+# Log semtools configuration
+if LLAMAPARSE_API_KEY:
+    logger.info("LlamaParse API key configured - enhanced document parsing available")
+else:
+    logger.debug("LlamaParse API key not set - semtools will use basic parsing mode")
+
+logger.info(f"Document chunking: size={DOCUMENT_CHUNK_SIZE}, overlap={DOCUMENT_CHUNK_OVERLAP}")
+
+# =============================================================================
+# End Document Processing Configuration
+# =============================================================================
 
 # Dream-inspired consolidation configuration
 CONSOLIDATION_ENABLED = os.getenv('MCP_CONSOLIDATION_ENABLED', 'false').lower() == 'true'

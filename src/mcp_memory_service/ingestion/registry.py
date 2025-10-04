@@ -31,6 +31,10 @@ _LOADER_REGISTRY: Dict[str, Type[DocumentLoader]] = {}
 # Supported file formats
 SUPPORTED_FORMATS = {
     'pdf': 'PDF documents',
+    'docx': 'Word documents (requires semtools)',
+    'doc': 'Word documents (requires semtools)',
+    'pptx': 'PowerPoint presentations (requires semtools)',
+    'xlsx': 'Excel spreadsheets (requires semtools)',
     'txt': 'Plain text files',
     'md': 'Markdown documents',
     'json': 'JSON data files',

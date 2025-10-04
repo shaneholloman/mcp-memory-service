@@ -31,7 +31,7 @@ RUN apt-get update && \
 COPY pyproject.toml .
 COPY uv.lock .
 COPY README.md .
-COPY scripts/install_uv.py .
+COPY scripts/installation/install_uv.py .
 
 # Install UV
 RUN python install_uv.py

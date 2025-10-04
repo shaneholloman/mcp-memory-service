@@ -273,6 +273,9 @@ When adding features or making significant changes:
 3. Update CHANGELOG.md following Keep a Changelog format
 4. Update AGENTS.md or CLAUDE.md if development workflow changes
 
+**Advanced Workflow Automation**:
+- See [Context Provider Workflow Automation](https://github.com/doobidoo/mcp-memory-service/wiki/Context-Provider-Workflow-Automation) for automating development workflows with intelligent patterns
+
 ### API Documentation
 
 - Document new MCP tools in `docs/api/tools.md`
@@ -378,6 +381,7 @@ For feature requests, describe:
 If you're an AI coding assistant, also check:
 - [AGENTS.md](AGENTS.md) - Generic AI agent instructions
 - [CLAUDE.md](CLAUDE.md) - Claude-specific guidelines
+- [Context Provider Workflow Automation](https://github.com/doobidoo/mcp-memory-service/wiki/Context-Provider-Workflow-Automation) - Automate development workflows with intelligent patterns
 
 ## Recognition
 

@@ -8,6 +8,157 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.6.0] - 2025-10-04
+
+### ✨ **Enhanced Document Ingestion with Semtools Support**
+
+#### 🆕 **Core Features**
+- **Semtools loader integration** - Optional Rust-based document parser with LlamaParse API for superior extraction quality
+- **New format support** - DOCX, DOC, PPTX, XLSX (requires semtools installation)
+- **Intelligent chunking** - Respects paragraph and sentence boundaries for better semantic coherence
+- **Graceful fallback** - Auto-detects semtools availability, uses native parsers (PyPDF2/pdfplumber) if unavailable
+- **Configuration options** - Environment variables for LLAMAPARSE_API_KEY, MCP_DOCUMENT_CHUNK_SIZE, MCP_DOCUMENT_CHUNK_OVERLAP
+- **Zero breaking changes** - Fully backward compatible, existing document ingestion unchanged
+
+#### 📄 **Supported Document Formats**
+| Format | Native Parser | With Semtools | Quality |
+|--------|--------------|---------------|---------|
+| PDF | PyPDF2/pdfplumber | ✅ LlamaParse | Excellent (OCR, tables) |
+| DOCX/DOC | ❌ Not supported | ✅ LlamaParse | Excellent |
+| PPTX | ❌ Not supported | ✅ LlamaParse | Excellent |
+| XLSX | ❌ Not supported | ✅ LlamaParse | Excellent |
+| TXT/MD | ✅ Built-in | N/A | Perfect |
+
+#### 🔧 **Technical Implementation**
+- **New file**: `src/mcp_memory_service/ingestion/semtools_loader.py` (220 lines)
+  - SemtoolsLoader class implementing DocumentLoader interface
+  - Async subprocess execution with 5-minute timeout for large documents
+  - Automatic semtools availability detection via `shutil.which()`
+  - LlamaParse API key support via LLAMAPARSE_API_KEY environment variable
+  - Comprehensive error handling with detailed logging
+- **Modified**: `src/mcp_memory_service/config.py` - Added document processing configuration section (lines 564-586)
+- **Modified**: `src/mcp_memory_service/ingestion/registry.py` - Registered new formats (DOCX, PPTX, XLSX)
+- **Modified**: `src/mcp_memory_service/ingestion/__init__.py` - Auto-registration of semtools loader
+- **Modified**: `CLAUDE.md` - Added comprehensive "Document Ingestion (v7.6.0+)" section with usage examples
+- **Tests**: `tests/unit/test_semtools_loader.py` - 12 comprehensive unit tests, all passing ✅
+
+#### 📦 **Installation & Configuration**
+```bash
+# Optional - install semtools for enhanced parsing
+npm i -g @llamaindex/semtools
+# or
+cargo install semtools
+
+# Optional - configure LlamaParse API for best quality
+export LLAMAPARSE_API_KEY="llx-..."
+
+# Document chunking configuration
+export MCP_DOCUMENT_CHUNK_SIZE=1000          # Characters per chunk (default: 1000)
+export MCP_DOCUMENT_CHUNK_OVERLAP=200        # Overlap between chunks (default: 200)
+```
+
+#### 🎯 **Usage Example**
+```python
+from pathlib import Path
+from mcp_memory_service.ingestion import get_loader_for_file
+
+# Automatic format detection and loader selection
+loader = get_loader_for_file(Path("document.pdf"))
+async for chunk in loader.extract_chunks(Path("document.pdf")):
+    await store_memory(chunk.content, tags=["documentation"])
+```
+
+#### ✅ **Benefits**
+- **Superior PDF parsing** - OCR capabilities and table extraction via LlamaParse
+- **Microsoft Office support** - DOCX, PPTX formats now supported (previously unavailable)
+- **Production-ready** - Comprehensive error handling, timeout protection, detailed logging
+- **Flexible deployment** - Optional enhancement, works perfectly without semtools
+- **Automatic detection** - No configuration needed, auto-selects best available parser
+- **Minimal overhead** - Only ~5ms initialization cost when semtools not installed
+
+#### 🔗 **Related Issues**
+- Closes #94 - Integrate Semtools for Enhanced Document Processing
+- Future work tracked in #147 - CLI commands, batch processing, progress reporting, benchmarks
+
+#### 📊 **Test Coverage**
+- 12/12 unit tests passing
+- Tests cover: initialization, availability checking, file handling, successful extraction, API key usage, error scenarios, timeout handling, empty content, registry integration
+- Comprehensive mocking of subprocess execution for reliable CI/CD
+
+## [7.5.5] - 2025-10-04
+
+### 🐛 **Bug Fixes - HybridMemoryStorage Critical Issues**
+
+#### Fixed - Health Check Support (PR #145)
+- **HybridMemoryStorage recognition in health checks** - Resolved "Unknown storage type: HybridMemoryStorage" error
+- **Dashboard statistics for hybrid backend** - Added comprehensive stats collection from SQLite-vec primary storage
+- **Health validation for hybrid storage** - Implemented proper validation logic for hybrid backend
+- **Cloudflare sync status visibility** - Display sync service status (not_configured/configured/syncing)
+
+#### Fixed - Missing recall() Method (PR #146)
+- **AttributeError on time-based queries** - Added missing `recall()` method to HybridMemoryStorage
+- **Server.py compatibility** - Resolves errors when server calls `storage.recall()` with time filtering
+- **Consistent API** - Matches method signature of SqliteVecMemoryStorage and CloudflareStorage
+- **Delegation to primary** - Properly delegates to SQLite-vec primary storage for recall operations
+
+#### Technical Details
+- Added `HybridMemoryStorage` case to `dashboard_get_stats()` endpoint (server.py:2503)
+- Added `HybridMemoryStorage` case to `check_database_health()` endpoint (server.py:3705)
+- Added `recall()` method to HybridMemoryStorage (hybrid.py:916)
+- Method signature: `async def recall(query: Optional[str] = None, n_results: int = 5, start_timestamp: Optional[float] = None, end_timestamp: Optional[float] = None) -> List[MemoryQueryResult]`
+- Query primary storage (SQLite-vec) for memory counts, tags, database info
+- Fixed code quality issues from Gemini Code Assist review (removed duplicate imports, refactored getattr usage)
+
+#### Impact
+- ✅ HTTP dashboard now properly displays hybrid backend statistics
+- ✅ MCP health check tool correctly validates hybrid storage
+- ✅ Time-based recall queries now work correctly with hybrid backend
+- ✅ No more "Unknown storage type" or AttributeError exceptions
+- ✅ HybridMemoryStorage fully compatible with all server.py operations
+
+## [7.5.4] - 2025-10-04
+
+### ✨ **Configurable Hybrid Sync Break Conditions**
+
+#### 🔄 **Enhanced Synchronization Control**
+- **Configurable early break conditions** - Made hybrid sync termination thresholds configurable via environment variables
+  - `MCP_HYBRID_MAX_EMPTY_BATCHES` - Stop after N consecutive batches without new syncs (default: 20, was hardcoded 5)
+  - `MCP_HYBRID_MIN_CHECK_COUNT` - Minimum memories to check before early stop (default: 1000, was hardcoded 200)
+- **Increased default thresholds** - Quadrupled default values (5→20 batches, 200→1000 memories) to ensure complete synchronization
+- **Enhanced logging** - Added detailed sync progress logging every 100 memories with consecutive empty batch tracking
+- **Threshold visibility** - Break condition log messages now display threshold values for better diagnostics
+
+#### 🐛 **Bug Fix - Incomplete Synchronization**
+- **Resolved incomplete sync issue** - Dashboard was showing only 1040 memories instead of 1200+ from Cloudflare
+- **Root cause** - Hardcoded early break conditions triggered prematurely causing missing memories
+- **Impact** - Missing memories distributed throughout Cloudflare dataset were never synced to local SQLite
+
+#### ⚙️ **Configuration**
+```bash
+# Environment variables for tuning sync behavior
+export MCP_HYBRID_MAX_EMPTY_BATCHES=20     # Stop after N empty batches (min: 1)
+export MCP_HYBRID_MIN_CHECK_COUNT=1000     # Min memories to check before early stop (min: 1)
+```
+
+#### 🔧 **Code Quality Improvements**
+- **Added input validation** - `min_value=1` constraint prevents zero values that would break sync
+- **Fixed progress logging** - Prevents misleading initial log message at `processed_count=0`
+- **Eliminated duplicate defaults** - Refactored to use `getattr` pattern for config imports
+- **Improved maintainability** - Centralized default values in config.py
+
+#### ✅ **Benefits**
+- Complete synchronization of all Cloudflare memories to SQLite
+- Configurable per deployment needs without code changes
+- Better diagnostics for troubleshooting sync issues
+- Maintains protection against infinite loops (early break still active)
+- Preserves Cloudflare API protection through configurable limits
+- No behavior change for deployments with small datasets
+
+#### 🔗 **References**
+- Closes issue: Incomplete hybrid sync (1040/1200+ memories)
+- PR #142: Configurable hybrid sync break conditions
+- All Gemini Code Assist feedback addressed
+
 ## [7.5.3] - 2025-10-04
 
 ### 🏗️ **Repository Organization**

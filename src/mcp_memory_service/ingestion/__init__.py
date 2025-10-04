@@ -29,6 +29,7 @@ from .registry import get_loader_for_file, register_loader, SUPPORTED_FORMATS, i
 # Import loaders to trigger registration
 from . import text_loader
 from . import pdf_loader
+from . import semtools_loader
 
 __all__ = [
     'DocumentLoader',
