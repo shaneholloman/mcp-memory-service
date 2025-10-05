@@ -84,6 +84,18 @@ MCP_TOOLS = [
         }
     ),
     MCPTool(
+        name="recall_memory",
+        description="Retrieve memories using natural language time expressions and optional semantic search",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Natural language query specifying the time frame or content to recall"},
+                "n_results": {"type": "integer", "description": "Maximum number of results to return", "default": 5}
+            },
+            "required": ["query"]
+        }
+    ),
+    MCPTool(
         name="search_by_tag",
         description="Search memories by specific tags",
         inputSchema={
@@ -274,7 +286,27 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
             ],
             "total_found": len(results)
         }
-    
+
+    elif tool_name == "recall_memory":
+        query = arguments.get("query")
+        n_results = arguments.get("n_results", 5)
+
+        # Use storage recall_memory method which handles time expressions
+        memories = await storage.recall_memory(query=query, n_results=n_results)
+
+        return {
+            "results": [
+                {
+                    "content": m.content,
+                    "content_hash": m.content_hash,
+                    "tags": m.tags,
+                    "created_at": m.created_at_iso
+                }
+                for m in memories
+            ],
+            "total_found": len(memories)
+        }
+
     elif tool_name == "search_by_tag":
         tags = arguments.get("tags")
         operation = arguments.get("operation", "AND")
