@@ -1749,3 +1749,145 @@ body.dark-mode ::-webkit-scrollbar-thumb {
 body.dark-mode ::-webkit-scrollbar-thumb:hover {
     background: var(--neutral-300);
 }
+
+/* ===================================
+   Footer Styles
+   =================================== */
+
+.app-footer {
+    margin-top: 4rem;
+    padding: 3rem 2rem 2rem;
+    background: var(--neutral-50);
+    border-top: 1px solid var(--neutral-100);
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3rem;
+}
+
+.footer-section h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--neutral-900);
+    margin: 0 0 1rem 0;
+}
+
+.footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-links li {
+    margin-bottom: 0.75rem;
+}
+
+.footer-links a {
+    color: var(--neutral-700);
+    text-decoration: none;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+    color: var(--blue-600);
+}
+
+.footer-links svg {
+    flex-shrink: 0;
+}
+
+.footer-description {
+    font-size: 0.875rem;
+    color: var(--neutral-600);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.6;
+}
+
+.footer-license {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.footer-license svg {
+    color: var(--neutral-500);
+    flex-shrink: 0;
+}
+
+.footer-license a {
+    color: var(--neutral-700);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.footer-license a:hover {
+    color: var(--blue-600);
+}
+
+.footer-copyright {
+    font-size: 0.75rem;
+    color: var(--neutral-500);
+}
+
+/* Dark mode footer styles */
+body.dark-mode .app-footer {
+    background: var(--neutral-100) !important;  /* Dark surface background */
+    border-top-color: var(--neutral-200) !important;
+}
+
+body.dark-mode .footer-section h4 {
+    color: var(--neutral-900) !important;  /* Light text for readability */
+}
+
+body.dark-mode .footer-links a {
+    color: var(--neutral-700) !important;  /* Medium-light link text */
+}
+
+body.dark-mode .footer-links a:hover {
+    color: var(--blue-400);
+}
+
+body.dark-mode .footer-description {
+    color: var(--neutral-600) !important;  /* Readable body text */
+}
+
+body.dark-mode .footer-license svg {
+    color: var(--neutral-500);
+}
+
+body.dark-mode .footer-license a {
+    color: var(--neutral-700) !important;  /* Match link colors */
+}
+
+body.dark-mode .footer-license a:hover {
+    color: var(--blue-400);
+}
+
+body.dark-mode .footer-copyright {
+    color: var(--neutral-500) !important;  /* Muted text */
+}
+
+/* Responsive footer */
+@media (max-width: 768px) {
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .app-footer {
+        padding: 2rem 1rem 1.5rem;
+        margin-top: 3rem;
+    }
+}

@@ -523,6 +523,9 @@ python debug_server_initialization.py       # Test initialization flows (v6.15.1
 tail -50 ~/Library/Logs/Claude/mcp-server-memory.log | grep -E "(🚀|☁️|✅|❌)" # View enhanced logs
 ```
 
-> **For detailed troubleshooting, architecture, and deployment guides, retrieve memories tagged with `claude-code-reference` or visit the project wiki.**
+> **For detailed troubleshooting, architecture, and deployment guides:**
+> - **Backend Configuration Issues**: See [Wiki Troubleshooting Guide](https://github.com/doobidoo/mcp-memory-service/wiki/07-TROUBLESHOOTING#backend-configuration-issues) for comprehensive solutions to missing memories, environment variable issues, Cloudflare auth, hooks timeouts, and more
+> - **Historical Context**: Retrieve memories tagged with `claude-code-reference`
+> - **Quick Diagnostic**: Run `python scripts/validation/diagnose_backend_config.py`
 - always use "/gemini review" when commenting on a PR
 - make sure to have commited and pushed every change to the branch before commenting on the PR and before triggering gemini Code Assist

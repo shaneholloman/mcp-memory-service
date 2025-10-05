@@ -8,6 +8,67 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.3] - 2025-10-05
+
+### ✨ **Enhancements**
+
+#### **Dashboard Footer Navigation**
+- **Added**: Comprehensive footer to dashboard with three sections
+  - **Documentation**: Links to Wiki Home, Troubleshooting Guide, Backend Configuration Issues
+  - **Resources**: GitHub Repository (with icon), Portfolio (doobidoo.github.io), API Documentation
+  - **About**: Project description, Apache 2.0 license link, copyright notice
+- **Features**: Security attributes (target="_blank", rel="noopener"), responsive design (mobile breakpoint 768px)
+- **Impact**: ✅ Improved discoverability of documentation and resources from dashboard
+
+### 🐛 **Bug Fixes**
+
+#### **Dark Mode Footer Styling**
+- **Critical fix**: Footer appearing bright/light in dark mode instead of dark
+- **Root cause**: Incorrect CSS variable usage - using wrong end of inverted color scale
+  - Background used `var(--neutral-900)` (#f9fafb - light) instead of `var(--neutral-100)` (#1f2937 - dark)
+  - Headings used `var(--neutral-100)` (dark text) instead of `var(--neutral-900)` (light text)
+- **Solution**: Corrected CSS variables to match dashboard card pattern with !important flags
+- **Impact**: ✅ Footer now properly displays with dark background and light text in dark mode
+
+##### **Technical Details**
+- **Files**:
+  - `src/mcp_memory_service/web/static/index.html` - Footer HTML structure (lines 463-517)
+  - `src/mcp_memory_service/web/static/style.css` - Footer styling and dark mode overrides (lines 1757-1893)
+
+## [8.2.2] - 2025-10-05
+
+### ✨ **Enhancements**
+
+#### **HTTP-MCP Bridge: recall_memory Tool Support**
+- **Added**: `recall_memory` tool to MCP HTTP bridge API
+- **Functionality**: Natural language time-based memory retrieval (e.g., "last week", "yesterday")
+- **Integration**: Seamlessly maps to storage backend's `recall_memory` method
+- **API**: Accepts `query` (natural language) and optional `n_results` parameter
+- **Use Case**: Enables time-aware memory recall through HTTP/MCP bridge interface
+
+##### **Technical Details**
+- **File**: `src/mcp_memory_service/web/api/mcp.py`
+  - Added `recall_memory` tool definition to `MCP_TOOLS` array
+  - Implemented handler in `handle_tool_call()` function
+  - Returns standardized format: content, content_hash, tags, created_at
+
+## [8.2.1] - 2025-10-05
+
+### 🐛 **Bug Fixes**
+
+#### **Critical: Missing Core Dependencies**
+- **Fixed**: `sentence-transformers` and `torch` moved from optional `[ml]` extras to base dependencies
+- **Root cause**: v8.2.0 removed ChromaDB but accidentally made semantic search dependencies optional
+- **Impact**: Service failed to start with `ImportError: sentence-transformers is not available`
+- **Resolution**: These are core dependencies required for semantic memory functionality
+- **Breaking**: Users upgrading from v8.2.0 must run `uv sync` to install corrected dependencies
+
+##### **Technical Details**
+- **File**: `pyproject.toml`
+  - Moved `sentence-transformers>=2.2.2` from `[ml]` to `dependencies`
+  - Moved `torch>=2.0.0` from `[ml]` to `dependencies`
+  - Semantic search is core functionality, not optional
+
 ## [8.2.0] - 2025-10-05
 
 ### ✨ **Dashboard UX Improvements**
