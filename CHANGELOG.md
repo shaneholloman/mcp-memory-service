@@ -8,6 +8,23 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.1] - 2025-10-05
+
+### 🐛 **Bug Fixes**
+
+#### **Critical: Missing Core Dependencies**
+- **Fixed**: `sentence-transformers` and `torch` moved from optional `[ml]` extras to base dependencies
+- **Root cause**: v8.2.0 removed ChromaDB but accidentally made semantic search dependencies optional
+- **Impact**: Service failed to start with `ImportError: sentence-transformers is not available`
+- **Resolution**: These are core dependencies required for semantic memory functionality
+- **Breaking**: Users upgrading from v8.2.0 must run `uv sync` to install corrected dependencies
+
+##### **Technical Details**
+- **File**: `pyproject.toml`
+  - Moved `sentence-transformers>=2.2.2` from `[ml]` to `dependencies`
+  - Moved `torch>=2.0.0` from `[ml]` to `dependencies`
+  - Semantic search is core functionality, not optional
+
 ## [8.2.0] - 2025-10-05
 
 ### ✨ **Dashboard UX Improvements**
