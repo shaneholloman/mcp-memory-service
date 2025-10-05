@@ -8,6 +8,33 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.3] - 2025-10-05
+
+### ✨ **Enhancements**
+
+#### **Dashboard Footer Navigation**
+- **Added**: Comprehensive footer to dashboard with three sections
+  - **Documentation**: Links to Wiki Home, Troubleshooting Guide, Backend Configuration Issues
+  - **Resources**: GitHub Repository (with icon), Portfolio (doobidoo.github.io), API Documentation
+  - **About**: Project description, Apache 2.0 license link, copyright notice
+- **Features**: Security attributes (target="_blank", rel="noopener"), responsive design (mobile breakpoint 768px)
+- **Impact**: ✅ Improved discoverability of documentation and resources from dashboard
+
+### 🐛 **Bug Fixes**
+
+#### **Dark Mode Footer Styling**
+- **Critical fix**: Footer appearing bright/light in dark mode instead of dark
+- **Root cause**: Incorrect CSS variable usage - using wrong end of inverted color scale
+  - Background used `var(--neutral-900)` (#f9fafb - light) instead of `var(--neutral-100)` (#1f2937 - dark)
+  - Headings used `var(--neutral-100)` (dark text) instead of `var(--neutral-900)` (light text)
+- **Solution**: Corrected CSS variables to match dashboard card pattern with !important flags
+- **Impact**: ✅ Footer now properly displays with dark background and light text in dark mode
+
+##### **Technical Details**
+- **Files**:
+  - `src/mcp_memory_service/web/static/index.html` - Footer HTML structure (lines 463-517)
+  - `src/mcp_memory_service/web/static/style.css` - Footer styling and dark mode overrides (lines 1757-1893)
+
 ## [8.2.2] - 2025-10-05
 
 ### ✨ **Enhancements**
