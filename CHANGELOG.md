@@ -8,6 +8,29 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.0] - 2025-10-05
+
+### ✨ **Dashboard UX Improvements**
+
+#### **Dark Mode Polish**
+- **Fixed**: Connection status indicator now properly displays in dark mode
+- **Implementation**: Added dark mode CSS override for `.connection-status` component
+- **Impact**: ✅ All dashboard elements now fully support dark mode without visual glitches
+
+#### **Browse Tab User Experience**
+- **Enhancement**: Automatic smooth scroll to results when clicking a tag
+- **Implementation**: Added `scrollIntoView()` with smooth behavior to `filterByTag()` method
+- **User Benefit**: No more manual scrolling needed - tag selection immediately shows filtered memories
+- **Impact**: ✅ Significantly improved discoverability and flow in Browse by Tags view
+
+##### **Technical Details**
+- **File**: `src/mcp_memory_service/web/static/style.css`
+  - Added dark mode override for connection status background, border, and text colors
+  - Uses CSS variables for consistency with theme system
+- **File**: `src/mcp_memory_service/web/static/app.js`
+  - Added smooth scroll animation when displaying tag-filtered results
+  - Scrolls results section into view with `block: 'start'` positioning
+
 ## [8.1.2] - 2025-10-05
 
 ### 🐛 **Bug Fixes**

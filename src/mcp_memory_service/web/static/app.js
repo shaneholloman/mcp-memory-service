@@ -401,6 +401,12 @@ class MemoryDashboard {
             tagNameSpan.textContent = tag;
             taggedContainer.style.display = 'block';
 
+            // Smooth scroll to results section for better UX
+            taggedContainer.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
             // Render filtered memories
             this.renderMemoriesInContainer(filteredMemories, memoriesList);
 

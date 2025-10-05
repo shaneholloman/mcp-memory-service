@@ -1704,6 +1704,13 @@ body.dark-mode .action-card span {
     color: var(--neutral-900);
 }
 
+/* Connection status indicator dark mode */
+body.dark-mode .connection-status {
+    background: var(--neutral-100) !important;
+    border-color: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+}
+
 body.dark-mode .action-card svg {
     color: var(--primary);
 }
