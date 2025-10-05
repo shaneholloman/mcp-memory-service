@@ -8,6 +8,30 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.1.2] - 2025-10-05
+
+### 🐛 **Bug Fixes**
+
+#### **Dashboard Statistics Display**
+- **Critical fix**: Dashboard showing 0 for "This Week" and "Tags" statistics on Hybrid and Cloudflare backends
+- **Root cause**: Statistics fields not exposed at top level of storage health response
+
+##### **Hybrid Backend Fix** (`src/mcp_memory_service/storage/hybrid.py`)
+- Extract `unique_tags` from `primary_stats` to top-level stats dictionary
+- Extract `memories_this_week` from `primary_stats` to top-level stats dictionary
+- Maintains consistency with SQLite-vec standalone backend behavior
+
+##### **Cloudflare Backend Fix** (`src/mcp_memory_service/storage/cloudflare.py`)
+- Added SQL subquery to calculate `unique_tags` from tags table
+- Added SQL subquery to calculate `memories_this_week` (last 7 days)
+- Now returns both statistics in `get_stats()` response
+
+##### **Impact**
+- ✅ Dashboard now correctly displays weekly memory count for all backends
+- ✅ Dashboard now correctly displays unique tags count for all backends
+- ✅ SQLite-vec standalone backend already had these fields (no change needed)
+- ✅ Fixes issue where hybrid/cloudflare users saw "0" despite having memories and tags
+
 ## [8.1.1] - 2025-10-05
 
 ### 🐛 **Bug Fixes**

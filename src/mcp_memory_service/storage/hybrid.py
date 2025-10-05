@@ -882,6 +882,8 @@ class HybridMemoryStorage(MemoryStorage):
             "primary_backend": "SQLite-vec",
             "secondary_backend": "Cloudflare" if self.secondary else "None",
             "total_memories": primary_stats.get("total_memories", 0),
+            "unique_tags": primary_stats.get("unique_tags", 0),
+            "memories_this_week": primary_stats.get("memories_this_week", 0),
             "primary_stats": primary_stats,
             "sync_enabled": self.sync_service is not None
         }
