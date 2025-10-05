@@ -8,6 +8,183 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.0] - 2025-10-05
+
+### ✨ **Dashboard UX Improvements**
+
+#### **Dark Mode Polish**
+- **Fixed**: Connection status indicator now properly displays in dark mode
+- **Implementation**: Added dark mode CSS override for `.connection-status` component
+- **Impact**: ✅ All dashboard elements now fully support dark mode without visual glitches
+
+#### **Browse Tab User Experience**
+- **Enhancement**: Automatic smooth scroll to results when clicking a tag
+- **Implementation**: Added `scrollIntoView()` with smooth behavior to `filterByTag()` method
+- **User Benefit**: No more manual scrolling needed - tag selection immediately shows filtered memories
+- **Impact**: ✅ Significantly improved discoverability and flow in Browse by Tags view
+
+##### **Technical Details**
+- **File**: `src/mcp_memory_service/web/static/style.css`
+  - Added dark mode override for connection status background, border, and text colors
+  - Uses CSS variables for consistency with theme system
+- **File**: `src/mcp_memory_service/web/static/app.js`
+  - Added smooth scroll animation when displaying tag-filtered results
+  - Scrolls results section into view with `block: 'start'` positioning
+
+## [8.1.2] - 2025-10-05
+
+### 🐛 **Bug Fixes**
+
+#### **Dashboard Statistics Display**
+- **Critical fix**: Dashboard showing 0 for "This Week" and "Tags" statistics on Hybrid and Cloudflare backends
+- **Root cause**: Statistics fields not exposed at top level of storage health response
+
+##### **Hybrid Backend Fix** (`src/mcp_memory_service/storage/hybrid.py`)
+- Extract `unique_tags` from `primary_stats` to top-level stats dictionary
+- Extract `memories_this_week` from `primary_stats` to top-level stats dictionary
+- Maintains consistency with SQLite-vec standalone backend behavior
+
+##### **Cloudflare Backend Fix** (`src/mcp_memory_service/storage/cloudflare.py`)
+- Added SQL subquery to calculate `unique_tags` from tags table
+- Added SQL subquery to calculate `memories_this_week` (last 7 days)
+- Now returns both statistics in `get_stats()` response
+
+##### **Impact**
+- ✅ Dashboard now correctly displays weekly memory count for all backends
+- ✅ Dashboard now correctly displays unique tags count for all backends
+- ✅ SQLite-vec standalone backend already had these fields (no change needed)
+- ✅ Fixes issue where hybrid/cloudflare users saw "0" despite having memories and tags
+
+## [8.1.1] - 2025-10-05
+
+### 🐛 **Bug Fixes**
+
+#### **Dark Mode Text Contrast Regression**
+- **Critical fix**: Memory card text barely visible in dark mode due to hardcoded white backgrounds
+- **Root cause**: CSS variable redefinition made text colors too faint when applied to white backgrounds
+- **Solution**: Override all major containers with dark backgrounds (`#1f2937`) and force bright text colors
+
+##### **Fixed Components**
+- Memory cards: Now use dark card backgrounds with bright white text (`#f9fafb`)
+- Memory metadata: Labels bright white (`#f9fafb`), values light gray (`#d1d5db`)
+- Action cards: Dark backgrounds for proper contrast
+- All containers: App header, welcome card, search filters, modals now properly dark
+
+##### **Technical Details**
+- Added `!important` overrides for 11 container backgrounds
+- Memory content text: `var(--neutral-900) !important` → `#f9fafb`
+- Memory meta labels: `var(--neutral-900) !important` → `#f9fafb`
+- Memory meta values: `var(--neutral-600) !important` → `#d1d5db`
+- Cache-busting comments to force browser reload
+
+##### **Impact**
+- ✅ Dark mode now fully readable across all dashboard views
+- ✅ Proper contrast ratios for accessibility
+- ✅ No visual regression from v8.1.0 light mode
+
+## [8.1.0] - 2025-10-04
+
+### ✨ **Dashboard Dark Mode & UX Enhancements**
+
+Production-ready dashboard improvements with comprehensive dark mode support, settings management, and optimized CSS architecture.
+
+#### 🎨 **New Features**
+
+##### **Dark Mode Toggle**
+- **Clean theme switching** with sun/moon icon toggle in header
+- **Persistent preference** via localStorage - theme survives page reloads
+- **Smooth transitions** between light and dark themes
+- **Full coverage** across all dashboard views (Dashboard, Search, Browse)
+- **Performance**: Instant theme switching with CSS class toggle
+
+##### **Settings Modal**
+- **Centralized preferences** accessible via cogwheel button
+- **User preferences**:
+  - Theme selection (Light/Dark)
+  - View density (Comfortable/Compact)
+  - Memory preview lines (1-10)
+- **System information display**:
+  - Application version
+  - Storage backend configuration (Hybrid/SQLite/Cloudflare)
+  - Primary/secondary backend details
+  - Embedding model and dimensions
+  - Database size
+  - Total memories count
+  - Server uptime (human-readable format)
+- **Robust data loading**: Promise.allSettled() for graceful error handling
+- **User feedback**: Toast notifications for save failures
+
+#### 🏗️ **Architecture & Performance**
+
+##### **CSS Optimization - Variable Redefinition Approach**
+- **Massive code reduction**: 2116 → 1708 lines (**-408 lines, -19% smaller**)
+- **Clean implementation**: Redefine CSS variables in `body.dark-mode` instead of 200+ hardcoded overrides
+- **Maintainability**: Single source of truth for dark mode colors
+- **Automatic theming**: All components using CSS variables get dark mode support
+- **No !important abuse**: Eliminated all !important tags except `.hidden` utility class
+
+##### **JavaScript Improvements**
+- **Data-driven configuration**: System info fields defined in static config object
+- **Static class properties**: Constants defined once per class, not per instance
+- **Robust error handling**: Promise.allSettled() prevents partial failures
+- **Zero value handling**: Proper `!= null` checks (displays 0 MB, 0 memories correctly)
+- **Smart field updates**: Targeted element updates using config keys
+
+##### **HTML Optimization**
+- **SVG icon deduplication**: Info icon defined once in `<defs>`, reused via `<use>`
+- **File size reduction**: 4 inline SVG instances → 1 reusable symbol
+- **Accessibility**: Proper `aria-hidden` and semantic structure
+- **No inline styles**: All styling moved to CSS for better separation of concerns
+
+#### 📊 **Performance Metrics**
+
+| Component | Target | Actual | Status |
+|-----------|--------|--------|--------|
+| Page Load | <2s | 25ms | ✅ EXCELLENT |
+| Memory Operations | <1s | 26ms | ✅ EXCELLENT |
+| Tag Search | <500ms | <100ms | ✅ EXCELLENT |
+| Theme Toggle | Instant | <1ms | ✅ EXCELLENT |
+| CSS File Size | Smaller | -19% | ✅ EXCELLENT |
+
+#### 🔍 **Code Quality**
+
+##### **Gemini Code Assist Review**
+- **8 review iterations** - All feedback addressed
+- **Final verdict**: "Solid enhancement to the dashboard's user experience"
+- **Key improvements**:
+  - Variable redefinition pattern for dark mode
+  - Removed redundant arrays (derive from Object.keys)
+  - SVG icon deduplication
+  - Better error messages for users
+  - Static method optimization
+
+##### **Files Changed**
+- `src/mcp_memory_service/web/static/style.css`: -408 lines (major refactoring)
+- `src/mcp_memory_service/web/static/app.js`: +255 lines (settings, theme management)
+- `src/mcp_memory_service/web/static/index.html`: +134 lines (modal, icons, SVG defs)
+- **Net change**: -19 lines (improved functionality with less code)
+
+#### 🎯 **User Experience**
+
+- **Visual comfort**: Dark mode reduces eye strain for long sessions
+- **Personalization**: User-controlled theme and display preferences
+- **Transparency**: System information visible in settings modal
+- **Feedback**: Error notifications for localStorage failures
+- **Consistency**: Dark mode styling matches across all views
+- **Accessibility**: High contrast, semantic HTML, keyboard navigation
+
+#### 📝 **Technical Details**
+
+- **Conservative approach**: Original light mode design preserved pixel-perfect
+- **Additive CSS**: Dark mode styles never modify existing rules
+- **Browser compatibility**: CSS variables, localStorage, SSE all widely supported
+- **Mobile responsive**: Works on all screen sizes (tested 768px, 1024px breakpoints)
+- **XSS protection**: All user inputs properly escaped via `escapeHtml()`
+
+**PR**: #150 (16 commits, 543 additions, 23 deletions)
+
+---
+
 ## [8.0.0] - 2025-10-04
 
 ### 💥 **BREAKING CHANGE: ChromaDB Backend Removed**

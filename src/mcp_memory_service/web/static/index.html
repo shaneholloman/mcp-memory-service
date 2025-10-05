@@ -19,6 +19,16 @@
                     <span id="versionBadge" class="version-badge">Loading...</span>
                 </div>
 
+                <!-- SVG Icon Definitions -->
+                <svg style="display: none;" aria-hidden="true">
+                    <defs>
+                        <symbol id="info-icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                            <path d="M12 8v.01M12 12v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </symbol>
+                    </defs>
+                </svg>
+
                 <!-- Quick Search Bar -->
                 <div class="search-section">
                     <div class="search-container">
@@ -43,10 +53,27 @@
                         </svg>
                         <span class="btn-text">Add Memory</span>
                     </button>
+                    <button id="themeToggleBtn" class="btn btn-secondary" title="Toggle Dark Mode">
+                        <svg id="sunIcon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <svg id="moonIcon" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
                     <button id="settingsBtn" class="btn btn-secondary" title="Settings">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 16a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0-6a2 2 0 1 1-2 2 2 2 0 0 1 2-2z"/>
-                            <path d="M21.14 13.15l-.91-.66a7.89 7.89 0 0 0 0-1l.91-.66a1 1 0 0 0 .4-1.22l-1.8-3.1a1 1 0 0 0-1.23-.4l-1.07.44a7.64 7.64 0 0 0-.86-.5l-.19-1.14a1 1 0 0 0-1-.84h-3.6a1 1 0 0 0-1 .84L9.6 6.61a7.64 7.64 0 0 0-.86.5l-1.07-.44a1 1 0 0 0-1.23.4l-1.8 3.1a1 1 0 0 0 .4 1.22l.91.66a7.89 7.89 0 0 0 0 1l-.91.66a1 1 0 0 0-.4 1.22l1.8 3.1a1 1 0 0 0 1.23.4l1.07-.44a7.64 7.64 0 0 0 .86.5l.19 1.14a1 1 0 0 0 1 .84h3.6a1 1 0 0 0 1-.84l.19-1.14a7.64 7.64 0 0 0 .86-.5l1.07.44a1 1 0 0 0 1.23-.4l1.8-3.1a1 1 0 0 0-.4-1.22z"/>
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v10M1 12h6m6 0h10"/>
+                            <path d="M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>
                         </svg>
                     </button>
                 </div>
@@ -168,14 +195,20 @@
                     <aside class="search-filters">
                         <div class="filters-header">
                             <h3>Search Filters
-                                <span class="tooltip" title="Filters work together: combine tags, dates, and types to narrow your search">ℹ️</span>
+                                <span class="tooltip" title="Filters work together: combine tags, dates, and types to narrow your search">
+                                    <svg width="16" height="16" fill="currentColor"><use href="#info-icon"/></svg>
+                                </span>
                             </h3>
                             <div class="mode-toggle-compact">
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="liveSearchToggle" checked>
                                     <span class="slider"></span>
                                 </label>
-                                <span class="tooltip" title="Toggle between live search (updates as you type) and manual search mode">⚡</span>
+                                <span class="tooltip" title="Toggle between live search (updates as you type) and manual search mode">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" fill="currentColor"/>
+                                    </svg>
+                                </span>
                             </div>
                         </div>
 
@@ -188,7 +221,9 @@
 
                         <div class="filter-section">
                             <label for="tagFilter">Tags
-                                <span class="tooltip" title="Enter tags separated by commas (e.g., work, coding, important)">ℹ️</span>
+                                <span class="tooltip" title="Enter tags separated by commas (e.g., work, coding, important)">
+                                    <svg width="16" height="16" fill="currentColor"><use href="#info-icon"/></svg>
+                                </span>
                             </label>
                             <input type="text" id="tagFilter" placeholder="e.g., work, coding, important">
                             <small class="help-text">Separate multiple tags with commas</small>
@@ -196,7 +231,9 @@
 
                         <div class="filter-section">
                             <label for="dateFilter">Date Range
-                                <span class="tooltip" title="Filter memories by when they were created">ℹ️</span>
+                                <span class="tooltip" title="Filter memories by when they were created">
+                                    <svg width="16" height="16" fill="currentColor"><use href="#info-icon"/></svg>
+                                </span>
                             </label>
                             <select id="dateFilter">
                                 <option value="">All time</option>
@@ -212,7 +249,9 @@
 
                         <div class="filter-section">
                             <label for="typeFilter">Content Type
-                                <span class="tooltip" title="Filter by the type of content stored">ℹ️</span>
+                                <span class="tooltip" title="Filter by the type of content stored">
+                                    <svg width="16" height="16" fill="currentColor"><use href="#info-icon"/></svg>
+                                </span>
                             </label>
                             <select id="typeFilter">
                                 <option value="">All types</option>
@@ -480,6 +519,85 @@
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
                     <button class="btn btn-primary" id="saveMemoryBtn">Save Memory</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Settings</h3>
+                    <button class="modal-close" aria-label="Close">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="settingsForm">
+                        <h4 class="settings-section-heading">Preferences</h4>
+                        <div class="form-group">
+                            <label for="themeSelect">Theme</label>
+                            <select id="themeSelect">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="viewDensity">View Density</label>
+                            <select id="viewDensity">
+                                <option value="comfortable">Comfortable</option>
+                                <option value="compact">Compact</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="previewLines">Memory Preview Lines</label>
+                            <input type="number" id="previewLines" min="1" max="10" value="3">
+                        </div>
+
+                        <hr class="settings-divider">
+
+                        <h4 class="settings-section-heading" style="margin-bottom: var(--space-4);">System Information</h4>
+                        <div class="system-info">
+                            <div class="info-row">
+                                <span class="info-label">Version:</span>
+                                <span class="info-value" id="settingsVersion">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Storage Backend:</span>
+                                <span class="info-value" id="settingsBackend">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Primary Backend:</span>
+                                <span class="info-value" id="settingsPrimaryBackend">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Embedding Model:</span>
+                                <span class="info-value" id="settingsEmbeddingModel">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Embedding Dimensions:</span>
+                                <span class="info-value" id="settingsEmbeddingDim">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Database Size:</span>
+                                <span class="info-value" id="settingsDbSize">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Total Memories:</span>
+                                <span class="info-value" id="settingsTotalMemories">Loading...</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Uptime:</span>
+                                <span class="info-value" id="settingsUptime">Loading...</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelSettingsBtn">Cancel</button>
+                    <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
                 </div>
             </div>
         </div>

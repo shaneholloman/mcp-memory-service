@@ -660,6 +660,38 @@ h3 { font-size: var(--text-xl); }
     min-height: 120px;
 }
 
+/* System Info in Settings Modal */
+.system-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--neutral-100);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: var(--text-sm);
+    color: var(--neutral-600);
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: var(--text-sm);
+    color: var(--neutral-900);
+    font-weight: 600;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
 /* Loading and Status Components */
 .loading-overlay {
     position: fixed;
@@ -881,25 +913,27 @@ h3 { font-size: var(--text-xl); }
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-4);
-    background: var(--primary);
-    color: white;
-    border-radius: var(--radius-full);
+    background: var(--neutral-100);
+    color: var(--neutral-700);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-sm);
     font-size: var(--text-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
-    border: none;
 }
 
 .tag-bubble:hover {
-    background: var(--primary-dark);
+    background: var(--neutral-200);
+    border-color: var(--neutral-300);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tag-bubble .count {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--neutral-200);
+    color: var(--neutral-700);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
@@ -1202,15 +1236,25 @@ h3 { font-size: var(--text-xl); }
 /* Tooltips */
 .tooltip {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: help;
-    color: var(--neutral-500);
+    color: var(--neutral-400);
     font-size: var(--text-sm);
     margin-left: var(--space-2);
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+}
+
+.tooltip svg {
+    display: block;
+    transition: all 0.2s ease;
 }
 
 .tooltip:hover {
     color: var(--primary);
+    transform: scale(1.1);
 }
 
 .tooltip:hover::after {
@@ -1221,14 +1265,16 @@ h3 { font-size: var(--text-xl); }
     transform: translateX(-50%);
     background: var(--neutral-800);
     color: white;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--space-2);
     font-size: var(--text-xs);
     white-space: nowrap;
     z-index: 1000;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    max-width: 300px; /* Cache bust: tooltip width fix 2025-10-03 */
-    white-space: normal;
+    min-width: 150px;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     line-height: 1.4;
 }
 
@@ -1556,4 +1602,150 @@ input:checked + .slider:before {
 
 #searchModeText {
     min-width: 120px;
+}
+
+
+/* ============================================================
+   DARK MODE - VARIABLE REDEFINITION APPROACH
+   Appended 2025-10-04: Redefine color variables for dark theme
+   ============================================================ */
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+.settings-section-heading {
+    margin-top: 0;
+    color: var(--neutral-600);
+}
+
+.settings-divider {
+    margin: var(--space-6) 0;
+    border: none;
+    border-top: 1px solid var(--neutral-200);
+}
+
+/* Dark Mode Theme - Redefine Color Variables */
+body.dark-mode {
+    /* Invert neutral color scale for dark mode */
+    --neutral-50: #111827;   /* Darkest background (was lightest) */
+    --neutral-100: #1f2937;  /* Surface/card background */
+    --neutral-200: #374151;  /* Borders/dividers */
+    --neutral-300: #4b5563;  /* Subtle borders */
+    --neutral-400: #6b7280;  /* Disabled text */
+    --neutral-500: #9ca3af;  /* Muted text */
+    --neutral-600: #d1d5db;  /* Body text (was dark, now light) */
+    --neutral-700: #e5e7eb;  /* Strong text */
+    --neutral-800: #f3f4f6;  /* Stronger text */
+    --neutral-900: #f9fafb;  /* Headings/emphasis (was dark, now lightest) */
+
+    /* Apply inverted variables to body */
+    background-color: var(--neutral-50);
+    color: var(--neutral-600);
+}
+
+/* Specific overrides that can't use variables - Cache bust: v8.1.1 fix */
+body.dark-mode .app-header,
+body.dark-mode .main-nav,
+body.dark-mode .welcome-card,
+body.dark-mode .recent-memories,
+body.dark-mode .quick-actions,
+body.dark-mode .memory-card,
+body.dark-mode .action-card,
+body.dark-mode .search-filters,
+body.dark-mode .search-results,
+body.dark-mode .modal-content,
+body.dark-mode .toast,
+body.dark-mode .endpoint-item {
+    background: var(--neutral-100) !important;  /* Dark card background */
+}
+
+body.dark-mode .memory-card,
+body.dark-mode .welcome-card,
+body.dark-mode .action-card,
+body.dark-mode .modal-content,
+body.dark-mode .search-filters,
+body.dark-mode .search-results {
+    border-color: var(--neutral-200) !important;
+}
+
+body.dark-mode .memory-card:hover,
+body.dark-mode .action-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .nav-item:hover {
+    background: var(--neutral-200);
+    color: var(--primary);
+}
+
+body.dark-mode .nav-item.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* Override specific element colors that need explicit dark mode values - Cache bust: v8.1.1 */
+body.dark-mode .memory-content {
+    color: var(--neutral-900) !important;  /* Brightest text for readability */
+}
+
+body.dark-mode .memory-meta {
+    color: var(--neutral-600) !important;  /* Lighter but still readable for metadata */
+}
+
+body.dark-mode .memory-meta strong {
+    color: var(--neutral-900) !important;  /* Bright labels for readability */
+}
+
+body.dark-mode .action-card h3,
+body.dark-mode .action-card p,
+body.dark-mode .action-card span {
+    color: var(--neutral-900);
+}
+
+/* Connection status indicator dark mode */
+body.dark-mode .connection-status {
+    background: var(--neutral-100) !important;
+    border-color: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .action-card svg {
+    color: var(--primary);
+}
+
+body.dark-mode h4 {
+    color: var(--neutral-600);
+}
+
+body.dark-mode .filter-chip.active {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+
+body.dark-mode .toast.success {
+    border-left-color: var(--success);
+}
+
+body.dark-mode .toast.error {
+    border-left-color: var(--error);
+}
+
+body.dark-mode .toast.info {
+    border-left-color: var(--primary);
+}
+
+/* Scrollbars (webkit browsers) */
+body.dark-mode ::-webkit-scrollbar {
+    background: var(--neutral-50);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: var(--neutral-200);
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: var(--neutral-300);
 }

@@ -821,25 +821,32 @@ class CloudflareStorage(MemoryStorage):
     async def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics."""
         try:
+            # Calculate timestamp for memories from last 7 days
+            week_ago = time.time() - (7 * 24 * 60 * 60)
+
             # Get memory count and size from D1
-            sql = """
-            SELECT 
+            sql = f"""
+            SELECT
                 COUNT(*) as total_memories,
                 SUM(content_size) as total_content_size,
                 COUNT(DISTINCT vector_id) as total_vectors,
-                COUNT(r2_key) as r2_stored_count
+                COUNT(r2_key) as r2_stored_count,
+                (SELECT COUNT(*) FROM tags) as unique_tags,
+                (SELECT COUNT(*) FROM memories WHERE created_at >= {week_ago}) as memories_this_week
             FROM memories
             """
-            
+
             payload = {"sql": sql}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
             result = response.json()
-            
+
             if result.get("success") and result.get("result", [{}])[0].get("results"):
                 stats = result["result"][0]["results"][0]
-                
+
                 return {
                     "total_memories": stats.get("total_memories", 0),
+                    "unique_tags": stats.get("unique_tags", 0),
+                    "memories_this_week": stats.get("memories_this_week", 0),
                     "total_content_size_bytes": stats.get("total_content_size", 0),
                     "total_vectors": stats.get("total_vectors", 0),
                     "r2_stored_count": stats.get("r2_stored_count", 0),
@@ -849,17 +856,21 @@ class CloudflareStorage(MemoryStorage):
                     "r2_bucket": self.r2_bucket,
                     "status": "operational"
                 }
-            
+
             return {
                 "total_memories": 0,
+                "unique_tags": 0,
+                "memories_this_week": 0,
                 "storage_backend": "cloudflare",
                 "status": "operational"
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
             return {
                 "total_memories": 0,
+                "unique_tags": 0,
+                "memories_this_week": 0,
                 "storage_backend": "cloudflare",
                 "status": "error",
                 "error": str(e)

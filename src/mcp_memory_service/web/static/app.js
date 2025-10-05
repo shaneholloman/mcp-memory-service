@@ -4,6 +4,48 @@
  */
 
 class MemoryDashboard {
+    // Static configuration for settings modal system information
+    static SYSTEM_INFO_CONFIG = {
+        settingsVersion: {
+            sources: [{ path: 'version', api: 'health' }],
+            formatter: (value) => value || 'N/A'
+        },
+        settingsBackend: {
+            sources: [
+                { path: 'storage.storage_backend', api: 'detailedHealth' },
+                { path: 'storage.backend', api: 'detailedHealth' }
+            ],
+            formatter: (value) => value || 'N/A'
+        },
+        settingsPrimaryBackend: {
+            sources: [
+                { path: 'storage.primary_backend', api: 'detailedHealth' },
+                { path: 'storage.backend', api: 'detailedHealth' }
+            ],
+            formatter: (value) => value || 'N/A'
+        },
+        settingsEmbeddingModel: {
+            sources: [{ path: 'storage.primary_stats.embedding_model', api: 'detailedHealth' }],
+            formatter: (value) => value || 'N/A'
+        },
+        settingsEmbeddingDim: {
+            sources: [{ path: 'storage.primary_stats.embedding_dimension', api: 'detailedHealth' }],
+            formatter: (value) => value || 'N/A'
+        },
+        settingsDbSize: {
+            sources: [{ path: 'storage.primary_stats.database_size_mb', api: 'detailedHealth' }],
+            formatter: (value) => (value != null) ? `${value.toFixed(2)} MB` : 'N/A'
+        },
+        settingsTotalMemories: {
+            sources: [{ path: 'storage.total_memories', api: 'detailedHealth' }],
+            formatter: (value) => (value != null) ? value.toLocaleString() : 'N/A'
+        },
+        settingsUptime: {
+            sources: [{ path: 'uptime_seconds', api: 'detailedHealth' }],
+            formatter: (value) => (value != null) ? MemoryDashboard.formatUptime(value) : 'N/A'
+        }
+    };
+
     constructor() {
         this.apiBase = '/api';
         this.eventSource = null;
@@ -13,6 +55,13 @@ class MemoryDashboard {
         this.isLoading = false;
         this.liveSearchEnabled = true;
         this.debounceTimer = null;
+
+        // Settings with defaults
+        this.settings = {
+            theme: 'light',
+            viewDensity: 'comfortable',
+            previewLines: 3
+        };
 
         // Bind methods
         this.handleSearch = this.handleSearch.bind(this);
@@ -28,6 +77,8 @@ class MemoryDashboard {
      * Initialize the application
      */
     async init() {
+        this.loadSettings();
+        this.applyTheme();
         this.setupEventListeners();
         this.setupSSE();
         await this.loadVersion();
@@ -135,9 +186,23 @@ class MemoryDashboard {
         document.getElementById('applyFiltersBtn')?.addEventListener('click', this.handleFilterChange.bind(this));
         document.getElementById('clearFiltersBtn')?.addEventListener('click', this.clearAllFilters.bind(this));
 
+        // Theme toggle button
+        document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+            this.toggleTheme();
+        });
+
         // Settings button
         document.getElementById('settingsBtn')?.addEventListener('click', () => {
-            this.showToast('Settings functionality not yet implemented.', 'info');
+            this.openSettingsModal();
+        });
+
+        // Settings modal handlers
+        document.getElementById('saveSettingsBtn')?.addEventListener('click', () => {
+            this.saveSettings();
+        });
+
+        document.getElementById('cancelSettingsBtn')?.addEventListener('click', () => {
+            this.closeModal(document.getElementById('settingsModal'));
         });
 
         // Tag cloud event delegation
@@ -335,6 +400,12 @@ class MemoryDashboard {
             // Show the tagged memories section
             tagNameSpan.textContent = tag;
             taggedContainer.style.display = 'block';
+
+            // Smooth scroll to results section for better UX
+            taggedContainer.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
 
             // Render filtered memories
             this.renderMemoriesInContainer(filteredMemories, memoriesList);
@@ -1537,6 +1608,194 @@ class MemoryDashboard {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    }
+
+    /**
+     * Load settings from localStorage
+     */
+    loadSettings() {
+        try {
+            const saved = localStorage.getItem('memoryDashboardSettings');
+            if (saved) {
+                this.settings = { ...this.settings, ...JSON.parse(saved) };
+            }
+        } catch (error) {
+            console.warn('Failed to load settings:', error);
+        }
+    }
+
+    /**
+     * Save settings to localStorage
+     */
+    saveSettingsToStorage() {
+        try {
+            localStorage.setItem('memoryDashboardSettings', JSON.stringify(this.settings));
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            this.showToast('Failed to save settings. Your preferences will not be persisted.', 'error');
+        }
+    }
+
+    /**
+     * Apply theme to the page
+     */
+    applyTheme(theme = this.settings.theme) {
+        const isDark = theme === 'dark';
+        document.body.classList.toggle('dark-mode', isDark);
+
+        // Toggle icon visibility using CSS classes
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        if (sunIcon && moonIcon) {
+            sunIcon.classList.toggle('hidden', isDark);
+            moonIcon.classList.toggle('hidden', !isDark);
+        }
+    }
+
+    /**
+     * Toggle between light and dark theme
+     */
+    toggleTheme() {
+        const newTheme = this.settings.theme === 'dark' ? 'light' : 'dark';
+        this.settings.theme = newTheme;
+        this.applyTheme(newTheme);
+        this.saveSettingsToStorage();
+        this.showToast(`Switched to ${newTheme} mode`, 'success');
+    }
+
+    /**
+     * Open settings modal
+     */
+    async openSettingsModal() {
+        const modal = document.getElementById('settingsModal');
+
+        // Populate form with current settings
+        document.getElementById('themeSelect').value = this.settings.theme;
+        document.getElementById('viewDensity').value = this.settings.viewDensity;
+        document.getElementById('previewLines').value = this.settings.previewLines;
+
+        // Reset system info to loading state
+        this.resetSystemInfoLoadingState();
+
+        // Load system information
+        await this.loadSystemInfo();
+
+        this.openModal(modal);
+    }
+
+    /**
+     * Reset system info fields to loading state
+     */
+    resetSystemInfoLoadingState() {
+        Object.keys(MemoryDashboard.SYSTEM_INFO_CONFIG).forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = 'Loading...';
+            }
+        });
+    }
+
+    /**
+     * Load system information for settings modal
+     */
+    async loadSystemInfo() {
+        try {
+            // Use Promise.allSettled for robust error handling
+            const [healthResult, detailedHealthResult] = await Promise.allSettled([
+                this.apiCall('/health'),
+                this.apiCall('/health/detailed')
+            ]);
+
+            const apiData = {
+                health: healthResult.status === 'fulfilled' ? healthResult.value : null,
+                detailedHealth: detailedHealthResult.status === 'fulfilled' ? detailedHealthResult.value : null
+            };
+
+            // Update fields using configuration
+            Object.entries(MemoryDashboard.SYSTEM_INFO_CONFIG).forEach(([fieldId, config]) => {
+                const element = document.getElementById(fieldId);
+                if (!element) return;
+
+                let value = null;
+                for (const source of config.sources) {
+                    const apiResponse = apiData[source.api];
+                    if (apiResponse) {
+                        value = this.getNestedValue(apiResponse, source.path);
+                        if (value !== undefined && value !== null) break;
+                    }
+                }
+
+                element.textContent = config.formatter(value);
+            });
+
+            // Log warnings for failed API calls
+            if (healthResult.status === 'rejected') {
+                console.warn('Failed to load health endpoint:', healthResult.reason);
+            }
+            if (detailedHealthResult.status === 'rejected') {
+                console.warn('Failed to load detailed health endpoint:', detailedHealthResult.reason);
+            }
+        } catch (error) {
+            console.error('Unexpected error loading system info:', error);
+            // Set all system info fields that are still in loading state to error
+            Object.keys(MemoryDashboard.SYSTEM_INFO_CONFIG).forEach(id => {
+                const element = document.getElementById(id);
+                if (element && element.textContent === 'Loading...') {
+                    element.textContent = 'Error';
+                }
+            });
+        }
+    }
+
+    /**
+     * Get nested object value by path string
+     * @param {Object} obj - Object to traverse
+     * @param {string} path - Dot-separated path (e.g., 'storage.primary_stats.embedding_model')
+     * @returns {*} Value at path or undefined
+     */
+    getNestedValue(obj, path) {
+        return path.split('.').reduce((current, key) => current?.[key], obj);
+    }
+
+    /**
+     * Format uptime seconds into human readable string
+     * @param {number} seconds - Uptime in seconds
+     * @returns {string} Formatted uptime string
+     */
+    static formatUptime(seconds) {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+
+        const parts = [];
+        if (days > 0) parts.push(`${days}d`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0) parts.push(`${minutes}m`);
+
+        return parts.length > 0 ? parts.join(' ') : '< 1m';
+    }
+
+    /**
+     * Save settings from modal
+     */
+    saveSettings() {
+        // Get values from form
+        const theme = document.getElementById('themeSelect').value;
+        const viewDensity = document.getElementById('viewDensity').value;
+        const previewLines = parseInt(document.getElementById('previewLines').value, 10);
+
+        // Update settings
+        this.settings.theme = theme;
+        this.settings.viewDensity = viewDensity;
+        this.settings.previewLines = previewLines;
+
+        // Apply changes
+        this.applyTheme(theme);
+        this.saveSettingsToStorage();
+
+        // Close modal and show confirmation
+        this.closeModal(document.getElementById('settingsModal'));
+        this.showToast('Settings saved successfully', 'success');
     }
 
     /**
