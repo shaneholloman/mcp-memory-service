@@ -8,6 +8,34 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.2.4] - 2025-10-06
+
+### 🐛 **Bug Fixes**
+
+#### **Critical: Memory Hooks JSON Parsing Failure**
+- **Fixed**: Memory awareness hooks completely broken - unable to retrieve memories due to JSON parsing errors
+- **Root cause**: Naive string replacement in HTTP client destroyed valid JSON
+  - `replace(/'/g, '"')` broke apostrophes in content (e.g., "it's" → "it"s")
+  - Replaced Python-style values (True/False/None) in already-valid JSON
+  - Used `/mcp` MCP-over-HTTP bridge instead of direct REST API
+- **Solution**:
+  - Removed destructive string replacements
+  - Updated to use direct REST API endpoints (`/api/search`, `/api/search/by-time`)
+  - Parse JSON responses directly without conversion
+- **Impact**: ✅ Memory hooks now successfully retrieve context-relevant memories at session start
+
+#### **HTTP Server Backend Configuration Override**
+- **Fixed**: HTTP server ignored `.env` configuration, forcing `sqlite_vec` instead of configured `hybrid` backend
+- **Root cause**: `run_http_server.py` used `os.environ.setdefault()` after `.env` loading, overriding user config
+- **Solution**: Commented out the backend override line to respect `.env` settings
+- **Impact**: ✅ Hybrid backend now works correctly via HTTP server
+
+##### **Technical Details**
+- **Files**:
+  - `C:\Users\heinrich.krupp\.claude\hooks\utilities\memory-client.js` - Fixed `queryMemoriesHTTP()` method
+  - `scripts/server/run_http_server.py` - Removed backend configuration override (line 148)
+- **Affected**: All users using memory hooks with HTTP protocol (automatic session awareness)
+
 ## [8.2.3] - 2025-10-05
 
 ### ✨ **Enhancements**

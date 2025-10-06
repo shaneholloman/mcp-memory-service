@@ -145,7 +145,8 @@ def main():
     
     # Set default environment variables for testing
     os.environ.setdefault('MCP_HTTP_ENABLED', 'true')
-    os.environ.setdefault('MCP_MEMORY_STORAGE_BACKEND', 'sqlite_vec')
+    # Don't override MCP_MEMORY_STORAGE_BACKEND - respect .env and environment settings
+    # os.environ.setdefault('MCP_MEMORY_STORAGE_BACKEND', 'sqlite_vec')
     os.environ.setdefault('LOG_LEVEL', 'INFO')
     
     try:
