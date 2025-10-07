@@ -8,6 +8,53 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.3.0] - 2025-10-07
+
+### 🧹 **Refactoring & Code Cleanup**
+
+#### **Complete ChromaDB Backend Removal**
+- **Removed**: ~300-500 lines of ChromaDB dead code following v8.0.0 deprecation
+- **Scope**: Complete cleanup across 18 files including configuration, CLI, server, storage, utilities, and web interface
+- **Changes**:
+  - **Configuration** (`config.py`): Removed CHROMA_PATH, CHROMA_SETTINGS, COLLECTION_METADATA, CHROMADB_MAX_CONTENT_LENGTH
+  - **CLI** (`cli/main.py`, `cli/ingestion.py`): Removed `--chroma-path` option, removed 'chromadb' from storage backend choices
+  - **Server** (`server.py`): Removed ChromaDB initialization (~60 lines), stats fallback (~40 lines), backup handler, validation logic
+  - **Utilities** (`utils/db_utils.py`): Removed ChromaDB validation, stats, and repair functions (~140 lines)
+  - **Storage** (`storage/cloudflare.py`, `storage/sqlite_vec.py`): Updated docstrings to be backend-agnostic
+  - **Web** (`web/app.py`): Removed 'chromadb' from backend display name mapping
+  - **Documentation**: Updated all error messages to suggest Cloudflare instead of ChromaDB
+- **Impact**: ✅ Cleaner codebase, reduced technical debt, no misleading ChromaDB references
+- **SUPPORTED_BACKENDS**: Now correctly shows `['sqlite_vec', 'sqlite-vec', 'cloudflare', 'hybrid']`
+
+#### **CLI Backend Consistency Enhancement**
+- **Added**: 'sqlite-vec' hyphenated alias to all CLI storage backend choices
+- **Affected commands**: `server`, `status`, `ingest_document`, `ingest_directory`
+- **Rationale**: Ensures CLI behavior matches SUPPORTED_BACKENDS configuration
+- **Impact**: ✅ Improved user experience with consistent backend naming across CLI and configuration
+
+### 🐛 **Bug Fixes**
+
+#### **Dashboard System Information Display (Issue #151)**
+- **Fixed**: Dashboard showing "N/A" for embedding model, embedding dimensions, and database size on non-hybrid backends
+- **Root cause**: JavaScript expected hybrid-backend-specific nested paths (`storage.primary_stats.*`)
+- **Solution**: Added fallback paths in `app.js` SYSTEM_INFO_CONFIG:
+  - `settingsEmbeddingModel`: Falls back to `storage.embedding_model`
+  - `settingsEmbeddingDim`: Falls back to `storage.embedding_dimension`
+  - `settingsDbSize`: Falls back to `storage.database_size_mb`
+- **Impact**: ✅ Dashboard now correctly displays system information for sqlite-vec, cloudflare, and hybrid backends
+
+##### **Technical Details**
+- **PR**: [#153](https://github.com/doobidoo/mcp-memory-service/pull/153) - ChromaDB dead code removal + Issue #151 fix
+- **Files Modified**: 18 files
+  - Core cleanup: `config.py`, `server.py`, `mcp_server.py`, `utils/db_utils.py`
+  - CLI: `cli/main.py`, `cli/ingestion.py`, `cli/utils.py`
+  - Storage: `storage/factory.py`, `storage/cloudflare.py`, `storage/sqlite_vec.py`
+  - Web: `web/app.py`, `web/api/health.py`, `web/static/app.js`
+  - Utilities: `utils/debug.py`, `embeddings/onnx_embeddings.py`
+  - Package: `__init__.py`, `dependency_check.py`
+- **Code Review**: Approved by Gemini Code Assist with high-quality feedback
+- **Testing**: ✅ SQLite-vec backend initialization, ✅ SUPPORTED_BACKENDS verification, ✅ Service startup
+
 ## [8.2.4] - 2025-10-06
 
 ### 🐛 **Bug Fixes**
