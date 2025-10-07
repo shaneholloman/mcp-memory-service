@@ -8,6 +8,51 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.3.1] - 2025-10-07
+
+### ✨ **Features & Improvements**
+
+#### **HTTP Server Management Tools**
+- **Added**: Cross-platform HTTP server management utilities for Claude Code Natural Memory Triggers
+- **New Scripts**:
+  - `scripts/server/check_http_server.py`: Health check utility for HTTP server status verification
+    - Supports both HTTP and HTTPS endpoints via environment variables
+    - Verbose output by default, `-q` flag for quiet mode (exit codes only)
+    - Detects MCP_HTTPS_ENABLED, MCP_HTTP_PORT, MCP_HTTPS_PORT configuration
+  - `scripts/server/start_http_server.sh`: Auto-start script for Unix/macOS
+    - Intelligent server detection with 5-second polling loop
+    - Background process management via nohup
+    - Logs to `/tmp/mcp-http-server.log`
+  - `scripts/server/start_http_server.bat`: Auto-start script for Windows
+    - 5-second polling loop for reliable startup detection
+    - Starts server in new window for easy monitoring
+    - Handles already-running servers gracefully
+- **Documentation**: Comprehensive `docs/http-server-management.md` guide
+  - Why HTTP server is required for Natural Memory Triggers
+  - Quick health check commands
+  - Manual and auto-start procedures
+  - Troubleshooting guide with common issues
+  - Integration with Claude Code hooks
+  - Automation examples (launchd, Task Scheduler, shell aliases)
+- **Use Case**: Essential for Claude Code hooks to inject relevant memories at session start without MCP conflicts
+- **Wiki**: User-specific setup examples moved to wiki as reference guides
+  - Windows-Hybrid-Backend-Setup-Example.md
+  - Windows-Setup-Summary-Example.md
+
+**Impact**: ✅ Streamlined HTTP server management, improved Natural Memory Triggers reliability, better cross-platform support
+
+##### **Technical Details**
+- **PR**: [#154](https://github.com/doobidoo/mcp-memory-service/pull/154) - HTTP server management tools
+- **Files Added**: 4 new files
+  - Scripts: `check_http_server.py`, `start_http_server.sh`, `start_http_server.bat`
+  - Documentation: `http-server-management.md`
+- **Gemini Reviews**: 3 rounds of code review and refinement
+  - Security: Removed hardcoded credentials (replaced with placeholders)
+  - Robustness: Improved exception handling, added polling loops
+  - CLI Usability: Simplified argument parsing (removed redundant `-v` flag)
+- **Cross-platform**: Fully tested on Unix/macOS and Windows environments
+- **Integration**: Works seamlessly with existing `run_http_server.py` script
+
 ## [8.3.0] - 2025-10-07
 
 ### 🧹 **Refactoring & Code Cleanup**
