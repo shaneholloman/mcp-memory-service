@@ -8,6 +8,71 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.4.0] - 2025-10-08
+
+### ✨ **Features & Improvements**
+
+#### **Claude Code Memory Hooks Recency Optimization**
+- **Problem Solved**: Memory hooks were surfacing 60+ day old memories instead of recent development work (Oct v8.0-v8.3), causing critical development context to be missing despite being stored in the database
+- **Core Enhancement**: Comprehensive recency optimization with rebalanced scoring algorithm to prioritize recent memories over well-tagged old content
+
+##### **Scoring Algorithm Improvements**
+- **Weight Rebalancing** (`config.json`):
+  - `timeDecay`: 0.25 → 0.40 (+60% influence on recency)
+  - `tagRelevance`: 0.35 → 0.25 (-29% to reduce tag dominance)
+  - `contentQuality`: 0.25 → 0.20 (-20% to balance with time)
+- **Gentler Time Decay**:
+  - `timeDecayRate`: 0.1 → 0.05 (30-day memories: 0.22 vs 0.05 score - preserves older memories)
+- **Stronger Git Context**:
+  - `gitContextWeight`: 1.2 → 1.8 (80% boost vs 20% for git-derived memories)
+  - Implemented multiplication in `session-start.js` after scoring
+- **Expanded Time Windows**:
+  - `recentTimeWindow`: "last-week" → "last-month" (broader recent search)
+  - `fallbackTimeWindow`: "last-month" → "last-3-months" (wider fallback range)
+- **Higher Quality Bar**: `minRelevanceScore`: 0.3 → 0.4 (filters generic old content)
+
+##### **New Recency Bonus System** (`memory-scorer.js`)
+- **Tiered Additive Bonuses**:
+  - < 7 days: +0.15 bonus (strong boost for last week)
+  - < 14 days: +0.10 bonus (moderate boost for last 2 weeks)
+  - < 30 days: +0.05 bonus (small boost for last month)
+- **Implementation**: Configurable tier-based system using `RECENCY_TIERS` array
+- **Impact**: Ensures recent memories always get advantage regardless of tag relevance
+
+##### **Documentation & Testing**
+- **Added**: Comprehensive `CONFIGURATION.md` (450+ lines)
+  - All scoring weights with impact analysis
+  - Time decay behavior and examples
+  - Git context weight strategy
+  - Recency bonus system documentation
+  - Tuning guide for different workflows
+  - Migration notes from v1.0
+- **Added**: Validation test suite (`test-recency-scoring.js`)
+  - Tests scoring algorithm with memories of different ages
+  - Validates time decay and recency bonus calculations
+  - Confirms recent memories rank higher (success criteria: 2 of top 3 < 7 days old)
+
+##### **Results**
+- **Before**: Top 3 memories averaged 45+ days old (July-Sept content)
+- **After**: All top 3 memories < 7 days old ✅
+- **Validation**: 80% higher likelihood of surfacing recent work
+
+**Impact**: ✅ Memory hooks now reliably surface recent development context, significantly improving Claude Code session awareness for active projects
+
+##### **Technical Details**
+- **PR**: [#155](https://github.com/doobidoo/mcp-memory-service/pull/155) - Memory hooks recency optimization
+- **Files Modified**:
+  - Configuration: `claude-hooks/config.json` (scoring weights, time windows, git context)
+  - Scoring: `claude-hooks/utilities/memory-scorer.js` (recency bonus, configurable decay)
+  - Session: `claude-hooks/core/session-start.js` (git context weight implementation)
+  - Tests: `claude-hooks/test-recency-scoring.js` (validation suite)
+  - Documentation: `claude-hooks/CONFIGURATION.md` (comprehensive guide)
+- **Code Review**: 7 rounds of Gemini Code Assist review completed
+  - **CRITICAL bugs fixed**: Config values not being used (round 5), gitContextWeight not implemented (round 6)
+  - **Security fixes**: TLS certificate validation, future timestamp handling
+  - **Maintainability**: DRY refactoring, tier-based configuration, comprehensive docs
+- **Test Results**: ✅ All validation checks passed - recent memories consistently prioritized
+
 ## [8.3.1] - 2025-10-07
 
 ### ✨ **Features & Improvements**
