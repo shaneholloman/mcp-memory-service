@@ -216,8 +216,44 @@ function calculateTypeBonus(memoryType) {
         'todo': 0.05,            // TODOs are task-specific
         'temporary': -0.1        // Temporary notes should be deprioritized
     };
-    
+
     return typeScores[memoryType?.toLowerCase()] || 0;
+}
+
+/**
+ * Calculate recency bonus to prioritize very recent memories
+ * Provides explicit boost for memories created within specific time windows
+ */
+function calculateRecencyBonus(memoryDate) {
+    // Recency bonus tiers (days and corresponding bonus values)
+    const RECENCY_TIERS = [
+        { days: 7, bonus: 0.15 },  // Strong boost for last week
+        { days: 14, bonus: 0.10 }, // Moderate boost for last 2 weeks
+        { days: 30, bonus: 0.05 }  // Small boost for last month
+    ];
+
+    try {
+        const now = new Date();
+        const memoryTime = new Date(memoryDate);
+
+        if (isNaN(memoryTime.getTime()) || memoryTime > now) {
+            return 0; // No bonus for invalid or future dates
+        }
+
+        const daysDiff = (now - memoryTime) / (1000 * 60 * 60 * 24);
+
+        // Find the appropriate tier for this memory's age
+        for (const tier of RECENCY_TIERS) {
+            if (daysDiff <= tier.days) {
+                return tier.bonus;
+            }
+        }
+
+        return 0; // No bonus for older memories
+
+    } catch (error) {
+        return 0;
+    }
 }
 
 /**
@@ -314,13 +350,14 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
     try {
         const {
             weights = {},
+            timeDecayRate = 0.1,       // Default decay rate
             includeConversationContext = false,
             conversationAnalysis = null
         } = options;
 
         // Default weights including content quality factor
         const defaultWeights = includeConversationContext ? {
-            timeDecay: 0.20,           // Reduced weight for time 
+            timeDecay: 0.20,           // Reduced weight for time
             tagRelevance: 0.30,        // Tag matching remains important
             contentRelevance: 0.15,    // Content matching reduced
             contentQuality: 0.25,      // New quality factor
@@ -333,22 +370,24 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
             contentQuality: 0.25,      // Quality factor prioritized
             typeBonus: 0.05            // Type bonus reduced
         };
-        
+
         const w = { ...defaultWeights, ...weights };
-        
+
         // Calculate individual scores
-        const timeScore = calculateTimeDecay(memory.created_at || memory.created_at_iso);
+        const timeScore = calculateTimeDecay(memory.created_at || memory.created_at_iso, timeDecayRate);
         const tagScore = calculateTagRelevance(memory.tags, projectContext);
         const contentScore = calculateContentRelevance(memory.content, projectContext);
         const qualityScore = calculateContentQuality(memory.content);
         const typeBonus = calculateTypeBonus(memory.memory_type);
-        
+        const recencyBonus = calculateRecencyBonus(memory.created_at || memory.created_at_iso);
+
         let finalScore = (
             (timeScore * w.timeDecay) +
             (tagScore * w.tagRelevance) +
             (contentScore * w.contentRelevance) +
             (qualityScore * w.contentQuality) +
-            typeBonus // Type bonus is not weighted, acts as adjustment
+            typeBonus + // Type bonus is not weighted, acts as adjustment
+            recencyBonus // Recency bonus provides explicit boost for very recent memories
         );
 
         const breakdown = {
@@ -356,7 +395,8 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
             tagRelevance: tagScore,
             contentRelevance: contentScore,
             contentQuality: qualityScore,
-            typeBonus: typeBonus
+            typeBonus: typeBonus,
+            recencyBonus: recencyBonus
         };
 
         // Add conversation context scoring if enabled (Phase 2)
@@ -464,6 +504,7 @@ module.exports = {
     calculateTagRelevance,
     calculateContentRelevance,
     calculateTypeBonus,
+    calculateRecencyBonus,
     filterByRelevance
 };
 
