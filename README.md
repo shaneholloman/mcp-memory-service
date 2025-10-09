@@ -15,23 +15,38 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🧠 **v7.1.0: Natural Memory Triggers for Claude Code**
+### 🆕 **v8.4.0: Memory Hooks Recency Optimization**
 
-**🤖 Intelligent Memory Awareness** (Zero Configuration):
+**📊 Intelligent Recent Memory Prioritization** (80% Better Context):
 ```bash
-# 1. Install MCP Memory Service
+# Automatically prioritizes recent development work over old memories
+# Memory hooks now surface memories <7 days old with 80% higher accuracy
+
+# 1. Install/Update MCP Memory Service
 git clone https://github.com/doobidoo/mcp-memory-service.git
 cd mcp-memory-service && python install.py
 
-# 2. Install Natural Memory Triggers
+# 2. Install Natural Memory Triggers (includes recency optimization)
 cd claude-hooks && python install_hooks.py --natural-triggers
 
-# 3. Test intelligent triggers
-node memory-mode-controller.js status
-# ✅ Done! Claude Code now automatically detects when you need memory context
+# 3. Verify recency scoring
+node test-recency-scoring.js
+# ✅ Done! Recent memories automatically prioritized in Claude Code
 ```
 
-**📖 Complete Guide**: [Natural Memory Triggers v7.1.0](https://github.com/doobidoo/mcp-memory-service/wiki/Natural-Memory-Triggers-v7.1.0)
+**📖 Complete Guide**: [Memory Hooks Configuration](https://github.com/doobidoo/mcp-memory-service/tree/main/claude-hooks/CONFIGURATION.md)
+
+---
+
+### 🧠 **Natural Memory Triggers v7.1.0+**
+
+**🤖 Intelligent Memory Awareness** (Zero Configuration):
+- ✅ **85%+ trigger accuracy** with semantic pattern detection
+- ✅ **Recent memory prioritization** (v8.4.0+) - 80% better context
+- ✅ **Multi-tier performance** (50ms instant → 150ms fast → 500ms intensive)
+- ✅ **CLI management system** for real-time configuration
+
+**📖 Complete Guide**: [Natural Memory Triggers](https://github.com/doobidoo/mcp-memory-service/wiki/Natural-Memory-Triggers-v7.1.0)
 
 ---
 
@@ -67,14 +82,14 @@ python install.py
 # Add full ML capabilities (torch + sentence-transformers for advanced features)
 python install.py --with-ml
 
-# Add ChromaDB backend support (includes full ML stack - for multi-client setups)
-python install.py --with-chromadb
+# Install with hybrid backend (SQLite-vec + Cloudflare sync)
+python install.py --storage-backend hybrid
 ```
 
 **📝 Installation Options Explained:**
 - **Default (recommended)**: Lightweight SQLite-vec with ONNX embeddings - fast, works offline, <100MB dependencies
 - **`--with-ml`**: Adds PyTorch + sentence-transformers for advanced ML features - heavier but more capable
-- **`--with-chromadb`**: Multi-client local server support - use only if you need shared team access
+- **`--storage-backend hybrid`**: Hybrid backend with SQLite-vec + Cloudflare sync - best for multi-device access
 
 **Docker (Fastest):**
 ```bash
@@ -114,7 +129,7 @@ These warnings disappear after the first successful run. The service is working 
 **sqlite-vec** may not have pre-built wheels for Python 3.13 yet. If installation fails:
 - The installer will automatically try multiple installation methods
 - Consider using Python 3.12 for the smoothest experience: `brew install python@3.12`
-- Alternative: Use ChromaDB backend with `--storage-backend chromadb --with-chromadb`
+- Alternative: Use Cloudflare backend with `--storage-backend cloudflare`
 - See [Troubleshooting Guide](docs/troubleshooting/general.md#python-313-sqlite-vec-issues) for details
 
 ### 🍎 macOS SQLite Extension Support
@@ -123,7 +138,7 @@ These warnings disappear after the first successful run. The service is working 
 - **System Python** on macOS lacks SQLite extension support by default
 - **Solution**: Use Homebrew Python: `brew install python && rehash`
 - **Alternative**: Use pyenv: `PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' pyenv install 3.12.0`
-- **Fallback**: Use sqlite_vec backend (default) or install ChromaDB with `--with-chromadb`
+- **Fallback**: Use Cloudflare or Hybrid backend: `--storage-backend cloudflare` or `--storage-backend hybrid`
 - See [Troubleshooting Guide](docs/troubleshooting/general.md#macos-sqlite-extension-issues) for details
 
 ## 📚 Complete Documentation
@@ -182,12 +197,12 @@ These warnings disappear after the first successful run. The service is working 
 - **13+ AI applications** - REST API compatibility
 
 ### 💾 **Flexible Storage**
-- **SQLite-vec** - Fast local storage (recommended, lightweight ONNX embeddings)
-- **ChromaDB** - Multi-client collaboration (optional, heavy dependencies)
-- **Cloudflare** - Global edge distribution
+- **SQLite-vec** - Fast local storage (recommended, lightweight ONNX embeddings, 5ms reads)
+- **Cloudflare** - Global edge distribution with D1 + Vectorize
+- **Hybrid** - Best of both worlds: SQLite-vec speed + Cloudflare sync (recommended for teams)
 - **Automatic backups** and synchronization
 
-> **Note**: All heavy ML dependencies (PyTorch, sentence-transformers, ChromaDB) are now optional to dramatically reduce build times and image sizes. SQLite-vec uses lightweight ONNX embeddings by default. Install with `--with-ml` for full ML capabilities or `--with-chromadb` for multi-client features.
+> **Note**: All heavy ML dependencies (PyTorch, sentence-transformers) are now optional to dramatically reduce build times and image sizes. SQLite-vec uses lightweight ONNX embeddings by default. Install with `--with-ml` for full ML capabilities.
 
 ### 🚀 **Production Ready**
 - **Cross-platform** - Windows, macOS, Linux
@@ -289,11 +304,11 @@ export MCP_API_KEY="your-secure-key"
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   AI Clients    │    │  MCP Memory     │    │ Storage Backend │
-│                 │    │  Service v7.0   │    │                 │
+│                 │    │  Service v8.4   │    │                 │
 │ • Claude Desktop│◄──►│ • MCP Protocol  │◄──►│ • SQLite-vec    │
-│ • Claude Code   │    │ • HTTP Transport│    │ • ChromaDB      │
-│   (HTTP/OAuth)  │    │ • OAuth 2.1 Auth│    │ • Cloudflare    │
-│ • VS Code       │    │ • Memory Store  │    │ • Hybrid        │
+│ • Claude Code   │    │ • HTTP Transport│    │ • Cloudflare    │
+│   (HTTP/OAuth)  │    │ • OAuth 2.1 Auth│    │ • Hybrid        │
+│ • VS Code       │    │ • Memory Store  │    │   (SQLite+CF)   │
 │ • Cursor        │    │ • Semantic      │    │                 │
 │ • 13+ AI Apps   │    │   Search        │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘

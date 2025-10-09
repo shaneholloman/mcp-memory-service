@@ -6,9 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Overview
 
-MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop using ChromaDB and sentence transformers.
+MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🎉 v7.2.2**: **Interactive Dashboard Production-Ready** - Comprehensive validation complete with excellent performance (25ms page load, 26ms memory ops), advanced search capabilities, real-time SSE updates, and mobile responsiveness!
+> **🆕 v8.4.0**: **Memory Hooks Recency Optimization** - Recent memory prioritization with 80% better context accuracy. Comprehensive scoring rebalancing ensures development work from the last 7 days surfaces automatically!
+
+> **🎉 v8.3.1**: **HTTP Server Management** - Cross-platform auto-start scripts and health check utilities for seamless Natural Memory Triggers integration!
+
+> **🔄 v8.0.0**: **ChromaDB Removed** - Simplified architecture focuses on SQLite-vec (fast local), Cloudflare (edge distribution), and Hybrid (best of both) backends!
 
 > **🧠 v7.1.0**: Now features **Natural Memory Triggers** with intelligent automatic memory retrieval, 85%+ trigger accuracy, and multi-tier performance optimization!
 
@@ -73,7 +77,7 @@ time curl -s "http://127.0.0.1:8888/" > /dev/null     # Dashboard page load perf
 
 **Core Components:**
 - **Server Layer**: MCP protocol implementation with async handlers and global caches (`src/mcp_memory_service/server.py`)
-- **Storage Backends**: SQLite-Vec (fast, single-client), ChromaDB (multi-client), Cloudflare (production)
+- **Storage Backends**: SQLite-Vec (fast local, 5ms reads), Cloudflare (edge distribution), Hybrid (SQLite+Cloudflare sync)
 - **Web Interface**: FastAPI dashboard at `https://localhost:8443/` with REST API
 - **Document Ingestion**: Pluggable loaders for PDF, DOCX, PPTX, text with semtools support
 - **Dual Protocol Memory Hooks** 🆕: Advanced Claude Code integration with HTTP + MCP support
@@ -198,10 +202,10 @@ POST /api/search/by-time
 
 **Essential Configuration:**
 ```bash
-# Storage Backend (Cloudflare is PRODUCTION default)
-export MCP_MEMORY_STORAGE_BACKEND=cloudflare  # cloudflare|sqlite_vec|chroma
+# Storage Backend (Hybrid is RECOMMENDED for production)
+export MCP_MEMORY_STORAGE_BACKEND=hybrid  # hybrid|cloudflare|sqlite_vec
 
-# Cloudflare Production Configuration (REQUIRED)
+# Cloudflare Configuration (REQUIRED for hybrid/cloudflare backends)
 export CLOUDFLARE_API_TOKEN="your-token"      # Required for Cloudflare backend
 export CLOUDFLARE_ACCOUNT_ID="your-account"   # Required for Cloudflare backend
 export CLOUDFLARE_D1_DATABASE_ID="your-d1-id" # Required for Cloudflare backend
@@ -284,7 +288,7 @@ mcp context optimize                           # Get optimization suggestions
 - Project-specific patterns for FastAPI, MCP protocol, and storage backends
 - Auto-store: MCP protocol changes, backend configs, performance optimizations
 - Auto-retrieve: Troubleshooting, setup queries, implementation examples
-- Smart tagging: Auto-detects tools (fastapi, cloudflare, sqlite, chromadb, etc.)
+- Smart tagging: Auto-detects tools (fastapi, cloudflare, sqlite-vec, hybrid, etc.)
 
 **2. Release Workflow Context** 🆕 (`mcp_memory_release_workflow`)
 - **PR Review Cycle**: Iterative Gemini Code Assist workflow (Fix → Comment → /gemini review → Wait 1min → Repeat)
@@ -373,9 +377,8 @@ mcp context optimize                           # Get optimization suggestions
 | Backend | Performance | Use Case | Installation |
 |---------|-------------|----------|--------------|
 | **Hybrid** ⚡ | **Fast (5ms read)** | **🌟 Production (Recommended)** | `install.py --storage-backend hybrid` |
-| **Cloudflare** ☁️ | Network dependent | Legacy cloud-only | `install.py --storage-backend cloudflare` |
-| SQLite-Vec 🪶 | Fast (5ms read) | Development, single-user | `install.py --storage-backend sqlite_vec` |
-| ChromaDB 👥 | Medium (15ms read) | Team, multi-client local | `install.py --storage-backend chromadb` |
+| **Cloudflare** ☁️ | Network dependent | Cloud-only deployment | `install.py --storage-backend cloudflare` |
+| **SQLite-Vec** 🪶 | Fast (5ms read) | Development, single-user local | `install.py --storage-backend sqlite_vec` |
 
 ### 🚀 **Hybrid Backend (v6.21.0+) - RECOMMENDED**
 
