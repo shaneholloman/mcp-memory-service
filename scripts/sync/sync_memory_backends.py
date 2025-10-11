@@ -27,8 +27,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from datetime import datetime
 
-# Add parent directory to path so we can import from the src directory
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path so we can import from the src directory
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.mcp_memory_service.storage.cloudflare import CloudflareStorage
 from src.mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
