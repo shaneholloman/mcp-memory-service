@@ -70,8 +70,7 @@
       <text x="515" y="50" font-family="Arial, sans-serif" font-size="14" fill="#555">• debug_retrieve</text>
       <text x="515" y="70" font-family="Arial, sans-serif" font-size="14" fill="#555">• recall_memory</text>
       <text x="515" y="90" font-family="Arial, sans-serif" font-size="14" fill="#555">• delete_by_timeframe</text>
-      <text x="515" y="110" font-family="Arial, sans-serif" font-size="14" fill="#555">• dashboard_*_ops</text>
-      <text x="515" y="130" font-family="Arial, sans-serif" font-size="14" fill="#555">• check_embedding</text>
+      <text x="515" y="110" font-family="Arial, sans-serif" font-size="14" fill="#555">• check_embedding</text>
     </g>
   </g>
   

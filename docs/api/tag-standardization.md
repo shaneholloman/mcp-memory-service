@@ -487,7 +487,7 @@ search_by_tag({"tags": ["test"]})  // Check if generic tags need specificity
 **Tag frequency analysis:**
 ```javascript
 // Analyze which tags are most/least used
-dashboard_get_stats()  // Get overall statistics
+check_database_health()  // Get overall statistics
 search_by_tag({"tags": ["frequent-tag"]})  // Count instances
 ```
 

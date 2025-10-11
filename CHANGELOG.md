@@ -8,6 +8,35 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.4.1] - 2025-10-11
+
+### 🎯 **Performance & Optimization**
+
+#### **MCP Context Optimization: Dashboard Tools Removal**
+- **Problem**: MCP tools consuming 31.4k tokens (15.7% of context budget) with redundant dashboard variants that duplicated web UI functionality
+- **Solution**: Removed 8 dashboard-specific MCP tools that were unnecessary for Claude Code integration
+
+**Tools Removed:**
+- `dashboard_check_health`, `dashboard_recall_memory`, `dashboard_retrieve_memory`
+- `dashboard_search_by_tag`, `dashboard_get_stats`, `dashboard_optimize_db`
+- `dashboard_create_backup`, `dashboard_delete_memory`
+
+**Rationale:** Web dashboard uses REST API endpoints (`/api/*`), not MCP tools. These were legacy wrappers created during early dashboard development that bloated context without providing value for AI assistant integration.
+
+**Impact:**
+- ✅ **MCP tools**: 31.4k → 26.8k tokens (15% reduction, -4.6k tokens saved)
+- ✅ **Zero functional impact**: Core memory tools preserved (`check_database_health`, `recall_memory`, etc.)
+- ✅ **Cleaner separation**: MCP protocol for Claude Code integration, HTTP REST API for web dashboard
+
+**Files Modified:**
+- `src/mcp_memory_service/server.py`: Removed 8 tool definitions, call_tool handlers, and method implementations (~506 lines)
+- `docs/api/tag-standardization.md`: Updated to use `check_database_health()` instead of `dashboard_get_stats()`
+- `docs/maintenance/memory-maintenance.md`: Removed redundant dashboard tool reference
+- `docs/guides/mcp-enhancements.md`: Removed `dashboard_optimize_db` progress tracking example
+- `docs/assets/images/project-infographic.svg`: Removed `dashboard_*_ops` visual reference
+
+**Note:** Web dashboard at `https://localhost:8443` continues working normally via REST API. No user-facing changes.
+
 ## [8.4.0] - 2025-10-08
 
 ### ✨ **Features & Improvements**

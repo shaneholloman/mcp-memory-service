@@ -31,9 +31,6 @@ Memory maintenance is essential for keeping your knowledge base organized, searc
 ```javascript
 // Check overall database status
 check_database_health()
-
-// Get statistics
-dashboard_get_stats()
 ```
 
 **What to look for:**

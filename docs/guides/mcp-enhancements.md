@@ -211,25 +211,12 @@ Provides step-by-step progress when deleting memories by tags:
 100% - Deletion completed: Successfully deleted 45 memories
 ```
 
-#### 2. Database Optimization (`dashboard_optimize_db`)
-Tracks optimization stages:
-
-```
-0% - Starting database optimization...
-20% - Analyzing database structure...
-40% - Cleaning up duplicate entries...
-60% - Optimizing vector indices...
-80% - Compacting storage...
-100% - Database optimization completed successfully
-```
-
 ### Operation IDs
 
 Each long-running operation receives a unique ID for tracking:
 
 ```
 Operation ID: delete_by_tags_a1b2c3d4
-Operation ID: optimize_db_e5f6g7h8
 ```
 
 ### Progress Notification Structure
