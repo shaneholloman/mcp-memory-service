@@ -8,6 +8,81 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.1] - 2025-10-11
+
+### 🎯 **New Features**
+
+#### **Dynamic Memory Weight Adjustment (Claude Code Hooks)**
+Intelligent auto-calibration prevents stale memories from dominating session context when recent development exists.
+
+**Problem Solved:**
+Users reported "Current Development" section showing outdated memories (24-57 days old) instead of recent work from the last 7 days. Root cause: static configuration couldn't adapt to mismatches between git activity and memory age.
+
+**Solution - Memory Age Distribution Analyzer:**
+- **Auto-Detection**: Analyzes memory age percentiles (median, p75, p90, avg)
+- **Staleness Detection**: Triggers when median > 30 days or < 20% recent memories
+- **Smart Calibration**: Automatically adjusts weights:
+  - `timeDecay`: 0.25 → 0.50 (+100% boost for recent memories)
+  - `tagRelevance`: 0.35 → 0.20 (-43% reduce old tag matches)
+- **Impact**: Stale memory sets automatically prioritize any recent memories
+
+**Solution - Adaptive Git Context Weight:**
+- **Scenario 1**: Recent commits (< 7d) + Stale memories (median > 30d)
+  - Reduces git weight by 30%: `1.8x → 1.3x`
+  - Prevents old git-related memories from dominating
+- **Scenario 2**: Recent commits + Recent memories (both < 14d)
+  - Keeps configured weight: `1.8x → 1.8x`
+  - Git context is relevant and aligned
+- **Scenario 3**: Old commits (> 14d) + Some recent memories
+  - Reduces git weight by 15%: `1.8x → 1.5x`
+  - Lets recent non-git memories surface
+
+**Configuration Options:**
+```json
+{
+  "memoryScoring": {
+    "autoCalibrate": true  // Enable/disable auto-calibration
+  },
+  "gitAnalysis": {
+    "adaptiveGitWeight": true  // Enable/disable adaptive git weight
+  }
+}
+```
+
+**Transparency Output:**
+```
+🎯 Auto-Calibration → Stale memory set detected (median: 54d old, 0% recent)
+   Adjusted Weights → timeDecay: 0.50, tagRelevance: 0.20
+⚙️  Adaptive Git Weight → Recent commits (1d ago) but stale memories - reducing git boost: 1.8 → 1.3
+```
+
+**Files Added:**
+- `claude-hooks/test-adaptive-weights.js` - Comprehensive test scenarios
+
+**Files Modified:**
+- `claude-hooks/utilities/memory-scorer.js` (+162 lines):
+  - `analyzeMemoryAgeDistribution()` - Detects staleness and recommends adjustments
+  - `calculateAdaptiveGitWeight()` - Dynamically adjusts git boost based on context alignment
+- `claude-hooks/core/session-start.js` (+60 lines):
+  - Integrated age analysis before scoring
+  - Auto-calibration logic with config check
+  - Adaptive git weight calculation with transparency output
+- `claude-hooks/config.json` (+2 options):
+  - Added `memoryScoring.autoCalibrate: true` (default enabled)
+  - Added `gitAnalysis.adaptiveGitWeight: true` (default enabled)
+
+**Benefits:**
+- ✅ **Automatic Detection**: No manual config changes when memories become stale
+- ✅ **Context-Aware**: Git boost only applies when it enhances (not harms) relevance
+- ✅ **Transparent**: Shows reasoning for adjustments in session output
+- ✅ **Opt-Out Available**: Users can disable via config if desired
+- ✅ **Backward Compatible**: Defaults preserve existing behavior when memories are recent
+
+**Test Results:**
+- Scenario 1 (Stale): Automatically calibrated weights and reduced git boost 1.8x → 1.3x
+- Scenario 2 (Recent): No calibration needed, preserved git weight at 1.8x
+- Both scenarios working as expected, preventing outdated context issues
+
 ## [8.5.0] - 2025-10-11
 
 ### 🎉 **New Features**

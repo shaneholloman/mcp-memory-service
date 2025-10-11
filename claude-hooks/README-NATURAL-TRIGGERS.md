@@ -6,6 +6,8 @@
 
 The Natural Memory Triggers system provides seamless, intelligent memory awareness during conversations that feels like Claude naturally "remembers" rather than executing explicit system hooks. It uses multi-tiered performance architecture to balance memory intelligence with responsiveness.
 
+> **🎯 v8.5.1 NEW**: **Dynamic Memory Weight Adjustment** - Intelligent auto-calibration automatically detects when memories are stale and adjusts scoring weights to prioritize recent work. No more outdated context!
+
 ## Key Features
 
 ### 🎯 **Natural Language Pattern Detection**

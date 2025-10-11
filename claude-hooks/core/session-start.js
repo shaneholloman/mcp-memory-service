@@ -8,7 +8,7 @@ const path = require('path');
 
 // Import utilities
 const { detectProjectContext } = require('../utilities/project-detector');
-const { scoreMemoryRelevance } = require('../utilities/memory-scorer');
+const { scoreMemoryRelevance, analyzeMemoryAgeDistribution, calculateAdaptiveGitWeight } = require('../utilities/memory-scorer');
 const { formatMemoriesForContext } = require('../utilities/context-formatter');
 const { detectContextShift, extractCurrentContext, determineRefreshStrategy } = require('../utilities/context-shift-detector');
 const { analyzeGitContext, buildGitContextQuery } = require('../utilities/git-analyzer');
@@ -551,6 +551,12 @@ async function executeSessionStart(context) {
         const recentRatio = config.memoryService.recentMemoryRatio || 0.6;
         const recentTimeWindow = config.memoryService.recentTimeWindow || 'last-week';
         const fallbackTimeWindow = config.memoryService.fallbackTimeWindow || 'last-month';
+
+        // Extract memory scoring configuration
+        const scoringWeights = config.memoryScoring?.weights || {};
+        const timeDecayRate = config.memoryScoring?.timeDecayRate || 0.1;
+        const enableConversationContext = config.memoryScoring?.enableConversationContext || false;
+        const minRelevanceScore = config.memoryScoring?.minRelevanceScore || 0.3;
         const showPhaseDetails = config.output?.showPhaseDetails !== false; // Default to true
         
         if (recentFirstMode) {
@@ -762,35 +768,124 @@ async function executeSessionStart(context) {
                 console.log(`${CONSOLE_COLORS.GREEN}📚 Memory Search${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Found ${CONSOLE_COLORS.BRIGHT}${memories.length}${CONSOLE_COLORS.RESET} relevant memories${recentText}`);
             }
             
-            // Score memories for relevance (with enhanced recency weighting)
+            // Analyze memory age distribution for adaptive weight adjustment
+            const ageAnalysis = analyzeMemoryAgeDistribution(memories, { verbose: showMemoryDetails && !cleanMode });
+
+            // Apply auto-calibration if enabled
+            const autoCalibrate = config.memoryScoring?.autoCalibrate !== false; // Default true
+            let adjustedWeights = { ...scoringWeights };
+
+            if (autoCalibrate && ageAnalysis.isStale && ageAnalysis.recommendedAdjustments.timeDecay) {
+                adjustedWeights = {
+                    ...adjustedWeights,
+                    timeDecay: ageAnalysis.recommendedAdjustments.timeDecay,
+                    tagRelevance: ageAnalysis.recommendedAdjustments.tagRelevance
+                };
+
+                if (verbose && showMemoryDetails && !cleanMode) {
+                    console.log(`${CONSOLE_COLORS.CYAN}🎯 Auto-Calibration${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}${ageAnalysis.recommendedAdjustments.reason}${CONSOLE_COLORS.RESET}`);
+                    console.log(`${CONSOLE_COLORS.CYAN}   Adjusted Weights${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} timeDecay: ${adjustedWeights.timeDecay.toFixed(2)}, tagRelevance: ${adjustedWeights.tagRelevance.toFixed(2)}`);
+                }
+            }
+
+            // Score memories for relevance (with enhanced recency weighting and auto-calibrated weights)
             let scoredMemories = scoreMemoryRelevance(memories, projectContext, {
                 verbose: showMemoryDetails,
-                enhanceRecency: recentFirstMode
+                enhanceRecency: recentFirstMode,
+                weights: adjustedWeights,
+                timeDecayRate: timeDecayRate,
+                includeConversationContext: enableConversationContext
             });
 
+            // Calculate adaptive git context weight
+            // v8.5.1+ Dynamic git weight based on memory age and commit activity
+            const configuredGitWeight = config.gitAnalysis?.gitContextWeight || 1.2;
+            const adaptiveGitEnabled = config.gitAnalysis?.adaptiveGitWeight !== false; // Default true
+
+            let gitWeightResult;
+            if (adaptiveGitEnabled && gitContext) {
+                gitWeightResult = calculateAdaptiveGitWeight(
+                    gitContext,
+                    ageAnalysis,
+                    configuredGitWeight,
+                    { verbose: showMemoryDetails && !cleanMode }
+                );
+            } else {
+                gitWeightResult = { weight: configuredGitWeight, reason: 'Adaptive git weight disabled', adjusted: false };
+            }
+
+            const gitWeight = gitWeightResult.weight;
+
+            // Show git weight info
+            if (verbose && showMemoryDetails && !cleanMode) {
+                if (gitWeightResult.adjusted) {
+                    console.log(`${CONSOLE_COLORS.CYAN}⚙️  Adaptive Git Weight${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}${gitWeightResult.reason}${CONSOLE_COLORS.RESET}`);
+                }
+                if (configuredGitWeight > 1.5 && !gitWeightResult.adjusted) {
+                    console.log(`${CONSOLE_COLORS.YELLOW}⚠️  Git Weight${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}High git context weight (${gitWeight.toFixed(1)}x) may prioritize git-related memories excessively${CONSOLE_COLORS.RESET}`);
+                    console.log(`${CONSOLE_COLORS.YELLOW}   Recommended${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}1.1-1.3x for balanced recency${CONSOLE_COLORS.RESET}`);
+                }
+            }
+
             // Apply git context weight boost to git-derived memories
+
             scoredMemories = scoredMemories.map(memory => {
                 if (memory._gitContextWeight && memory._gitContextWeight !== 1.0) {
+                    const originalScore = memory.relevanceScore;
+                    const boostedScore = Math.min(1.0, originalScore * memory._gitContextWeight);
+
+                    // Store original score for transparency
                     return {
                         ...memory,
-                        relevanceScore: Math.min(1.0, memory.relevanceScore * memory._gitContextWeight)
+                        _originalScore: originalScore,
+                        relevanceScore: boostedScore,
+                        _wasBoosted: true
                     };
                 }
                 return memory;
             }).sort((a, b) => b.relevanceScore - a.relevanceScore); // Re-sort after boost
 
-            // Show top scoring memories with recency info
+            // Show top scoring memories with recency info and detailed breakdown
             if (verbose && showMemoryDetails && scoredMemories.length > 0 && !cleanMode) {
                 const topMemories = scoredMemories.slice(0, 3);
-                const memoryInfo = topMemories.map(m => {
+                const memoryInfo = topMemories.map((m, idx) => {
                     const score = `${(m.relevanceScore * 100).toFixed(0)}%`;
                     let recencyFlag = '';
+                    let ageText = '';
                     if (m.created_at_iso) {
                         const daysDiff = (now - new Date(m.created_at_iso)) / (1000 * 60 * 60 * 24);
-                        if (daysDiff <= 1) recencyFlag = '🕒';
-                        else if (daysDiff <= 7) recencyFlag = '📅';
+                        if (daysDiff <= 1) {
+                            recencyFlag = '🕒';
+                            ageText = 'today';
+                        } else if (daysDiff <= 7) {
+                            recencyFlag = '📅';
+                            ageText = `${Math.floor(daysDiff)}d ago`;
+                        } else if (daysDiff <= 30) {
+                            ageText = `${Math.floor(daysDiff)}d ago`;
+                        } else {
+                            ageText = `${Math.floor(daysDiff)}d ago`;
+                        }
                     }
-                    return `${score}${recencyFlag}`;
+
+                    // Show detailed breakdown for top memory
+                    if (idx === 0 && m.scoreBreakdown && config.output?.showScoringBreakdown !== false) {
+                        const bd = m.scoreBreakdown;
+                        console.log(`${CONSOLE_COLORS.CYAN}  📊 Top Memory Breakdown${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET}`);
+                        console.log(`${CONSOLE_COLORS.CYAN}    • Time Decay${CONSOLE_COLORS.RESET}: ${(bd.timeDecay * 100).toFixed(0)}% ${CONSOLE_COLORS.GRAY}(${ageText})${CONSOLE_COLORS.RESET}`);
+                        console.log(`${CONSOLE_COLORS.CYAN}    • Tag Match${CONSOLE_COLORS.RESET}: ${(bd.tagRelevance * 100).toFixed(0)}%`);
+                        console.log(`${CONSOLE_COLORS.CYAN}    • Content${CONSOLE_COLORS.RESET}: ${(bd.contentRelevance * 100).toFixed(0)}%`);
+                        console.log(`${CONSOLE_COLORS.CYAN}    • Quality${CONSOLE_COLORS.RESET}: ${(bd.contentQuality * 100).toFixed(0)}%`);
+                        if (bd.recencyBonus > 0) {
+                            console.log(`${CONSOLE_COLORS.CYAN}    • Recency Bonus${CONSOLE_COLORS.RESET}: ${CONSOLE_COLORS.GREEN}+${(bd.recencyBonus * 100).toFixed(0)}%${CONSOLE_COLORS.RESET}`);
+                        }
+                        // Show git context boost if applied
+                        if (m._wasBoosted && m._originalScore) {
+                            const boostAmount = ((m.relevanceScore - m._originalScore) * 100).toFixed(0);
+                            console.log(`${CONSOLE_COLORS.CYAN}    • Git Boost${CONSOLE_COLORS.RESET}: ${CONSOLE_COLORS.YELLOW}+${boostAmount}%${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}(${(m._originalScore * 100).toFixed(0)}% → ${(m.relevanceScore * 100).toFixed(0)}%)${CONSOLE_COLORS.RESET}`);
+                        }
+                    }
+
+                    return ageText ? `${score}${recencyFlag} (${ageText})` : `${score}${recencyFlag}`;
                 }).join(', ');
                 console.log(`${CONSOLE_COLORS.CYAN}🎯 Scoring${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Top relevance: ${CONSOLE_COLORS.YELLOW}${memoryInfo}${CONSOLE_COLORS.RESET}`);
             }
@@ -905,6 +1000,10 @@ if (require.main === module) {
     onSessionStart(mockContext)
         .then(() => {
             // Test completed quietly
+            process.exit(0);
         })
-        .catch(error => console.error(`${CONSOLE_COLORS.RED}❌ Hook test failed:${CONSOLE_COLORS.RESET} ${error.message}`));
+        .catch(error => {
+            console.error(`${CONSOLE_COLORS.RED}❌ Hook test failed:${CONSOLE_COLORS.RESET} ${error.message}`);
+            process.exit(1);
+        });
 }

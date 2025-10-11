@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
+> **🎯 v8.5.1**: **Dynamic Memory Weight Adjustment** - Intelligent auto-calibration prevents stale memories from dominating context! Automatically detects memory age vs git activity mismatches and adapts weights/boosts accordingly. No more manual config tweaks!
+
 > **🆕 v8.4.0**: **Memory Hooks Recency Optimization** - Recent memory prioritization with 80% better context accuracy. Comprehensive scoring rebalancing ensures development work from the last 7 days surfaces automatically!
 
 > **🎉 v8.3.1**: **HTTP Server Management** - Cross-platform auto-start scripts and health check utilities for seamless Natural Memory Triggers integration!

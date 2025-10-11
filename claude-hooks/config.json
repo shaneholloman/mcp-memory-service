@@ -5,7 +5,7 @@
     "fallbackEnabled": true,
     "http": {
       "endpoint": "http://127.0.0.1:8889",
-      "apiKey": "",
+      "apiKey": "VhOGAoUOE5_BMzu-phDORdyXHNMcDRBxvndK_Uop",
       "healthCheckTimeout": 3000,
       "useDetailedHealthCheck": true
     },
@@ -18,7 +18,7 @@
         "-s",
         "hybrid"
       ],
-      "serverWorkingDir": "../",
+      "serverWorkingDir": "/Users/hkr/Documents/GitHub/mcp-memory-service",
       "connectionTimeout": 2000,
       "toolCallTimeout": 3000
     },
@@ -31,8 +31,8 @@
     "injectAfterCompacting": false,
     "recentFirstMode": true,
     "recentMemoryRatio": 0.6,
-    "recentTimeWindow": "last-month",
-    "fallbackTimeWindow": "last-3-months",
+    "recentTimeWindow": "last-week",
+    "fallbackTimeWindow": "last-2-weeks",
     "showStorageSource": true,
     "sourceDisplayMode": "brief"
   },
@@ -51,15 +51,16 @@
   },
   "memoryScoring": {
     "weights": {
-      "timeDecay": 0.40,
-      "tagRelevance": 0.25,
+      "timeDecay": 0.50,
+      "tagRelevance": 0.20,
       "contentRelevance": 0.15,
       "contentQuality": 0.20,
       "conversationRelevance": 0.25
     },
     "minRelevanceScore": 0.4,
-    "timeDecayRate": 0.05,
-    "enableConversationContext": true
+    "timeDecayRate": 0.15,
+    "enableConversationContext": true,
+    "autoCalibrate": true
   },
   "contextFormatting": {
     "includeProjectSummary": true,
@@ -107,7 +108,8 @@
     "maxCommits": 20,
     "includeChangelog": true,
     "maxGitMemories": 3,
-    "gitContextWeight": 1.8
+    "gitContextWeight": 1.2,
+    "adaptiveGitWeight": true
   },
   "output": {
     "verbose": true,

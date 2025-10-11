@@ -490,10 +490,170 @@ function filterByRelevance(memories, minScore = 0.3, options = {}) {
             console.log(`[Memory Scorer] Filtered ${filtered.length}/${memories.length} memories above threshold ${minScore}`);
         }
         return filtered;
-        
+
     } catch (error) {
         if (verbose) console.warn('[Memory Scorer] Error filtering memories:', error.message);
         return memories;
+    }
+}
+
+/**
+ * Analyze memory age distribution to detect staleness
+ * Returns statistics and recommended weight adjustments
+ */
+function analyzeMemoryAgeDistribution(memories, options = {}) {
+    try {
+        const { verbose = false } = options;
+
+        if (!Array.isArray(memories) || memories.length === 0) {
+            return {
+                avgAge: 0,
+                medianAge: 0,
+                p75Age: 0,
+                p90Age: 0,
+                recentCount: 0,
+                staleCount: 0,
+                isStale: false,
+                recommendedAdjustments: {}
+            };
+        }
+
+        const now = new Date();
+
+        // Calculate ages in days
+        const ages = memories.map(memory => {
+            const memoryTime = new Date(memory.created_at || memory.created_at_iso);
+            if (isNaN(memoryTime.getTime())) return 365; // Default to very old
+            return (now - memoryTime) / (1000 * 60 * 60 * 24);
+        }).sort((a, b) => a - b);
+
+        // Calculate percentiles
+        const avgAge = ages.reduce((sum, age) => sum + age, 0) / ages.length;
+        const medianAge = ages[Math.floor(ages.length / 2)];
+        const p75Age = ages[Math.floor(ages.length * 0.75)];
+        const p90Age = ages[Math.floor(ages.length * 0.90)];
+
+        // Count recent vs stale
+        const recentCount = ages.filter(age => age <= 14).length; // Last 2 weeks
+        const staleCount = ages.filter(age => age > 30).length;   // Older than 1 month
+
+        // Determine if memory set is stale
+        const isStale = medianAge > 30 || (recentCount / ages.length) < 0.2;
+
+        // Recommended adjustments based on staleness
+        const recommendedAdjustments = {};
+
+        if (isStale) {
+            // Memories are old - boost time decay weight, reduce tag relevance
+            recommendedAdjustments.timeDecay = 0.50;      // Increase from default 0.25
+            recommendedAdjustments.tagRelevance = 0.20;   // Decrease from default 0.35
+            recommendedAdjustments.recencyBonus = 0.25;   // Increase bonus for any recent memories
+            recommendedAdjustments.reason = `Stale memory set detected (median: ${Math.round(medianAge)}d old, ${Math.round(recentCount/ages.length*100)}% recent)`;
+        } else if (avgAge < 14) {
+            // Memories are very recent - balanced approach
+            recommendedAdjustments.timeDecay = 0.30;
+            recommendedAdjustments.tagRelevance = 0.30;
+            recommendedAdjustments.reason = `Recent memory set (avg: ${Math.round(avgAge)}d old)`;
+        }
+
+        if (verbose) {
+            console.log('[Memory Age Analyzer]', {
+                avgAge: Math.round(avgAge),
+                medianAge: Math.round(medianAge),
+                p75Age: Math.round(p75Age),
+                recentPercent: Math.round(recentCount / ages.length * 100),
+                isStale,
+                adjustments: recommendedAdjustments.reason || 'No adjustments needed'
+            });
+        }
+
+        return {
+            avgAge,
+            medianAge,
+            p75Age,
+            p90Age,
+            recentCount,
+            staleCount,
+            totalCount: ages.length,
+            isStale,
+            recommendedAdjustments
+        };
+
+    } catch (error) {
+        if (verbose) console.error('[Memory Age Analyzer] Error:', error.message);
+        return {
+            avgAge: 0,
+            medianAge: 0,
+            p75Age: 0,
+            p90Age: 0,
+            recentCount: 0,
+            staleCount: 0,
+            isStale: false,
+            recommendedAdjustments: {}
+        };
+    }
+}
+
+/**
+ * Calculate adaptive git context weight based on memory age and git activity
+ * Prevents old git-related memories from dominating when recent development exists
+ */
+function calculateAdaptiveGitWeight(gitContext, memoryAgeAnalysis, configuredWeight = 1.2, options = {}) {
+    try {
+        const { verbose = false } = options;
+
+        // No git context or no recent commits - use configured weight
+        if (!gitContext || !gitContext.recentCommits || gitContext.recentCommits.length === 0) {
+            return { weight: configuredWeight, reason: 'No recent git activity' };
+        }
+
+        // Calculate days since most recent commit
+        const now = new Date();
+        const mostRecentCommit = new Date(gitContext.recentCommits[0].date);
+        const daysSinceLastCommit = (now - mostRecentCommit) / (1000 * 60 * 60 * 24);
+
+        // Scenario 1: Recent commits (< 7d) BUT stale memories (median > 30d)
+        // Problem: Git boost would amplify old git memories over potential recent work
+        if (daysSinceLastCommit <= 7 && memoryAgeAnalysis.medianAge > 30) {
+            const reducedWeight = Math.max(1.0, configuredWeight * 0.7); // Reduce by 30%
+            const reason = `Recent commits (${Math.round(daysSinceLastCommit)}d ago) but stale memories (median: ${Math.round(memoryAgeAnalysis.medianAge)}d) - reducing git boost`;
+
+            if (verbose) {
+                console.log(`[Adaptive Git Weight] ${reason}: ${configuredWeight.toFixed(1)} → ${reducedWeight.toFixed(1)}`);
+            }
+
+            return { weight: reducedWeight, reason, adjusted: true };
+        }
+
+        // Scenario 2: Both commits and memories are recent (< 14d)
+        // Safe to use configured weight, git context is relevant
+        if (daysSinceLastCommit <= 14 && memoryAgeAnalysis.avgAge <= 14) {
+            return {
+                weight: configuredWeight,
+                reason: `Recent commits and memories aligned (${Math.round(daysSinceLastCommit)}d commits, ${Math.round(memoryAgeAnalysis.avgAge)}d avg memory age)`,
+                adjusted: false
+            };
+        }
+
+        // Scenario 3: Old commits (> 14d) but recent memories exist
+        // Slightly reduce git weight to let recent non-git memories surface
+        if (daysSinceLastCommit > 14 && memoryAgeAnalysis.recentCount > 0) {
+            const reducedWeight = Math.max(1.0, configuredWeight * 0.85); // Reduce by 15%
+            const reason = `Older commits (${Math.round(daysSinceLastCommit)}d ago) with some recent memories - slightly reducing git boost`;
+
+            if (verbose) {
+                console.log(`[Adaptive Git Weight] ${reason}: ${configuredWeight.toFixed(1)} → ${reducedWeight.toFixed(1)}`);
+            }
+
+            return { weight: reducedWeight, reason, adjusted: true };
+        }
+
+        // Default: use configured weight
+        return { weight: configuredWeight, reason: 'Using configured weight', adjusted: false };
+
+    } catch (error) {
+        if (verbose) console.error('[Adaptive Git Weight] Error:', error.message);
+        return { weight: configuredWeight, reason: 'Error - using fallback', adjusted: false };
     }
 }
 
@@ -505,7 +665,9 @@ module.exports = {
     calculateContentRelevance,
     calculateTypeBonus,
     calculateRecencyBonus,
-    filterByRelevance
+    filterByRelevance,
+    analyzeMemoryAgeDistribution,
+    calculateAdaptiveGitWeight
 };
 
 // Direct execution support for testing
