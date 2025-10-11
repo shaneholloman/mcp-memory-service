@@ -8,6 +8,31 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.4.2] - 2025-10-11
+
+### 🎯 **Performance & Optimization**
+
+#### **Additional MCP Context Optimization: Debug Tools Removal**
+- **Problem**: Continuing context optimization efforts from v8.4.1, identified 2 additional low-value debug tools
+- **Solution**: Removed debug/maintenance MCP tools with zero test dependencies
+
+**Tools Removed:**
+- `get_embedding` (606 tokens) - Returns raw embedding vectors; low-level debugging only
+- `check_embedding_model` (553 tokens) - Checks if embedding model loaded; errors surface naturally
+
+**Rationale:** These were specialized debugging tools rarely needed in practice. Embedding errors are caught during normal retrieval operations, and raw embedding inspection is a niche development task not required for AI assistant integration.
+
+**Impact:**
+- ✅ **MCP tools**: 26.8k → 25.6k tokens (4.5% additional reduction, -1.2k tokens)
+- ✅ **Total optimization since v8.4.0**: 31.4k → 25.6k tokens (18.5% reduction, -5.8k tokens saved)
+- ✅ **Zero breaking changes**: No test coverage for these tools
+- ✅ **Conservative approach**: Removed only tools with no dependencies
+
+**Files Modified:**
+- `src/mcp_memory_service/server.py`: Removed 2 tool definitions, handlers, and implementations (~61 lines)
+
+**Note:** Further optimization possible with MODERATE approach (debug_retrieve, exact_match_retrieve, cleanup_duplicates) if additional context savings needed.
+
 ## [8.4.1] - 2025-10-11
 
 ### 🎯 **Performance & Optimization**

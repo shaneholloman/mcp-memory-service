@@ -1504,33 +1504,6 @@ class MemoryServer:
                         }
                     ),
                     types.Tool(
-                        name="get_embedding",
-                        description="""Get raw embedding vector for content.
-
-                        Example:
-                        {
-                            "content": "text to embed"
-                        }""",
-                        inputSchema={
-                            "type": "object",
-                            "properties": {
-                                "content": {
-                                    "type": "string",
-                                    "description": "Text content to generate an embedding vector for."
-                                }
-                            },
-                            "required": ["content"]
-                        }
-                    ),
-                    types.Tool(
-                        name="check_embedding_model",
-                        description="Check if embedding model is loaded and working",
-                        inputSchema={
-                            "type": "object",
-                            "properties": {}
-                        }
-                    ),
-                    types.Tool(
                         name="debug_retrieve",
                         description="""Retrieve memories with debug information.
 
@@ -2022,10 +1995,6 @@ class MemoryServer:
                     return await self.handle_delete_by_all_tags(arguments)
                 elif name == "cleanup_duplicates":
                     return await self.handle_cleanup_duplicates(arguments)
-                elif name == "get_embedding":
-                    return await self.handle_get_embedding(arguments)
-                elif name == "check_embedding_model":
-                    return await self.handle_check_embedding_model(arguments)
                 elif name == "debug_retrieve":
                     return await self.handle_debug_retrieve(arguments)
                 elif name == "exact_match_retrieve":
@@ -2641,38 +2610,6 @@ Memories Archived: {report.memories_archived}"""
             error_msg = f"Error resuming consolidation: {str(e)}"
             logger.error(f"{error_msg}\n{traceback.format_exc()}")
             return [types.TextContent(type="text", text=error_msg)]
-
-    async def handle_get_embedding(self, arguments: dict) -> List[types.TextContent]:
-        content = arguments.get("content")
-        if not content:
-            return [types.TextContent(type="text", text="Error: Content is required")]
-        
-        try:
-            # Initialize storage lazily when needed
-            storage = await self._ensure_storage_initialized()
-            
-            from .utils.debug import get_raw_embedding
-            result = get_raw_embedding(storage, content)
-            return [types.TextContent(
-                type="text",
-                text=f"Embedding results:\n{json.dumps(result, indent=2)}"
-            )]
-        except Exception as e:
-            return [types.TextContent(type="text", text=f"Error getting embedding: {str(e)}")]
-
-    async def handle_check_embedding_model(self, arguments: dict) -> List[types.TextContent]:
-        try:
-            # Initialize storage lazily when needed
-            storage = await self._ensure_storage_initialized()
-            
-            from .utils.debug import check_embedding_model
-            result = check_embedding_model(storage)
-            return [types.TextContent(
-                type="text",
-                text=f"Embedding model status:\n{json.dumps(result, indent=2)}"
-            )]
-        except Exception as e:
-            return [types.TextContent(type="text", text=f"Error checking model: {str(e)}")]
 
     async def handle_debug_retrieve(self, arguments: dict) -> List[types.TextContent]:
         query = arguments.get("query")
