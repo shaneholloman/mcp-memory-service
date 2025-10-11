@@ -122,6 +122,21 @@
             </div>
         </nav>
 
+        <!-- Sync Status Bar (Hybrid Mode Only) -->
+        <div id="syncStatusBar" class="sync-status-bar">
+            <div class="sync-status-content">
+                <div class="sync-status-indicator">
+                    <span id="syncStatusIcon">🔄</span>
+                    <span id="syncStatusText">Checking sync status...</span>
+                    <span id="syncStatusDetails" class="sync-details"></span>
+                </div>
+                <button id="forceSyncButton" class="sync-button" onclick="app.forceSync()" title="Manually trigger sync to Cloudflare">
+                    <span class="sync-button-icon">⚡</span>
+                    <span class="sync-button-text">Sync Now</span>
+                </button>
+            </div>
+        </div>
+
         <!-- Main Content Area -->
         <main class="main-content">
             <!-- Dashboard View -->

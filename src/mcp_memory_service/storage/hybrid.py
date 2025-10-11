@@ -979,6 +979,20 @@ class HybridMemoryStorage(MemoryStorage):
 
         return await self.sync_service.force_sync()
 
+    async def get_sync_status(self) -> Dict[str, Any]:
+        """Get current background sync status and statistics."""
+        if not self.sync_service:
+            return {
+                'is_running': False,
+                'pending_operations': 0,
+                'operations_processed': 0,
+                'operations_failed': 0,
+                'last_sync_time': 0,
+                'sync_interval': 0
+            }
+
+        return await self.sync_service.get_sync_status()
+
     def sanitized(self, tags):
         """Sanitize and normalize tags to a JSON string.
 

@@ -284,57 +284,101 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
 }
 
 /**
- * Format individual memory for CLI with color coding
+ * Wrap text to fit within specified width while maintaining tree structure
+ */
+function wrapTextForTree(text, maxWidth = 80, indentPrefix = '   ') {
+    if (!text) return [];
+
+    // Remove ANSI codes for width calculation
+    const stripAnsi = (str) => str.replace(/\x1b\[[0-9;]*m/g, '');
+
+    const lines = [];
+    const words = text.split(/\s+/);
+    let currentLine = '';
+
+    for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const testLineStripped = stripAnsi(testLine);
+
+        if (testLineStripped.length <= maxWidth) {
+            currentLine = testLine;
+        } else {
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+            currentLine = word;
+        }
+    }
+
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+
+    return lines.length > 0 ? lines : [text];
+}
+
+/**
+ * Format individual memory for CLI with color coding and proper line wrapping
  */
 function formatMemoryForCLI(memory, index, options = {}) {
     try {
         const {
             maxContentLength = 400,
             includeDate = true,
-            indent = false
+            indent = false,
+            maxLineWidth = 70
         } = options;
-        
+
         // Extract meaningful content with markdown conversion enabled for CLI
         const content = extractMeaningfulContent(
-            memory.content || 'No content available', 
+            memory.content || 'No content available',
             maxContentLength,
             { convertMarkdown: true, stripMarkdown: false }
         );
-        
+
         // Skip generic summaries
         if (isGenericSessionSummary(memory.content)) {
             return null;
         }
-        
+
         // Format date with recency indicators and color
         let dateStr = '';
+        let ageText = '';
         if (includeDate && memory.created_at_iso) {
             const date = new Date(memory.created_at_iso);
             const now = new Date();
             const daysDiff = (now - date) / (1000 * 60 * 60 * 24);
-            
+
             let recencyIndicator = '';
             let dateColor = COLORS.GRAY;
-            
+
             if (daysDiff < 1) {
                 recencyIndicator = '🕒 ';
                 dateColor = COLORS.GREEN;
                 dateStr = ` ${dateColor}${recencyIndicator}today${COLORS.RESET}`;
+                ageText = 'today';
             } else if (daysDiff < 2) {
                 recencyIndicator = '📅 ';
                 dateColor = COLORS.GREEN;
                 dateStr = ` ${dateColor}${recencyIndicator}yesterday${COLORS.RESET}`;
+                ageText = 'yesterday';
             } else if (daysDiff <= 7) {
                 recencyIndicator = '📅 ';
                 dateColor = COLORS.CYAN;
                 const formattedDate = date.toLocaleDateString('en-US', { weekday: 'short' });
                 dateStr = ` ${dateColor}${recencyIndicator}${formattedDate}${COLORS.RESET}`;
-            } else {
+                ageText = `${Math.floor(daysDiff)}d ago`;
+            } else if (daysDiff <= 30) {
                 const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 dateStr = ` ${COLORS.GRAY}(${formattedDate})${COLORS.RESET}`;
+                ageText = `${Math.floor(daysDiff)}d ago`;
+            } else {
+                // For old memories, emphasize the age
+                dateStr = ` ${COLORS.DIM}(${Math.floor(daysDiff)}d ago)${COLORS.RESET}`;
+                ageText = `${Math.floor(daysDiff)}d ago`;
             }
         }
-        
+
         // Color the content based on type
         let coloredContent = content;
         if (memory.memory_type === 'decision' || (memory.tags && memory.tags.some(tag => tag.includes('decision')))) {
@@ -346,9 +390,19 @@ function formatMemoryForCLI(memory, index, options = {}) {
         } else if (memory.memory_type === 'feature') {
             coloredContent = `${COLORS.BLUE}${content}${COLORS.RESET}`;
         }
-        
-        return `${coloredContent}${dateStr}`;
-        
+
+        // Wrap text for proper tree formatting
+        const wrappedLines = wrapTextForTree(coloredContent, maxLineWidth);
+
+        // Return first line with date, additional lines need tree indentation
+        if (wrappedLines.length === 1) {
+            return `${wrappedLines[0]}${dateStr}`;
+        } else {
+            // Multi-line content: first line gets date, rest get indented
+            return wrappedLines[0] + dateStr + '\n' +
+                   wrappedLines.slice(1).map(line => `     ${line}`).join('\n');
+        }
+
     } catch (error) {
         return `${COLORS.GRAY}[Error formatting memory: ${error.message}]${COLORS.RESET}`;
     }

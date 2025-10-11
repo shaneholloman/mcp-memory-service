@@ -93,6 +93,10 @@ class MemoryDashboard {
         await this.loadVersion();
         await this.loadDashboardData();
         this.updateConnectionStatus('connected');
+
+        // Initialize sync status monitoring for hybrid mode
+        await this.checkSyncStatus();
+        this.startSyncStatusMonitoring();
     }
 
     /**
@@ -366,6 +370,124 @@ class MemoryDashboard {
             this.showToast('Failed to load browse data', 'error');
         } finally {
             this.setLoading(false);
+        }
+    }
+
+    /**
+     * Check hybrid backend sync status
+     */
+    async checkSyncStatus() {
+        try {
+            const syncStatus = await this.apiCall('/sync/status');
+
+            // Only show sync bar for hybrid mode
+            const syncBar = document.getElementById('syncStatusBar');
+            if (!syncBar) {
+                console.warn('Sync status bar element not found');
+                return;
+            }
+
+            console.log('Sync status:', syncStatus);
+
+            if (!syncStatus.is_hybrid) {
+                console.log('Not hybrid mode, hiding sync bar');
+                syncBar.classList.remove('visible');
+                return;
+            }
+
+            // Show sync bar for hybrid mode
+            console.log('Hybrid mode detected, showing sync bar');
+            syncBar.classList.add('visible');
+
+            // Update sync status UI
+            const statusIcon = document.getElementById('syncStatusIcon');
+            const statusText = document.getElementById('syncStatusText');
+            const statusDetails = document.getElementById('syncStatusDetails');
+            const syncButton = document.getElementById('forceSyncButton');
+
+            // Determine status and update UI
+            if (syncStatus.status === 'syncing') {
+                statusIcon.textContent = '🔄';
+                statusText.textContent = 'Syncing...';
+                statusDetails.textContent = `${syncStatus.operations_pending} operations pending`;
+                syncBar.className = 'sync-status-bar visible syncing';
+                syncButton.disabled = true;
+            } else if (syncStatus.status === 'pending') {
+                statusIcon.textContent = '⏱️';
+                statusText.textContent = 'Sync Pending';
+                const nextSync = Math.ceil(syncStatus.next_sync_eta_seconds);
+                statusDetails.textContent = `${syncStatus.operations_pending} operations • Next sync in ${nextSync}s`;
+                syncBar.className = 'sync-status-bar visible pending';
+                syncButton.disabled = false;
+            } else if (syncStatus.status === 'error') {
+                statusIcon.textContent = '⚠️';
+                statusText.textContent = 'Sync Error';
+                statusDetails.textContent = `${syncStatus.operations_failed} failed operations`;
+                syncBar.className = 'sync-status-bar visible error';
+                syncButton.disabled = false;
+            } else {
+                // synced status
+                statusIcon.textContent = '✅';
+                statusText.textContent = 'Synced';
+                const lastSync = Math.floor(syncStatus.time_since_last_sync_seconds);
+                statusDetails.textContent = lastSync > 0 ? `Last sync ${lastSync}s ago` : 'Just now';
+                syncBar.className = 'sync-status-bar visible synced';
+                syncButton.disabled = false;
+            }
+
+        } catch (error) {
+            console.error('Error checking sync status:', error);
+            // Hide sync bar on error (likely not hybrid mode)
+            const syncBar = document.getElementById('syncStatusBar');
+            if (syncBar) syncBar.style.display = 'none';
+        }
+    }
+
+    /**
+     * Start periodic sync status monitoring
+     */
+    startSyncStatusMonitoring() {
+        // Check sync status every 10 seconds
+        setInterval(() => {
+            this.checkSyncStatus();
+        }, 10000);
+    }
+
+    /**
+     * Manually force sync to Cloudflare
+     */
+    async forceSync() {
+        const syncButton = document.getElementById('forceSyncButton');
+        const originalText = syncButton.innerHTML;
+
+        try {
+            // Disable button and show loading state
+            syncButton.disabled = true;
+            syncButton.innerHTML = '<span class="sync-button-icon">⏳</span><span class="sync-button-text">Syncing...</span>';
+
+            const result = await this.apiCall('/sync/force', 'POST');
+
+            if (result.success) {
+                this.showToast(`Synced ${result.operations_synced} operations in ${result.time_taken_seconds}s`, 'success');
+
+                // Refresh dashboard data to show newly synced memories
+                if (this.currentView === 'dashboard') {
+                    await this.loadDashboardData();
+                }
+            } else {
+                this.showToast('Sync failed: ' + result.message, 'error');
+            }
+
+        } catch (error) {
+            console.error('Error forcing sync:', error);
+            this.showToast('Failed to force sync: ' + error.message, 'error');
+        } finally {
+            // Re-enable button
+            syncButton.disabled = false;
+            syncButton.innerHTML = originalText;
+
+            // Refresh sync status immediately
+            await this.checkSyncStatus();
         }
     }
 

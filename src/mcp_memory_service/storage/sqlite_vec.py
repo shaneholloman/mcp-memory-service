@@ -1747,17 +1747,35 @@ SOLUTIONS:
         try:
             await self.initialize()
 
-            # Get all tags from the database
-            cursor = self.conn.execute('''
-                SELECT tags
-                FROM memories
-                WHERE tags IS NOT NULL AND tags != ''
-            ''')
+            # Use explicit deferred transaction for read-only query
+            # This prevents WAL lock contention with writes from other processes
+            cursor = self.conn.execute('BEGIN DEFERRED')
+
+            try:
+                # Get all tags from the database
+                cursor = self.conn.execute('''
+                    SELECT tags
+                    FROM memories
+                    WHERE tags IS NOT NULL AND tags != ''
+                ''')
+
+                # Fetch all rows first to avoid holding cursor during processing
+                rows = cursor.fetchall()
+
+                # Commit read transaction
+                self.conn.commit()
+
+            except Exception as e:
+                self.conn.rollback()
+                raise
+
+            # Yield control to event loop before processing
+            await asyncio.sleep(0)
 
             # Use Counter with generator expression for memory efficiency
             tag_counter = Counter(
                 tag.strip()
-                for (tag_string,) in cursor
+                for (tag_string,) in rows
                 if tag_string
                 for tag in tag_string.split(",")
                 if tag.strip()

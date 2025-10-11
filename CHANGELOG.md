@@ -8,6 +8,33 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.2] - 2025-10-11
+
+### 🐛 **Fixed**
+
+#### **v8.5.0 Implementation Missing (Code Completion)**
+Complete implementation of Hybrid Backend Sync Dashboard feature that was documented in v8.5.0 CHANGELOG but code was never committed.
+
+**Context**: v8.5.0 release (c241292) included CHANGELOG documentation and version bump but the actual implementation files were accidentally not staged/committed. This release completes the v8.5.0 feature by committing the missing implementation code.
+
+**Files Added:**
+- `src/mcp_memory_service/web/api/sync.py` - Sync API endpoints (GET /api/sync/status, POST /api/sync/force)
+- `start_http_server.sh` - Cross-platform HTTP server management script
+
+**Files Modified:**
+- `src/mcp_memory_service/web/app.py` - Integrated sync router
+- `src/mcp_memory_service/web/static/app.js` - Sync status UI with polling
+- `src/mcp_memory_service/web/static/index.html` - Sync status bar markup
+- `src/mcp_memory_service/web/static/style.css` - Sync bar styling + grid layout
+- `src/mcp_memory_service/storage/hybrid.py` - Added `get_sync_status()` method
+- `src/mcp_memory_service/web/api/health.py` - Health check enhancements
+- `src/mcp_memory_service/storage/sqlite_vec.py` - Database path fixes
+
+**Additional Improvements:**
+- `claude-hooks/utilities/context-formatter.js` - Tree text wrapping improvements for better CLI output
+
+**Impact**: Users can now access the complete Hybrid Backend Sync Dashboard feature including manual sync triggers and real-time status monitoring as originally intended in v8.5.0.
+
 ## [8.5.1] - 2025-10-11
 
 ### 🎯 **New Features**
