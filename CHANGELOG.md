@@ -8,6 +8,18 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.4.3] - 2025-10-11
+
+### 🐛 Fixed
+- **Sync Script Import Path:** Fixed `scripts/sync/sync_memory_backends.py` module import path to work correctly from scripts directory
+  - Changed `sys.path.insert(0, str(Path(__file__).parent.parent))` → `sys.path.insert(0, str(Path(__file__).parent.parent.parent))`
+  - Resolves `ModuleNotFoundError: No module named 'src'` when using manual sync commands
+  - Fixes: `python scripts/sync/claude_sync_commands.py backup/restore/sync` commands
+
+### 📊 Impact
+- Users can now successfully run manual sync utilities for hybrid backend
+- Manual Cloudflare ↔ SQLite synchronization commands now functional
+
 ## [8.4.2] - 2025-10-11
 
 ### 🎯 **Performance & Optimization**
