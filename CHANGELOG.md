@@ -8,6 +8,76 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.0] - 2025-10-11
+
+### 🎉 **New Features**
+
+#### **Hybrid Backend Sync Dashboard**
+Manual sync management UI with real-time status monitoring for hybrid storage backend.
+
+**Features:**
+- **Sync Status Bar** - Color-coded visual indicator between navigation and main content
+  - 🔄 Syncing (blue gradient) - Active synchronization in progress
+  - ⏱️ Pending (yellow gradient) - Operations queued, shows ETA and count
+  - ✅ Synced (green gradient) - All operations synchronized, shows last sync time
+  - ⚠️ Error (red gradient) - Sync failures detected, shows failed operation count
+- **"Sync Now" Button** - Manual trigger for immediate Cloudflare ↔ SQLite synchronization
+- **Real-time Monitoring** - 10-second polling for live sync status updates
+- **REST API Endpoints:**
+  - `GET /api/sync/status` - Current sync state, pending operations, last sync time
+  - `POST /api/sync/force` - Manually trigger immediate sync
+
+**Technical Implementation:**
+- New sync API router: `src/mcp_memory_service/web/api/sync.py` (complete CRUD endpoints)
+- Frontend integration: `src/mcp_memory_service/web/static/app.js:379-485` (status monitoring + manual sync)
+- CSS styling: `src/mcp_memory_service/web/static/style.css:292-403` (grid layout + animations)
+- HTML structure: `src/mcp_memory_service/web/static/index.html:125-138` (sync bar markup)
+- Backend method: `src/mcp_memory_service/storage/hybrid.py:982-994` (added `get_sync_status()`)
+
+### 🐛 **Fixed**
+
+- **CSS Grid Layout Bug** - Sync status bar invisible despite JavaScript detecting hybrid mode
+  - **Root Cause**: `.app-container` grid layout defined `"header" "nav" "main"` but sync bar wasn't assigned a grid area
+  - **Fix**: Added `grid-area: sync` to `.sync-status-bar` and expanded grid to include sync row
+  - **Files**: `style.css:101-109` (grid layout), `style.css:293` (sync bar grid area)
+
+- **Sync Status Logic Error** - "Sync Now" button incorrectly disabled when background service running
+  - **Root Cause**: Confused `is_running` (service alive) with `actively_syncing` (active sync operation)
+  - **Fix**: Changed status determination to check `actively_syncing` field instead of `is_running`
+  - **Impact**: Button now correctly enabled when 0 pending operations
+  - **File**: `src/mcp_memory_service/web/api/sync.py:106-118`
+
+- **Database Path Mismatch** - HTTP server using different SQLite database than Claude Code MCP
+  - **Root Cause**: Missing `MCP_MEMORY_SQLITE_PATH` environment variable in HTTP server startup
+  - **Fix**: Added explicit database path to match Claude Desktop config
+  - **File**: `start_http_server.sh:4` (added `MCP_MEMORY_SQLITE_PATH` export)
+
+- **Backend Configuration Inconsistency** - Claude Desktop using `cloudflare` backend while HTTP server using `hybrid`
+  - **Root Cause**: Mismatched storage backend configurations preventing data synchronization
+  - **Fix**: Unified both to use `hybrid` backend with same SQLite database
+  - **File**: `claude_desktop_config.json:70` (changed `"cloudflare"` → `"hybrid"`)
+  - **Impact**: Dashboard now shows same 1413 memories as Claude Code
+
+### 🔧 **Improvements**
+
+- **Enhanced Health Check** - `/api/health/detailed` now includes sync status for hybrid backend
+  - Shows sync service state, pending operations, last sync time, failed operations
+  - File: `src/mcp_memory_service/web/api/health.py:141-154`
+
+- **Cleaned Database Files** - Removed obsolete SQLite databases to prevent confusion
+  - Deleted: `memory_http.db` (701 memories), `backup_sqlite_vec.db`, `sqlite_vec_backup_20250822_230643.db`
+
+- **Updated Startup Script** - `start_http_server.sh` now includes all required environment variables
+  - Added: `MCP_MEMORY_SQLITE_PATH`, `MCP_HTTP_ENABLED`
+  - Ensures HTTP server uses same database as Claude Code
+
+### 📊 **Impact**
+
+- **User Experience**: Dashboard now provides complete visibility and control over hybrid backend synchronization
+- **Data Consistency**: Unified backend configuration ensures Claude Code and HTTP dashboard always show same data
+- **Performance**: Manual sync trigger allows immediate synchronization instead of waiting 5 minutes
+- **Reliability**: Fixed grid layout bug ensures sync status bar always visible when in hybrid mode
+
 ## [8.4.3] - 2025-10-11
 
 ### 🐛 Fixed
