@@ -28,6 +28,9 @@ from pydantic import BaseModel, Field
 from ...storage.base import MemoryStorage
 from ...models.memory import Memory, MemoryQueryResult
 from ...config import OAUTH_ENABLED
+
+# Constants
+_TIME_SEARCH_CANDIDATE_POOL_SIZE = 1000  # Number of candidates to retrieve for time filtering
 from ..dependencies import get_storage
 from .memories import MemoryResponse, memory_to_response
 from ..sse import sse_manager, create_search_completed_event
@@ -259,21 +262,21 @@ async def time_search(
             )
         
         # Use semantic query if provided for relevance filtering, otherwise retrieve all
-        search_query = request.semantic_query if request.semantic_query else ""
-        query_results = await storage.retrieve(search_query, n_results=1000)  # Get many results to filter
+        search_query = (request.semantic_query or "").strip()
+        query_results = await storage.retrieve(search_query, n_results=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
 
-        # Filter by time range
-        filtered_memories = []
-        for result in query_results:
-            memory_time = None
-            if result.memory.created_at:
-                memory_time = datetime.fromtimestamp(result.memory.created_at)
-
-            if memory_time and is_within_time_range(memory_time, time_filter):
-                filtered_memories.append(result)
+        # Filter by time range using list comprehension
+        filtered_memories = [
+            result for result in query_results
+            if result.memory.created_at and is_within_time_range(
+                datetime.fromtimestamp(result.memory.created_at),
+                time_filter
+            )
+        ]
 
         # Sort by recency (newest first) - CRITICAL for proper ordering
-        filtered_memories.sort(key=lambda r: r.memory.created_at, reverse=True)
+        # Handle potential None values with fallback to 0.0
+        filtered_memories.sort(key=lambda r: r.memory.created_at or 0.0, reverse=True)
 
         # Limit results AFTER sorting
         filtered_memories = filtered_memories[:request.n_results]

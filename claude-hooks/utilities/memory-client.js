@@ -209,15 +209,13 @@ class MemoryClient {
     }
 
     /**
-     * Query memories via HTTP REST API
+     * Private helper: Perform HTTP POST request to API
+     * @private
      */
-    async queryMemoriesHTTP(query, limit = 10) {
-        return new Promise((resolve, reject) => {
-            const url = new URL('/api/search', this.httpConfig.endpoint);
-            const postData = JSON.stringify({
-                query: query,
-                limit: limit
-            });
+    async _performApiPost(path, payload) {
+        return new Promise((resolve) => {
+            const url = new URL(path, this.httpConfig.endpoint);
+            const postData = JSON.stringify(payload);
 
             const options = {
                 hostname: url.hostname,
@@ -242,7 +240,7 @@ class MemoryClient {
                         if (response.results && Array.isArray(response.results)) {
                             // Extract memory objects from results and preserve similarity_score
                             const memories = response.results
-                                .filter(result => result && result.memory) // Ensure memory object exists
+                                .filter(result => result && result.memory)
                                 .map(result => ({
                                     ...result.memory,
                                     similarity_score: result.similarity_score
@@ -269,70 +267,30 @@ class MemoryClient {
     }
 
     /**
+     * Query memories via HTTP REST API
+     */
+    async queryMemoriesHTTP(query, limit = 10) {
+        return this._performApiPost('/api/search', {
+            query: query,
+            limit: limit
+        });
+    }
+
+    /**
      * Query memories by time via HTTP REST API
      */
     async queryMemoriesByTimeHTTP(timeQuery, limit = 10, semanticQuery = null) {
-        return new Promise((resolve, reject) => {
-            const url = new URL('/api/search/by-time', this.httpConfig.endpoint);
-            const payload = {
-                query: timeQuery,
-                n_results: limit
-            };
+        const payload = {
+            query: timeQuery,
+            n_results: limit
+        };
 
-            // Add semantic query if provided for relevance filtering
-            if (semanticQuery) {
-                payload.semantic_query = semanticQuery;
-            }
+        // Add semantic query if provided for relevance filtering
+        if (semanticQuery) {
+            payload.semantic_query = semanticQuery;
+        }
 
-            const postData = JSON.stringify(payload);
-
-            const options = {
-                hostname: url.hostname,
-                port: url.port || (url.protocol === 'https:' ? 8443 : 8889),
-                path: url.pathname,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(postData),
-                    'X-API-Key': this.httpConfig.apiKey
-                }
-            };
-
-            const protocol = url.protocol === 'https:' ? https : http;
-            const req = protocol.request(options, (res) => {
-                let data = '';
-                res.on('data', (chunk) => data += chunk);
-                res.on('end', () => {
-                    try {
-                        const response = JSON.parse(data);
-                        // Time-based API returns { results: [{memory: {...}, similarity_score: ...}] }
-                        if (response.results && Array.isArray(response.results)) {
-                            // Extract memory objects from results and preserve similarity_score
-                            const memories = response.results
-                                .filter(result => result && result.memory)
-                                .map(result => ({
-                                    ...result.memory,
-                                    similarity_score: result.similarity_score
-                                }));
-                            resolve(memories);
-                        } else {
-                            resolve([]);
-                        }
-                    } catch (parseError) {
-                        console.warn('[Memory Client] HTTP time query parse error:', parseError.message);
-                        resolve([]);
-                    }
-                });
-            });
-
-            req.on('error', (error) => {
-                console.warn('[Memory Client] HTTP time query network error:', error.message);
-                resolve([]);
-            });
-
-            req.write(postData);
-            req.end();
-        });
+        return this._performApiPost('/api/search/by-time', payload);
     }
 
     /**
