@@ -33,7 +33,7 @@ from .memories import MemoryResponse, memory_to_response
 from ..sse import sse_manager, create_search_completed_event
 
 # Constants
-_TIME_SEARCH_CANDIDATE_POOL_SIZE = 1000  # Number of candidates to retrieve for time filtering
+_TIME_SEARCH_CANDIDATE_POOL_SIZE = 100  # Number of candidates to retrieve for time filtering (reduced for performance)
 
 # OAuth authentication imports (conditional)
 if OAUTH_ENABLED or TYPE_CHECKING:
