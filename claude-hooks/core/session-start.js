@@ -310,9 +310,10 @@ async function queryMemoryService(memoryClient, query) {
 
         let memories = [];
 
-        // Use time-based queries for recent memories
+        // Use time-based queries with semantic filtering for relevant recent memories
+        // /api/search/by-time now supports optional semantic_query for relevance + recency
         const queryPromise = query.timeFilter ?
-            memoryClient.queryMemoriesByTime(`${query.semanticQuery} ${query.timeFilter}`, query.limit) :
+            memoryClient.queryMemoriesByTime(query.timeFilter, query.limit, query.semanticQuery) :
             memoryClient.queryMemories(query.semanticQuery, query.limit);
 
         memories = await Promise.race([queryPromise, queryTimeout]);

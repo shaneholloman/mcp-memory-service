@@ -93,6 +93,7 @@ class MemoryClient {
 
         await this.mcpClient.connect();
         this.mcpAvailable = true;
+        this.activeProtocol = 'mcp';
         return this.mcpClient;
     }
 
@@ -106,6 +107,7 @@ class MemoryClient {
             throw new Error(`HTTP connection failed: ${healthResult.error}`);
         }
         this.httpAvailable = true;
+        this.activeProtocol = 'http';
         return true;
     }
 
@@ -195,11 +197,12 @@ class MemoryClient {
     /**
      * Query memories by time using active protocol
      */
-    async queryMemoriesByTime(timeQuery, limit = 10) {
+    async queryMemoriesByTime(timeQuery, limit = 10, semanticQuery = null) {
         if (this.activeProtocol === 'mcp' && this.mcpClient) {
+            // TODO: Update MCP client to support semantic query parameter
             return this.mcpClient.queryMemoriesByTime(timeQuery, limit);
         } else if (this.activeProtocol === 'http') {
-            return this.queryMemoriesHTTP(timeQuery, limit);
+            return this.queryMemoriesByTimeHTTP(timeQuery, limit, semanticQuery);
         } else {
             throw new Error('No active connection available');
         }
@@ -257,6 +260,73 @@ class MemoryClient {
 
             req.on('error', (error) => {
                 console.warn('[Memory Client] HTTP network error:', error.message);
+                resolve([]);
+            });
+
+            req.write(postData);
+            req.end();
+        });
+    }
+
+    /**
+     * Query memories by time via HTTP REST API
+     */
+    async queryMemoriesByTimeHTTP(timeQuery, limit = 10, semanticQuery = null) {
+        return new Promise((resolve, reject) => {
+            const url = new URL('/api/search/by-time', this.httpConfig.endpoint);
+            const payload = {
+                query: timeQuery,
+                n_results: limit
+            };
+
+            // Add semantic query if provided for relevance filtering
+            if (semanticQuery) {
+                payload.semantic_query = semanticQuery;
+            }
+
+            const postData = JSON.stringify(payload);
+
+            const options = {
+                hostname: url.hostname,
+                port: url.port || (url.protocol === 'https:' ? 8443 : 8889),
+                path: url.pathname,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(postData),
+                    'X-API-Key': this.httpConfig.apiKey
+                }
+            };
+
+            const protocol = url.protocol === 'https:' ? https : http;
+            const req = protocol.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const response = JSON.parse(data);
+                        // Time-based API returns { results: [{memory: {...}, similarity_score: ...}] }
+                        if (response.results && Array.isArray(response.results)) {
+                            // Extract memory objects from results and preserve similarity_score
+                            const memories = response.results
+                                .filter(result => result && result.memory)
+                                .map(result => ({
+                                    ...result.memory,
+                                    similarity_score: result.similarity_score
+                                }));
+                            resolve(memories);
+                        } else {
+                            resolve([]);
+                        }
+                    } catch (parseError) {
+                        console.warn('[Memory Client] HTTP time query parse error:', parseError.message);
+                        resolve([]);
+                    }
+                });
+            });
+
+            req.on('error', (error) => {
+                console.warn('[Memory Client] HTTP time query network error:', error.message);
                 resolve([]);
             });
 
