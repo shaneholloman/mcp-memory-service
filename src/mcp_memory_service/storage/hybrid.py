@@ -909,11 +909,11 @@ class HybridMemoryStorage(MemoryStorage):
 
     async def get_all_tags(self) -> List[str]:
         """Get all unique tags from primary storage."""
-        return self.primary.get_all_tags()
+        return await self.primary.get_all_tags()
 
     async def get_recent_memories(self, n: int = 10) -> List[Memory]:
         """Get recent memories from primary storage."""
-        return self.primary.get_recent_memories(n)
+        return await self.primary.get_recent_memories(n)
 
     async def recall(self, query: Optional[str] = None, n_results: int = 5, start_timestamp: Optional[float] = None, end_timestamp: Optional[float] = None) -> List[MemoryQueryResult]:
         """
@@ -932,7 +932,7 @@ class HybridMemoryStorage(MemoryStorage):
 
     async def recall_memory(self, query: str, n_results: int = 5) -> List[Memory]:
         """Recall memories using natural language time expressions."""
-        return self.primary.recall_memory(query, n_results)
+        return await self.primary.recall_memory(query, n_results)
 
     async def get_all_memories(self, limit: int = None, offset: int = 0, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> List[Memory]:
         """Get all memories from primary storage."""
@@ -944,7 +944,7 @@ class HybridMemoryStorage(MemoryStorage):
 
     async def get_memories_by_time_range(self, start_time: float, end_time: float) -> List[Memory]:
         """Get memories within time range from primary storage."""
-        return self.primary.get_memories_by_time_range(start_time, end_time)
+        return await self.primary.get_memories_by_time_range(start_time, end_time)
 
     async def close(self):
         """Clean shutdown of hybrid storage system."""

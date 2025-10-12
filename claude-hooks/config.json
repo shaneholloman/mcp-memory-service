@@ -31,8 +31,8 @@
     "injectAfterCompacting": false,
     "recentFirstMode": true,
     "recentMemoryRatio": 0.6,
-    "recentTimeWindow": "last-week",
-    "fallbackTimeWindow": "last-2-weeks",
+    "recentTimeWindow": "last week",
+    "fallbackTimeWindow": "last 2 weeks",
     "showStorageSource": true,
     "sourceDisplayMode": "brief"
   },

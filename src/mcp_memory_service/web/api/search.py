@@ -20,7 +20,7 @@ Provides semantic search, tag-based search, and time-based recall functionality.
 
 import logging
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
@@ -31,6 +31,9 @@ from ...config import OAUTH_ENABLED
 from ..dependencies import get_storage
 from .memories import MemoryResponse, memory_to_response
 from ..sse import sse_manager, create_search_completed_event
+
+# Constants
+_TIME_SEARCH_CANDIDATE_POOL_SIZE = 100  # Number of candidates to retrieve for time filtering (reduced for performance)
 
 # OAuth authentication imports (conditional)
 if OAUTH_ENABLED or TYPE_CHECKING:
@@ -62,6 +65,7 @@ class TimeSearchRequest(BaseModel):
     """Request model for time-based search."""
     query: str = Field(..., description="Natural language time query (e.g., 'last week', 'yesterday')")
     n_results: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
+    semantic_query: Optional[str] = Field(None, description="Optional semantic query for relevance filtering within time range")
 
 
 # Response Models
@@ -257,21 +261,30 @@ async def time_search(
                 detail=f"Could not parse time query: '{request.query}'. Try 'yesterday', 'last week', 'this month', etc."
             )
         
-        # For now, we'll do a broad search and then filter by time
-        # TODO: Implement proper time-based search in storage layer
-        query_results = await storage.retrieve("", n_results=1000)  # Get many results to filter
-        
-        # Filter by time
-        filtered_memories = []
-        for result in query_results:
-            memory_time = None
-            if result.memory.created_at:
-                memory_time = datetime.fromtimestamp(result.memory.created_at)
-            
-            if memory_time and is_within_time_range(memory_time, time_filter):
-                filtered_memories.append(result)
-        
-        # Limit results
+        # Use semantic query if provided for relevance filtering, otherwise get recent memories
+        if request.semantic_query and request.semantic_query.strip():
+            # Semantic filtering: retrieve by similarity
+            search_query = request.semantic_query.strip()
+            query_results = await storage.retrieve(search_query, n_results=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
+        else:
+            # No semantic filter: get recent memories chronologically
+            recent_memories = await storage.get_recent_memories(n=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
+            query_results = [MemoryQueryResult(memory=m, relevance_score=1.0) for m in recent_memories]
+
+        # Filter by time range using list comprehension
+        filtered_memories = [
+            result for result in query_results
+            if result.memory.created_at and is_within_time_range(
+                datetime.fromtimestamp(result.memory.created_at, tz=timezone.utc),
+                time_filter
+            )
+        ]
+
+        # Sort by recency (newest first) - CRITICAL for proper ordering
+        # Handle potential None values with fallback to 0.0
+        filtered_memories.sort(key=lambda r: r.memory.created_at or 0.0, reverse=True)
+
+        # Limit results AFTER sorting
         filtered_memories = filtered_memories[:request.n_results]
         
         # Convert to search results
@@ -364,12 +377,12 @@ async def find_similar(
 def parse_time_query(query: str) -> Optional[Dict[str, Any]]:
     """
     Parse natural language time queries into time ranges.
-    
+
     This is a basic implementation - can be enhanced with more sophisticated
     natural language processing later.
     """
     query_lower = query.lower().strip()
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     
     # Define time mappings
     if query_lower in ['yesterday']:
@@ -397,7 +410,11 @@ def parse_time_query(query: str) -> Optional[Dict[str, Any]]:
     elif query_lower in ['this month']:
         start = now.replace(day=1, hour=0, minute=0, second=0)
         return {'start': start, 'end': now}
-    
+
+    elif query_lower in ['last 2 weeks', 'past 2 weeks', 'last-2-weeks']:
+        start = now - timedelta(weeks=2)
+        return {'start': start, 'end': now}
+
     # Add more time expressions as needed
     return None
 

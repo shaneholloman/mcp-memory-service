@@ -93,6 +93,7 @@ class MemoryClient {
 
         await this.mcpClient.connect();
         this.mcpAvailable = true;
+        this.activeProtocol = 'mcp';
         return this.mcpClient;
     }
 
@@ -106,6 +107,7 @@ class MemoryClient {
             throw new Error(`HTTP connection failed: ${healthResult.error}`);
         }
         this.httpAvailable = true;
+        this.activeProtocol = 'http';
         return true;
     }
 
@@ -123,18 +125,45 @@ class MemoryClient {
     }
 
     /**
-     * Query health via HTTP
+     * Query health via HTTP with automatic HTTPS → HTTP fallback
      */
     async queryHealthHTTP() {
+        const healthPath = this.httpConfig.useDetailedHealthCheck ?
+            '/api/health/detailed' : '/api/health';
+
+        // Parse the configured endpoint to extract protocol, host, and port
+        let endpointUrl;
+        try {
+            endpointUrl = new URL(this.httpConfig.endpoint);
+        } catch (error) {
+            return { success: false, error: `Invalid endpoint URL: ${this.httpConfig.endpoint}` };
+        }
+
+        // Try with configured protocol first
+        const result = await this._attemptHealthCheck(endpointUrl, healthPath);
+
+        // If HTTPS failed, try HTTP fallback on same host:port
+        if (!result.success && endpointUrl.protocol === 'https:') {
+            const httpUrl = new URL(endpointUrl);
+            httpUrl.protocol = 'http:';
+            return this._attemptHealthCheck(httpUrl, healthPath);
+        }
+
+        return result;
+    }
+
+    /**
+     * Attempt health check with specific protocol/host/port
+     * @private
+     */
+    async _attemptHealthCheck(baseUrl, healthPath) {
         return new Promise((resolve) => {
             try {
-                const healthPath = this.httpConfig.useDetailedHealthCheck ?
-                    '/api/health/detailed' : '/api/health';
-                const url = new URL(healthPath, this.httpConfig.endpoint);
+                const url = new URL(healthPath, baseUrl);
 
                 const requestOptions = {
                     hostname: url.hostname,
-                    port: url.port || 8443,
+                    port: url.port || (url.protocol === 'https:' ? 8443 : 8889),
                     path: url.pathname,
                     method: 'GET',
                     headers: {
@@ -168,7 +197,7 @@ class MemoryClient {
 
                 req.on('timeout', () => {
                     req.destroy();
-                    resolve({ success: false, error: 'HTTP health check timeout', fallback: true });
+                    resolve({ success: false, error: 'Health check timeout', fallback: true });
                 });
 
                 req.end();
@@ -195,26 +224,25 @@ class MemoryClient {
     /**
      * Query memories by time using active protocol
      */
-    async queryMemoriesByTime(timeQuery, limit = 10) {
+    async queryMemoriesByTime(timeQuery, limit = 10, semanticQuery = null) {
         if (this.activeProtocol === 'mcp' && this.mcpClient) {
+            // TODO: Update MCP client to support semantic query parameter
             return this.mcpClient.queryMemoriesByTime(timeQuery, limit);
         } else if (this.activeProtocol === 'http') {
-            return this.queryMemoriesHTTP(timeQuery, limit);
+            return this.queryMemoriesByTimeHTTP(timeQuery, limit, semanticQuery);
         } else {
             throw new Error('No active connection available');
         }
     }
 
     /**
-     * Query memories via HTTP REST API
+     * Private helper: Perform HTTP POST request to API
+     * @private
      */
-    async queryMemoriesHTTP(query, limit = 10) {
-        return new Promise((resolve, reject) => {
-            const url = new URL('/api/search', this.httpConfig.endpoint);
-            const postData = JSON.stringify({
-                query: query,
-                limit: limit
-            });
+    _performApiPost(path, payload) {
+        return new Promise((resolve) => {
+            const url = new URL(path, this.httpConfig.endpoint);
+            const postData = JSON.stringify(payload);
 
             const options = {
                 hostname: url.hostname,
@@ -239,7 +267,7 @@ class MemoryClient {
                         if (response.results && Array.isArray(response.results)) {
                             // Extract memory objects from results and preserve similarity_score
                             const memories = response.results
-                                .filter(result => result && result.memory) // Ensure memory object exists
+                                .filter(result => result && result.memory)
                                 .map(result => ({
                                     ...result.memory,
                                     similarity_score: result.similarity_score
@@ -263,6 +291,33 @@ class MemoryClient {
             req.write(postData);
             req.end();
         });
+    }
+
+    /**
+     * Query memories via HTTP REST API
+     */
+    async queryMemoriesHTTP(query, limit = 10) {
+        return this._performApiPost('/api/search', {
+            query: query,
+            n_results: limit
+        });
+    }
+
+    /**
+     * Query memories by time via HTTP REST API
+     */
+    async queryMemoriesByTimeHTTP(timeQuery, limit = 10, semanticQuery = null) {
+        const payload = {
+            query: timeQuery,
+            n_results: limit
+        };
+
+        // Add semantic query if provided for relevance filtering
+        if (semanticQuery) {
+            payload.semantic_query = semanticQuery;
+        }
+
+        return this._performApiPost('/api/search/by-time', payload);
     }
 
     /**
