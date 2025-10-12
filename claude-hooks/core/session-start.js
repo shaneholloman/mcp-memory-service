@@ -27,10 +27,10 @@ async function loadConfig() {
         return {
             memoryService: {
                 protocol: 'auto',
-                preferredProtocol: 'mcp',
+                preferredProtocol: 'http',
                 fallbackEnabled: true,
                 http: {
-                    endpoint: 'https://localhost:8443',
+                    endpoint: 'http://127.0.0.1:8889',
                     apiKey: 'test-key-123',
                     healthCheckTimeout: 3000,
                     useDetailedHealthCheck: false
@@ -190,7 +190,7 @@ function detectStorageBackendFallback(config) {
     try {
         // Check environment variable first
         const envBackend = process.env.MCP_MEMORY_STORAGE_BACKEND?.toLowerCase();
-        const endpoint = config.memoryService?.endpoint || 'https://localhost:8443';
+        const endpoint = config.memoryService?.http?.endpoint || 'http://127.0.0.1:8889';
         
         // Parse endpoint to determine if local or remote
         const url = new URL(endpoint);
