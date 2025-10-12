@@ -125,18 +125,45 @@ class MemoryClient {
     }
 
     /**
-     * Query health via HTTP
+     * Query health via HTTP with automatic HTTPS → HTTP fallback
      */
     async queryHealthHTTP() {
+        const healthPath = this.httpConfig.useDetailedHealthCheck ?
+            '/api/health/detailed' : '/api/health';
+
+        // Parse the configured endpoint to extract protocol, host, and port
+        let endpointUrl;
+        try {
+            endpointUrl = new URL(this.httpConfig.endpoint);
+        } catch (error) {
+            return { success: false, error: `Invalid endpoint URL: ${this.httpConfig.endpoint}` };
+        }
+
+        // Try with configured protocol first
+        const result = await this._attemptHealthCheck(endpointUrl, healthPath);
+
+        // If HTTPS failed, try HTTP fallback on same host:port
+        if (!result.success && endpointUrl.protocol === 'https:') {
+            const httpUrl = new URL(endpointUrl);
+            httpUrl.protocol = 'http:';
+            return this._attemptHealthCheck(httpUrl, healthPath);
+        }
+
+        return result;
+    }
+
+    /**
+     * Attempt health check with specific protocol/host/port
+     * @private
+     */
+    async _attemptHealthCheck(baseUrl, healthPath) {
         return new Promise((resolve) => {
             try {
-                const healthPath = this.httpConfig.useDetailedHealthCheck ?
-                    '/api/health/detailed' : '/api/health';
-                const url = new URL(healthPath, this.httpConfig.endpoint);
+                const url = new URL(healthPath, baseUrl);
 
                 const requestOptions = {
                     hostname: url.hostname,
-                    port: url.port || 8443,
+                    port: url.port || (url.protocol === 'https:' ? 443 : 80),
                     path: url.pathname,
                     method: 'GET',
                     headers: {
@@ -170,7 +197,7 @@ class MemoryClient {
 
                 req.on('timeout', () => {
                     req.destroy();
-                    resolve({ success: false, error: 'HTTP health check timeout', fallback: true });
+                    resolve({ success: false, error: 'Health check timeout', fallback: true });
                 });
 
                 req.end();
