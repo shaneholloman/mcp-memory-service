@@ -62,6 +62,7 @@ class TimeSearchRequest(BaseModel):
     """Request model for time-based search."""
     query: str = Field(..., description="Natural language time query (e.g., 'last week', 'yesterday')")
     n_results: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
+    semantic_query: Optional[str] = Field(None, description="Optional semantic query for relevance filtering within time range")
 
 
 # Response Models
@@ -257,21 +258,24 @@ async def time_search(
                 detail=f"Could not parse time query: '{request.query}'. Try 'yesterday', 'last week', 'this month', etc."
             )
         
-        # For now, we'll do a broad search and then filter by time
-        # TODO: Implement proper time-based search in storage layer
-        query_results = await storage.retrieve("", n_results=1000)  # Get many results to filter
-        
-        # Filter by time
+        # Use semantic query if provided for relevance filtering, otherwise retrieve all
+        search_query = request.semantic_query if request.semantic_query else ""
+        query_results = await storage.retrieve(search_query, n_results=1000)  # Get many results to filter
+
+        # Filter by time range
         filtered_memories = []
         for result in query_results:
             memory_time = None
             if result.memory.created_at:
                 memory_time = datetime.fromtimestamp(result.memory.created_at)
-            
+
             if memory_time and is_within_time_range(memory_time, time_filter):
                 filtered_memories.append(result)
-        
-        # Limit results
+
+        # Sort by recency (newest first) - CRITICAL for proper ordering
+        filtered_memories.sort(key=lambda r: r.memory.created_at, reverse=True)
+
+        # Limit results AFTER sorting
         filtered_memories = filtered_memories[:request.n_results]
         
         # Convert to search results
