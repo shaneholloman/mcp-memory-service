@@ -163,7 +163,7 @@ class MemoryClient {
 
                 const requestOptions = {
                     hostname: url.hostname,
-                    port: url.port || (url.protocol === 'https:' ? 443 : 80),
+                    port: url.port || (url.protocol === 'https:' ? 8443 : 8889),
                     path: url.pathname,
                     method: 'GET',
                     headers: {
