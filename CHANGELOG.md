@@ -8,6 +8,74 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.3] - 2025-10-12
+
+### 🐛 **Fixed**
+
+#### **Critical Memory Hooks Bug Fixes (Claude Code Integration)**
+Fixed critical bugs preventing memory retrieval in Claude Code session-start hooks. Memory awareness now works correctly with both semantic and time-based searches.
+
+**Problem**: Memory hooks showed "No relevant memories found" despite 1,419 memories in database. Retrieved memories were unrelated (from wrong projects) and sorted incorrectly (oldest first).
+
+**Root Causes Fixed:**
+
+1. **Empty Semantic Query Bug** (search.py:264-272)
+   - **Issue**: `storage.retrieve("")` with empty string returned no results
+   - **Fix**: Now uses `get_recent_memories()` when `semantic_query` is empty
+   - **Impact**: Time-based searches without semantic filtering now work correctly
+
+2. **Missing Time Expression** (search.py:401-403)
+   - **Issue**: Hook sends `'last-2-weeks'` but parser didn't recognize it
+   - **Fix**: Added support for 'last 2 weeks', 'past 2 weeks', 'last-2-weeks'
+   - **Impact**: Phase 2 fallback queries now work properly
+
+3. **Performance Optimization** (search.py:36)
+   - **Change**: Reduced candidate pool from 1000 to 100 for time filtering
+   - **Rationale**: Prevents timeout on large databases, improves response time
+   - **Impact**: Search completes in <100ms vs timing out
+
+4. **CRITICAL: Missing `await` Keywords** (hybrid.py:912, 916, 935, 947)
+   - **Issue**: 4 async methods returned unawaited coroutines, causing server hangs
+   - **Methods Fixed**:
+     - Line 912: `get_all_tags()`
+     - Line 916: `get_recent_memories(n)` ⭐ **THE CRITICAL ONE**
+     - Line 935: `recall_memory(query, n_results)`
+     - Line 947: `get_memories_by_time_range(start_time, end_time)`
+   - **Impact**: Hybrid backend now works perfectly (11ms response time!)
+
+5. **JavaScript Refactoring** (memory-client.js:213-293)
+   - **Issue**: ~100 lines of duplicated HTTP request code
+   - **Fix**: Created `_performApiPost()` helper to eliminate duplication
+   - **Impact**: Improved maintainability, DRY compliance
+
+6. **Port Consistency** (memory-client.js:166)
+   - **Issue**: Health checks used standard web ports (443/80) while API calls used dev ports (8443/8889)
+   - **Fix**: Made both use development ports consistently
+   - **Impact**: Prevents connection failures with development endpoints
+
+**Testing & Verification:**
+```bash
+# Before fix: Timeout
+curl -s -m 5 "http://127.0.0.1:8889/api/search/by-time" -H "Content-Type: application/json" -d '{"query":"last-2-weeks","n_results":10}'
+# (hangs indefinitely)
+
+# After fix: Success
+curl -s -m 5 "http://127.0.0.1:8889/api/search/by-time" -H "Content-Type: application/json" -d '{"query":"last-2-weeks","n_results":10}'
+# Status: 200 (11ms)
+# Results: 5 memories retrieved
+```
+
+**Files Modified:**
+- `src/mcp_memory_service/web/api/search.py` - Empty query fix, time expression, pool size, UTC timezone
+- `src/mcp_memory_service/storage/hybrid.py` - Fixed 4 missing await keywords
+- `claude-hooks/utilities/memory-client.js` - Refactored HTTP helpers, port consistency, API contract
+- `claude-hooks/core/session-start.js` - Updated hardcoded endpoint fallbacks
+- `claude-hooks/config.json` - HTTP endpoint configuration
+
+**Code Review**: All fixes reviewed and approved by Gemini Code Assist with PEP 8 compliance, timezone-aware datetimes, list comprehensions, and proper error handling.
+
+**PR Reference**: [#156](https://github.com/doobidoo/mcp-memory-service/pull/156)
+
 ## [8.5.2] - 2025-10-11
 
 ### 🐛 **Fixed**
