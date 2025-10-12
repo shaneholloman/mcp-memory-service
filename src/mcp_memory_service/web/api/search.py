@@ -261,9 +261,15 @@ async def time_search(
                 detail=f"Could not parse time query: '{request.query}'. Try 'yesterday', 'last week', 'this month', etc."
             )
         
-        # Use semantic query if provided for relevance filtering, otherwise retrieve all
-        search_query = (request.semantic_query or "").strip()
-        query_results = await storage.retrieve(search_query, n_results=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
+        # Use semantic query if provided for relevance filtering, otherwise get recent memories
+        if request.semantic_query and request.semantic_query.strip():
+            # Semantic filtering: retrieve by similarity
+            search_query = request.semantic_query.strip()
+            query_results = await storage.retrieve(search_query, n_results=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
+        else:
+            # No semantic filter: get recent memories chronologically
+            recent_memories = await storage.get_recent_memories(n=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
+            query_results = [MemoryQueryResult(memory=m, relevance_score=1.0) for m in recent_memories]
 
         # Filter by time range using list comprehension
         filtered_memories = [
@@ -404,7 +410,11 @@ def parse_time_query(query: str) -> Optional[Dict[str, Any]]:
     elif query_lower in ['this month']:
         start = now.replace(day=1, hour=0, minute=0, second=0)
         return {'start': start, 'end': now}
-    
+
+    elif query_lower in ['last 2 weeks', 'past 2 weeks', 'last-2-weeks']:
+        start = now - timedelta(weeks=2)
+        return {'start': start, 'end': now}
+
     # Add more time expressions as needed
     return None
 
