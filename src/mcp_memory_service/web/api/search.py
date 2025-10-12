@@ -20,7 +20,7 @@ Provides semantic search, tag-based search, and time-based recall functionality.
 
 import logging
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
@@ -28,12 +28,12 @@ from pydantic import BaseModel, Field
 from ...storage.base import MemoryStorage
 from ...models.memory import Memory, MemoryQueryResult
 from ...config import OAUTH_ENABLED
-
-# Constants
-_TIME_SEARCH_CANDIDATE_POOL_SIZE = 1000  # Number of candidates to retrieve for time filtering
 from ..dependencies import get_storage
 from .memories import MemoryResponse, memory_to_response
 from ..sse import sse_manager, create_search_completed_event
+
+# Constants
+_TIME_SEARCH_CANDIDATE_POOL_SIZE = 1000  # Number of candidates to retrieve for time filtering
 
 # OAuth authentication imports (conditional)
 if OAUTH_ENABLED or TYPE_CHECKING:
@@ -269,7 +269,7 @@ async def time_search(
         filtered_memories = [
             result for result in query_results
             if result.memory.created_at and is_within_time_range(
-                datetime.fromtimestamp(result.memory.created_at),
+                datetime.fromtimestamp(result.memory.created_at, tz=timezone.utc),
                 time_filter
             )
         ]
@@ -371,12 +371,12 @@ async def find_similar(
 def parse_time_query(query: str) -> Optional[Dict[str, Any]]:
     """
     Parse natural language time queries into time ranges.
-    
+
     This is a basic implementation - can be enhanced with more sophisticated
     natural language processing later.
     """
     query_lower = query.lower().strip()
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     
     # Define time mappings
     if query_lower in ['yesterday']:

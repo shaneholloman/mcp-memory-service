@@ -239,7 +239,7 @@ class MemoryClient {
      * Private helper: Perform HTTP POST request to API
      * @private
      */
-    async _performApiPost(path, payload) {
+    _performApiPost(path, payload) {
         return new Promise((resolve) => {
             const url = new URL(path, this.httpConfig.endpoint);
             const postData = JSON.stringify(payload);
@@ -299,7 +299,7 @@ class MemoryClient {
     async queryMemoriesHTTP(query, limit = 10) {
         return this._performApiPost('/api/search', {
             query: query,
-            limit: limit
+            n_results: limit
         });
     }
 
