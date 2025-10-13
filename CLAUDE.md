@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with this MCP Memory Service repository.
 
+> **📝 Personal Customizations**: You can create `CLAUDE.local.md` (gitignored) for personal notes, custom workflows, or environment-specific instructions. This file contains shared project conventions.
+
 > **Note**: Comprehensive project context has been stored in memory with tags `claude-code-reference`. Use memory retrieval to access detailed information during development.
 
 ## Overview
@@ -554,3 +556,4 @@ tail -50 ~/Library/Logs/Claude/mcp-server-memory.log | grep -E "(🚀|☁️|✅
 > - **Quick Diagnostic**: Run `python scripts/validation/diagnose_backend_config.py`
 - always use "/gemini review" when commenting on a PR
 - make sure to have commited and pushed every change to the branch before commenting on the PR and before triggering gemini Code Assist
+- when working on hooks always make sure the modified files need to be synced into the repo as well
