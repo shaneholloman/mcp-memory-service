@@ -142,6 +142,14 @@ async def store_memory(
         metadata: Additional metadata for the memory
         client_hostname: Client machine hostname for source tracking
 
+    **IMPORTANT - Metadata Tag Format:**
+    When providing tags in the metadata parameter, they MUST be an array:
+    - ✅ CORRECT: metadata={"tags": ["tag1", "tag2"], "type": "note"}
+    - ❌ WRONG: metadata={"tags": "tag1,tag2", "type": "note"}
+
+    The tags parameter (separate from metadata) already accepts arrays correctly.
+    Only the metadata.tags field needs this clarification.
+
     Returns:
         Dictionary with:
         - success: Boolean indicating if storage succeeded

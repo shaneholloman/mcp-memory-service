@@ -8,6 +8,17 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.4] - 2025-10-13
+
+### Fixed
+- **MCP Server**: Added explicit documentation to `store_memory` tool clarifying that `metadata.tags` must be an array, not a comma-separated string
+  - Prevents validation error: `Input validation error: '...' is not of type 'array'`
+  - Includes clear examples showing correct (array) vs incorrect (string) format
+  - Documentation-only change - no code logic modified
+
+### Changed
+- Improved `store_memory` tool docstring with metadata format validation examples in `src/mcp_memory_service/mcp_server.py`
+
 ## [Unreleased]
 
 ### ✨ **Added**
