@@ -95,14 +95,33 @@ scripts\server\start_http_server.bat
 
 ### Wrong Port or Endpoint
 
+**Symptom:** Hooks fail to connect, "Invalid URL" or connection errors in logs
+
+**Common Issue:** Port mismatch between hooks configuration and actual server
+
 **Check your hooks configuration:**
 ```bash
 cat ~/.claude/hooks/config.json | grep -A5 "http"
 ```
 
 Should match your server configuration:
-- Default HTTP: `http://localhost:8000`
+- Default HTTP: `http://localhost:8000` or `http://127.0.0.1:8000`
 - Default HTTPS: `https://localhost:8443`
+
+**Important:** The HTTP server uses port **8000** by default (configured in `.env`). If your hooks are configured for a different port (e.g., 8889), you need to either:
+1. Update hooks config to match port 8000, OR
+2. Change `MCP_HTTP_PORT` in `.env` and restart the server
+
+**Fix for port mismatch:**
+```bash
+# Option 1: Update hooks config (recommended)
+# Edit ~/.claude/hooks/config.json and change endpoint to:
+# "endpoint": "http://127.0.0.1:8000"
+
+# Option 2: Change server port (if needed)
+# Edit .env: MCP_HTTP_PORT=8889
+# Then restart: systemctl --user restart mcp-memory-http.service
+```
 
 ### Server Startup Issues
 
@@ -190,6 +209,36 @@ Add to your shell profile (`.bashrc`, `.zshrc`, etc.):
 # Auto-start MCP Memory HTTP server before Claude Code
 # Replace /path/to/repository with the absolute path to this project
 alias claude-code='/path/to/repository/scripts/server/start_http_server.sh && claude'
+```
+
+**Linux (systemd user service - RECOMMENDED):**
+
+For a persistent, auto-starting service on Linux, use systemd. See [Systemd Service Guide](deployment/systemd-service.md) for detailed setup.
+
+Quick setup:
+```bash
+# Install service
+bash scripts/service/install_http_service.sh
+
+# Start service
+systemctl --user start mcp-memory-http.service
+
+# Enable auto-start
+systemctl --user enable mcp-memory-http.service
+loginctl enable-linger $USER  # Run even when logged out
+```
+
+**Quick Commands:**
+```bash
+# Service control
+systemctl --user start/stop/restart mcp-memory-http.service
+systemctl --user status mcp-memory-http.service
+
+# View logs
+journalctl --user -u mcp-memory-http.service -f
+
+# Health check
+curl http://127.0.0.1:8000/api/health
 ```
 
 ## See Also

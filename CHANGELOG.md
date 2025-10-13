@@ -8,6 +8,69 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### ✨ **Added**
+
+#### **Linux systemd Service Support**
+Added comprehensive systemd user service support for automatic HTTP server management on Linux systems.
+
+**New Files:**
+- `scripts/service/mcp-memory-http.service` - systemd user service definition
+- `scripts/service/install_http_service.sh` - Interactive installation script
+- `docs/deployment/systemd-service.md` - Detailed systemd setup guide
+
+**Features:**
+- ✅ **Automatic startup** on user login
+- ✅ **Persistent operation** with loginctl linger support
+- ✅ **Automatic restarts** on failure (RestartSec=10)
+- ✅ **Centralized logging** via journald
+- ✅ **Easy management** via systemctl commands
+- ✅ **Environment loading** from .env file
+- ✅ **Security hardening** (NoNewPrivileges, PrivateTmp)
+
+**Usage:**
+```bash
+bash scripts/service/install_http_service.sh  # Install
+systemctl --user start mcp-memory-http.service
+systemctl --user enable mcp-memory-http.service
+loginctl enable-linger $USER
+```
+
+### 📚 **Documentation**
+
+#### **Enhanced HTTP Server Management**
+- Updated `docs/http-server-management.md` with systemd section
+- Added troubleshooting for port mismatch issues (8000 vs 8889)
+- Documented hooks endpoint configuration requirements
+
+#### **CLAUDE.md Updates**
+- Added systemd commands to Essential Commands section
+- Added "Troubleshooting Hooks Not Retrieving Memories" section
+- Cross-referenced detailed documentation guides
+
+### 🐛 **Fixed**
+
+#### **Hooks Configuration Troubleshooting**
+- Documented common port mismatch issue between hooks config and HTTP server
+- Added diagnostic commands for verifying HTTP server status
+- Clarified that HTTP server is **required** for hooks (stdio MCP cannot be used)
+
+**Root Cause:** Many installations had hooks configured for port 8889 while HTTP server runs on port 8000 (default in .env). This caused silent failures where hooks couldn't connect.
+
+**Solution:**
+1. Update hooks config endpoint to `http://127.0.0.1:8000`
+2. Verify with: `systemctl --user status mcp-memory-http.service`
+3. Test with: `curl http://127.0.0.1:8000/api/health`
+
+### 🔧 **Changed**
+
+- Service files now use `WantedBy=default.target` for user services (not multi-user.target)
+- Removed `User=` and `Group=` directives from user service (causes GROUP error)
+- Enhanced error messages and troubleshooting documentation
+
+---
+
 ## [8.5.3] - 2025-10-12
 
 ### 🐛 **Fixed**

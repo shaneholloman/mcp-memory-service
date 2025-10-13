@@ -1,0 +1,28 @@
+[Unit]
+Description=MCP Memory Service HTTP Server (Hybrid Backend)
+Documentation=https://github.com/doobidoo/mcp-memory-service
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# NOTE: User= and Group= should NOT be set for user services
+# They are only for system services. User services automatically run as the user.
+WorkingDirectory=%h/repositories/mcp-memory-service
+Environment=PATH=%h/repositories/mcp-memory-service/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PYTHONPATH=%h/repositories/mcp-memory-service/src
+# Load environment variables from .env file
+EnvironmentFile=%h/repositories/mcp-memory-service/.env
+ExecStart=%h/repositories/mcp-memory-service/venv/bin/python %h/repositories/mcp-memory-service/scripts/server/run_http_server.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcp-memory-http
+
+# Security hardening (user service compatible)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

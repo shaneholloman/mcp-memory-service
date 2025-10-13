@@ -50,6 +50,12 @@ python scripts/sync/claude_sync_commands.py restore     # SQLite → Cloudflare
 scripts/service/memory_service_manager.sh status       # Check service status
 scripts/service/memory_service_manager.sh start-cloudflare # Start with Cloudflare
 
+# HTTP Server (Linux systemd)
+systemctl --user start/stop/restart mcp-memory-http.service  # Control service
+systemctl --user status mcp-memory-http.service              # Check status
+journalctl --user -u mcp-memory-http.service -f              # View logs
+bash scripts/service/install_http_service.sh                 # Install service
+
 # Natural Memory Triggers v7.1.0 (Latest)
 node ~/.claude/hooks/memory-mode-controller.js status   # Check trigger system status
 node ~/.claude/hooks/memory-mode-controller.js profile balanced  # Switch performance profile
@@ -517,6 +523,20 @@ claude mcp list                             # Check Claude Code MCP servers
 # If health check shows "sqlite-vec" instead of "cloudflare":
 python scripts/validation/diagnose_backend_config.py  # Check configuration
 claude mcp remove memory && claude mcp add memory python -e MCP_MEMORY_STORAGE_BACKEND=cloudflare -e CLOUDFLARE_API_TOKEN=your-token -- -m mcp_memory_service.server
+```
+
+**Troubleshooting Hooks Not Retrieving Memories:**
+```bash
+# Check if HTTP server is running
+systemctl --user status mcp-memory-http.service  # Linux
+# or
+uv run python scripts/server/check_http_server.py  # All platforms
+
+# Verify hooks endpoint matches server port
+cat ~/.claude/hooks/config.json | grep endpoint
+# Should show: http://127.0.0.1:8000 (not 8889 or other port)
+
+# See detailed guide: docs/http-server-management.md
 ```
 
 **Emergency Debugging:**
