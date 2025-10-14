@@ -237,6 +237,8 @@ export MCP_API_KEY="$(openssl rand -base64 32)" # Generate secure API key
 
 ## Claude Code Hooks Configuration 🆕
 
+> **🚨 CRITICAL - Windows Users**: SessionStart hooks with `matchers: ["*"]` cause Claude Code to hang indefinitely on Windows. This is a confirmed bug (#160). **Workaround**: Disable SessionStart hooks or use UserPromptSubmit hooks instead. See [Windows SessionStart Hook Issue](#windows-sessionstart-hook-issue) below.
+
 ### Natural Memory Triggers v7.1.0 (Latest)
 
 **Intelligent automatic memory retrieval** with advanced semantic analysis and multi-tier performance optimization:
@@ -541,6 +543,38 @@ cat ~/.claude/hooks/config.json | grep endpoint
 # See detailed guide: docs/http-server-management.md
 ```
 
+**⚠️ CRITICAL: Hook Configuration Synchronization**
+
+When configuring Claude Code hooks, **all HTTP endpoints MUST use the same port** across configuration files:
+
+**Configuration Files to Check:**
+1. **`~/.claude/hooks/config.json`** - Line 7: `"endpoint": "http://127.0.0.1:8000"`
+2. **HTTP Server** - Default port: `8000` (check `scripts/server/run_http_server.py`)
+3. **Dashboard/Web Interface** - Separate port: `8888` (HTTP) or `8443` (HTTPS)
+
+**Common Mistakes:**
+- ❌ Port mismatch (config.json shows 8889 but server runs on 8000)
+- ❌ Using dashboard port (8888/8443) instead of API server port (8000)
+- ❌ Different ports in `settings.json` MCP server env vs hooks config
+
+**Quick Verification:**
+```bash
+# Windows
+netstat -ano | findstr "8000"
+
+# Linux/macOS
+lsof -i :8000
+
+# Check hooks config
+grep endpoint ~/.claude/hooks/config.json
+```
+
+**Symptoms of Port Mismatch:**
+- SessionStart hook hangs/times out
+- Claude Code becomes unresponsive on startup
+- Hooks show "connection timeout" in logs
+- No memories injected despite hook firing
+
 **Emergency Debugging:**
 ```bash
 /mcp                                         # Check active MCP servers in Claude
@@ -549,6 +583,73 @@ rm -f .mcp.json                             # Remove conflicting local MCP confi
 python debug_server_initialization.py       # Test initialization flows (v6.15.1+)
 tail -50 ~/Library/Logs/Claude/mcp-server-memory.log | grep -E "(🚀|☁️|✅|❌)" # View enhanced logs
 ```
+
+### Windows SessionStart Hook Issue
+
+**🚨 CRITICAL BUG**: SessionStart hooks with `matchers: ["*"]` cause Claude Code to hang indefinitely on Windows.
+
+**Issue**: [#160](https://github.com/doobidoo/mcp-memory-service/issues/160)
+
+**Symptoms**:
+- Claude Code becomes completely unresponsive when starting
+- Hook executes but process never terminates
+- Cannot enter prompts or cancel with Ctrl+C
+- Must force-close terminal to exit
+
+**Root Cause**:
+Windows-specific subprocess management issue. Even with `process.exit(0)`, Node.js subprocesses with open connections (HTTP client, etc.) don't close all file descriptors properly on Windows, causing the parent process (Claude Code) to wait indefinitely.
+
+**Tested Solutions** (None worked on Windows):
+- ❌ Multiple `process.exit(0)` calls
+- ❌ `.finally()` blocks with forced exit
+- ❌ Minimal hook (just print + exit)
+- ❌ Windows batch wrapper with forced exit
+- ❌ Increased timeouts (no timeout enforcement occurs)
+
+**Workarounds**:
+
+1. **Disable SessionStart hooks** (current recommendation):
+```json
+{
+  "hooks": {
+    "SessionStart": []
+  }
+}
+```
+
+2. **Use UserPromptSubmit hooks instead** (these work on Windows):
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matchers": ["*"],
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/core/mid-conversation.js",
+            "timeout": 8
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+3. **Manual invocation when needed**:
+```bash
+node C:\Users\username\.claude\hooks\core\session-start.js
+```
+
+**Platform Status**:
+- macOS: Works correctly ✅
+- Linux: Works correctly ✅ (assumed)
+- Windows: Fatal hang ❌
+
+**Impact**: Critical for Windows users. SessionStart hooks are completely unusable until Claude Code fixes subprocess management on Windows.
+
+---
 
 > **For detailed troubleshooting, architecture, and deployment guides:**
 > - **Backend Configuration Issues**: See [Wiki Troubleshooting Guide](https://github.com/doobidoo/mcp-memory-service/wiki/07-TROUBLESHOOTING#backend-configuration-issues) for comprehensive solutions to missing memories, environment variable issues, Cloudflare auth, hooks timeouts, and more
