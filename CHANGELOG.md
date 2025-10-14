@@ -8,6 +8,26 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.5] - 2025-10-14
+
+### Fixed
+- **Critical: Claude Code Hooks Configuration** - Fixed session-start hook hanging/unresponsiveness on Windows
+  - **Root Cause**: Missing forced process exit in session-start.js caused Node.js event loop to remain active with unclosed connections
+  - **Fix 1**: Added `.finally()` block with 100ms delayed `process.exit(0)` to ensure clean termination
+  - **Fix 2**: Corrected port mismatch in `~/.claude/hooks/config.json` (8889 → 8000) to match HTTP server
+  - **Impact**: Hooks now complete in <15 seconds without hanging, Claude Code remains responsive
+  - **Files Modified**:
+    - `~/.claude/hooks/core/session-start.js` (lines 1010-1013)
+    - `~/.claude/hooks/config.json` (line 7)
+  - **Platform**: Windows (also applies to macOS/Linux)
+
+### Changed
+- **Documentation**: Added critical warning section to CLAUDE.md about hook configuration synchronization
+  - Documents port mismatch symptoms (hanging hooks, unresponsive Claude Code, connection timeouts)
+  - Lists all configuration files to check (`config.json`, HTTP server port, dashboard port)
+  - Provides verification commands for Windows/Linux/macOS
+  - Explains common mistakes (using dashboard port 8888/8443 instead of API port 8000)
+
 ## [8.5.4] - 2025-10-13
 
 ### Fixed
