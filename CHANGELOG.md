@@ -8,6 +8,26 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.6] - 2025-10-16
+
+### Fixed
+- **Critical: Memory Hooks HTTPS SSL Certificate Validation** - Fixed hooks failing to connect to HTTPS server with self-signed certificates
+  - **Root Cause**: Node.js HTTPS requests were rejecting self-signed SSL certificates silently, causing "No active connection available" errors
+  - **Symptoms**:
+    - Hooks showed "Failed to connect using any available protocol"
+    - No memories retrieved despite server being healthy
+    - HTTP server running but hooks couldn't establish connection
+  - **Fix**: Added `rejectUnauthorized: false` to both health check and API POST request options in memory-client.js
+  - **Impact**: Hooks now successfully connect via HTTPS to servers with self-signed certificates
+  - **Files Modified**:
+    - `claude-hooks/utilities/memory-client.js` (lines 174, 257)
+    - `~/.claude/hooks/utilities/memory-client.js` (deployed)
+  - **Test Results**: ✅ 7 memories retrieved from 1558 total, all phases working correctly
+  - **Platform**: All platforms (macOS, Linux, Windows)
+
+### Changed
+- Memory hooks now support HTTPS endpoints with self-signed certificates without manual certificate trust configuration
+
 ## [8.5.5] - 2025-10-14
 
 ### Fixed
