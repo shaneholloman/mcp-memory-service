@@ -11,17 +11,31 @@
       "Bash(claude mcp:*)",
       "Bash(cat:*)",
       "Bash(where claude)",
-      "Read(//c/Users/heinrich.krupp/**)",
-      "Bash(ls -la \"C:\\Users\\heinrich.krupp\\.config\\claude\"\" 2>/dev/null || ls -la \"$APPDATAClaude\"\")",
+      "Read(//home/hkr/**)",
       "Bash(git stash push:*)",
       "Bash(python3:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(echo $MCP_MEMORY_STORAGE_BACKEND)",
+      "Read(//home/hkr/.claude/hooks/**)",
+      "Bash(uv run:*)",
+      "Bash(bash:*)",
+      "Read(//tmp/**)",
+      "Bash(timeout 10 uv run:*)",
+      "mcp__memory__store_memory",
+      "Bash(git pull:*)",
+      "mcp__memory__retrieve_memory",
+      "mcp__memory__recall_memory",
+      "Read(//home/hkr/.claude/**)",
+      "Bash(find:*)",
+      "Bash(git log:*)",
+      "Bash(node:*)",
+      "Bash(ss:*)",
+      "Bash(git tag:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
-    "ask": [],
-    "additionalDirectories": [
-      "C:\\Users\\heinrich.krupp",
-      "C:\\c\\REPOSITORIES"
-    ]
+    "ask": []
   }
 }
