@@ -61,7 +61,7 @@ COPY tools/docker/docker-entrypoint-unified.sh /usr/local/bin/
 RUN if [ "$FORCE_CPU_PYTORCH" = "true" ] || [ "$INSTALL_EXTRA" = "[sqlite]" ]; then \
         echo "Installing CPU-only PyTorch to save disk space..."; \
         python -m uv pip install torch --index-url https://download.pytorch.org/whl/cpu; \
-        python -m uv pip install -e .${INSTALL_EXTRA} --no-deps; \
+        python -m uv pip install -e .${INSTALL_EXTRA}; \
     else \
         python -m uv pip install -e .${INSTALL_EXTRA}; \
     fi
