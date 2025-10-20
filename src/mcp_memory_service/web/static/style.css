@@ -2021,13 +2021,474 @@ body.dark-mode .footer-copyright {
 
 /* Responsive footer */
 @media (max-width: 768px) {
-    .footer-content {
-        grid-template-columns: 1fr;
-        gap: 2rem;
-    }
+.footer-content {
+grid-template-columns: 1fr;
+gap: 2rem;
+}
 
-    .app-footer {
-        padding: 2rem 1rem 1.5rem;
-        margin-top: 3rem;
-    }
+.app-footer {
+padding: 2rem 1rem 1.5rem;
+margin-top: 3rem;
+}
+}
+
+/* Manage View Styles */
+.manage-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding: var(--space-6);
+}
+
+.manage-section {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-sm);
+}
+
+.manage-section h2 {
+    margin: 0 0 var(--space-6) 0;
+    color: var(--neutral-900);
+    font-size: var(--text-xl);
+    font-weight: 600;
+}
+
+.bulk-ops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-6);
+}
+
+.bulk-op-card {
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    transition: var(--transition-base);
+}
+
+.bulk-op-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+}
+
+.bulk-op-card h3 {
+    margin: 0 0 var(--space-2) 0;
+    color: var(--neutral-900);
+    font-size: var(--text-lg);
+    font-weight: 600;
+}
+
+.bulk-op-card p {
+    margin: 0 0 var(--space-4) 0;
+    color: var(--neutral-600);
+    font-size: var(--text-sm);
+}
+
+.op-controls {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.op-controls .form-control {
+    min-width: 200px;
+    flex: 1;
+}
+
+.system-ops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-4);
+}
+
+.system-op-card {
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    text-align: center;
+}
+
+.system-op-card h3 {
+    margin: 0 0 var(--space-2) 0;
+    font-size: var(--text-base);
+    font-weight: 600;
+}
+
+.system-op-card p {
+    margin: 0 0 var(--space-4) 0;
+    font-size: var(--text-sm);
+    color: var(--neutral-600);
+}
+
+/* Analytics View Styles */
+.analytics-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding: var(--space-6);
+}
+
+.analytics-section {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-sm);
+}
+
+.analytics-section h2 {
+    margin: 0 0 var(--space-6) 0;
+    color: var(--neutral-900);
+    font-size: var(--text-xl);
+    font-weight: 600;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+}
+
+.metric-card {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    text-align: center;
+    box-shadow: var(--shadow-md);
+}
+
+.metric-value {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+    font-variant-numeric: tabular-nums;
+}
+
+.metric-label {
+    font-size: var(--text-sm);
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--space-6);
+}
+
+.chart-card {
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+}
+
+.chart-card h3 {
+    margin: 0 0 var(--space-4) 0;
+    color: var(--neutral-900);
+    font-size: var(--text-lg);
+    font-weight: 600;
+}
+
+.chart-controls {
+    margin-bottom: var(--space-4);
+}
+
+.chart-container {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: var(--space-3);
+    color: var(--neutral-500);
+}
+
+.reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-6);
+}
+
+.report-card {
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+}
+
+.report-card h3 {
+    margin: 0 0 var(--space-4) 0;
+    color: var(--neutral-900);
+    font-size: var(--text-lg);
+    font-weight: 600;
+}
+
+.report-content {
+    color: var(--neutral-700);
+}
+
+/* Tag Management Styles */
+.tag-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--space-4);
+}
+
+.tag-stats-table th,
+.tag-stats-table td {
+    padding: var(--space-3);
+    text-align: left;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+.tag-stats-table th {
+    background: var(--neutral-100);
+    font-weight: 600;
+    color: var(--neutral-900);
+}
+
+.tag-stats-table .tag-name {
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.tag-stats-table .tag-count {
+    font-weight: 600;
+    color: var(--neutral-900);
+}
+
+.tag-actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.tag-action-btn {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--neutral-300);
+    border-radius: var(--radius-sm);
+    background: var(--neutral-50);
+    color: var(--neutral-700);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+
+.tag-action-btn:hover {
+    background: var(--neutral-200);
+    border-color: var(--neutral-400);
+}
+
+.tag-action-btn.danger:hover {
+    background: var(--error);
+    color: white;
+    border-color: var(--error);
+}
+
+/* Dark mode support for Manage/Analytics - Fixed v8.5.5 */
+body.dark-mode .manage-section,
+body.dark-mode .analytics-section {
+    background: var(--neutral-100) !important;  /* Dark card background */
+    color: var(--neutral-900) !important;  /* Light text */
+}
+
+body.dark-mode .manage-section h2,
+body.dark-mode .analytics-section h2 {
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .bulk-op-card,
+body.dark-mode .system-op-card,
+body.dark-mode .chart-card,
+body.dark-mode .report-card {
+    background: var(--neutral-50) !important;  /* Darker nested card background */
+    border-color: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .bulk-op-card h3,
+body.dark-mode .system-op-card h3,
+body.dark-mode .chart-card h3,
+body.dark-mode .report-card h3 {
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .bulk-op-card p,
+body.dark-mode .system-op-card p,
+body.dark-mode .chart-card p,
+body.dark-mode .report-card p {
+    color: var(--neutral-600) !important;
+}
+
+/* Form controls in Manage/Analytics dark mode */
+body.dark-mode .bulk-op-card input,
+body.dark-mode .bulk-op-card select,
+body.dark-mode .chart-card input,
+body.dark-mode .chart-card select,
+body.dark-mode .manage-section .form-control,
+body.dark-mode .analytics-section .form-control {
+    background: var(--neutral-100) !important;
+    border-color: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .bulk-op-card input:focus,
+body.dark-mode .bulk-op-card select:focus,
+body.dark-mode .chart-card input:focus,
+body.dark-mode .chart-card select:focus {
+    border-color: var(--primary) !important;
+    background: var(--neutral-50) !important;
+}
+
+/* Buttons in Manage/Analytics dark mode */
+body.dark-mode .bulk-op-card .btn,
+body.dark-mode .system-op-card .btn,
+body.dark-mode .chart-card .btn {
+    opacity: 1;
+}
+
+body.dark-mode .metric-card {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary)) !important;
+    color: white !important;
+}
+
+body.dark-mode .metric-value,
+body.dark-mode .metric-label {
+    color: white !important;
+}
+
+/* Tag management table dark mode */
+body.dark-mode .tag-stats-table {
+    color: var(--neutral-900);
+}
+
+body.dark-mode .tag-stats-table th {
+    background: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .tag-stats-table td {
+    border-bottom-color: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .tag-stats-table .tag-name {
+    color: var(--primary) !important;
+}
+
+body.dark-mode .tag-stats-table .tag-count {
+    color: var(--neutral-900) !important;
+}
+
+/* Tag action buttons dark mode */
+body.dark-mode .tag-action-btn {
+    background: var(--neutral-200) !important;
+    border-color: var(--neutral-300) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .tag-action-btn:hover {
+    background: var(--neutral-300) !important;
+    border-color: var(--neutral-400) !important;
+}
+
+body.dark-mode .tag-action-btn.danger:hover {
+    background: var(--error) !important;
+    color: white !important;
+    border-color: var(--error) !important;
+}
+
+/* Simple Chart Styles */
+.simple-chart {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+}
+
+.chart-header {
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    color: var(--neutral-900);
+}
+
+.chart-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-2);
+    gap: var(--space-3);
+}
+
+.chart-label {
+    min-width: 80px;
+    color: var(--neutral-700);
+}
+
+.chart-bar {
+    height: 16px;
+    background: var(--primary);
+    border-radius: var(--radius-sm);
+    transition: width 0.3s ease;
+}
+
+.chart-value {
+    min-width: 60px;
+    text-align: right;
+    color: var(--neutral-900);
+    font-weight: 500;
+}
+
+.tags-list, .activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tags-list li, .activity-list li {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--neutral-200);
+}
+
+.tags-list li:last-child, .activity-list li:last-child {
+    border-bottom: none;
+}
+
+.tags-list li strong {
+    color: var(--primary);
+}
+
+/* Dark mode for charts - Fixed v8.5.5 contrast */
+body.dark-mode .chart-header {
+    color: var(--neutral-900) !important;  /* Brightest text for headings */
+}
+
+body.dark-mode .chart-label {
+    color: var(--neutral-700) !important;  /* Lighter text for labels */
+}
+
+body.dark-mode .chart-value {
+    color: var(--neutral-900) !important;  /* Brightest text for values */
+}
+
+body.dark-mode .chart-bar {
+    background: var(--primary) !important;
+}
+
+body.dark-mode .chart-container {
+    color: var(--neutral-700) !important;  /* Loading/placeholder text */
+}
+
+body.dark-mode .tags-list li,
+body.dark-mode .activity-list li {
+    border-bottom-color: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .tags-list li strong {
+    color: var(--primary) !important;
+}
+
+body.dark-mode .activity-list li {
+    color: var(--neutral-700) !important;
 }
