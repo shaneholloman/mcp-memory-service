@@ -73,7 +73,7 @@ jobs:
         
         # Run semantic-release with verbose output for debugging
         echo "DEBUG: Running semantic-release..."
-        if semantic-release -v version --no-push --no-vcs-release; then
+        if semantic-release version --no-push --no-vcs-release --verbose; then
           echo "DEBUG: semantic-release completed successfully"
         else
           echo "DEBUG: semantic-release failed or no release needed"
@@ -101,10 +101,15 @@ jobs:
           # Create tag manually
           git tag "v$AFTER_VERSION"
           echo "✅ Tag v$AFTER_VERSION created locally"
-          
+
+          # Push version bump and tag to remote
+          git push origin main
+          git push origin "v$AFTER_VERSION"
+          echo "✅ Pushed version bump and tag v$AFTER_VERSION to remote"
+
           echo "DEBUG: Contents written to GITHUB_OUTPUT:"
           echo "released=true"
-          echo "version=$AFTER_VERSION" 
+          echo "version=$AFTER_VERSION"
           echo "tag=v$AFTER_VERSION"
         else
           echo "❌ No release needed (version unchanged: $BEFORE_VERSION)"
