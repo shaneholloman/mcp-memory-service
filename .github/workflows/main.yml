@@ -195,12 +195,12 @@ jobs:
         # Debug: List all docker images
         echo "Available Docker images:"
         docker images
-        
+
         # Test image can be created (override entrypoint to run python directly)
         docker run --rm --entrypoint="" mcp-memory-service:test python -c "print('✓ Docker image works')"
-        
-        # Test that the server can show help
-        docker run --rm mcp-memory-service:test --help > /dev/null && echo "✓ Server help works"
+
+        # Test that the server can show help (disable OAuth to avoid JWT key requirement)
+        docker run --rm -e MCP_OAUTH_ENABLED=false mcp-memory-service:test --help > /dev/null && echo "✓ Server help works"
 
   # Publish to Docker Hub (only after release)
   publish-docker-hub:
