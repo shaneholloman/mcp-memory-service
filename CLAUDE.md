@@ -575,6 +575,55 @@ grep endpoint ~/.claude/hooks/config.json
 - Hooks show "connection timeout" in logs
 - No memories injected despite hook firing
 
+**Troubleshooting Schema Validation Errors After PR Merges:**
+
+**Symptom**: After merging a PR that changes tool schemas, you still see validation errors like:
+```
+Input validation error: 'value' is not of type 'expected_type'
+```
+
+**Root Cause**: MCP clients (like Claude Code) cache tool schemas when they first connect. Even after:
+- ✅ PR is merged
+- ✅ Git pull completes
+- ✅ Code is updated
+- ❌ **MCP server process is still running old code**
+
+The old MCP server continues advertising the old schema, and the client validates against this cached schema.
+
+**Diagnosis**:
+```bash
+# 1. Check when PR was merged
+gh pr view <PR_NUMBER> --json mergedAt,title
+
+# 2. Check when MCP server process started
+ps aux | grep "memory.*server" | grep -v grep
+
+# 3. If server started BEFORE merge time, it's running old code
+```
+
+**Solution**:
+```bash
+# In Claude Code, reconnect MCP:
+/mcp
+
+# This will:
+# 1. Terminate old MCP server process
+# 2. Start new MCP server with latest code
+# 3. Re-fetch updated tool schemas
+# 4. Clear client-side schema cache
+
+# For HTTP server (separate from MCP):
+systemctl --user restart mcp-memory-http.service
+```
+
+**Example**: PR #162 (comma-separated tags fix)
+- Merged: Oct 20, 2025 17:22 UTC
+- Error persisted: "Input validation error: 'tag1,tag2' is not of type 'array'"
+- Server process: Started Oct 21 10:43 (before git pull)
+- Fix: `/mcp` command to reconnect with new schema
+
+**See**: `docs/troubleshooting/pr162-schema-caching-issue.md` for detailed analysis
+
 **Emergency Debugging:**
 ```bash
 /mcp                                         # Check active MCP servers in Claude
