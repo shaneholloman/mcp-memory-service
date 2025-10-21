@@ -4,7 +4,7 @@
     "preferredProtocol": "http",
     "fallbackEnabled": true,
     "http": {
-      "endpoint": "http://127.0.0.1:8889",
+      "endpoint": "http://127.0.0.1:8000",
       "apiKey": "VhOGAoUOE5_BMzu-phDORdyXHNMcDRBxvndK_Uop",
       "healthCheckTimeout": 3000,
       "useDetailedHealthCheck": true

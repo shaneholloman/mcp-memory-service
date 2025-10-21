@@ -449,6 +449,72 @@ Result: Recent memory wins despite lower base score
 2. Reduce `maxGitMemories`: `3` → `2`
 3. Disable git analysis temporarily: `"enabled": false`
 
+### Problem: "No relevant memories found" despite healthy database
+
+**Symptoms:**
+- Hooks show "No relevant memories found" or "No active connection available"
+- HTTP server is running and healthy
+- Database contains many memories
+- Hook logs show connection failures or wrong endpoint
+
+**Root Causes:**
+
+1. **Port Mismatch**: Config endpoint doesn't match actual HTTP server port
+   ```json
+   // WRONG - Server runs on 8000, config shows 8889
+   "endpoint": "http://127.0.0.1:8889"
+   ```
+
+2. **Stale Configuration**: Config not updated after reinstalling hooks or changing server port
+
+**Solutions:**
+
+1. **Verify HTTP server port**:
+   ```bash
+   # Check what port the server is actually running on
+   lsof -i :8000    # Linux/macOS
+   netstat -ano | findstr "8000"  # Windows
+
+   # Or check server logs
+   systemctl --user status mcp-memory-http.service  # Linux systemd
+   ```
+
+2. **Fix endpoint in config** (`~/.claude/hooks/config.json`):
+   ```json
+   {
+     "memoryService": {
+       "http": {
+         "endpoint": "http://127.0.0.1:8000",  // Match actual server port!
+         "apiKey": "your-api-key"
+       }
+     }
+   }
+   ```
+
+3. **Test connection manually**:
+   ```bash
+   curl http://127.0.0.1:8000/api/health
+   # Should return: {"status":"healthy","version":"..."}
+   ```
+
+4. **Verify configuration is loaded**:
+   ```bash
+   # Run a hook manually and check the output
+   node ~/.claude/hooks/core/session-start.js
+   # Look for connection protocol and storage info in output
+   ```
+
+**Related Configuration Issues:**
+
+After updating from repository, verify these settings match your preferences:
+- `recentTimeWindow`: Repository default is `"last week"` (not `"last 3 days"`)
+- `fallbackTimeWindow`: Repository default is `"last 2 weeks"` (not `"last week"`)
+- `timeDecay` weight: Repository default is `0.50` (not `0.60`)
+- `minRelevanceScore`: Repository default is `0.4` (not `0.25`)
+- `commitLookback`: Repository default is `14` days (not `7`)
+
+**See also:** [CLAUDE.md § Configuration Management](../../CLAUDE.md#configuration-management) for complete troubleshooting guide.
+
 ---
 
 ## Migration from Previous Versions
