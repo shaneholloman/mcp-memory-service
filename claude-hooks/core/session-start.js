@@ -933,8 +933,101 @@ async function executeSessionStart(context) {
             // Inject context into session
             if (context.injectSystemMessage) {
                 await context.injectSystemMessage(contextMessage);
+
+                // Print visible summary for user (Option 1)
                 if (!cleanMode) {
+                    console.log(`\n${CONSOLE_COLORS.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CONSOLE_COLORS.RESET}`);
+                    console.log(`${CONSOLE_COLORS.CYAN}🧠 Session Memory Context${CONSOLE_COLORS.RESET}`);
+                    console.log(`${CONSOLE_COLORS.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CONSOLE_COLORS.RESET}`);
+                    console.log(`${CONSOLE_COLORS.BRIGHT}Project:${CONSOLE_COLORS.RESET} ${projectContext.name} ${CONSOLE_COLORS.GRAY}(${projectContext.language})${CONSOLE_COLORS.RESET}`);
+                    if (storageInfo) {
+                        console.log(`${CONSOLE_COLORS.BRIGHT}Storage:${CONSOLE_COLORS.RESET} ${storageInfo.icon} ${storageInfo.description}`);
+                    }
+                    const recentText = recentCount > 0 ? ` ${CONSOLE_COLORS.GREEN}(${recentCount} recent)${CONSOLE_COLORS.RESET}` : '';
+                    console.log(`${CONSOLE_COLORS.BRIGHT}Memories:${CONSOLE_COLORS.RESET} 🧠 ${maxMemories}${recentText}`);
+                    if (gitContext && gitContext.commits.length > 0) {
+                        const topKeywords = gitContext.developmentKeywords.keywords.slice(0, 3).join(', ');
+                        console.log(`${CONSOLE_COLORS.BRIGHT}Git Context:${CONSOLE_COLORS.RESET} 📊 ${gitContext.commits.length} commits ${CONSOLE_COLORS.GRAY}(${topKeywords})${CONSOLE_COLORS.RESET}`);
+                    }
+                    console.log(`${CONSOLE_COLORS.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CONSOLE_COLORS.RESET}\n`);
                     console.log(`${CONSOLE_COLORS.GREEN}✅ Memory Hook${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Context injected ${CONSOLE_COLORS.GRAY}(${maxMemories} memories)${CONSOLE_COLORS.RESET}`);
+                }
+
+                // Write detailed session context log file (Option 3)
+                try {
+                    const os = require('os');
+                    const logPath = path.join(os.homedir(), '.claude', 'last-session-context.txt');
+                    const recencyPercent = maxMemories > 0 ? ((recentCount / maxMemories) * 100).toFixed(0) : 0;
+
+                    let logContent = `Session Started: ${new Date().toISOString()}\n`;
+                    logContent += `Session ID: ${context.sessionId || 'unknown'}\n\n`;
+                    logContent += `=== Project Context ===\n`;
+                    logContent += `Project: ${projectContext.name}\n`;
+                    logContent += `Language: ${projectContext.language}\n`;
+                    if (projectContext.frameworks && projectContext.frameworks.length > 0) {
+                        logContent += `Frameworks: ${projectContext.frameworks.join(', ')}\n`;
+                    }
+                    if (projectContext.git) {
+                        logContent += `Git Branch: ${projectContext.git.branch || 'unknown'}\n`;
+                    }
+                    logContent += `\n=== Storage Backend ===\n`;
+                    if (storageInfo) {
+                        logContent += `Backend: ${storageInfo.backend}\n`;
+                        logContent += `Type: ${storageInfo.type}\n`;
+                        logContent += `Location: ${storageInfo.location}\n`;
+                        if (storageInfo.health.totalMemories > 0) {
+                            logContent += `Total Memories in DB: ${storageInfo.health.totalMemories}\n`;
+                        }
+                    }
+                    logContent += `\n=== Memory Statistics ===\n`;
+                    logContent += `Memories Loaded: ${maxMemories}\n`;
+                    logContent += `Recent (last week): ${recentCount} (${recencyPercent}%)\n`;
+
+                    if (gitContext) {
+                        logContent += `\n=== Git Context ===\n`;
+                        logContent += `Commits Analyzed: ${gitContext.commits.length}\n`;
+                        logContent += `Changelog Entries: ${gitContext.changelogEntries?.length || 0}\n`;
+                        logContent += `Top Keywords: ${gitContext.developmentKeywords.keywords.slice(0, 5).join(', ')}\n`;
+                    }
+
+                    if (topMemories.length > 0) {
+                        logContent += `\n=== Top Loaded Memories ===\n`;
+                        topMemories.slice(0, 3).forEach((m, idx) => {
+                            const preview = m.content ? m.content.substring(0, 150).replace(/\n/g, ' ') : 'No content';
+                            const ageInfo = m.created_at_iso ? ` (${Math.floor((now - new Date(m.created_at_iso)) / (1000 * 60 * 60 * 24))}d ago)` : '';
+                            logContent += `\n${idx + 1}. Score: ${(m.relevanceScore * 100).toFixed(0)}%${ageInfo}\n`;
+                            logContent += `   ${preview}...\n`;
+                        });
+                    }
+
+                    await fs.writeFile(logPath, logContent, 'utf8');
+                } catch (error) {
+                    // Silently fail - log file is nice-to-have, not critical
+                    if (verbose && showMemoryDetails) {
+                        console.warn(`[Memory Hook] Failed to write log file: ${error.message}`);
+                    }
+                }
+
+                // Write status line cache file (Option 4)
+                try {
+                    const cachePath = path.join(__dirname, '../utilities/session-cache.json');
+                    const cacheData = {
+                        timestamp: new Date().toISOString(),
+                        sessionId: context.sessionId || 'unknown',
+                        project: projectContext.name,
+                        memoriesLoaded: maxMemories,
+                        recentCount: recentCount,
+                        gitCommits: gitContext ? gitContext.commits.length : 0,
+                        gitKeywords: gitContext ? gitContext.developmentKeywords.keywords.slice(0, 3) : [],
+                        storageBackend: storageInfo ? storageInfo.backend : 'unknown'
+                    };
+
+                    await fs.writeFile(cachePath, JSON.stringify(cacheData, null, 2), 'utf8');
+                } catch (error) {
+                    // Silently fail - status line cache is optional
+                    if (verbose && showMemoryDetails) {
+                        console.warn(`[Memory Hook] Failed to write status line cache: ${error.message}`);
+                    }
                 }
             } else if (verbose && !cleanMode) {
                 // Fallback: log context for manual copying with styling

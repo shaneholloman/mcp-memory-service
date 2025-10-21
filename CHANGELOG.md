@@ -8,6 +8,32 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.7] - 2025-10-21
+
+### Added
+- **SessionStart Hook Visibility Features** - Three complementary methods to view session memory context
+  - **Visible Summary Output**: Clean bordered console display showing project, storage, memory count with recent indicator, and git context
+  - **Detailed Log File**: Complete session context written to `~/.claude/last-session-context.txt` including project details, storage backend, memory statistics, git analysis, and top loaded memories
+  - **Status Line Display**: Always-visible status bar at bottom of Claude Code terminal showing `🧠 8 (5 recent) | 📊 10 commits`
+  - **Files Modified**:
+    - `~/.claude/hooks/core/session-start.js` - Added summary output, log file generation, and cache file write logic
+    - `~/.claude/settings.json` - Added statusLine configuration
+  - **Files Created**:
+    - `~/.claude/statusline.sh` - Bash script for status line display (requires `jq`)
+    - `~/.claude/last-session-context.txt` - Auto-generated detailed log file
+    - `~/.claude/hooks/utilities/session-cache.json` - Status line data cache
+  - **Platform**: Linux/macOS (Windows SessionStart hook still broken - issue #160)
+
+### Changed
+- SessionStart hook output now provides visible feedback instead of being hidden in system-reminder tags
+- Status line updates every 300ms with latest session memory context
+- Log file automatically updates on each SessionStart hook execution
+
+### Documentation
+- Clarified difference between macOS and Linux hook output behavior (both use system-reminder tags since v2.2.0)
+- Documented that `<session-start-hook>` wrapper tags were intentionally removed in v2.2.0 for cleaner output
+- Added troubleshooting guide for status line visibility features
+
 ## [8.5.6] - 2025-10-16
 
 ### Fixed
