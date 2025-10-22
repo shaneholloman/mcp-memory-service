@@ -25,17 +25,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     - `src/mcp_memory_service/storage/http_client.py` - Updated HTTP client call
     - `src/mcp_memory_service/storage/hybrid.py` - Fixed method reference
 
+- **Consolidation System: Datetime Timezone Mismatch** - Fixed timezone handling in decay calculator (PR #168, fixes #167)
+  - **Root Cause**: Mixed offset-naive and offset-aware datetime objects causing `TypeError` when calculating time differences
+  - **Location**: `src/mcp_memory_service/consolidation/decay.py:191` in `_calculate_access_boost()`
+  - **Impact**: Blocked decay calculator from completing, preventing associations, clustering, compression, and archival
+  - **Fix**: Added timezone normalization to ensure both `current_time` and `last_accessed` are timezone-aware (UTC) before subtraction
+  - **Implementation**:
+    - Check if datetime is timezone-naive and convert to UTC if needed
+    - Ensures consistent timezone handling across all datetime operations
+  - **Files Modified**:
+    - `src/mcp_memory_service/consolidation/decay.py` - Added timezone normalization logic
+
 ### Added
 - **Consolidation Documentation** - Comprehensive setup and testing guides
   - `CONSOLIDATION_SETUP.md` - Complete configuration guide for dream-inspired memory consolidation
   - `CONSOLIDATION_TEST_RESULTS.md` - Expected results and troubleshooting guide
   - Documentation covers all 7 consolidation engines and 7 MCP tools
-
-### Known Issues
-- **Datetime Timezone Bug** - Issue #167 discovered during consolidation testing
-  - TypeError in `src/mcp_memory_service/consolidation/decay.py:191`
-  - Blocks decay calculator from completing (prevents associations, clustering, compression, archival)
-  - Fix tracked separately in issue #167
 
 ## [8.5.8] - 2025-10-22
 
