@@ -16,7 +16,7 @@
 
 import math
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 from .base import ConsolidationBase, ConsolidationConfig
@@ -187,7 +187,11 @@ class ExponentialDecayCalculator(ConsolidationBase):
                 last_accessed = datetime.utcfromtimestamp(memory.updated_at)
             else:
                 return 1.0  # No access data available
-        
+
+        # Normalize both datetimes to UTC timezone-aware
+        current_time = current_time.replace(tzinfo=timezone.utc) if current_time.tzinfo is None else current_time.astimezone(timezone.utc)
+        last_accessed = last_accessed.replace(tzinfo=timezone.utc) if last_accessed.tzinfo is None else last_accessed.astimezone(timezone.utc)
+
         days_since_access = (current_time - last_accessed).days
         
         if days_since_access <= 1:
