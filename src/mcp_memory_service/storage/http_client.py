@@ -332,3 +332,8 @@ class HTTPClientStorage(MemoryStorage):
             self.session = None
             self._initialized = False
             logger.info("HTTP client storage connection closed")
+
+    async def update_memory(self, memory: Memory) -> bool:
+        """Update an existing memory (not implemented via HTTP client yet)."""
+        logger.warning("Update memory not supported via HTTP client yet")
+        return False

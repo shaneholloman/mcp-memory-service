@@ -144,15 +144,15 @@ class MemoryStorage(ABC):
     async def update_memory_metadata(self, content_hash: str, updates: Dict[str, Any], preserve_timestamps: bool = True) -> Tuple[bool, str]:
         """
         Update memory metadata without recreating the entire memory entry.
-        
+
         Args:
             content_hash: Hash of the memory to update
             updates: Dictionary of metadata fields to update
             preserve_timestamps: Whether to preserve original created_at timestamp
-            
+
         Returns:
             Tuple of (success, message)
-            
+
         Note:
             - Only metadata, tags, and memory_type can be updated
             - Content and content_hash cannot be modified
@@ -160,6 +160,28 @@ class MemoryStorage(ABC):
             - created_at is preserved unless preserve_timestamps=False
         """
         pass
+
+    async def update_memory(self, memory: Memory) -> bool:
+        """
+        Update an existing memory with new metadata, tags, and memory_type.
+
+        Args:
+            memory: Memory object with updated fields
+
+        Returns:
+            True if update was successful, False otherwise
+        """
+        updates = {
+            'tags': memory.tags,
+            'metadata': memory.metadata,
+            'memory_type': memory.memory_type
+        }
+        success, _ = await self.update_memory_metadata(
+            memory.content_hash,
+            updates,
+            preserve_timestamps=True
+        )
+        return success
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics. Override for specific implementations."""
