@@ -8,6 +8,35 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.9] - 2025-10-22
+
+### Fixed
+- **Consolidation System: Missing update_memory() Method** - Added `update_memory()` method to all storage backends (PR #166, fixes #165)
+  - **Root Cause**: Storage backends only implemented `update_memory_metadata()`, but consolidation system's `StorageProtocol` required `update_memory()` for saving consolidated results
+  - **Impact**: Prevented consolidation system from saving associations, clusters, compressions, and archived memories
+  - **Fix**: Added `update_memory()` method to base `MemoryStorage` class, delegating to `update_memory_metadata()` for proper implementation
+  - **Affected Backends**: CloudflareStorage, SqliteVecMemoryStorage, HybridMemoryStorage
+  - **Test Results**:
+    - Verified on SQLite-vec backend with 1773 memories
+    - Performance: 5011 memories/second (local SQLite-vec) vs 2.5 mem/s (Cloudflare)
+    - Method successfully executes without AttributeError
+  - **Files Modified**:
+    - `src/mcp_memory_service/storage/base.py` - Added `update_memory()` to base class
+    - `src/mcp_memory_service/storage/http_client.py` - Updated HTTP client call
+    - `src/mcp_memory_service/storage/hybrid.py` - Fixed method reference
+
+### Added
+- **Consolidation Documentation** - Comprehensive setup and testing guides
+  - `CONSOLIDATION_SETUP.md` - Complete configuration guide for dream-inspired memory consolidation
+  - `CONSOLIDATION_TEST_RESULTS.md` - Expected results and troubleshooting guide
+  - Documentation covers all 7 consolidation engines and 7 MCP tools
+
+### Known Issues
+- **Datetime Timezone Bug** - Issue #167 discovered during consolidation testing
+  - TypeError in `src/mcp_memory_service/consolidation/decay.py:191`
+  - Blocks decay calculator from completing (prevents associations, clustering, compression, archival)
+  - Fix tracked separately in issue #167
+
 ## [8.5.8] - 2025-10-22
 
 ### Fixed
