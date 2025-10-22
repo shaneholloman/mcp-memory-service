@@ -10,7 +10,7 @@
 
 ```
 CONSOLIDATION_ENABLED: True
-CONSOLIDATION_ARCHIVE_PATH: /Users/hkr/.mcp_memory_archive
+CONSOLIDATION_ARCHIVE_PATH: <user-home>/.mcp_memory_archive
 ```
 
 ### ✅ All Modules Available
@@ -38,7 +38,7 @@ All components enabled:
 
 ### ✅ Archive Structure Ready
 
-Archive location exists: `/Users/hkr/.mcp_memory_archive/`
+Archive location exists: `<user-home>/.mcp_memory_archive/`
 
 Subdirectories present:
 - `daily/` - Daily consolidation archives
@@ -95,7 +95,7 @@ The consolidation system is now fully configured and ready to use. You have two 
 For advanced testing or automation:
 
 ```bash
-cd /Users/hkr/Documents/GitHub/mcp-memory-service
+cd <project-root>
 
 # Run full consolidation test
 uv run python /tmp/test_consolidation.py

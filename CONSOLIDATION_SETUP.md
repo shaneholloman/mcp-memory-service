@@ -9,15 +9,15 @@
 
 ### 1. Environment Files
 
-**.env File** (`/Users/hkr/Documents/GitHub/mcp-memory-service/.env`):
+**.env File** (`<project-root>/.env`):
 - ✅ Created with comprehensive consolidation settings
 - ✅ All components enabled (decay, associations, clustering, compression, forgetting)
-- ✅ Archive path: `/Users/hkr/.mcp_memory_archive`
+- ✅ Archive path: `<user-home>/.mcp_memory_archive`
 - ✅ Manual mode (no auto-scheduling) for initial testing
 
-**Claude Global Config** (`~/.claude.json`):
+**Claude Global Config** (`<user-home>/.claude.json`):
 - ✅ Added `MCP_CONSOLIDATION_ENABLED=true`
-- ✅ Added `MCP_CONSOLIDATION_ARCHIVE_PATH=/Users/hkr/.mcp_memory_archive`
+- ✅ Added `MCP_CONSOLIDATION_ARCHIVE_PATH=<user-home>/.mcp_memory_archive`
 - ✅ Takes precedence when MCP server runs through Claude Code
 
 ### 2. System Components
@@ -64,7 +64,7 @@
 **Forgetting**:
 - Relevance threshold: 0.1 (below this, memory is candidate for archival)
 - Access threshold: 90 days (no access in 90 days → candidate for archival)
-- Archive location: /Users/hkr/.mcp_memory_archive
+- Archive location: <user-home>/.mcp_memory_archive
 
 ## Testing Instructions
 
@@ -163,12 +163,12 @@ Then reconnect MCP server: `/mcp`
 
 ## Archive Structure
 
-Primary archive location: `/Users/hkr/.mcp_memory_archive/`
+Primary archive location: `<user-home>/.mcp_memory_archive/`
 - `daily/` - Daily consolidation archives
 - `compressed/` - Compressed memory summaries
 - `metadata/` - Archival metadata
 
-Existing structure (from July 2025 test): `/Users/hkr/Library/Application Support/mcp-memory/consolidation_archive/`
+Existing structure (from July 2025 test): `<user-home>/Library/Application Support/mcp-memory/consolidation_archive/`
 
 ## Background
 

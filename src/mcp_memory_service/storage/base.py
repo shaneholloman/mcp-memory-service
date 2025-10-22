@@ -161,7 +161,6 @@ class MemoryStorage(ABC):
         """
         pass
 
-    @abstractmethod
     async def update_memory(self, memory: Memory) -> bool:
         """
         Update an existing memory with new metadata, tags, and memory_type.
@@ -172,7 +171,17 @@ class MemoryStorage(ABC):
         Returns:
             True if update was successful, False otherwise
         """
-        pass
+        updates = {
+            'tags': memory.tags,
+            'metadata': memory.metadata,
+            'memory_type': memory.memory_type
+        }
+        success, _ = await self.update_memory_metadata(
+            memory.content_hash,
+            updates,
+            preserve_timestamps=True
+        )
+        return success
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics. Override for specific implementations."""
