@@ -1239,3 +1239,17 @@ class CloudflareStorage(MemoryStorage):
         self._embedding_cache.clear()
 
         logger.info("Cloudflare storage backend closed")
+
+    async def update_memory(self, memory: Memory) -> bool:
+        """Update an existing memory."""
+        updates = {
+            'tags': memory.tags,
+            'metadata': memory.metadata,
+            'memory_type': memory.memory_type
+        }
+        success, msg = await self.update_memory_metadata(
+            memory.content_hash,
+            updates,
+            preserve_timestamps=True
+        )
+        return success
