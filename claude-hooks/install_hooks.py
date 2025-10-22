@@ -560,6 +560,30 @@ class HookInstaller:
             if readme_src.exists():
                 shutil.copy2(readme_src, self.claude_hooks_dir / "README.md")
 
+            # StatusLine script (v8.5.7+)
+            statusline_src = self.script_dir / "statusline.sh"
+            if statusline_src.exists():
+                statusline_dst = self.claude_hooks_dir / "statusline.sh"
+                shutil.copy2(statusline_src, statusline_dst)
+                # Make executable on Unix-like systems
+                if self.platform_name != 'windows':
+                    os.chmod(statusline_dst, 0o755)
+                self.success("StatusLine script installed")
+
+                # Check for jq dependency
+                jq_available = shutil.which('jq') is not None
+                if jq_available:
+                    self.success("✓ jq is installed (required for statusLine)")
+                else:
+                    self.warn("⚠ jq not found - statusLine requires jq for JSON parsing")
+                    self.info("  Install jq:")
+                    if self.platform_name == 'darwin':
+                        self.info("    macOS: brew install jq")
+                    elif self.platform_name == 'linux':
+                        self.info("    Linux: sudo apt install jq  (or equivalent)")
+                    elif self.platform_name == 'windows':
+                        self.info("    Windows: choco install jq  (or download from https://jqlang.github.io/jq/)")
+
             self.success("Basic hooks installed successfully")
             return True
 
@@ -763,6 +787,16 @@ class HookInstaller:
                         ]
                     }
                 ]
+
+            # Add statusLine configuration for v8.5.7+ (if statusline.sh exists)
+            statusline_script = self.claude_hooks_dir / 'statusline.sh'
+            if statusline_script.exists():
+                hook_config["statusLine"] = {
+                    "type": "command",
+                    "command": str(statusline_script),
+                    "padding": 0
+                }
+                self.info("Added statusLine configuration for memory awareness display")
 
             # Handle existing settings with intelligent merging
             final_config = hook_config

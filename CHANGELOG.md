@@ -8,6 +8,36 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.8] - 2025-10-22
+
+### Fixed
+- **Critical: Memory Age Calculation in Hooks** - Fixed Unix timestamp handling that caused memories to appear 20,363 days old (55 years) when they were actually recent
+  - **Root Cause**: JavaScript's `Date()` constructor expects milliseconds, but SQLite database stores Unix timestamps in seconds. Three functions incorrectly treated seconds as milliseconds: `calculateTimeDecay()`, `calculateRecencyBonus()`, and `analyzeMemoryAgeDistribution()`
+  - **Symptoms**:
+    - Memory Age Analyzer showed `avgAge: 20363` days instead of actual age
+    - Stale memory detection incorrectly triggered (`isStale: true`)
+    - Recent memory percentage showed 0% when should be 100%
+    - Time decay scores incorrect (1% instead of 100% for today's memories)
+    - Recency bonus not applied (0% instead of +15%)
+  - **Fix**: Added type checking to convert Unix timestamps properly - multiply by 1000 when timestamp is a number (seconds), pass through when it's an ISO string
+  - **Impact**: Memory age calculations now accurate, stale detection works correctly, recency bonuses applied properly
+  - **Files Modified**:
+    - `claude-hooks/utilities/memory-scorer.js` (lines 11-17, 237-243, 524-534)
+  - **Test Results**: Memories now show correct ages (0.4 days vs 20,363 days before fix)
+  - **Platform**: All platforms (macOS, Linux, Windows)
+
+### Changed
+- **Installer Enhancement**: Added automatic statusLine configuration for v8.5.7 features
+  - Installer now copies `statusline.sh` to `~/.claude/hooks/`
+  - Checks for `jq` dependency (required for statusLine parsing)
+  - Automatically adds `statusLine` configuration to `settings.json`
+  - Enhanced documentation for statusLine setup and requirements
+
+### Documentation
+- Added `jq` as required dependency for statusLine feature
+- Documented statusLine configuration in README.md installation section
+- Clarified Unix timestamp handling in memory-scorer.js code comments
+
 ## [8.5.7] - 2025-10-21
 
 ### Added

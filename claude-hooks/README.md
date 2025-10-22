@@ -30,7 +30,24 @@ This installs hooks that automatically:
 
 ## Features
 
-### ✨ **NEW in Hook v2.2.0**: Enhanced Output Control
+### 🎯 **NEW in v8.5.7**: SessionStart Hook Visibility Features
+Three complementary ways to view session memory context:
+
+1. **Visible Summary Output** - Clean bordered console display at session start
+   - Shows: project name, storage backend, memory count (with recent indicator), git context
+   - Respects `cleanMode` configuration for minimal output
+
+2. **Detailed Log File** - `~/.claude/last-session-context.txt`
+   - Auto-generated on each session start
+   - Contains: project details, storage backend, memory statistics, git analysis, top loaded memories
+
+3. **Status Line Display** ⭐ - Always-visible status bar at bottom of terminal
+   - Format: `🧠 8 (8 recent) | 📊 10 commits`
+   - Updates every 300ms with latest session memory context
+   - **Requires**: `jq` (JSON parser) and Claude Code statusLine configuration
+   - **Platform**: Linux/macOS (Windows SessionStart hook broken - issue #160)
+
+### ✨ **Hook v2.2.0**: Enhanced Output Control
 - **Clean Output Mode**: Configurable verbosity levels for minimal or detailed output
 - **Smart Filtering**: Hide memory scoring details while keeping essential information
 - **Professional UX**: Removed noisy wrapper tags and improved ANSI formatting
@@ -50,26 +67,28 @@ This installs hooks that automatically:
 
 ## Installation
 
-### Linux/macOS (Recommended)
+### Unified Installer (Recommended)
 ```bash
 cd claude-hooks
-./install.sh
+python install_hooks.py  # Installs all features
+
+# OR install specific features
+python install_hooks.py --basic             # Basic memory hooks only
+python install_hooks.py --natural-triggers  # Natural Memory Triggers only
 ```
 
-### Windows
-```cmd
-cd claude-hooks
-.\install_claude_hooks_windows.bat
-```
-Or run the PowerShell script directly:
-```powershell
-cd claude-hooks
-.\install_claude_hooks_windows.ps1
-```
+**Prerequisites:**
+- Python 3.10+
+- Node.js (for hooks execution)
+- **`jq`** (required for statusLine feature - displays memory context in Claude Code status bar)
+  - macOS: `brew install jq`
+  - Linux: `sudo apt install jq` (Ubuntu/Debian) or equivalent
+  - Windows: `choco install jq` or download from https://jqlang.github.io/jq/
 
 ### Manual
 ```bash
 cp -r claude-hooks/* ~/.claude/hooks/
+chmod +x ~/.claude/hooks/statusline.sh  # Make statusline executable (Unix only)
 # Edit ~/.claude/settings.json and ~/.claude/hooks/config.json
 ```
 
