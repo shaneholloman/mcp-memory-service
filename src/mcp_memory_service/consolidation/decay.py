@@ -189,10 +189,8 @@ class ExponentialDecayCalculator(ConsolidationBase):
                 return 1.0  # No access data available
 
         # Normalize both datetimes to UTC timezone-aware
-        if current_time.tzinfo is None:
-            current_time = current_time.replace(tzinfo=timezone.utc)
-        if last_accessed.tzinfo is None:
-            last_accessed = last_accessed.replace(tzinfo=timezone.utc)
+        current_time = current_time.replace(tzinfo=timezone.utc) if current_time.tzinfo is None else current_time.astimezone(timezone.utc)
+        last_accessed = last_accessed.replace(tzinfo=timezone.utc) if last_accessed.tzinfo is None else last_accessed.astimezone(timezone.utc)
 
         days_since_access = (current_time - last_accessed).days
         
