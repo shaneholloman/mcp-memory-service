@@ -8,6 +8,26 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.13] - 2025-10-23
+
+### Fixed
+- **Memory Hooks: Unix Timestamp Parsing in Date Sorting** - Fixed critical bug where memories were not sorting chronologically in Claude Code session start
+  - **Root Cause**: JavaScript `Date()` constructor expects milliseconds but API returns Unix timestamps in seconds
+  - **Impact**: Memory hooks showed old memories (Oct 11-21) before recent ones (Oct 23) despite `sortByCreationDate: true` configuration
+  - **Technical Details**:
+    - API returns `created_at` as Unix timestamp in seconds (e.g., 1729700000)
+    - JavaScript `new Date(1729700000)` interprets this as milliseconds → January 21, 1970
+    - All dates appeared as 1970-01-01, breaking chronological sort
+    - Relevance scores then determined order, causing old high-scoring memories to rank first
+  - **Fix**:
+    - Created `getTimestamp()` helper function in `session-start.js` (lines 907-928)
+    - Converts `created_at` (seconds) to milliseconds by multiplying by 1000
+    - Falls back to `created_at_iso` string parsing if available
+    - Proper date comparison ensures newest memories sort first
+  - **Result**: Memory hooks now correctly show most recent project memories at session start
+  - **Files Modified**:
+    - `claude-hooks/core/session-start.js` - Added Unix timestamp conversion helper (commit 71606e5)
+
 ## [8.5.12] - 2025-10-23
 
 ### Fixed
