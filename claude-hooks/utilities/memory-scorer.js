@@ -11,15 +11,23 @@
 function calculateTimeDecay(memoryDate, decayRate = 0.1) {
     try {
         const now = new Date();
-        // Handle Unix timestamps (seconds) vs ISO strings
-        const memoryTime = typeof memoryDate === 'number'
-            ? new Date(memoryDate * 1000)  // Unix timestamp in seconds
-            : new Date(memoryDate);        // ISO string
+
+        // Handle both Unix timestamps (seconds) and ISO strings
+        let memoryTime;
+        if (typeof memoryDate === 'string') {
+            // ISO string format
+            memoryTime = new Date(memoryDate);
+        } else if (typeof memoryDate === 'number') {
+            // Unix timestamp in seconds, convert to milliseconds
+            memoryTime = new Date(memoryDate * 1000);
+        } else {
+            return 0.5; // Invalid format
+        }
 
         if (isNaN(memoryTime.getTime())) {
             return 0.5; // Default score for invalid dates
         }
-
+        
         // Calculate days since memory creation
         const daysDiff = (now - memoryTime) / (1000 * 60 * 60 * 24);
         
@@ -237,10 +245,18 @@ function calculateRecencyBonus(memoryDate) {
 
     try {
         const now = new Date();
-        // Handle Unix timestamps (seconds) vs ISO strings
-        const memoryTime = typeof memoryDate === 'number'
-            ? new Date(memoryDate * 1000)  // Unix timestamp in seconds
-            : new Date(memoryDate);        // ISO string
+
+        // Handle both Unix timestamps (seconds) and ISO strings
+        let memoryTime;
+        if (typeof memoryDate === 'string') {
+            // ISO string format
+            memoryTime = new Date(memoryDate);
+        } else if (typeof memoryDate === 'number') {
+            // Unix timestamp in seconds, convert to milliseconds
+            memoryTime = new Date(memoryDate * 1000);
+        } else {
+            return 0; // Invalid format
+        }
 
         if (isNaN(memoryTime.getTime()) || memoryTime > now) {
             return 0; // No bonus for invalid or future dates
@@ -528,15 +544,17 @@ function analyzeMemoryAgeDistribution(memories, options = {}) {
 
         // Calculate ages in days
         const ages = memories.map(memory => {
-            // Handle Unix timestamps (numbers in seconds) vs ISO strings
+            // Handle both Unix timestamps (seconds) and ISO strings
             let memoryTime;
-            if (typeof memory.created_at === 'number') {
-                // Unix timestamp in seconds - convert to milliseconds
+            if (memory.created_at_iso) {
+                memoryTime = new Date(memory.created_at_iso);
+            } else if (memory.created_at) {
+                // created_at is in seconds, convert to milliseconds
                 memoryTime = new Date(memory.created_at * 1000);
             } else {
-                // ISO string or already in milliseconds
-                memoryTime = new Date(memory.created_at || memory.created_at_iso);
+                return 365; // Default to very old if no timestamp
             }
+
             if (isNaN(memoryTime.getTime())) return 365; // Default to very old
             return (now - memoryTime) / (1000 * 60 * 60 * 24);
         }).sort((a, b) => a - b);
