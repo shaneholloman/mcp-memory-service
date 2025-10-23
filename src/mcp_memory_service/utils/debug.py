@@ -77,42 +77,35 @@ async def debug_retrieve_memory(
     n_results: int = 5,
     similarity_threshold: float = 0.0
 ) -> List[MemoryQueryResult]:
-    """Retrieve memories with debug information including raw similarity scores."""
+    """Retrieve memories with enhanced debug information including raw similarity scores."""
     try:
-        model = _get_embedding_model(storage)
-        query_embedding = model.encode(query).tolist()
-        results = storage.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=n_results
-        )
-        
-        memory_results = []
-        for i in range(len(results["ids"][0])):
-            memory = Memory.from_dict(
-                {
-                    "content": results["documents"][0][i],
-                    **results["metadatas"][0][i]
-                },
-                embedding=results["embeddings"][0][i] if "embeddings" in results else None
-            )
-            similarity = 1 - results["distances"][0][i]
-            
-            # Only include results above threshold
-            if similarity >= similarity_threshold:
-                memory_results.append(
+        # Use the storage's retrieve method which handles embedding generation and search
+        results = await storage.retrieve(query, n_results)
+
+        # Filter by similarity threshold and enhance debug info
+        filtered_results = []
+        for result in results:
+            if result.relevance_score >= similarity_threshold:
+                # Enhance debug info with additional details
+                enhanced_debug_info = result.debug_info.copy() if result.debug_info else {}
+                enhanced_debug_info.update({
+                    "raw_similarity": result.relevance_score,
+                    "backend": getattr(storage, '__class__', {}).get('__name__', 'unknown'),
+                    "query": query,
+                    "similarity_threshold": similarity_threshold
+                })
+
+                filtered_results.append(
                     MemoryQueryResult(
-                        memory=memory,
-                        relevance_score=similarity,
-                        debug_info={
-                            "raw_similarity": similarity,
-                            "raw_distance": results["distances"][0][i],
-                            "memory_id": results["ids"][0][i]
-                        }
+                        memory=result.memory,
+                        relevance_score=result.relevance_score,
+                        debug_info=enhanced_debug_info
                     )
                 )
-        
-        return memory_results
+
+        return filtered_results
     except Exception as e:
+        # Return empty list on error to match original behavior
         return []
 
 async def exact_match_retrieve(storage, content: str) -> List[Memory]:

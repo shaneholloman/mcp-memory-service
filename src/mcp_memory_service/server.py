@@ -1567,6 +1567,25 @@ class MemoryServer:
                         }
                     ),
                     types.Tool(
+                        name="get_raw_embedding",
+                        description="""Get raw embedding vector for debugging purposes.
+
+                        Example:
+                        {
+                            "content": "text to embed"
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "content": {
+                                    "type": "string",
+                                    "description": "Content to generate embedding for."
+                                }
+                            },
+                            "required": ["content"]
+                        }
+                    ),
+                    types.Tool(
                         name="check_database_health",
                         description="Check database health and get statistics",
                         inputSchema={
@@ -2012,6 +2031,8 @@ class MemoryServer:
                     return await self.handle_debug_retrieve(arguments)
                 elif name == "exact_match_retrieve":
                     return await self.handle_exact_match_retrieve(arguments)
+                elif name == "get_raw_embedding":
+                    return await self.handle_get_raw_embedding(arguments)
                 elif name == "check_database_health":
                     logger.info("Calling handle_check_database_health")
                     return await self.handle_check_database_health(arguments)
@@ -2653,10 +2674,20 @@ Memories Archived: {report.memories_archived}"""
                     f"Memory {i+1}:",
                     f"Content: {result.memory.content}",
                     f"Hash: {result.memory.content_hash}",
-                    f"Raw Similarity Score: {result.debug_info['raw_similarity']:.4f}",
-                    f"Raw Distance: {result.debug_info['raw_distance']:.4f}",
-                    f"Memory ID: {result.debug_info['memory_id']}"
+                    f"Similarity Score: {result.relevance_score:.4f}"
                 ]
+
+                # Add debug info if available
+                if result.debug_info:
+                    if 'raw_distance' in result.debug_info:
+                        memory_info.append(f"Raw Distance: {result.debug_info['raw_distance']:.4f}")
+                    if 'backend' in result.debug_info:
+                        memory_info.append(f"Backend: {result.debug_info['backend']}")
+                    if 'query' in result.debug_info:
+                        memory_info.append(f"Query: {result.debug_info['query']}")
+                    if 'similarity_threshold' in result.debug_info:
+                        memory_info.append(f"Threshold: {result.debug_info['similarity_threshold']:.2f}")
+
                 if result.memory.tags:
                     memory_info.append(f"Tags: {', '.join(result.memory.tags)}")
                 memory_info.append("---")
@@ -2703,6 +2734,42 @@ Memories Archived: {report.memories_archived}"""
             )]
         except Exception as e:
             return [types.TextContent(type="text", text=f"Error in exact match retrieve: {str(e)}")]
+
+    async def handle_get_raw_embedding(self, arguments: dict) -> List[types.TextContent]:
+        content = arguments.get("content")
+        if not content:
+            return [types.TextContent(type="text", text="Error: Content is required")]
+
+        try:
+            # Initialize storage lazily when needed
+            storage = await self._ensure_storage_initialized()
+
+            from .utils.debug import get_raw_embedding
+            result = get_raw_embedding(storage, content)
+
+            if result["status"] == "success":
+                embedding = result["embedding"]
+                dimension = result["dimension"]
+                # Show first 10 and last 10 values for readability
+                if len(embedding) > 20:
+                    embedding_str = f"[{', '.join(f'{x:.6f}' for x in embedding[:10])}, ..., {', '.join(f'{x:.6f}' for x in embedding[-10:])}]"
+                else:
+                    embedding_str = f"[{', '.join(f'{x:.6f}' for x in embedding)}]"
+
+                return [types.TextContent(
+                    type="text",
+                    text=f"Embedding generated successfully:\n"
+                         f"Dimension: {dimension}\n"
+                         f"Vector: {embedding_str}"
+                )]
+            else:
+                return [types.TextContent(
+                    type="text",
+                    text=f"Failed to generate embedding: {result['error']}"
+                )]
+
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"Error getting raw embedding: {str(e)}")]
 
     async def handle_recall_memory(self, arguments: dict) -> List[types.TextContent]:
         """
