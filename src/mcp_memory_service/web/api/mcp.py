@@ -337,8 +337,8 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
         }
     
     elif tool_name == "check_database_health":
-        stats = storage.get_stats()
-        
+        stats = await storage.get_stats()
+
         return {
             "status": "healthy",
             "statistics": stats
@@ -401,8 +401,8 @@ async def list_mcp_tools(
 async def mcp_health():
     """MCP-specific health check."""
     storage = get_storage()
-    stats = storage.get_stats()
-    
+    stats = await storage.get_stats()
+
     return {
         "status": "healthy",
         "protocol": "mcp",

@@ -104,13 +104,8 @@ async def detailed_health_check(
     try:
         # Get statistics from storage using universal get_stats() method
         if hasattr(storage, 'get_stats') and callable(getattr(storage, 'get_stats')):
-            # Handle both sync and async get_stats methods
-            if hasattr(storage, '__class__') and 'Hybrid' in storage.__class__.__name__:
-                # HybridMemoryStorage.get_stats() is async
-                stats = await storage.get_stats()
-            else:
-                # Other storage backends have sync get_stats()
-                stats = storage.get_stats()
+            # All storage backends now have async get_stats()
+            stats = await storage.get_stats()
         else:
             stats = {"error": "Storage backend doesn't support statistics"}
 

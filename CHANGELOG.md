@@ -8,6 +8,40 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.12] - 2025-10-23
+
+### Fixed
+- **Dashboard: Analytics Stats Display** - Fixed analytics tab showing 0/N/A for key metrics
+  - **Root Cause**: Async/sync mismatch in `get_stats()` method implementations
+  - **Impact**: Analytics dashboard displayed only "this week" count; total memories, unique tags, and database size showed 0 or N/A
+  - **Fix**:
+    - Made `SqliteVecMemoryStorage.get_stats()` async (line 1242)
+    - Updated `HybridMemoryStorage.get_stats()` to properly await primary storage call (line 878)
+    - Added `database_size_bytes` and `database_size_mb` to hybrid stats response
+    - Fixed all callers in `health.py` and `mcp.py` to await `get_stats()`
+  - **Result**: All metrics now display correctly (1778 memories, 2549 tags, 7.74MB)
+  - **Files Modified**:
+    - `src/mcp_memory_service/storage/sqlite_vec.py` - Made get_stats() async
+    - `src/mcp_memory_service/storage/hybrid.py` - Added await and database size fields
+    - `src/mcp_memory_service/web/api/health.py` - Simplified async handling
+    - `src/mcp_memory_service/web/api/mcp.py` - Added await calls
+
+- **Dashboard: Footer Layout** - Fixed footer appearing between header and content instead of at bottom
+  - **Root Cause**: Footer not included in CSS grid layout template
+  - **Impact**: Broken visual layout with footer misplaced in page flow
+  - **Fix**:
+    - Updated `.app-container` grid to include 5th row with "footer" area
+    - Assigned `grid-area: footer` to `.app-footer` class
+  - **Result**: Footer now correctly positioned at bottom of page
+  - **Files Modified**:
+    - `src/mcp_memory_service/web/static/style.css` - Updated grid layout (lines 101-110, 1899)
+
+- **HTTP Server: Runtime Warnings** - Eliminated "coroutine was never awaited" warnings in logs
+  - **Root Cause**: Legacy sync/async detection code after all backends became async
+  - **Impact**: Runtime warnings cluttering server logs
+  - **Fix**: Removed hybrid backend detection logic, all `get_stats()` calls now consistently await
+  - **Result**: Clean server logs with no warnings
+
 ## [8.5.11] - 2025-10-23
 
 ### Fixed

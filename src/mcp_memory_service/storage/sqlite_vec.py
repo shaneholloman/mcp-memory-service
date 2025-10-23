@@ -1239,15 +1239,15 @@ SOLUTIONS:
             logger.error(traceback.format_exc())
             return False, error_msg
     
-    def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics."""
         try:
             if not self.conn:
                 return {"error": "Database not initialized"}
-            
+
             cursor = self.conn.execute('SELECT COUNT(*) FROM memories')
             total_memories = cursor.fetchone()[0]
-            
+
             # Count unique individual tags (not tag sets)
             cursor = self.conn.execute('SELECT tags FROM memories WHERE tags IS NOT NULL AND tags != ""')
             unique_tags = len(set(
@@ -1257,7 +1257,7 @@ SOLUTIONS:
                 for tag in tag_string.split(",")
                 if tag.strip()
             ))
-            
+
             # Count memories from this week (last 7 days)
             import time
             week_ago = time.time() - (7 * 24 * 60 * 60)
@@ -1277,7 +1277,7 @@ SOLUTIONS:
                 "embedding_model": self.embedding_model_name,
                 "embedding_dimension": self.embedding_dimension
             }
-            
+
         except sqlite3.Error as e:
             logger.error(f"Database error getting stats: {str(e)}")
             return {"error": f"Database error: {str(e)}"}

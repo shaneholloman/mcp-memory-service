@@ -101,12 +101,13 @@ h3 { font-size: var(--text-xl); }
 .app-container {
     min-height: 100vh;
     display: grid;
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-rows: auto auto auto 1fr auto;
     grid-template-areas:
         "header"
         "nav"
         "sync"
-        "main";
+        "main"
+        "footer";
 }
 
 /* Header Styles */
@@ -1895,6 +1896,7 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
    =================================== */
 
 .app-footer {
+    grid-area: footer;
     margin-top: 4rem;
     padding: 3rem 2rem 2rem;
     background: var(--neutral-50);
