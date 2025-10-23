@@ -8,6 +8,32 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.10] - 2025-10-23
+
+### Fixed
+- **Debug Tools: Embedding Retrieval Functionality** - Fixed debug MCP tools for SQLite-vec backend (PR #170, addresses #169)
+  - **Root Cause**: `debug_retrieve_memory` function was written for ChromaDB but codebase now uses SQLite-vec storage
+  - **Impact**: Debug tools (`debug_retrieve`) were broken, preventing debugging of embedding retrieval operations
+  - **Fix**: Updated debug utilities to work with current SQLite-vec storage backend
+  - **Changes**:
+    - Fixed `debug_retrieve_memory` in `src/mcp_memory_service/utils/debug.py` to use storage's `retrieve()` method
+    - Enhanced debug output with similarity scores, backend information, query details, and raw distance values
+    - Added proper filtering by similarity threshold
+  - **Files Modified**:
+    - `src/mcp_memory_service/utils/debug.py` - Updated for SQLite-vec compatibility
+    - `src/mcp_memory_service/server.py` - Enhanced debug output formatting
+
+### Added
+- **Debug Tool: get_raw_embedding MCP Tool** - New debugging capability for embedding inspection (PR #170)
+  - **Purpose**: Direct debugging of embedding generation process
+  - **Features**:
+    - Shows raw embedding vectors with configurable display (first 10 and last 10 values for readability)
+    - Displays embedding dimensions
+    - Shows generation status and error messages
+  - **Use Case**: Troubleshooting embedding-related issues in consolidation and semantic search
+  - **Files Modified**:
+    - `src/mcp_memory_service/server.py` - Added `get_raw_embedding` tool and handler
+
 ## [8.5.9] - 2025-10-22
 
 ### Fixed
