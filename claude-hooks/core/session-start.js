@@ -904,6 +904,19 @@ async function executeSessionStart(context) {
                     message: '🧠 Loading relevant memory context...'
                 };
             
+            // Sort by creation date if configured (after relevance filtering)
+            const sortByDate = config.memoryService?.sortByCreationDate !== false; // Default true
+            if (sortByDate) {
+                scoredMemories = scoredMemories.sort((a, b) => {
+                    const dateA = new Date(a.created_at || a.created_at_iso || 0);
+                    const dateB = new Date(b.created_at || b.created_at_iso || 0);
+                    return dateB - dateA; // Newest first
+                });
+                if (verbose && showMemoryDetails && !cleanMode) {
+                    console.log(`${CONSOLE_COLORS.CYAN}📅 Sort Order${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} By creation date (newest first)`);
+                }
+            }
+
             // Take top scored memories based on strategy
             const maxMemories = Math.min(strategy.maxMemories || config.memoryService.maxMemoriesPerSession, scoredMemories.length);
             const topMemories = scoredMemories.slice(0, maxMemories);

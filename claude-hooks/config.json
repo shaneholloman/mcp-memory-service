@@ -4,7 +4,7 @@
     "preferredProtocol": "http",
     "fallbackEnabled": true,
     "http": {
-      "endpoint": "http://127.0.0.1:8000",
+      "endpoint": "http://localhost:8889",
       "apiKey": "VhOGAoUOE5_BMzu-phDORdyXHNMcDRBxvndK_Uop",
       "healthCheckTimeout": 3000,
       "useDetailedHealthCheck": true
@@ -34,7 +34,8 @@
     "recentTimeWindow": "last week",
     "fallbackTimeWindow": "last 2 weeks",
     "showStorageSource": true,
-    "sourceDisplayMode": "brief"
+    "sourceDisplayMode": "brief",
+    "sortByCreationDate": true
   },
   "projectDetection": {
     "gitRepository": true,
@@ -51,10 +52,10 @@
   },
   "memoryScoring": {
     "weights": {
-      "timeDecay": 0.50,
-      "tagRelevance": 0.20,
+      "timeDecay": 0.5,
+      "tagRelevance": 0.2,
       "contentRelevance": 0.15,
-      "contentQuality": 0.20,
+      "contentQuality": 0.2,
       "conversationRelevance": 0.25
     },
     "minRelevanceScore": 0.4,
@@ -108,8 +109,7 @@
     "maxCommits": 20,
     "includeChangelog": true,
     "maxGitMemories": 3,
-    "gitContextWeight": 1.2,
-    "adaptiveGitWeight": true
+    "gitContextWeight": 1.2
   },
   "output": {
     "verbose": true,
@@ -161,12 +161,6 @@
         "backgroundProcessing": true,
         "degradeThreshold": 1000,
         "description": "Full memory awareness, accept higher latency"
-      },
-      "adaptive": {
-        "autoAdjust": true,
-        "degradeThreshold": 800,
-        "backgroundProcessing": true,
-        "description": "Auto-adjust based on performance and user preferences"
       }
     }
   },
