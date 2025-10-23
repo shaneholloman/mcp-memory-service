@@ -94,10 +94,7 @@ async function parseChangelog(workingDir) {
                     changelogPath = path.join(workingDir, altPath);
                     found = true;
                     break;
-                } catch (error) {
-                    // File doesn't exist or access error, continue to next path
-                    console.debug(`[Git Analyzer] Could not access ${altPath}: ${error.message}`);
-                }
+                } catch {}
             }
             if (!found) return null;
         }
@@ -191,9 +188,16 @@ function extractDevelopmentKeywords(commits = [], changelogEntries = null) {
         }
         
         // Extract key technical terms (avoid very common words)
-        const technicalTerms = message.match(/\b(hook|memory|context|retrieval|phase|query|storage|backend|session|git|recent|scoring|config)\b/g);
+        // Expanded to capture more development-specific keywords
+        const technicalTerms = message.match(/\b(hook|memory|context|retrieval|phase|query|storage|backend|session|git|recent|scoring|config|timestamp|parsing|sort|sorting|date|age|dashboard|analytics|footer|layout|async|sync|bugfix|release|version|embedding|consolidation|stats|display|grid|css|api|endpoint|server|http|mcp|client|protocol)\b/g);
         if (technicalTerms) {
             technicalTerms.forEach(term => keywords.add(term));
+        }
+
+        // Extract version numbers (v8.5.12, v8.5.13, etc.)
+        const versionMatch = message.match(/v?\d+\.\d+\.\d+/g);
+        if (versionMatch) {
+            versionMatch.forEach(version => keywords.add(version));
         }
         
         // Extract file-based themes
@@ -218,10 +222,16 @@ function extractDevelopmentKeywords(commits = [], changelogEntries = null) {
         changelogEntries.forEach(entry => {
             const text = entry.raw.toLowerCase();
             
-            // Extract technical keywords
-            const changelogTerms = text.match(/\b(added|fixed|improved|enhanced|updated|removed|deprecated|breaking|feature|bug|performance|security)\b/g);
+            // Extract technical keywords (expanded for better coverage)
+            const changelogTerms = text.match(/\b(added|fixed|improved|enhanced|updated|removed|deprecated|breaking|feature|bug|performance|security|bugfix|release|dashboard|hooks|timestamp|parsing|sorting|analytics|footer|async|sync|embedding|consolidation|memory|retrieval|scoring)\b/g);
             if (changelogTerms) {
                 changelogTerms.forEach(term => keywords.add(term));
+            }
+
+            // Extract version numbers from changelog
+            const changelogVersions = text.match(/v?\d+\.\d+\.\d+/g);
+            if (changelogVersions) {
+                changelogVersions.forEach(version => keywords.add(version));
             }
             
             // Extract version-specific themes
@@ -233,9 +243,9 @@ function extractDevelopmentKeywords(commits = [], changelogEntries = null) {
     }
     
     return {
-        keywords: Array.from(keywords).slice(0, 15), // Limit to prevent query bloat
-        themes: Array.from(themes).slice(0, 10),
-        filePatterns: Array.from(filePatterns).slice(0, 10),
+        keywords: Array.from(keywords).slice(0, 20), // Increased from 15 to capture more relevant terms
+        themes: Array.from(themes).slice(0, 12),     // Increased from 10
+        filePatterns: Array.from(filePatterns).slice(0, 12), // Increased from 10
         recentCommitMessages: commits.slice(0, 5).map(c => c.message)
     };
 }
