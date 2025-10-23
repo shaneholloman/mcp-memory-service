@@ -66,6 +66,30 @@ _MODEL_CACHE = {}
 _EMBEDDING_CACHE = {}
 
 
+def deserialize_embedding(blob: bytes) -> Optional[List[float]]:
+    """
+    Deserialize embedding blob from sqlite-vec format to list of floats.
+
+    Args:
+        blob: Binary blob containing serialized float32 array
+
+    Returns:
+        List of floats representing the embedding, or None if deserialization fails
+    """
+    if not blob:
+        return None
+
+    try:
+        # Import numpy locally to avoid hard dependency
+        import numpy as np
+        # sqlite-vec stores embeddings as raw float32 arrays
+        arr = np.frombuffer(blob, dtype=np.float32)
+        return arr.tolist()
+    except Exception as e:
+        logger.warning(f"Failed to deserialize embedding: {e}")
+        return None
+
+
 class SqliteVecMemoryStorage(MemoryStorage):
     """
     SQLite-vec based memory storage implementation.
@@ -1466,28 +1490,37 @@ SOLUTIONS:
                 return []
             
             cursor = self.conn.execute('''
-                SELECT content_hash, content, tags, memory_type, metadata,
-                       created_at, updated_at, created_at_iso, updated_at_iso
-                FROM memories
-                ORDER BY created_at DESC
+                SELECT m.content_hash, m.content, m.tags, m.memory_type, m.metadata,
+                       m.created_at, m.updated_at, m.created_at_iso, m.updated_at_iso,
+                       e.content_embedding
+                FROM memories m
+                LEFT JOIN memory_embeddings e ON m.id = e.rowid
+                ORDER BY m.created_at DESC
             ''')
-            
+
             results = []
             for row in cursor.fetchall():
                 try:
                     content_hash, content, tags_str, memory_type, metadata_str = row[:5]
-                    created_at, updated_at, created_at_iso, updated_at_iso = row[5:]
-                    
+                    created_at, updated_at, created_at_iso, updated_at_iso = row[5:9]
+                    embedding_blob = row[9] if len(row) > 9 else None
+
                     # Parse tags and metadata
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
                     metadata = self._safe_json_loads(metadata_str, "memory_metadata")
-                    
+
+                    # Deserialize embedding if present
+                    embedding = None
+                    if embedding_blob:
+                        embedding = deserialize_embedding(embedding_blob)
+
                     memory = Memory(
                         content=content,
                         content_hash=content_hash,
                         tags=tags,
                         memory_type=memory_type,
                         metadata=metadata,
+                        embedding=embedding,
                         created_at=created_at,
                         updated_at=updated_at,
                         created_at_iso=created_at_iso,
@@ -1611,20 +1644,28 @@ SOLUTIONS:
     def _row_to_memory(self, row) -> Optional[Memory]:
         """Convert database row to Memory object."""
         try:
-            content_hash, content, tags_str, memory_type, metadata_str, created_at, updated_at, created_at_iso, updated_at_iso = row
+            # Handle both 9-column (without embedding) and 10-column (with embedding) rows
+            content_hash, content, tags_str, memory_type, metadata_str, created_at, updated_at, created_at_iso, updated_at_iso = row[:9]
+            embedding_blob = row[9] if len(row) > 9 else None
 
             # Parse tags (comma-separated format)
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-            
+
             # Parse metadata
             metadata = self._safe_json_loads(metadata_str, "get_by_hash")
-            
+
+            # Deserialize embedding if present
+            embedding = None
+            if embedding_blob:
+                embedding = deserialize_embedding(embedding_blob)
+
             return Memory(
                 content=content,
                 content_hash=content_hash,
                 tags=tags,
                 memory_type=memory_type,
                 metadata=metadata,
+                embedding=embedding,
                 created_at=created_at,
                 updated_at=updated_at,
                 created_at_iso=created_at_iso,
@@ -1653,9 +1694,11 @@ SOLUTIONS:
 
             # Build query with optional memory_type and tags filters
             query = '''
-                SELECT content_hash, content, tags, memory_type, metadata,
-                       created_at, updated_at, created_at_iso, updated_at_iso
-                FROM memories
+                SELECT m.content_hash, m.content, m.tags, m.memory_type, m.metadata,
+                       m.created_at, m.updated_at, m.created_at_iso, m.updated_at_iso,
+                       e.content_embedding
+                FROM memories m
+                LEFT JOIN memory_embeddings e ON m.id = e.rowid
             '''
 
             params = []
@@ -1663,12 +1706,12 @@ SOLUTIONS:
 
             # Add memory_type filter if specified
             if memory_type is not None:
-                where_conditions.append('memory_type = ?')
+                where_conditions.append('m.memory_type = ?')
                 params.append(memory_type)
 
             # Add tags filter if specified (using database-level filtering like search_by_tag_chronological)
             if tags and len(tags) > 0:
-                tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
+                tag_conditions = " OR ".join(["m.tags LIKE ?" for _ in tags])
                 where_conditions.append(f"({tag_conditions})")
                 params.extend([f"%{tag}%" for tag in tags])
 
@@ -1676,7 +1719,7 @@ SOLUTIONS:
             if where_conditions:
                 query += ' WHERE ' + ' AND '.join(where_conditions)
 
-            query += ' ORDER BY created_at DESC'
+            query += ' ORDER BY m.created_at DESC'
 
             if limit is not None:
                 query += ' LIMIT ?'
