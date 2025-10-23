@@ -90,7 +90,7 @@ async def debug_retrieve_memory(
                 enhanced_debug_info = result.debug_info.copy() if result.debug_info else {}
                 enhanced_debug_info.update({
                     "raw_similarity": result.relevance_score,
-                    "backend": getattr(storage, '__class__', {}).get('__name__', 'unknown'),
+                    "backend": type(storage).__name__,
                     "query": query,
                     "similarity_threshold": similarity_threshold
                 })

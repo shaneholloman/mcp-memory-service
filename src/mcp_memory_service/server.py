@@ -2745,7 +2745,7 @@ Memories Archived: {report.memories_archived}"""
             storage = await self._ensure_storage_initialized()
 
             from .utils.debug import get_raw_embedding
-            result = get_raw_embedding(storage, content)
+            result = await asyncio.to_thread(get_raw_embedding, storage, content)
 
             if result["status"] == "success":
                 embedding = result["embedding"]
