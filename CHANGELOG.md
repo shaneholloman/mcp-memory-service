@@ -8,6 +8,37 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.14] - 2025-10-23
+
+### Added
+- **Memory Hooks: Expanded Git Keyword Extraction** - Dramatically improved memory retrieval by capturing more relevant technical terms from git commits
+  - **Problem**: Limited keyword extraction (only 12 terms) missed important development context
+    - Git analyzer captured only generic terms: `fix, memory, chore, feat, refactor`
+    - Recent work on timestamp parsing, dashboard, analytics not reflected in queries
+    - Version numbers (v8.5.12, v8.5.13) not extracted
+    - Memory hooks couldn't match against specific technical work
+  - **Solution**: Expanded keyword extraction in `git-analyzer.js`
+    - **Technical Terms**: Increased from 12 to 38 terms including:
+      - Time/Date: `timestamp, parsing, sort, sorting, date, age`
+      - Dashboard: `dashboard, analytics, footer, layout, grid, css, stats, display`
+      - Development: `async, sync, bugfix, release, version`
+      - Features: `embedding, consolidation, memory, retrieval, scoring`
+      - Infrastructure: `api, endpoint, server, http, mcp, client, protocol`
+    - **Version Extraction**: Added regex to capture version numbers (v8.5.12, v8.5.13, etc.)
+    - **Changelog Terms**: Expanded from 12 to 23 terms with same additions
+    - **Keyword Limits**: Increased capacity
+      - keywords: 15 → 20 terms
+      - themes: 10 → 12 entries
+      - filePatterns: 10 → 12 entries
+  - **Impact**:
+    - **Before**: 5 generic terms → limited semantic matching
+    - **After**: 20 specific development terms → precise context retrieval
+    - Example: `feat, git, memory, retrieval, fix, timestamp, age, v8.5.8, chore, version, v8.5.13, sort, date, dashboard, analytics, stats, display, footer, layout, v8.5.12`
+  - **Result**: Memory hooks now capture and retrieve memories about specific technical work (releases, features, bugfixes)
+  - **Files Modified**:
+    - `claude-hooks/utilities/git-analyzer.js` - Expanded `extractDevelopmentKeywords()` function (commit 4a02c1a)
+  - **Testing**: Verified improved extraction with test run showing 20 relevant keywords vs previous 5 generic terms
+
 ## [8.5.13] - 2025-10-23
 
 ### Fixed
