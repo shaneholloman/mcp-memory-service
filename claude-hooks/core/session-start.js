@@ -908,8 +908,18 @@ async function executeSessionStart(context) {
             const sortByDate = config.memoryService?.sortByCreationDate !== false; // Default true
             if (sortByDate) {
                 scoredMemories = scoredMemories.sort((a, b) => {
-                    const dateA = new Date(a.created_at || a.created_at_iso || 0);
-                    const dateB = new Date(b.created_at || b.created_at_iso || 0);
+                    // Handle both Unix timestamps (seconds) and ISO strings
+                    const getTimestamp = (mem) => {
+                        if (mem.created_at_iso) {
+                            return new Date(mem.created_at_iso).getTime();
+                        } else if (mem.created_at) {
+                            // created_at is in seconds, convert to milliseconds
+                            return mem.created_at * 1000;
+                        }
+                        return 0;
+                    };
+                    const dateA = getTimestamp(a);
+                    const dateB = getTimestamp(b);
                     return dateB - dateA; // Newest first
                 });
                 if (verbose && showMemoryDetails && !cleanMode) {
