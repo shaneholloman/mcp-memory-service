@@ -8,6 +8,28 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.11] - 2025-10-23
+
+### Fixed
+- **Consolidation System: Embedding Retrieval in get_all_memories()** - Fixed SQLite-vec backend to actually retrieve embeddings (PR #171, fixes #169)
+  - **Root Cause**: `get_all_memories()` methods only queried `memories` table without joining `memory_embeddings` virtual table
+  - **Impact**: Consolidation system received 0 embeddings despite 1773 memories in database, preventing association discovery and semantic clustering
+  - **Discovery**: PR #170 claimed to fix this but only modified debug tools; actual fix required changes to `sqlite_vec.py`
+  - **Fix**:
+    - Added `deserialize_embedding()` helper function using numpy.frombuffer() (sqlite-vec only provides serialize, not deserialize)
+    - Updated both `get_all_memories()` methods (lines 1468 and 1681) with LEFT JOIN to `memory_embeddings` table
+    - Modified `_row_to_memory()` helper to handle 10-column rows with embeddings
+    - Applied Gemini Code Assist improvement to simplify row unpacking logic
+  - **Test Results** (1773 memories):
+    - Embeddings retrieved: 1773/1773 (100%)
+    - Associations discovered: 90-91 (0.3-0.7 similarity range)
+    - Semantic clusters created: 3 (DBSCAN grouping)
+    - Performance: 1249-1414 memories/second
+    - Duration: 1.25-1.42 seconds
+  - **Consolidation Status**: ✅ **FULLY FUNCTIONAL** (all three blockers fixed: PR #166, #168, #171)
+  - **Files Modified**:
+    - `src/mcp_memory_service/storage/sqlite_vec.py` - Added embedding retrieval to all memory fetch operations
+
 ## [8.5.10] - 2025-10-23
 
 ### Fixed
