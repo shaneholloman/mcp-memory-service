@@ -8,6 +8,103 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.6.0] - 2025-10-25
+
+### Added
+- **Document Ingestion System** - Complete document upload and management through web UI (#147, #164)
+  - **Single and Batch Upload**: Drag-and-drop or file browser support for PDF, TXT, MD, JSON documents
+  - **Background Processing**: Async document processing with progress tracking and status updates
+  - **Document Management UI**: New Documents tab in web dashboard with full CRUD operations
+  - **Upload History**: Track all document ingestion with status, chunk counts, and file sizes
+  - **Document Viewer**: Modal displaying all memory chunks from uploaded documents (up to 1000 chunks)
+  - **Document Removal**: Delete documents and their associated memory chunks with confirmation
+  - **Search Ingested Content**: Semantic search within uploaded documents to verify indexing
+  - **Claude Commands**: `/memory-ingest` and `/memory-ingest-dir` for CLI document upload
+  - **API Endpoints**:
+    - `POST /api/documents/upload` - Single document upload
+    - `POST /api/documents/batch-upload` - Multiple document upload
+    - `GET /api/documents/history` - Upload history
+    - `GET /api/documents/status/{upload_id}` - Upload status
+    - `GET /api/documents/search-content/{upload_id}` - View document chunks
+    - `DELETE /api/documents/remove/{upload_id}` - Remove document
+    - `DELETE /api/documents/remove-by-tags` - Bulk remove by tags
+  - **Files Created**:
+    - `src/mcp_memory_service/web/api/documents.py` (779 lines) - Document API
+    - `claude_commands/memory-ingest.md` - Single document ingestion command
+    - `claude_commands/memory-ingest-dir.md` - Directory ingestion command
+    - `docs/development/dashboard-workflow.md` - Development workflow documentation
+
+- **Chunking Configuration Help** - Interactive UI guidance for document chunking parameters
+  - Inline help panels with collapsible sections for chunk size and overlap settings
+  - Visual diagram showing how overlap works between consecutive chunks
+  - Pre-configured recommendations (Default: 1000/200, Smaller: 500/100, Larger: 2000/400)
+  - Rule-of-thumb guidelines (15-25% overlap of chunk size)
+  - Full dark mode support for all help elements
+
+- **Tag Length Validation** - Server-side validation to prevent data corruption (#174)
+  - Maximum tag length enforced at 100 characters
+  - Validation on both single and batch upload endpoints
+  - Clear error messages showing first invalid tag
+  - Frontend filtering to hide malformed tags in display
+  - Prevents bloated tags from accidental file path pasting
+
+### Fixed
+- **Security Vulnerabilities** - Multiple critical security fixes addressed
+  - Path traversal vulnerability in file uploads (use `tempfile.NamedTemporaryFile()`)
+  - XSS prevention in tag display and event handlers (escape all user-provided filenames)
+  - CSP compliance by removing inline `onclick` handlers, using `addEventListener` instead
+  - Proper input validation and sanitization throughout upload flow
+
+- **Document Viewer Critical Bugs** - Comprehensive fixes for document management
+  - **Chunk Limit**: Increased from 10 to 1000 chunks (was only showing first 10 of 430 chunks)
+  - **Upload Session Persistence**: Documents now viewable after server restart (session optional, uses `upload_id` tag search)
+  - **Filename Retrieval**: Get filename from memory metadata when session unavailable
+  - **Batch File Size**: Calculate and display total file size for batch uploads (was showing 0.0 KB)
+  - **Multiple Confirmation Dialogs**: Fixed duplicate event listeners causing N dialogs for N uploads
+  - **Event Listener Deduplication**: Added `documentsListenersSetup` flag to prevent duplicate setup
+
+- **Storage Backend Enhancements** - `delete_by_tags` implementation for document deletion
+  - Added `delete_by_tags()` method to `MemoryStorage` base class with error aggregation
+  - Optimized `SqliteVecMemoryStorage.delete_by_tags()` with single SQL query using OR conditions
+  - Added `HybridMemoryStorage.delete_by_tags()` with sync queue support for cloud backends
+  - Fixed return value handling (tuple unpacking instead of dict access)
+
+- **UI/UX Improvements** - Enhanced user experience across document management
+  - Added scrolling to Recent Memories section (max-height: 600px) to prevent infinite expansion
+  - Document chunk modal now scrollable (max-height: 400px) for long content
+  - Modal visibility fixed with proper `active` class pattern and CSS transitions
+  - Dark mode support for all document UI components (chunk items, modals, previews)
+  - Event handlers for View/Remove buttons in document preview cards
+  - Responsive design with mobile breakpoints (768px, 1024px)
+
+- **Resource Management** - Proper cleanup and error handling
+  - Temp file cleanup moved to `finally` blocks to prevent orphaned files
+  - File extension validation fixed (strip leading dot for consistent checking)
+  - Session cleanup timing bug fixed (use `total_seconds()` instead of `.seconds`)
+  - Loader registration order corrected (PDFLoader takes precedence as fallback)
+
+- **MCP Server Tag Format Support** - Accept both string and array formats
+  - MCP tools now accept `"tag1,tag2"` (string) and `["tag1", "tag2"]` (array)
+  - Consistent tag handling between API and MCP endpoints
+  - Fixes validation errors from schema mismatches
+
+### Changed
+- **API Response Improvements** - Better error messages and status handling
+  - Float timestamp handling in document search (convert via `datetime.fromtimestamp()`)
+  - Partial success handling for bulk operations with clear error reporting
+  - Progress tracking for background tasks with status updates
+
+### Technical Details
+- **Testing**: 19 Gemini Code Assist reviews addressed with comprehensive fixes
+- **Performance**: Document viewer handles 430+ chunks efficiently
+- **Compatibility**: Cross-platform temp file handling (Windows, macOS, Linux)
+- **Code Quality**: Removed dead code, duplicate docstrings, and unused Pydantic models
+
+### Migration Notes
+- No breaking changes - fully backward compatible
+- Existing installations will automatically gain document ingestion capabilities
+- Tag validation only affects new uploads (existing tags unchanged)
+
 ## [8.5.14] - 2025-10-23
 
 ### Added
