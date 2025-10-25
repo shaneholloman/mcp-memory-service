@@ -96,10 +96,16 @@
                     Search
                 </button>
                 <button class="nav-item" data-view="browse">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
+                </svg>
+                Browse
+                </button>
+                <button class="nav-item" data-view="documents">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                     </svg>
-                    Browse
+                    Documents
                 </button>
                 <button class="nav-item" data-view="manage">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
@@ -130,7 +136,7 @@
                     <span id="syncStatusText">Checking sync status...</span>
                     <span id="syncStatusDetails" class="sync-details"></span>
                 </div>
-                <button id="forceSyncButton" class="sync-button" onclick="app.forceSync()" title="Manually trigger sync to Cloudflare">
+                <button id="forceSyncButton" class="sync-button" title="Manually trigger sync to Cloudflare">
                     <span class="sync-button-icon">⚡</span>
                     <span class="sync-button-text">Sync Now</span>
                 </button>
@@ -319,6 +325,222 @@
                             <!-- Dynamic search results will be loaded here -->
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Documents View -->
+            <div id="documentsView" class="view-container">
+                <div class="documents-layout">
+                    <!-- Document Upload Section -->
+                    <section class="documents-section">
+                        <h2>📄 Document Ingestion</h2>
+                        <div class="upload-area">
+                            <div id="dropZone" class="drop-zone">
+                                <div class="drop-zone-content">
+                                    <svg width="48" height="48" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                                    </svg>
+                                    <h3>Drag & drop files here</h3>
+                                    <p>or <button id="fileSelectBtn" class="link-button">browse to select files</button></p>
+                                    <p class="supported-formats">Supported formats: PDF, TXT, MD, JSON</p>
+                                    <input type="file" id="fileInput" multiple accept=".pdf,.txt,.md,.json" style="display: none;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Upload Configuration -->
+                        <div class="upload-config">
+                            <div class="config-section">
+                                <label for="docTags">Tags (comma-separated)</label>
+                                <input type="text" id="docTags" placeholder="e.g., documentation, reference, manual" class="form-control">
+                            </div>
+                            <div class="config-row">
+                                <div class="config-section">
+                                    <label for="chunkSize">
+                                        Chunk Size: <span id="chunkSizeValue">1000</span> chars
+                                        <span class="info-icon" title="Click for chunking recommendations">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="chunkSize" min="500" max="2000" value="1000" step="100" class="form-control">
+                                </div>
+                                <div class="config-section">
+                                    <label for="chunkOverlap">
+                                        Overlap: <span id="chunkOverlapValue">200</span> chars
+                                        <span class="info-icon info-icon-overlap" title="Click for overlap explanation">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="chunkOverlap" min="0" max="500" value="200" step="50" class="form-control">
+                                </div>
+                            </div>
+
+                            <!-- Chunking Help Section (collapsible) -->
+                            <div id="chunkingHelpSection" class="chunking-help" style="display: none;">
+                                <div class="help-header">
+                                    <strong>📚 Chunking Configuration Guide</strong>
+                                    <button class="close-help" data-action="hideChunkingHelp">×</button>
+                                </div>
+                                <div class="help-content">
+                                    <p class="help-note">
+                                        <strong>Note:</strong> Actual chunk sizes may vary as the system respects paragraph boundaries
+                                        to maintain semantic coherence.
+                                    </p>
+
+                                    <div class="help-recommendations">
+                                        <div class="help-option">
+                                            <div class="help-option-header">
+                                                <strong>✅ Default (1000 chars, 200 overlap)</strong>
+                                                <span class="help-tag">Recommended</span>
+                                            </div>
+                                            <p><strong>Best for:</strong> Technical documentation, reference manuals, knowledge bases</p>
+                                            <p><strong>Why:</strong> Paragraph-aware chunking preserves complete thoughts and context</p>
+                                        </div>
+
+                                        <div class="help-option">
+                                            <div class="help-option-header">
+                                                <strong>🔍 Smaller Chunks (500 chars, 100 overlap)</strong>
+                                            </div>
+                                            <p><strong>Best for:</strong> Dense technical docs, code documentation, API references</p>
+                                            <p><strong>Trade-off:</strong> More granular retrieval but may split paragraphs more aggressively</p>
+                                        </div>
+
+                                        <div class="help-option">
+                                            <div class="help-option-header">
+                                                <strong>📖 Larger Chunks (2000 chars, 400 overlap)</strong>
+                                            </div>
+                                            <p><strong>Best for:</strong> Narrative documents, articles, blogs, long-form content</p>
+                                            <p><strong>Trade-off:</strong> Better context but less precise retrieval</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="help-tips">
+                                        <strong>💡 Tips:</strong>
+                                        <ul>
+                                            <li><strong>Overlap</strong> helps maintain context across chunk boundaries</li>
+                                            <li><strong>Higher overlap</strong> = better continuity but more redundancy</li>
+                                            <li>Test different settings on a sample document to find optimal configuration</li>
+                                            <li>Chunks preserve complete sentences and paragraphs when possible</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Overlap Help Section (collapsible) -->
+                            <div id="overlapHelpSection" class="chunking-help overlap-help" style="display: none;">
+                                <div class="help-header">
+                                    <strong>🔗 Chunk Overlap Explained</strong>
+                                    <button class="close-help" data-action="hideOverlapHelp">×</button>
+                                </div>
+                                <div class="help-content">
+                                    <p class="help-note">
+                                        <strong>What is overlap?</strong> Overlap is the number of characters that are duplicated
+                                        between consecutive chunks. This helps maintain context across chunk boundaries.
+                                    </p>
+
+                                    <div class="help-example">
+                                        <strong>Visual Example:</strong>
+                                        <div class="overlap-diagram">
+                                            <div class="chunk-demo">
+                                                <span class="chunk-part unique">Chunk 1 unique content...</span>
+                                                <span class="chunk-part overlap">shared overlap region</span>
+                                            </div>
+                                            <div class="chunk-demo">
+                                                <span class="chunk-part overlap">shared overlap region</span>
+                                                <span class="chunk-part unique">Chunk 2 unique content...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="help-recommendations">
+                                        <div class="help-option">
+                                            <div class="help-option-header">
+                                                <strong>🎯 No Overlap (0 chars)</strong>
+                                            </div>
+                                            <p><strong>Best for:</strong> Maximum storage efficiency, no redundancy needed</p>
+                                            <p><strong>Trade-off:</strong> Context may be lost at chunk boundaries</p>
+                                        </div>
+
+                                        <div class="help-option">
+                                            <div class="help-option-header">
+                                                <strong>✅ Medium Overlap (200 chars)</strong>
+                                                <span class="help-tag">Recommended</span>
+                                            </div>
+                                            <p><strong>Best for:</strong> Most documents - balances context and efficiency</p>
+                                            <p><strong>Why:</strong> Preserves 1-2 sentences of context across boundaries</p>
+                                        </div>
+
+                                        <div class="help-option">
+                                            <div class="help-option-header">
+                                                <strong>🔄 High Overlap (400+ chars)</strong>
+                                            </div>
+                                            <p><strong>Best for:</strong> Complex technical content requiring maximum context</p>
+                                            <p><strong>Trade-off:</strong> More storage and processing, higher redundancy</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="help-tips">
+                                        <strong>💡 Guidelines:</strong>
+                                        <ul>
+                                            <li><strong>Rule of thumb:</strong> Overlap should be 15-25% of chunk size</li>
+                                            <li><strong>Small chunks (500)</strong> → Use 100-150 overlap</li>
+                                            <li><strong>Medium chunks (1000)</strong> → Use 200-250 overlap</li>
+                                            <li><strong>Large chunks (2000)</strong> → Use 400-500 overlap</li>
+                                            <li>Higher overlap helps with search accuracy but increases storage</li>
+                                            <li>Zero overlap is fine for well-structured documents with clear sections</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="config-section">
+                                <label for="memoryType">Memory Type</label>
+                                <select id="memoryType" class="form-control">
+                                    <option value="document">Document</option>
+                                    <option value="reference">Reference</option>
+                                    <option value="knowledge">Knowledge</option>
+                                    <option value="note">Note</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Upload Button -->
+                        <div class="upload-actions">
+                            <button id="uploadBtn" class="btn btn-primary" disabled>
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                                </svg>
+                                Upload & Ingest
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Upload Queue/History Section -->
+                    <section class="documents-section">
+                        <h2>📊 Upload History</h2>
+                        <div id="uploadHistory" class="upload-history">
+                            <div class="loading-spinner"></div>
+                            <p>Loading upload history...</p>
+                        </div>
+                    </section>
+
+                    <!-- Document Content Search Section -->
+                    <section class="documents-section">
+                        <h2>🔍 Search Ingested Content</h2>
+                        <p class="section-description">Search within your uploaded documents to verify content is indexed</p>
+                        <div class="doc-search-container">
+                            <input type="text"
+                                   id="docSearchInput"
+                                   class="search-input"
+                                   placeholder="Search for content within ingested documents...">
+                            <button id="docSearchBtn" class="btn btn-primary">Search Documents</button>
+                        </div>
+                        <div id="docSearchResults" class="doc-search-results" style="display: none;">
+                            <div class="search-results-header">
+                                <h3>Search Results</h3>
+                                <span id="docSearchCount" class="results-count">0 results</span>
+                            </div>
+                            <div id="docSearchResultsList" class="search-results-list">
+                                <!-- Results will be populated here -->
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
 
@@ -831,6 +1053,30 @@
     <div id="connectionStatus" class="connection-status">
         <div class="status-indicator"></div>
         <span class="status-text">Connected</span>
+    </div>
+
+    <!-- Memory Viewer Modal -->
+    <div id="memoryViewerModal" class="modal" style="display: none;">
+        <div class="modal-content memory-viewer-content">
+            <div class="modal-header">
+                <h2>📝 Document Memory Chunks</h2>
+                <button class="modal-close" data-action="closeMemoryViewer">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="document-info">
+                    <h3 id="memoryViewerFilename">Loading...</h3>
+                    <p id="memoryViewerStats" class="text-muted">0 chunks found</p>
+                </div>
+                <div class="memory-chunks-container">
+                    <div id="memoryChunksList" class="memory-chunks-list">
+                        <!-- Chunks will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-action="closeMemoryViewer">Close</button>
+            </div>
+        </div>
     </div>
 
     <script src="/static/app.js"></script>

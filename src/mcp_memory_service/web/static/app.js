@@ -72,6 +72,10 @@ class MemoryDashboard {
             previewLines: 3
         };
 
+        // Documents upload state
+        this.selectedFiles = [];
+        this.documentsListenersSetup = false;
+
         // Bind methods
         this.handleSearch = this.handleSearch.bind(this);
         this.handleQuickSearch = this.handleQuickSearch.bind(this);
@@ -384,6 +388,518 @@ class MemoryDashboard {
     }
 
     /**
+     * Load documents view data
+     */
+    async loadDocumentsData() {
+        this.setLoading(true);
+        try {
+            // Load upload history
+            await this.loadUploadHistory();
+            // Setup document upload event listeners
+            this.setupDocumentsEventListeners();
+        } catch (error) {
+            console.error('Error loading documents data:', error);
+            this.showToast('Failed to load documents data', 'error');
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Load upload history from API
+     */
+    async loadUploadHistory() {
+        console.log('Loading upload history...');
+        try {
+            const historyResponse = await this.apiCall('/documents/history');
+            console.log('Upload history response:', historyResponse);
+            if (historyResponse.uploads) {
+                this.renderUploadHistory(historyResponse.uploads);
+            } else {
+                console.warn('No uploads property in response');
+                this.renderUploadHistory([]);
+            }
+        } catch (error) {
+            console.error('Error loading upload history:', error);
+            // Show a message in the history container instead of just logging
+            const historyContainer = document.getElementById('uploadHistory');
+            if (historyContainer) {
+                historyContainer.innerHTML = '<p style="text-align: center; color: var(--error);">Failed to load upload history. Please check the console for details.</p>';
+            }
+        }
+    }
+
+    /**
+     * Render upload history
+     */
+    renderUploadHistory(uploads) {
+        const historyContainer = document.getElementById('uploadHistory');
+        if (!historyContainer) return;
+
+        if (uploads.length === 0) {
+            historyContainer.innerHTML = '<p style="text-align: center; color: var(--neutral-500);">No uploads yet. Start by uploading some documents!</p>';
+            return;
+        }
+
+        const historyHtml = uploads.map(upload => {
+        const statusClass = upload.status.toLowerCase();
+        const statusText = upload.status.charAt(0).toUpperCase() + upload.status.slice(1);
+        const progressPercent = upload.progress || 0;
+        const hasMemories = upload.chunks_stored > 0;
+
+        return `
+        <div class="upload-item ${statusClass}" data-upload-id="${upload.upload_id}" data-filename="${this.escapeHtml(upload.filename)}">
+        <div class="upload-info">
+        <div class="upload-filename">${this.escapeHtml(upload.filename)}</div>
+                        <div class="upload-meta">
+                            ${upload.chunks_stored || 0} chunks stored •
+                            ${(upload.file_size / 1024).toFixed(1)} KB •
+                            ${new Date(upload.created_at).toLocaleString()}
+                        </div>
+                        ${upload.status === 'processing' ? `
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="upload-actions-container">
+                        <div class="upload-status ${statusClass}">
+                            <span>${statusText}</span>
+                            ${upload.errors && upload.errors.length > 0 ? `
+                                <span title="${this.escapeHtml(upload.errors.join('; '))}">⚠️</span>
+                            ` : ''}
+                        </div>
+                        ${upload.status === 'completed' && hasMemories ? `
+                            <div class="upload-actions">
+                                <button class="btn-icon btn-view-memory"
+                                title="View memory chunks">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                    <span>View</span>
+                                </button>
+                                <button class="btn-icon btn-remove"
+                                title="Remove document and memories">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                    <span>Remove</span>
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        historyContainer.innerHTML = historyHtml;
+    }
+
+    /**
+     * Setup event listeners for documents view
+     */
+    setupDocumentsEventListeners() {
+        // Prevent duplicate event listener setup
+        if (this.documentsListenersSetup) {
+            console.log('Document listeners already set up, skipping...');
+            return;
+        }
+
+        // File selection buttons
+        const fileSelectBtn = document.getElementById('fileSelectBtn');
+        const fileInput = document.getElementById('fileInput');
+
+        if (fileSelectBtn && fileInput) {
+            fileSelectBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                this.handleFileSelection(e.target.files);
+            });
+        }
+
+        // Drag and drop
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                this.handleFileSelection(files);
+            });
+        }
+
+        // Configuration controls
+        const chunkSizeInput = document.getElementById('chunkSize');
+        const chunkOverlapInput = document.getElementById('chunkOverlap');
+        const chunkSizeValue = document.getElementById('chunkSizeValue');
+        const chunkOverlapValue = document.getElementById('chunkOverlapValue');
+
+        if (chunkSizeInput && chunkSizeValue) {
+            chunkSizeInput.addEventListener('input', (e) => {
+                chunkSizeValue.textContent = e.target.value;
+                this.updateUploadButton();
+            });
+        }
+
+        // Chunking help info icon
+        const infoIcon = document.querySelector('.info-icon');
+        if (infoIcon) {
+            infoIcon.addEventListener('click', () => {
+                this.toggleChunkingHelp();
+            });
+        }
+
+        // Overlap help info icon
+        const overlapInfoIcon = document.querySelector('.info-icon-overlap');
+        if (overlapInfoIcon) {
+            overlapInfoIcon.addEventListener('click', () => {
+                this.toggleOverlapHelp();
+            });
+        }
+
+        if (chunkOverlapInput && chunkOverlapValue) {
+            chunkOverlapInput.addEventListener('input', (e) => {
+                chunkOverlapValue.textContent = e.target.value;
+                this.updateUploadButton();
+            });
+        }
+
+        // Upload button
+        const uploadBtn = document.getElementById('uploadBtn');
+        if (uploadBtn) {
+            uploadBtn.addEventListener('click', () => {
+                this.handleDocumentUpload();
+            });
+        }
+
+        // Add event listeners for buttons with data-action attribute
+        document.querySelectorAll('[data-action]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const action = e.currentTarget.dataset.action;
+                if (this[action] && typeof this[action] === 'function') {
+                    this[action]();
+                }
+            });
+        });
+
+        // Force sync button
+        const forceSyncButton = document.getElementById('forceSyncButton');
+        if (forceSyncButton) {
+            forceSyncButton.addEventListener('click', () => {
+                this.forceSync();
+            });
+        }
+
+        // Document search button
+        const docSearchBtn = document.getElementById('docSearchBtn');
+        const docSearchInput = document.getElementById('docSearchInput');
+        if (docSearchBtn && docSearchInput) {
+            docSearchBtn.addEventListener('click', () => {
+                const query = docSearchInput.value.trim();
+                if (query) {
+                    this.searchDocumentContent(query);
+                } else {
+                    this.showToast('Please enter a search query', 'warning');
+                }
+            });
+
+            // Enter key to search
+            docSearchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const query = docSearchInput.value.trim();
+                    if (query) {
+                        this.searchDocumentContent(query);
+                    }
+                }
+            });
+        }
+
+        // Upload history action buttons (event delegation)
+        const uploadHistory = document.getElementById('uploadHistory');
+        if (uploadHistory) {
+            uploadHistory.addEventListener('click', (e) => {
+                const button = e.target.closest('.btn-view-memory, .btn-remove');
+                if (!button) return;
+
+                const uploadItem = button.closest('.upload-item');
+                const uploadId = uploadItem?.dataset.uploadId;
+                const filename = uploadItem?.dataset.filename;
+
+                if (!uploadId) return;
+
+                if (button.classList.contains('btn-view-memory')) {
+                    this.viewDocumentMemory(uploadId);
+                } else if (button.classList.contains('btn-remove')) {
+                    this.removeDocument(uploadId, filename);
+                }
+            });
+        }
+
+        // Close modal when clicking outside
+        const memoryViewerModal = document.getElementById('memoryViewerModal');
+        if (memoryViewerModal) {
+            memoryViewerModal.addEventListener('click', (e) => {
+                if (e.target === memoryViewerModal) {
+                    this.closeMemoryViewer();
+                }
+            });
+        }
+
+        // Mark listeners as set up to prevent duplicates
+        this.documentsListenersSetup = true;
+        console.log('Document listeners setup complete');
+    }
+
+    /**
+     * Handle file selection from input or drag-drop
+     */
+    handleFileSelection(files) {
+        if (!files || files.length === 0) return;
+
+        this.selectedFiles = Array.from(files);
+        this.updateUploadButton();
+
+        // Show file preview in drop zone
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) {
+            const fileNames = this.selectedFiles.map(f => this.escapeHtml(f.name)).join(', ');
+            const content = dropZone.querySelector('.drop-zone-content');
+            if (content) {
+                content.innerHTML = `
+                    <svg width="48" height="48" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                    <h3>${files.length} file${files.length > 1 ? 's' : ''} selected</h3>
+                    <p>${fileNames}</p>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.docx,.pptx,.txt,.md,.json" style="display: none;">
+                `;
+            }
+        }
+    }
+
+    /**
+     * Update upload button state based on selections
+     */
+    updateUploadButton() {
+        const uploadBtn = document.getElementById('uploadBtn');
+        const hasFiles = this.selectedFiles && this.selectedFiles.length > 0;
+
+        if (uploadBtn) {
+            uploadBtn.disabled = !hasFiles;
+            uploadBtn.textContent = hasFiles ?
+                `Upload & Ingest ${this.selectedFiles.length} file${this.selectedFiles.length > 1 ? 's' : ''}` :
+                'Upload & Ingest';
+        }
+    }
+
+    /**
+     * Handle document upload
+     */
+    async handleDocumentUpload() {
+        if (!this.selectedFiles || this.selectedFiles.length === 0) {
+            this.showToast('No files selected', 'error');
+            return;
+        }
+
+        const tags = document.getElementById('docTags')?.value || '';
+        const chunkSize = document.getElementById('chunkSize')?.value || 1000;
+        const chunkOverlap = document.getElementById('chunkOverlap')?.value || 200;
+        const memoryType = document.getElementById('memoryType')?.value || 'document';
+
+        try {
+            this.setLoading(true);
+
+            if (this.selectedFiles.length === 1) {
+                // Single file upload
+                await this.uploadSingleDocument(this.selectedFiles[0], {
+                    tags,
+                    chunk_size: parseInt(chunkSize),
+                    chunk_overlap: parseInt(chunkOverlap),
+                    memory_type: memoryType
+                });
+            } else {
+                // Batch upload
+                await this.uploadBatchDocuments(this.selectedFiles, {
+                    tags,
+                    chunk_size: parseInt(chunkSize),
+                    chunk_overlap: parseInt(chunkOverlap),
+                    memory_type: memoryType
+                });
+            }
+
+            // Clear selection and reload history
+            this.selectedFiles = [];
+            this.updateUploadButton();
+            await this.loadUploadHistory();
+
+            // Reset drop zone
+            const dropZone = document.getElementById('dropZone');
+            if (dropZone) {
+                const content = dropZone.querySelector('.drop-zone-content');
+                if (content) {
+                    content.innerHTML = `
+                        <svg width="48" height="48" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        <h3>Drag & drop files here</h3>
+                        <p>or <button id="fileSelectBtn" class="link-button">browse to select files</button></p>
+                        <p class="supported-formats">Supported formats: PDF, DOCX, PPTX, TXT, MD, JSON</p>
+                        <input type="file" id="fileInput" multiple accept=".pdf,.docx,.pptx,.txt,.md,.json" style="display: none;">
+                    `;
+                }
+                // Re-setup event listeners for the new elements
+                this.setupDocumentsEventListeners();
+            }
+
+        } catch (error) {
+            console.error('Upload error:', error);
+            this.showToast('Upload failed: ' + error.message, 'error');
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Upload single document
+     */
+    async uploadSingleDocument(file, config) {
+        console.log(`Uploading file: ${file.name}, size: ${file.size} bytes`);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('tags', config.tags);
+        formData.append('chunk_size', config.chunk_size.toString());
+        formData.append('chunk_overlap', config.chunk_overlap.toString());
+        formData.append('memory_type', config.memory_type);
+
+        const response = await fetch(`${this.apiBase}/documents/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        console.log(`Upload response status: ${response.status}`);
+
+        if (!response.ok) {
+            let errorMessage = `Upload failed with status ${response.status}`;
+            try {
+                const error = await response.json();
+                console.error('Upload error details:', error);
+                errorMessage = error.detail || error.message || errorMessage;
+            } catch (e) {
+                console.error('Could not parse error response:', e);
+                try {
+                    const errorText = await response.text();
+                    console.error('Error response text:', errorText);
+                    errorMessage = errorText || errorMessage;
+                } catch (e2) {
+                    console.error('Could not read error response:', e2);
+                }
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        console.log('Upload result:', result);
+        this.showToast(`Upload started for ${file.name}`, 'success');
+
+        // Monitor progress if we have an upload ID
+        if (result.upload_id) {
+            this.monitorUploadProgress(result.upload_id);
+        }
+
+        return result;
+    }
+
+    /**
+     * Upload batch documents
+     */
+    async uploadBatchDocuments(files, config) {
+        const formData = new FormData();
+        files.forEach(file => {
+            formData.append('files', file);
+        });
+        formData.append('tags', config.tags);
+        formData.append('chunk_size', config.chunk_size.toString());
+        formData.append('chunk_overlap', config.chunk_overlap.toString());
+        formData.append('memory_type', config.memory_type);
+
+        const response = await fetch(`${this.apiBase}/documents/batch-upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Batch upload failed');
+        }
+
+        const result = await response.json();
+        this.showToast(`Batch upload started for ${files.length} files`, 'success');
+
+        // Monitor progress if we have an upload ID
+        if (result.upload_id) {
+            this.monitorUploadProgress(result.upload_id);
+        }
+
+        return result;
+    }
+
+    /**
+     * Monitor upload progress by polling status endpoint
+     */
+    monitorUploadProgress(uploadId) {
+        const pollStatus = async () => {
+            try {
+                const statusResponse = await this.apiCall(`/documents/status/${uploadId}`);
+                this.updateUploadProgress(uploadId, statusResponse);
+
+                if (statusResponse.progress >= 100 || statusResponse.status === 'completed' || statusResponse.status === 'failed') {
+                    // Upload completed, refresh history
+                    this.loadUploadHistory();
+                } else {
+                    // Continue polling
+                    setTimeout(pollStatus, 2000); // Poll every 2 seconds
+                }
+            } catch (error) {
+                // If polling fails, try again with longer interval
+                setTimeout(pollStatus, 5000);
+            }
+        };
+
+        // Start polling after a short delay
+        setTimeout(pollStatus, 1000);
+    }
+
+    /**
+     * Update upload progress display
+     */
+    updateUploadProgress(uploadId, statusData) {
+        // Find the upload item in history and update it
+        const historyContainer = document.getElementById('uploadHistory');
+        if (!historyContainer) return;
+
+        const uploadItems = historyContainer.querySelectorAll('.upload-item');
+        uploadItems.forEach(item => {
+            const filename = item.querySelector('.upload-filename');
+            if (filename && filename.textContent.includes(uploadId)) {
+                // This is a simplified update - in practice you'd match by upload ID
+                this.loadUploadHistory(); // For now, just refresh the entire history
+            }
+        });
+    }
+
+    /**
      * Check hybrid backend sync status
      */
     async checkSyncStatus() {
@@ -578,6 +1094,54 @@ class MemoryDashboard {
     }
 
     /**
+     * Toggle chunking help section visibility
+     */
+    toggleChunkingHelp() {
+        const helpSection = document.getElementById('chunkingHelpSection');
+        if (helpSection) {
+            if (helpSection.style.display === 'none') {
+                helpSection.style.display = 'block';
+            } else {
+                helpSection.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Hide chunking help section
+     */
+    hideChunkingHelp() {
+        const helpSection = document.getElementById('chunkingHelpSection');
+        if (helpSection) {
+            helpSection.style.display = 'none';
+        }
+    }
+
+    /**
+     * Toggle overlap help section visibility
+     */
+    toggleOverlapHelp() {
+        const helpSection = document.getElementById('overlapHelpSection');
+        if (helpSection) {
+            if (helpSection.style.display === 'none') {
+                helpSection.style.display = 'block';
+            } else {
+                helpSection.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Hide overlap help section
+     */
+    hideOverlapHelp() {
+        const helpSection = document.getElementById('overlapHelpSection');
+        if (helpSection) {
+            helpSection.style.display = 'none';
+        }
+    }
+
+    /**
      * Render memories in a specific container
      */
     renderMemoriesInContainer(memories, container) {
@@ -641,6 +1205,9 @@ class MemoryDashboard {
                 break;
             case 'browse':
                 await this.loadBrowseData();
+                break;
+            case 'documents':
+                await this.loadDocumentsData();
                 break;
             case 'manage':
                 await this.loadManageData();
@@ -1287,26 +1854,244 @@ class MemoryDashboard {
     }
 
     /**
-     * Render recent memories
-     */
+    * Render recent memories
+    */
     renderRecentMemories(memories) {
-        const container = document.getElementById('recentMemoriesList');
+    const container = document.getElementById('recentMemoriesList');
 
-        if (!container) {
-            console.error('recentMemoriesList container not found');
-            return;
-        }
+    if (!container) {
+    console.error('recentMemoriesList container not found');
+    return;
+    }
 
-        if (!memories || memories.length === 0) {
-            container.innerHTML = '<p class="empty-state">No memories found. <a href="#" onclick="app.handleAddMemory()">Add your first memory</a></p>';
-            return;
-        }
+    if (!memories || memories.length === 0) {
+    container.innerHTML = '<p class="empty-state">No memories found. <a href="#" onclick="app.handleAddMemory()">Add your first memory</a></p>';
+    return;
+    }
 
-        container.innerHTML = memories.map(memory => this.renderMemoryCard(memory)).join('');
+    // Group document chunks by upload_id
+        const groupedMemories = this.groupMemoriesByUpload(memories);
 
-        // Add click handlers
+    container.innerHTML = groupedMemories.map(group => {
+    if (group.type === 'document') {
+            return this.renderDocumentGroup(group);
+            } else {
+                return this.renderMemoryCard(group.memory);
+            }
+        }).join('');
+
+        // Add click handlers for individual memories
         container.querySelectorAll('.memory-card').forEach((card, index) => {
-            card.addEventListener('click', () => this.handleMemoryClick(memories[index]));
+            const group = groupedMemories[index];
+            if (group.type === 'single') {
+                card.addEventListener('click', () => this.handleMemoryClick(group.memory));
+            }
+        });
+
+        // Add click handlers for document groups
+        container.querySelectorAll('.document-group').forEach((groupEl, index) => {
+            const group = groupedMemories.filter(g => g.type === 'document')[index];
+            if (group) {
+                groupEl.addEventListener('click', (e) => {
+                    // Don't trigger if clicking on action buttons
+                    if (e.target.closest('.document-actions')) return;
+                    this.showDocumentChunks(group);
+                });
+            }
+        });
+
+        // Add click handlers for document action buttons
+        container.querySelectorAll('.document-group').forEach((groupEl, index) => {
+            const group = groupedMemories.filter(g => g.type === 'document')[index];
+            if (group) {
+                // View chunks button
+                const viewBtn = groupEl.querySelector('.btn-view-chunks');
+                if (viewBtn) {
+                    viewBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.showDocumentChunks(group);
+                    });
+                }
+
+                // Remove button
+                const removeBtn = groupEl.querySelector('.btn-remove');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        await this.removeDocument(group.upload_id, group.source_file);
+                        // removeDocument() already handles view refresh
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Group memories by upload_id for document chunks
+     */
+    groupMemoriesByUpload(memories) {
+        const groups = [];
+        const documentGroups = new Map();
+        const processedHashes = new Set();
+
+        for (const memory of memories) {
+            // Check if this is a document chunk
+            const isDocumentChunk = memory.metadata && memory.metadata.upload_id;
+
+            if (isDocumentChunk && !processedHashes.has(memory.content_hash)) {
+                const uploadId = memory.metadata.upload_id;
+                const sourceFile = memory.metadata.source_file || 'Unknown file';
+
+                if (!documentGroups.has(uploadId)) {
+                    documentGroups.set(uploadId, {
+                        upload_id: uploadId,
+                        source_file: sourceFile,
+                        memories: [],
+                        created_at: memory.created_at,
+                        tags: new Set()
+                    });
+                }
+
+                const group = documentGroups.get(uploadId);
+                group.memories.push(memory);
+                group.tags.add(...(memory.tags || []));
+                processedHashes.add(memory.content_hash);
+            } else if (!processedHashes.has(memory.content_hash)) {
+                // Regular memory
+                groups.push({
+                    type: 'single',
+                    memory: memory
+                });
+                processedHashes.add(memory.content_hash);
+            }
+        }
+
+        // Convert document groups to array format
+        for (const group of documentGroups.values()) {
+            groups.push({
+                type: 'document',
+                upload_id: group.upload_id,
+                source_file: group.source_file,
+                memories: group.memories,
+                created_at: group.created_at,
+                tags: Array.from(group.tags)
+            });
+        }
+
+        // Sort by creation time (most recent first)
+        groups.sort((a, b) => {
+            const timeA = a.type === 'document' ? a.created_at : a.memory.created_at;
+            const timeB = b.type === 'document' ? b.created_at : b.memory.created_at;
+            return timeB - timeA;
+        });
+
+        return groups;
+    }
+
+    /**
+     * Render a document group card
+     */
+    renderDocumentGroup(group) {
+        const createdDate = new Date(group.created_at * 1000).toLocaleDateString();
+        const fileName = this.escapeHtml(group.source_file);
+        const chunkCount = group.memories.length;
+        // Filter out metadata tags AND tags that are too long (likely corrupted/malformed)
+        const uniqueTags = [...new Set(group.tags.filter(tag =>
+            !tag.startsWith('upload_id:') &&
+            !tag.startsWith('source_file:') &&
+            !tag.startsWith('file_type:') &&
+            tag.length < 100  // Reject tags longer than 100 chars (likely corrupted metadata)
+        ))];
+
+        return `
+            <div class="document-group" data-upload-id="${this.escapeHtml(group.upload_id)}">
+                <div class="document-header">
+                    <div class="document-icon">📄</div>
+                    <div class="document-info">
+                        <div class="document-title">${fileName}</div>
+                        <div class="document-meta">
+                            ${chunkCount} chunks • ${createdDate}
+                        </div>
+                    </div>
+                </div>
+                <div class="document-preview">
+                    ${group.memories[0] ? this.escapeHtml(group.memories[0].content.substring(0, 150)) + (group.memories[0].content.length > 150 ? '...' : '') : 'No content preview available'}
+                </div>
+                ${uniqueTags.length > 0 ? `
+                    <div class="document-tags">
+                        ${uniqueTags.slice(0, 3).map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                        ${uniqueTags.length > 3 ? `<span class="tag more">+${uniqueTags.length - 3} more</span>` : ''}
+                    </div>
+                ` : ''}
+                <div class="document-actions">
+                    <button class="btn-icon btn-view-chunks" title="View all chunks">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                        </svg>
+                        <span>View Chunks</span>
+                    </button>
+                    <button class="btn-icon btn-remove" title="Remove document">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                        <span>Remove</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Show document chunks in a modal
+     */
+    showDocumentChunks(group) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>📄 ${this.escapeHtml(group.source_file)}</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="document-chunks">
+                        ${group.memories.map((memory, index) => `
+                            <div class="chunk-item">
+                                <div class="chunk-header">
+                                    <span class="chunk-number">Chunk ${index + 1}</span>
+                                    <div class="chunk-meta">
+                                        ${memory.metadata && memory.metadata.page ? `Page ${memory.metadata.page} • ` : ''}
+                                        ${memory.content.length} chars
+                                    </div>
+                                </div>
+                                <div class="chunk-content">
+                                    ${this.escapeHtml(memory.content)}
+                                </div>
+                                ${memory.tags && memory.tags.length > 0 ? `
+                                    <div class="chunk-tags">
+                                        ${memory.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Add active class to show modal (required for display: flex)
+        setTimeout(() => modal.classList.add('active'), 10);
+
+        // Add close handlers
+        const closeModal = () => {
+            modal.classList.remove('active');
+            setTimeout(() => document.body.removeChild(modal), 300);
+        };
+        modal.querySelector('.modal-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
         });
     }
 
@@ -1366,34 +2151,39 @@ class MemoryDashboard {
     }
 
     /**
-     * Render a memory card
-     */
+    * Render a memory card
+    */
     renderMemoryCard(memory, searchResult = null) {
-        const createdDate = new Date(memory.created_at * 1000).toLocaleDateString();
-        const relevanceScore = searchResult &&
-            searchResult.similarity_score !== null &&
-            searchResult.similarity_score !== undefined &&
-            !isNaN(searchResult.similarity_score) &&
-            searchResult.similarity_score > 0
-            ? (searchResult.similarity_score * 100).toFixed(1)
-            : null;
+    const createdDate = new Date(memory.created_at * 1000).toLocaleDateString();
+    const relevanceScore = searchResult &&
+    searchResult.similarity_score !== null &&
+    searchResult.similarity_score !== undefined &&
+    !isNaN(searchResult.similarity_score) &&
+    searchResult.similarity_score > 0
+    ? (searchResult.similarity_score * 100).toFixed(1)
+    : null;
 
-        return `
-            <div class="memory-card" data-memory-id="${memory.content_hash}">
-                <div class="memory-header">
-                    <div class="memory-meta">
+    // Truncate content to 150 characters for preview
+    const truncatedContent = memory.content.length > 150
+    ? memory.content.substring(0, 150) + '...'
+    : memory.content;
+
+    return `
+    <div class="memory-card" data-memory-id="${memory.content_hash}">
+    <div class="memory-header">
+        <div class="memory-meta">
                         <span>${createdDate}</span>
-                        ${memory.memory_type ? `<span> • ${memory.memory_type}</span>` : ''}
-                        ${relevanceScore ? `<span> • ${relevanceScore}% match</span>` : ''}
-                    </div>
+            ${memory.memory_type ? `<span> • ${memory.memory_type}</span>` : ''}
+        ${relevanceScore ? `<span> • ${relevanceScore}% match</span>` : ''}
+        </div>
                 </div>
 
-                <div class="memory-content">
-                    ${this.escapeHtml(memory.content)}
-                </div>
+    <div class="memory-content">
+    ${this.escapeHtml(truncatedContent)}
+    </div>
 
-                ${memory.tags && memory.tags.length > 0 ? `
-                    <div class="memory-tags">
+        ${memory.tags && memory.tags.length > 0 ? `
+                <div class="memory-tags">
                         ${memory.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
                     </div>
                 ` : ''}
@@ -1499,11 +2289,21 @@ class MemoryDashboard {
         filtersList.innerHTML = filters.map(filter => `
             <div class="filter-pill">
                 ${this.escapeHtml(filter.label)}
-                <button class="remove-filter" onclick="dashboard.removeFilter('${filter.type}', '${this.escapeHtml(filter.value)}')">
+                <button class="remove-filter" data-filter-type="${this.escapeHtml(filter.type)}" data-filter-value="${this.escapeHtml(filter.value)}">
                     ×
                 </button>
             </div>
         `).join('');
+
+        // Add event listeners for filter removal
+        filtersList.addEventListener('click', (e) => {
+            const button = e.target.closest('.remove-filter');
+            if (!button) return;
+
+            const type = button.dataset.filterType;
+            const value = button.dataset.filterValue;
+            this.removeFilter(type, value);
+        });
     }
 
     /**
@@ -1711,6 +2511,185 @@ class MemoryDashboard {
             } else {
                 indicator.classList.add('hidden');
             }
+        }
+    }
+
+    /**
+     * View document memory chunks
+     */
+    async viewDocumentMemory(uploadId) {
+        try {
+            this.setLoading(true);
+            const response = await this.apiCall(`/documents/search-content/${uploadId}`);
+
+            if (response.status === 'success' || response.status === 'partial') {
+                // Show modal
+                const modal = document.getElementById('memoryViewerModal');
+                const filename = document.getElementById('memoryViewerFilename');
+                const stats = document.getElementById('memoryViewerStats');
+                const chunksList = document.getElementById('memoryChunksList');
+
+                filename.textContent = response.filename || 'Document';
+                stats.textContent = `${response.total_found} chunk${response.total_found !== 1 ? 's' : ''} found`;
+
+                // Render chunks
+                if (response.memories && response.memories.length > 0) {
+                    const chunksHtml = response.memories.map((memory, index) => {
+                        const chunkIndex = memory.chunk_index !== undefined ? memory.chunk_index : index;
+                        const page = memory.page ? ` • Page ${memory.page}` : '';
+                        const contentPreview = memory.content.length > 300
+                            ? memory.content.substring(0, 300) + '...'
+                            : memory.content;
+
+                        return `
+                            <div class="memory-chunk-item">
+                                <div class="chunk-header">
+                                    <span class="chunk-number">Chunk ${chunkIndex + 1}${page}</span>
+                                    <span class="chunk-hash" title="${memory.content_hash}">${memory.content_hash.substring(0, 12)}...</span>
+                                </div>
+                                <div class="chunk-content">${this.escapeHtml(contentPreview)}</div>
+                                <div class="chunk-tags">
+                                    ${memory.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    chunksList.innerHTML = chunksHtml;
+                } else {
+                    chunksList.innerHTML = '<p class="text-muted">No memory chunks found for this document.</p>';
+                }
+
+                modal.style.display = 'flex';
+
+                if (response.status === 'partial') {
+                    this.showToast(`Found ${response.total_found} chunks (partial results)`, 'warning');
+                }
+            } else {
+                this.showToast('Failed to load document memories', 'error');
+            }
+        } catch (error) {
+            console.error('Error viewing document memory:', error);
+            this.showToast('Error loading document memories', 'error');
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Close memory viewer modal
+     */
+    closeMemoryViewer() {
+        const modal = document.getElementById('memoryViewerModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    /**
+     * Remove document and its memories
+     */
+    async removeDocument(uploadId, filename) {
+        console.log('removeDocument called with:', { uploadId, filename, currentView: this.currentView });
+
+        if (!confirm(`Remove "${filename}" and all its memory chunks?\n\nThis action cannot be undone.`)) {
+            console.log('User cancelled removal');
+            return;
+        }
+
+        try {
+            this.setLoading(true);
+            console.log('Making DELETE request to:', `/documents/remove/${uploadId}`);
+
+            const response = await this.apiCall(`/documents/remove/${uploadId}`, 'DELETE');
+
+            console.log('Delete response:', response);
+
+            if (response.status === 'success') {
+                this.showToast(`Removed "${filename}" (${response.memories_deleted} memories deleted)`, 'success');
+                // Refresh the current view (Dashboard or Documents tab)
+                console.log('Refreshing view:', this.currentView);
+                if (this.currentView === 'dashboard') {
+                    await this.loadDashboardData();
+                } else if (this.currentView === 'documents') {
+                    await this.loadUploadHistory();
+                }
+            } else {
+                console.error('Removal failed with response:', response);
+                this.showToast('Failed to remove document', 'error');
+            }
+        } catch (error) {
+            console.error('Error removing document:', error);
+            console.error('Error stack:', error.stack);
+            this.showToast('Error removing document', 'error');
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Search document content
+     */
+    async searchDocumentContent(query) {
+        try {
+            this.setLoading(true);
+            const resultsContainer = document.getElementById('docSearchResults');
+            const resultsList = document.getElementById('docSearchResultsList');
+            const resultsCount = document.getElementById('docSearchCount');
+
+            // Use the regular search endpoint but filter for document memories
+            const response = await this.apiCall('/search', {
+                method: 'POST',
+                body: JSON.stringify({
+                    query: query,
+                    limit: 20
+                })
+            });
+
+            if (response.results) {
+                // Filter results to only show document-type memories
+                const documentResults = response.results.filter(r =>
+                    r.memory_type === 'document' || r.tags.some(tag => tag.startsWith('upload_id:'))
+                );
+
+                resultsCount.textContent = `${documentResults.length} result${documentResults.length !== 1 ? 's' : ''}`;
+
+                if (documentResults.length > 0) {
+                    const resultsHtml = documentResults.map(result => {
+                        const uploadIdTag = result.tags.find(tag => tag.startsWith('upload_id:'));
+                        const sourceFile = result.metadata?.source_file || 'Unknown file';
+                        const contentPreview = result.content.length > 200
+                            ? result.content.substring(0, 200) + '...'
+                            : result.content;
+
+                        return `
+                            <div class="search-result-item">
+                                <div class="result-header">
+                                    <strong>${this.escapeHtml(sourceFile)}</strong>
+                                    <span class="similarity-score">${Math.round(result.similarity * 100)}% match</span>
+                                </div>
+                                <div class="result-content">${this.escapeHtml(contentPreview)}</div>
+                                <div class="result-tags">
+                                    ${result.tags.slice(0, 5).map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    resultsList.innerHTML = resultsHtml;
+                } else {
+                    resultsList.innerHTML = '<p class="text-muted">No matching document content found. Try different search terms.</p>';
+                }
+
+                resultsContainer.style.display = 'block';
+            } else {
+                this.showToast('Search failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error searching documents:', error);
+            this.showToast('Error performing search', 'error');
+        } finally {
+            this.setLoading(false);
         }
     }
 
@@ -2019,17 +2998,33 @@ class MemoryDashboard {
         html += '</tr></thead><tbody>';
 
         data.tags.forEach(tagStat => {
-            html += '<tr>';
-            html += `<td class="tag-name">${tagStat.tag}</td>`;
-            html += `<td class="tag-count">${tagStat.count}</td>`;
-            html += '<td class="tag-actions">';
-            html += `<button class="tag-action-btn" onclick="app.renameTag('${tagStat.tag}')">Rename</button>`;
-            html += `<button class="tag-action-btn danger" onclick="app.deleteTag('${tagStat.tag}', ${tagStat.count})">Delete</button>`;
-            html += '</td></tr>';
+        html += '<tr>';
+        html += `<td class="tag-name">${tagStat.tag}</td>`;
+        html += `<td class="tag-count">${tagStat.count}</td>`;
+        html += '<td class="tag-actions">';
+        html += `<button class="tag-action-btn" data-action="rename-tag" data-tag="${this.escapeHtml(tagStat.tag)}">Rename</button>`;
+        html += `<button class="tag-action-btn danger" data-action="delete-tag" data-tag="${this.escapeHtml(tagStat.tag)}" data-count="${tagStat.count}">Delete</button>`;
+        html += '</td></tr>';
         });
 
         html += '</tbody></table>';
         container.innerHTML = html;
+
+        // Add event listeners for tag actions
+        container.addEventListener('click', (e) => {
+            const button = e.target.closest('[data-action]');
+            if (!button) return;
+
+            const action = button.dataset.action;
+            const tag = button.dataset.tag;
+
+            if (action === 'rename-tag') {
+                this.renameTag(tag);
+            } else if (action === 'delete-tag') {
+                const count = parseInt(button.dataset.count, 10);
+                this.deleteTag(tag, count);
+            }
+        });
     }
 
     /**
