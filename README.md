@@ -15,6 +15,33 @@
 
 ## 🚀 Quick Start (2 minutes)
 
+### 🆕 **v8.6.0: Document Ingestion System**
+
+**📄 Transform Documents into Searchable Memory** (Production Ready):
+```bash
+# 1. Install/Update MCP Memory Service
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service && python install.py
+
+# 2. Start the server with web interface
+uv run memory server --http
+
+# 3. Access interactive dashboard
+open http://127.0.0.1:8888/
+# ✅ Upload PDFs, TXT, MD, JSON - Browse chunks - Search content!
+```
+
+**✨ What's New in v8.6.0:**
+- 📚 **Complete document management UI** with drag-and-drop upload
+- 🔍 **Interactive document viewer** with chunk-by-chunk browsing
+- 🏷️ **Smart tagging** with length validation (prevents bloat)
+- 🔒 **Security hardened** (path traversal & XSS protection)
+- 📄 **Multiple formats**: PDF, TXT, MD, JSON with optional [semtools](https://github.com/run-llama/semtools) for enhanced parsing
+
+**📖 Complete Guide**: [Document Ingestion Guide](https://github.com/doobidoo/mcp-memory-service/wiki)
+
+---
+
 ### 🆕 **v8.4.0: Memory Hooks Recency Optimization**
 
 **📊 Intelligent Recent Memory Prioritization** (80% Better Context):
@@ -22,14 +49,10 @@
 # Automatically prioritizes recent development work over old memories
 # Memory hooks now surface memories <7 days old with 80% higher accuracy
 
-# 1. Install/Update MCP Memory Service
-git clone https://github.com/doobidoo/mcp-memory-service.git
-cd mcp-memory-service && python install.py
-
-# 2. Install Natural Memory Triggers (includes recency optimization)
+# 1. Install Natural Memory Triggers (includes recency optimization)
 cd claude-hooks && python install_hooks.py --natural-triggers
 
-# 3. Verify recency scoring
+# 2. Verify recency scoring
 node test-recency-scoring.js
 # ✅ Done! Recent memories automatically prioritized in Claude Code
 ```
@@ -177,7 +200,16 @@ These warnings disappear after the first successful run. The service is working 
 
 ## ✨ Key Features
 
-### 🔐 **Enterprise Authentication & Team Collaboration** 🆕
+### 📄 **Document Ingestion System** 🆕 v8.6.0
+- **Interactive Web UI** - Drag-and-drop document upload with real-time progress
+- **Multiple Formats** - PDF, TXT, MD, JSON with intelligent chunking
+- **Document Viewer** - Browse chunks, view metadata, search content
+- **Smart Tagging** - Automatic tagging with length validation (max 100 chars)
+- **Optional semtools** - Enhanced PDF/DOCX/PPTX parsing with LlamaParse
+- **Security Hardened** - Path traversal protection, XSS prevention, input validation
+- **7 New Endpoints** - Complete REST API for document management
+
+### 🔐 **Enterprise Authentication & Team Collaboration**
 - **OAuth 2.1 Dynamic Client Registration** - RFC 7591 & RFC 8414 compliant
 - **Claude Code HTTP Transport** - Zero-configuration team collaboration
 - **JWT Authentication** - Enterprise-grade security with scope validation
@@ -189,6 +221,7 @@ These warnings disappear after the first successful run. The service is working 
 - **Natural language time queries** ("yesterday", "last week")
 - **Tag-based organization** with smart categorization
 - **Memory consolidation** with dream-inspired algorithms
+- **Document-aware search** - Query across uploaded documents and manual memories
 
 ### 🔗 **Universal Compatibility**
 - **Claude Desktop** - Native MCP integration
@@ -209,8 +242,28 @@ These warnings disappear after the first successful run. The service is working 
 - **Service installation** - Auto-start background operation
 - **HTTPS/SSL** - Secure connections with OAuth 2.1
 - **Docker support** - Easy deployment with team collaboration
+- **Interactive Dashboard** - Web UI at http://127.0.0.1:8888/ for complete management
 
 ## 💡 Basic Usage
+
+### 📄 **Document Ingestion** (v8.6.0+)
+```bash
+# Start server with web interface
+uv run memory server --http
+
+# Access interactive dashboard
+open http://127.0.0.1:8888/
+
+# Upload documents via CLI
+curl -X POST http://127.0.0.1:8888/api/documents/upload \
+  -F "file=@document.pdf" \
+  -F "tags=documentation,reference"
+
+# Search document content
+curl -X POST http://127.0.0.1:8888/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "authentication flow", "limit": 10}'
+```
 
 ### 🔗 **Team Collaboration with OAuth** (v7.0.0+)
 ```bash
@@ -304,13 +357,15 @@ export MCP_API_KEY="your-secure-key"
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   AI Clients    │    │  MCP Memory     │    │ Storage Backend │
-│                 │    │  Service v8.4   │    │                 │
+│                 │    │  Service v8.6   │    │                 │
 │ • Claude Desktop│◄──►│ • MCP Protocol  │◄──►│ • SQLite-vec    │
 │ • Claude Code   │    │ • HTTP Transport│    │ • Cloudflare    │
 │   (HTTP/OAuth)  │    │ • OAuth 2.1 Auth│    │ • Hybrid        │
 │ • VS Code       │    │ • Memory Store  │    │   (SQLite+CF)   │
 │ • Cursor        │    │ • Semantic      │    │                 │
 │ • 13+ AI Apps   │    │   Search        │    │                 │
+│ • Web Dashboard │    │ • Doc Ingestion │    │                 │
+│   (Port 8888)   │    │   (PDF/TXT/MD)  │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
