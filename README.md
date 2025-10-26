@@ -15,6 +15,37 @@
 
 ## 🚀 Quick Start (2 minutes)
 
+### 🆕 **v8.7.0: Cosine Similarity & Maintenance Tools**
+
+**🎯 Fixed Search Accuracy + 1800x Faster Database Maintenance**:
+```bash
+# Automatic migration on startup - nothing to do!
+# Search similarity scores now 70-79% (was 0%)
+
+# New maintenance scripts for power users:
+cd mcp-memory-service
+
+# Regenerate all embeddings (~5min for 2600 memories)
+python scripts/maintenance/regenerate_embeddings.py
+
+# Fast duplicate cleanup (1800x faster than API!)
+bash scripts/maintenance/fast_cleanup_duplicates.sh  # <5s for 100+ duplicates
+
+# Find duplicates with timestamp normalization
+python scripts/maintenance/find_all_duplicates.py    # <2s for 2000 memories
+```
+
+**✨ What's New in v8.7.0:**
+- 🎯 **Fixed 0% similarity scores** - Migrated to cosine distance metric (70-79% accuracy now)
+- 🔧 **Maintenance scripts** - 1800x performance improvement (5s vs 2.5 hours for 100 duplicates)
+- 📈 **Search accuracy boost** - Exact match 79.2% (was 61%)
+- 🔄 **Automatic migration** - Seamless upgrade on first startup
+- 📚 **Comprehensive docs** - Performance benchmarks, best practices, troubleshooting
+
+**📖 Complete Guide**: [Maintenance Scripts README](scripts/maintenance/README.md)
+
+---
+
 ### 🆕 **v8.6.0: Document Ingestion System**
 
 **📄 Transform Documents into Searchable Memory** (Production Ready):
