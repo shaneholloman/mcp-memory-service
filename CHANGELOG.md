@@ -8,6 +8,33 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.8.2] - 2025-10-26
+
+### Fixed
+- **Document Upload Tag Validation** - Prevents bloated tags from space-separated file paths (Issue #174, PR #179)
+  - **Enhanced Tag Parsing**: Split tags by comma OR space instead of comma only
+  - **Robust file:// URI Handling**: Uses `urllib.parse` for proper URL decoding and path handling
+    - Handles URL-encoded characters (e.g., `%20` for spaces)
+    - Handles different path formats (e.g., `file:///C:/...`)
+    - Properly handles Windows paths with leading slash from urlparse
+  - **File Path Sanitization**: Remove `file://` prefixes, extract filenames only, clean path separators
+  - **Explicit Tag Length Validation**: Tags exceeding 100 chars now raise explicit HTTPException instead of being silently dropped
+
+### Added
+- **Processing Mode Toggle** - UI enhancement for multiple file uploads (PR #179)
+  - **Batch Processing**: All files processed together (faster, default)
+  - **Individual Processing**: Each file processed separately with better error isolation
+  - Toggle only appears when multiple files are selected
+  - Comprehensive help section explaining both modes with pros/cons
+
+### Changed
+- **Code Quality Improvements** - Eliminated code duplication in document upload endpoints (PR #179)
+  - Extracted `parse_and_validate_tags()` helper function to eliminate duplicate tag parsing logic
+  - Removed 44 lines of duplicate code from `upload_document` and `batch_upload_documents`
+  - Extracted magic number (500ms upload delay) to static constant `INDIVIDUAL_UPLOAD_DELAY`
+  - Simplified toggle display logic with ternary operator
+  - Created Issue #180 for remaining medium-priority code quality suggestions
+
 ## [8.8.1] - 2025-10-26
 
 ### Fixed
