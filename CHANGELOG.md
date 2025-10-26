@@ -8,6 +8,39 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.7.0] - 2025-10-26
+
+### Fixed
+- **Cosine Similarity Migration** - Fixed 0% similarity scores in search results (src/mcp_memory_service/storage/sqlite_vec.py:187)
+  - **Problem**: L2 distance metric gave 0% similarity for all searches due to score calculation `max(0, 1-distance)` returning 0 for distances >1.0
+  - **Solution**:
+    - Migrated embeddings table from L2 to cosine distance metric
+    - Updated score calculation to `1.0 - (distance/2.0)` for cosine range [0,2]
+    - Added automatic migration logic with database locking retry (exponential backoff)
+    - Implemented `_initialized` flag to prevent multiple initialization
+    - Created metadata table for storage configuration persistence
+  - **Performance**: Search scores improved from 0% to 70-79%, exact match accuracy 79.2% (was 61%)
+  - **Impact**: 2605 embeddings regenerated successfully
+
+- **Dashboard Search Improvements** - Enhanced search threshold handling (src/mcp_memory_service/web/static/app.js:283)
+  - Fixed search threshold always being sent even when not explicitly set
+  - Improved document filtering to properly handle memory object structure
+  - Only send `similarity_threshold` parameter when user explicitly sets it
+  - Better handling of `memory.memory_type` and `memory.tags` for document results
+
+### Added
+- **Maintenance Scripts** - Comprehensive database maintenance tooling (scripts/maintenance/)
+  - **regenerate_embeddings.py** - Regenerate all embeddings after migrations (~5min for 2600 memories)
+  - **fast_cleanup_duplicates.sh** - 1800x faster duplicate removal using direct SQL (<5s for 100+ duplicates vs 2.5 hours via API)
+  - **find_all_duplicates.py** - Fast duplicate detection with timestamp normalization (<2s for 2000 memories)
+  - **README.md** - Complete documentation with performance benchmarks, best practices, and troubleshooting
+
+### Technical Details
+- **Migration Approach**: Drop-and-recreate embeddings table to change distance metric (vec0 limitation)
+- **Retry Logic**: Exponential backoff for database locking (1s → 2s → 4s delays)
+- **Performance Benchmark**: Direct SQL vs API operations show 1800x speedup for bulk deletions
+- **Duplicate Detection**: Content normalization removes timestamps for semantic comparison using MD5 hashing
+
 ## [8.6.0] - 2025-10-25
 
 ### Added

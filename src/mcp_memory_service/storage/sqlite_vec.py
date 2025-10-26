@@ -121,6 +121,7 @@ class SqliteVecMemoryStorage(MemoryStorage):
         self.conn = None
         self.embedding_model = None
         self.embedding_dimension = 384  # Default for all-MiniLM-L6-v2
+        self._initialized = False  # Track initialization state
 
         # Performance settings
         self.enable_cache = True
@@ -220,6 +221,10 @@ class SqliteVecMemoryStorage(MemoryStorage):
 
     async def initialize(self):
         """Initialize the SQLite database with vec0 extension."""
+        # Return early if already initialized to prevent multiple initialization attempts
+        if self._initialized:
+            return
+
         try:
             if not SQLITE_VEC_AVAILABLE:
                 raise ImportError("sqlite-vec is not available. Install with: pip install sqlite-vec")
@@ -361,6 +366,14 @@ SOLUTIONS:
             
             logger.info(f"SQLite pragmas applied: {', '.join(applied_pragmas)}")
             
+            # Create metadata table for storage configuration
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS metadata (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            ''')
+
             # Create regular table for memory data
             self.conn.execute('''
                 CREATE TABLE IF NOT EXISTS memories (
@@ -379,21 +392,82 @@ SOLUTIONS:
             
             # Initialize embedding model BEFORE creating vector table
             await self._initialize_embedding_model()
-            
-            # Now create virtual table with correct dimensions
+
+            # Check if we need to migrate from L2 to cosine distance
+            # This is a one-time migration - embeddings will be regenerated automatically
+            try:
+                # First check if metadata table exists
+                cursor = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
+                metadata_exists = cursor.fetchone() is not None
+
+                if metadata_exists:
+                    cursor = self.conn.execute("SELECT value FROM metadata WHERE key='distance_metric'")
+                    current_metric = cursor.fetchone()
+
+                    if not current_metric or current_metric[0] != 'cosine':
+                        logger.info("Migrating embeddings table from L2 to cosine distance...")
+                        logger.info("This is a one-time operation - embeddings will be regenerated automatically")
+
+                        # Use a timeout and retry logic for DROP TABLE to handle concurrent access
+                        max_retries = 3
+                        retry_delay = 1.0  # seconds
+
+                        for attempt in range(max_retries):
+                            try:
+                                # Drop old embeddings table (memories table is preserved)
+                                # This may fail if another process has the database locked
+                                self.conn.execute("DROP TABLE IF EXISTS memory_embeddings")
+                                logger.info("Successfully dropped old embeddings table")
+                                break
+                            except sqlite3.OperationalError as drop_error:
+                                if "database is locked" in str(drop_error):
+                                    if attempt < max_retries - 1:
+                                        logger.warning(f"Database locked during migration (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                                        await asyncio.sleep(retry_delay)
+                                        retry_delay *= 2  # Exponential backoff
+                                    else:
+                                        # Last attempt failed - check if table exists
+                                        # If it doesn't exist, migration was done by another process
+                                        cursor = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'")
+                                        if not cursor.fetchone():
+                                            logger.info("Embeddings table doesn't exist - migration likely completed by another process")
+                                            break
+                                        else:
+                                            logger.error("Failed to drop embeddings table after retries - will attempt to continue")
+                                            # Don't fail initialization, just log the issue
+                                            break
+                                else:
+                                    raise
+                else:
+                    # No metadata table means fresh install, no migration needed
+                    logger.debug("Fresh database detected, no migration needed")
+            except Exception as e:
+                # If anything goes wrong, log but don't fail initialization
+                logger.warning(f"Migration check warning (non-fatal): {e}")
+
+            # Now create virtual table with correct dimensions using cosine distance
+            # Cosine similarity is better for text embeddings than L2 distance
             self.conn.execute(f'''
                 CREATE VIRTUAL TABLE IF NOT EXISTS memory_embeddings USING vec0(
-                    content_embedding FLOAT[{self.embedding_dimension}]
+                    content_embedding FLOAT[{self.embedding_dimension}] distance_metric=cosine
                 )
             ''')
+
+            # Store metric in metadata for future migrations
+            self.conn.execute("""
+                INSERT OR REPLACE INTO metadata (key, value) VALUES ('distance_metric', 'cosine')
+            """)
             
             # Create indexes for better performance
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_content_hash ON memories(content_hash)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_memory_type ON memories(memory_type)')
-            
+
+            # Mark as initialized to prevent re-initialization
+            self._initialized = True
+
             logger.info(f"SQLite-vec storage initialized successfully with embedding dimension: {self.embedding_dimension}")
-            
+
         except Exception as e:
             error_msg = f"Failed to initialize SQLite-vec storage: {str(e)}"
             logger.error(error_msg)
@@ -790,7 +864,9 @@ SOLUTIONS:
                     )
                     
                     # Calculate relevance score (lower distance = higher relevance)
-                    relevance_score = max(0.0, 1.0 - distance)
+                    # For cosine distance: distance ranges from 0 (identical) to 2 (opposite)
+                    # Convert to similarity score: 1 - (distance/2) gives 0-1 range
+                    relevance_score = max(0.0, 1.0 - (float(distance) / 2.0)) if distance is not None else 0.0
                     
                     results.append(MemoryQueryResult(
                         memory=memory,
@@ -1836,27 +1912,16 @@ SOLUTIONS:
         try:
             await self.initialize()
 
-            # Use explicit deferred transaction for read-only query
-            # This prevents WAL lock contention with writes from other processes
-            cursor = self.conn.execute('BEGIN DEFERRED')
+            # No explicit transaction needed - SQLite in WAL mode handles this automatically
+            # Get all tags from the database
+            cursor = self.conn.execute('''
+                SELECT tags
+                FROM memories
+                WHERE tags IS NOT NULL AND tags != ''
+            ''')
 
-            try:
-                # Get all tags from the database
-                cursor = self.conn.execute('''
-                    SELECT tags
-                    FROM memories
-                    WHERE tags IS NOT NULL AND tags != ''
-                ''')
-
-                # Fetch all rows first to avoid holding cursor during processing
-                rows = cursor.fetchall()
-
-                # Commit read transaction
-                self.conn.commit()
-
-            except Exception as e:
-                self.conn.rollback()
-                raise
+            # Fetch all rows first to avoid holding cursor during processing
+            rows = cursor.fetchall()
 
             # Yield control to event loop before processing
             await asyncio.sleep(0)

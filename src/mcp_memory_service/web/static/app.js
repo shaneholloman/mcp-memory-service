@@ -1284,9 +1284,13 @@ class MemoryDashboard {
             const payload = {
                 query: query,
                 n_results: filters.limit || 20,
-                similarity_threshold: filters.threshold || 0.7,
                 ...filters
             };
+
+            // Only add similarity_threshold if explicitly set in filters
+            if (filters.threshold !== undefined) {
+                payload.similarity_threshold = filters.threshold;
+            }
 
             const response = await this.apiCall('/search', 'POST', payload);
             return response.results || [];
@@ -2638,39 +2642,41 @@ class MemoryDashboard {
             const resultsCount = document.getElementById('docSearchCount');
 
             // Use the regular search endpoint but filter for document memories
-            const response = await this.apiCall('/search', {
-                method: 'POST',
-                body: JSON.stringify({
-                    query: query,
-                    limit: 20
-                })
+            // Higher n_results to ensure we get enough document results after filtering
+            const response = await this.apiCall('/search', 'POST', {
+                query: query,
+                n_results: 100
             });
 
             if (response.results) {
                 // Filter results to only show document-type memories
                 const documentResults = response.results.filter(r =>
-                    r.memory_type === 'document' || r.tags.some(tag => tag.startsWith('upload_id:'))
+                    r.memory?.memory_type === 'document' || (r.memory?.tags && r.memory.tags.some(tag => tag.startsWith('upload_id:')))
                 );
 
-                resultsCount.textContent = `${documentResults.length} result${documentResults.length !== 1 ? 's' : ''}`;
+                // Limit display to top 20 most relevant document results
+                const displayResults = documentResults.slice(0, 20);
 
-                if (documentResults.length > 0) {
-                    const resultsHtml = documentResults.map(result => {
-                        const uploadIdTag = result.tags.find(tag => tag.startsWith('upload_id:'));
-                        const sourceFile = result.metadata?.source_file || 'Unknown file';
-                        const contentPreview = result.content.length > 200
-                            ? result.content.substring(0, 200) + '...'
-                            : result.content;
+                resultsCount.textContent = `${documentResults.length} result${documentResults.length !== 1 ? 's' : ''}${documentResults.length > 20 ? ' (showing top 20)' : ''}`;
+
+                if (displayResults.length > 0) {
+                    const resultsHtml = displayResults.map(result => {
+                        const mem = result.memory;
+                        const uploadIdTag = mem.tags?.find(tag => tag.startsWith('upload_id:'));
+                        const sourceFile = mem.metadata?.source_file || 'Unknown file';
+                        const contentPreview = mem.content.length > 200
+                            ? mem.content.substring(0, 200) + '...'
+                            : mem.content;
 
                         return `
                             <div class="search-result-item">
                                 <div class="result-header">
                                     <strong>${this.escapeHtml(sourceFile)}</strong>
-                                    <span class="similarity-score">${Math.round(result.similarity * 100)}% match</span>
+                                    <span class="similarity-score">${Math.round((result.similarity_score || 0) * 100)}% match</span>
                                 </div>
                                 <div class="result-content">${this.escapeHtml(contentPreview)}</div>
                                 <div class="result-tags">
-                                    ${result.tags.slice(0, 5).map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                                    ${(mem.tags || []).slice(0, 5).map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
                                 </div>
                             </div>
                         `;
