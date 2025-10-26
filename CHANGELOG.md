@@ -8,6 +8,36 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.8.1] - 2025-10-26
+
+### Fixed
+- **Error Handling Improvements** - Enhanced robustness in MemoryService and maintenance scripts (Issue #177)
+  - **MemoryService.store_memory()**: Added specific exception handling for better error classification
+    - `ValueError` → validation errors with "Validation error" messages
+    - `httpx.NetworkError/TimeoutException/HTTPStatusError` → storage errors with "Storage error" messages
+    - Generic `Exception` → unexpected errors with full logging and "unexpected error" messages
+  - **Maintenance Scripts**: Added proper error handling to prevent crashes
+    - `find_cloudflare_duplicates.py`: Wrapped `get_all_memories_bulk()` in try/except, graceful handling of empty results
+    - `delete_orphaned_vectors_fixed.py`: Already used public API (no changes needed)
+
+### Added
+- **Encapsulation Methods** - New public APIs for Cloudflare storage operations (Issue #177)
+  - `CloudflareStorage.delete_vectors_by_ids()` - Batch vector deletion with proper error handling
+  - `CloudflareStorage.get_all_memories_bulk()` - Efficient bulk loading without N+1 tag queries
+  - `CloudflareStorage._row_to_memory()` - Helper for converting D1 rows to Memory objects
+  - **Performance**: Bulk operations avoid expensive individual tag lookups
+  - **Maintainability**: Public APIs instead of direct access to private `_retry_request` method
+
+### Changed
+- **Dependency Management** - Added conditional typing-extensions for Python 3.10 (Issue #177)
+  - Added `"typing-extensions>=4.0.0; python_version < '3.11'"` to pyproject.toml
+  - Ensures `NotRequired` import works correctly on Python 3.10
+  - No impact on Python 3.11+ installations
+
+### Review
+- **Gemini Code Assist**: "This pull request significantly improves the codebase by enhancing error handling and improving encapsulation... well-executed and contribute to better maintainability"
+- **Feedback Addressed**: All review suggestions implemented, including enhanced exception handling
+
 ## [8.8.0] - 2025-10-26
 
 ### Changed
