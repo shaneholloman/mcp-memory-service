@@ -52,24 +52,22 @@ async def main():
 
     print("📊 Fetching all memories from Cloudflare D1...")
 
-    # Query all memories from D1
-    query = """
-        SELECT content_hash, content, tags, created_at
-        FROM memories
-        ORDER BY created_at DESC
-    """
+    # Use the public API method for better encapsulation and performance
+    all_memories = await cloudflare.get_all_memories_bulk(include_tags=False)
 
-    # Use the internal _retry_request method to query D1
-    payload = {"sql": query}
-    response = await cloudflare._retry_request("POST", f"{cloudflare.d1_url}/query", json=payload)
-    result = response.json()
-
-    if not result.get('success') or not result.get('result') or not result['result'][0].get('results'):
+    if not all_memories:
         print("❌ Failed to fetch memories or no memories found")
-        print(f"Response: {result}")
         return 1
 
-    memories = result['result'][0]['results']
+    # Convert Memory objects to the expected format for the rest of the script
+    memories = []
+    for memory in all_memories:
+        memories.append({
+            'content_hash': memory.content_hash,
+            'content': memory.content,
+            'tags': ','.join(memory.tags),  # Convert list to comma-separated string
+            'created_at': memory.created_at
+        })
     print(f"Total memories in Cloudflare: {len(memories)}\n")
 
     # Group by normalized content
