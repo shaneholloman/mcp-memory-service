@@ -8,6 +8,44 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.8.0] - 2025-10-26
+
+### Changed
+- **DRY Refactoring** - Eliminated code duplication between MCP and HTTP servers (PR #176, Issue #172)
+  - **Problem**: MCP (`mcp_server.py`) and HTTP (`server.py`) servers had 364 lines of duplicated business logic
+    - Bug fixes applied to one server were missed in the other (e.g., PR #162 tags validation)
+    - Maintenance burden of keeping two implementations synchronized
+    - Risk of behavioral inconsistencies between protocols
+  - **Solution**:
+    - Created `MemoryService` class (442 lines) as single source of truth for business logic
+    - Refactored `mcp_server.py` to thin adapter (-338 lines, now ~50 lines per method)
+    - Refactored `server.py` to use MemoryService (169 lines modified)
+    - Both servers now delegate to shared business logic
+  - **Benefits**:
+    - **Single source of truth**: All memory operations (store, retrieve, search, delete) in one place
+    - **Consistent behavior**: Both protocols guaranteed identical business logic
+    - **Easier maintenance**: Bug fixes automatically apply to both servers
+    - **Better testability**: Business logic isolated and independently testable
+    - **Prevents future bugs**: Impossible to fix one server and forget the other
+  - **Type Safety**: Added TypedDict classes (`MemoryResult`, `OperationResult`, `HealthStats`) for better type annotations
+  - **Backward Compatibility**: No API changes, both servers remain fully compatible
+  - **Testing**: All tests passing (15/15 Cloudflare storage tests)
+  - **Review**: Gemini Code Assist: "significant and valuable refactoring... greatly improves maintainability and consistency"
+  - **Follow-up**: Minor improvements tracked in Issue #177 (error handling, encapsulation)
+
+### Fixed
+- **Python 3.10 Compatibility** - Added `NotRequired` import fallback (src/mcp_memory_service/mcp_server.py:23-26)
+  - Uses `typing.NotRequired` on Python 3.11+
+  - Falls back to `typing_extensions.NotRequired` on Python 3.10
+  - Ensures compatibility across Python versions
+
+### Added
+- **Maintenance Scripts** - Cloudflare cleanup utilities (from v8.7.1 work)
+  - `scripts/maintenance/find_cloudflare_duplicates.py` - Detect duplicates in Cloudflare D1
+  - `scripts/maintenance/delete_orphaned_vectors_fixed.py` - Clean orphaned Vectorize vectors
+  - `scripts/maintenance/fast_cleanup_duplicates_with_tracking.sh` - Platform-aware SQLite cleanup
+  - `scripts/maintenance/find_all_duplicates.py` - Platform detection (macOS/Linux paths)
+
 ## [8.7.1] - 2025-10-26
 
 ### Fixed
