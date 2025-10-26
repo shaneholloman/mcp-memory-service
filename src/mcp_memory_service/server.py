@@ -210,6 +210,7 @@ from .utils.system_detection import (
     print_system_diagnostics,
     AcceleratorType
 )
+from .services.memory_service import MemoryService
 from .utils.time_parser import extract_time_expression, parse_time_expression
 
 # Consolidation system imports (conditional)
@@ -342,6 +343,7 @@ class MemoryServer:
             if MCP_CLIENT == 'lm_studio':
                 print(f"Deferring {STORAGE_BACKEND} storage initialization to prevent startup hanging", file=sys.stdout, flush=True)
             self.storage = None
+            self.memory_service = None
             self._storage_initialized = False
 
         except Exception as e:
@@ -350,6 +352,7 @@ class MemoryServer:
             
             # Set storage to None to prevent any hanging
             self.storage = None
+            self.memory_service = None
             self._storage_initialized = False
         
         # Register handlers
@@ -531,11 +534,15 @@ class MemoryServer:
             
             self._storage_initialized = True
             logger.info(f"🎉 EAGER INIT: {STORAGE_BACKEND} storage initialization successful")
-            
+
+            # Initialize MemoryService with shared business logic
+            self.memory_service = MemoryService(self.storage)
+            logger.info(f"✅ EAGER INIT: MemoryService initialized with {STORAGE_BACKEND} storage")
+
             # Verify storage type
             storage_type = self.storage.__class__.__name__
             logger.info(f"🔍 EAGER INIT: Final storage type verification: {storage_type}")
-            
+
             # Initialize consolidation system after storage is ready
             await self._initialize_consolidation()
             
@@ -2085,56 +2092,31 @@ class MemoryServer:
     async def handle_store_memory(self, arguments: dict) -> List[types.TextContent]:
         content = arguments.get("content")
         metadata = arguments.get("metadata", {})
-        
+
         if not content:
             return [types.TextContent(type="text", text="Error: Content is required")]
-        
-        try:
-            # Initialize storage lazily when needed
-            storage = await self._ensure_storage_initialized()
-            
-            # Normalize tags to a list
-            tags = metadata.get("tags", "")
-            if isinstance(tags, str):
-                tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
-            elif isinstance(tags, list):
-                tags = [str(tag).strip() for tag in tags if str(tag).strip()]
-            else:
-                tags = []  # If tags is neither string nor list, default to empty list
 
-            sanitized_tags = storage.sanitized(tags)
-            
-            # Add optional hostname tracking
-            final_metadata = metadata.copy()
-            if INCLUDE_HOSTNAME:
-                # Prioritize client-provided hostname, then fallback to server
-                client_hostname = arguments.get("client_hostname")
-                if client_hostname:
-                    hostname = client_hostname
-                else:
-                    hostname = socket.gethostname()
-                    
-                source_tag = f"source:{hostname}"
-                if source_tag not in tags:
-                    tags.append(source_tag)
-                final_metadata["hostname"] = hostname
-            
-            # Create memory object
-            content_hash = generate_content_hash(content, final_metadata)
-            now = time.time()
-            memory = Memory(
+        try:
+            # Initialize storage lazily when needed (also initializes memory_service)
+            await self._ensure_storage_initialized()
+
+            # Extract parameters for MemoryService call
+            tags = metadata.get("tags", "")
+            memory_type = metadata.get("type", "note")  # HTTP server uses metadata.type
+            client_hostname = arguments.get("client_hostname")
+
+            # Call shared MemoryService business logic
+            result = await self.memory_service.store_memory(
                 content=content,
-                content_hash=content_hash,
-                tags=tags,  # keep as a list for easier use in other methods
-                memory_type=final_metadata.get("type"),
-                metadata = {**final_metadata, "tags":sanitized_tags},  # include the stringified tags in the meta data
-                created_at=now,
-                created_at_iso=datetime.utcfromtimestamp(now).isoformat() + "Z"
+                tags=tags,
+                memory_type=memory_type,
+                metadata=metadata,
+                client_hostname=client_hostname
             )
-            
-            # Store memory
-            success, message = await storage.store(memory)
-            return [types.TextContent(type="text", text=message)]
+
+            # Convert MemoryService result to HTTP response format
+            return [types.TextContent(type="text", text=result["message"])]
+
         except Exception as e:
             logger.error(f"Error storing memory: {str(e)}\n{traceback.format_exc()}")
             return [types.TextContent(type="text", text=f"Error storing memory: {str(e)}")]
@@ -2147,34 +2129,52 @@ class MemoryServer:
             return [types.TextContent(type="text", text="Error: Query is required")]
         
         try:
-            # Initialize storage lazily when needed
-            storage = await self._ensure_storage_initialized()
-            
+            # Initialize storage lazily when needed (also initializes memory_service)
+            await self._ensure_storage_initialized()
+
             # Track performance
             start_time = time.time()
-            results = await storage.retrieve(query, n_results)
+
+            # Call shared MemoryService business logic
+            result = await self.memory_service.retrieve_memory(
+                query=query,
+                n_results=n_results
+            )
+
             query_time_ms = (time.time() - start_time) * 1000
             
             # Record query time for performance monitoring
             self.record_query_time(query_time_ms)
-            
-            if not results:
+
+            if result.get("error"):
+                return [types.TextContent(type="text", text=f"Error retrieving memories: {result['error']}")]
+
+            memories = result.get("memories", [])
+            if not memories:
                 return [types.TextContent(type="text", text="No matching memories found")]
-            
+
+            # Format results in HTTP server style (different from MCP server)
             formatted_results = []
-            for i, result in enumerate(results):
+            for i, memory in enumerate(memories):
                 memory_info = [f"Memory {i+1}:"]
-                timestamp = getattr(result.memory, "timestamp", None)
-                if timestamp:
-                    memory_info.append(f"Timestamp: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+                # HTTP server uses created_at instead of timestamp
+                created_at = memory.get("created_at")
+                if created_at:
+                    # Parse ISO string and format
+                    try:
+                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        memory_info.append(f"Timestamp: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+                    except (ValueError, TypeError):
+                        memory_info.append(f"Timestamp: {created_at}")
 
                 memory_info.extend([
-                    f"Content: {result.memory.content}",
-                    f"Hash: {result.memory.content_hash}",
-                    f"Relevance Score: {result.relevance_score:.2f}"
+                    f"Content: {memory['content']}",
+                    f"Hash: {memory['content_hash']}",
+                    f"Relevance Score: {memory['similarity_score']:.2f}"
                 ])
-                if result.memory.tags:
-                    memory_info.append(f"Tags: {', '.join(result.memory.tags)}")
+                tags = memory.get("tags", [])
+                if tags:
+                    memory_info.append(f"Tags: {', '.join(tags)}")
                 memory_info.append("---")
                 formatted_results.append("\n".join(memory_info))
             
@@ -2193,11 +2193,16 @@ class MemoryServer:
             return [types.TextContent(type="text", text="Error: Tags are required")]
         
         try:
-            # Initialize storage lazily when needed
-            storage = await self._ensure_storage_initialized()
-            
-            memories = await storage.search_by_tag(tags)
-            
+            # Initialize storage lazily when needed (also initializes memory_service)
+            await self._ensure_storage_initialized()
+
+            # Call shared MemoryService business logic
+            result = await self.memory_service.search_by_tag(tags=tags)
+
+            if result.get("error"):
+                return [types.TextContent(type="text", text=f"Error searching by tags: {result['error']}")]
+
+            memories = result.get("memories", [])
             if not memories:
                 return [types.TextContent(
                     type="text",
@@ -2207,17 +2212,22 @@ class MemoryServer:
             formatted_results = []
             for i, memory in enumerate(memories):
                 memory_info = [f"Memory {i+1}:"]
-                timestamp = getattr(memory, "timestamp", None)
-                if timestamp:
-                    memory_info.append(f"Timestamp: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+                created_at = memory.get("created_at")
+                if created_at:
+                    try:
+                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        memory_info.append(f"Timestamp: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+                    except (ValueError, TypeError):
+                        memory_info.append(f"Timestamp: {created_at}")
 
                 memory_info.extend([
-                    f"Content: {memory.content}",
-                    f"Hash: {memory.content_hash}",
-                    f"Tags: {', '.join(memory.tags)}"
+                    f"Content: {memory['content']}",
+                    f"Hash: {memory['content_hash']}",
+                    f"Tags: {', '.join(memory.get('tags', []))}"
                 ])
-                if memory.memory_type:
-                    memory_info.append(f"Type: {memory.memory_type}")
+                memory_type = memory.get("memory_type")
+                if memory_type:
+                    memory_info.append(f"Type: {memory_type}")
                 memory_info.append("---")
                 formatted_results.append("\n".join(memory_info))
             
@@ -2233,10 +2243,13 @@ class MemoryServer:
         content_hash = arguments.get("content_hash")
         
         try:
-            # Initialize storage lazily when needed
-            storage = await self._ensure_storage_initialized()
-            success, message = await storage.delete(content_hash)
-            return [types.TextContent(type="text", text=message)]
+            # Initialize storage lazily when needed (also initializes memory_service)
+            await self._ensure_storage_initialized()
+
+            # Call shared MemoryService business logic
+            result = await self.memory_service.delete_memory(content_hash)
+
+            return [types.TextContent(type="text", text=result["message"])]
         except Exception as e:
             logger.error(f"Error deleting memory: {str(e)}\n{traceback.format_exc()}")
             return [types.TextContent(type="text", text=f"Error deleting memory: {str(e)}")]
