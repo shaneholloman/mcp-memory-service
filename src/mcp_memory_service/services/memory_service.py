@@ -220,7 +220,7 @@ class MemoryService:
                 "success": False,
                 "message": f"Validation error: {str(e)}"
             }
-        except (httpx.NetworkError, httpx.TimeoutException) as e:
+        except (httpx.NetworkError, httpx.TimeoutException, httpx.HTTPStatusError) as e:
             # Network/storage-specific errors
             logger.error(f"Storage network error: {e}", exc_info=True)
             return {

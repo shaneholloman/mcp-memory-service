@@ -53,11 +53,15 @@ async def main():
     print("📊 Fetching all memories from Cloudflare D1...")
 
     # Use the public API method for better encapsulation and performance
-    all_memories = await cloudflare.get_all_memories_bulk(include_tags=False)
+    try:
+        all_memories = await cloudflare.get_all_memories_bulk(include_tags=False)
+    except Exception as e:
+        print(f"❌ Failed to fetch memories from Cloudflare D1: {e}")
+        return 1
 
     if not all_memories:
-        print("❌ Failed to fetch memories or no memories found")
-        return 1
+        print("✅ No memories found to check for duplicates.")
+        return 0
 
     # Convert Memory objects to the expected format for the rest of the script
     memories = []
