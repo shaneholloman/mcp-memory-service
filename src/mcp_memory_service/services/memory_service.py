@@ -11,6 +11,8 @@ import socket
 from typing import Dict, List, Optional, Any, Union, Tuple, TypedDict
 from datetime import datetime
 
+import httpx
+
 from ..config import (
     INCLUDE_HOSTNAME,
     CONTENT_PRESERVE_BOUNDARIES,
@@ -211,11 +213,26 @@ class MemoryService:
                     "content_hash": memory.content_hash
                 }
 
-        except Exception as e:
-            logger.error(f"Error storing memory: {e}", exc_info=True)
+        except ValueError as e:
+            # Expected errors (validation, embedding generation)
+            logger.warning(f"Validation error storing memory: {e}")
             return {
                 "success": False,
-                "message": f"Failed to store memory: {str(e)}"
+                "message": f"Validation error: {str(e)}"
+            }
+        except (httpx.NetworkError, httpx.TimeoutException, httpx.HTTPStatusError) as e:
+            # Network/storage-specific errors
+            logger.error(f"Storage network error: {e}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"Storage error: {str(e)}"
+            }
+        except Exception as e:
+            # Unexpected errors
+            logger.exception(f"Unexpected error storing memory: {e}")
+            return {
+                "success": False,
+                "message": "An unexpected error occurred"
             }
 
     async def retrieve_memory(

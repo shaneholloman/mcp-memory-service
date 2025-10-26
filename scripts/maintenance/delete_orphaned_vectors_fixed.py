@@ -68,14 +68,8 @@ async def main():
         batch = vector_ids[i:i+batch_size]
 
         try:
-            # Use correct endpoint: /delete_by_ids with JSON payload {"ids": [...]}
-            payload = {"ids": batch}
-            response = await cloudflare._retry_request(
-                "POST",
-                f"{cloudflare.vectorize_url}/delete_by_ids",
-                json=payload
-            )
-            result = response.json()
+            # Use the public API method for better encapsulation
+            result = await cloudflare.delete_vectors_by_ids(batch)
 
             if result.get("success"):
                 deleted += len(batch)

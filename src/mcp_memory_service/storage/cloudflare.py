@@ -673,7 +673,17 @@ class CloudflareStorage(MemoryStorage):
 
         if not result.get("success"):
             logger.warning(f"Failed to delete vector from Vectorize: {result}")
-    
+
+    async def delete_vectors_by_ids(self, vector_ids: List[str]) -> Dict[str, Any]:
+        """Delete multiple vectors from Vectorize by their IDs."""
+        payload = {"ids": vector_ids}
+        response = await self._retry_request(
+            "POST",
+            f"{self.vectorize_url}/delete_by_ids",
+            json=payload
+        )
+        return response.json()
+
     async def _delete_r2_content(self, r2_key: str) -> None:
         """Delete content from R2."""
         try:
@@ -1124,6 +1134,64 @@ class CloudflareStorage(MemoryStorage):
         except Exception as e:
             logger.error(f"Error getting all memories: {str(e)}")
             return []
+
+    def _row_to_memory(self, row: Dict[str, Any]) -> Memory:
+        """Convert D1 row to Memory object without loading tags (for bulk operations)."""
+        # Load content from R2 if needed
+        content = row["content"]
+        if row.get("r2_key") and content.startswith("[R2 Content:"):
+            # For bulk operations, we don't load R2 content to avoid additional requests
+            # Just keep the placeholder
+            pass
+
+        return Memory(
+            content=content,
+            content_hash=row["content_hash"],
+            tags=[],  # Skip tag loading for bulk operations
+            memory_type=row.get("memory_type"),
+            metadata=json.loads(row["metadata_json"]) if row.get("metadata_json") else {},
+            created_at=row.get("created_at"),
+            created_at_iso=row.get("created_at_iso"),
+            updated_at=row.get("updated_at"),
+            updated_at_iso=row.get("updated_at_iso")
+        )
+
+    async def get_all_memories_bulk(
+        self,
+        include_tags: bool = False
+    ) -> List[Memory]:
+        """
+        Efficiently load all memories from D1.
+
+        If include_tags=False, skips N+1 tag queries for better performance.
+        Useful for maintenance scripts that don't need tag information.
+
+        Args:
+            include_tags: Whether to load tags for each memory (slower but complete)
+
+        Returns:
+            List of Memory objects ordered by created_at DESC
+        """
+        query = "SELECT * FROM memories ORDER BY created_at DESC"
+        payload = {"sql": query}
+        response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+        result = response.json()
+
+        if not result.get("success"):
+            raise ValueError(f"D1 query failed: {result}")
+
+        memories = []
+        if result.get("result", [{}])[0].get("results"):
+            for row in result["result"][0]["results"]:
+                if include_tags:
+                    memory = await self._load_memory_from_row(row)
+                else:
+                    memory = self._row_to_memory(row)
+                if memory:
+                    memories.append(memory)
+
+        logger.debug(f"Bulk loaded {len(memories)} memories from D1")
+        return memories
 
     async def get_all_memories_cursor(self, limit: int = None, cursor: float = None, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> List[Memory]:
         """
