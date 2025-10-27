@@ -261,31 +261,29 @@ async def time_search(
                 detail=f"Could not parse time query: '{request.query}'. Try 'yesterday', 'last week', 'this month', etc."
             )
         
-        # Use semantic query if provided for relevance filtering, otherwise get recent memories
-        if request.semantic_query and request.semantic_query.strip():
-            # Semantic filtering: retrieve by similarity
-            search_query = request.semantic_query.strip()
-            query_results = await storage.retrieve(search_query, n_results=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
-        else:
-            # No semantic filter: get recent memories chronologically
-            recent_memories = await storage.get_recent_memories(n=_TIME_SEARCH_CANDIDATE_POOL_SIZE)
-            query_results = [MemoryQueryResult(memory=m, relevance_score=1.0) for m in recent_memories]
+        # FIXED: Get memories by time range FIRST, then apply semantic ranking
+        # Use recall() with time range to get all memories from that period
+        start_dt = time_filter.get('start')
+        end_dt = time_filter.get('end')
+        start_ts = start_dt.timestamp() if start_dt else None
+        end_ts = end_dt.timestamp() if end_dt else None
 
-        # Filter by time range using list comprehension
-        filtered_memories = [
-            result for result in query_results
-            if result.memory.created_at and is_within_time_range(
-                datetime.fromtimestamp(result.memory.created_at, tz=timezone.utc),
-                time_filter
-            )
-        ]
+        # Retrieve memories within time range (with larger candidate pool if semantic query provided)
+        candidate_pool_size = _TIME_SEARCH_CANDIDATE_POOL_SIZE if request.semantic_query else request.n_results
+        query_results = await storage.recall(
+            query=request.semantic_query.strip() if request.semantic_query and request.semantic_query.strip() else None,
+            n_results=candidate_pool_size,
+            start_timestamp=start_ts,
+            end_timestamp=end_ts
+        )
 
-        # Sort by recency (newest first) - CRITICAL for proper ordering
-        # Handle potential None values with fallback to 0.0
-        filtered_memories.sort(key=lambda r: r.memory.created_at or 0.0, reverse=True)
+        # If semantic query was provided, results are already ranked by relevance
+        # Otherwise, sort by recency (newest first)
+        if not (request.semantic_query and request.semantic_query.strip()):
+            query_results.sort(key=lambda r: r.memory.created_at or 0.0, reverse=True)
 
-        # Limit results AFTER sorting
-        filtered_memories = filtered_memories[:request.n_results]
+        # Limit results
+        filtered_memories = query_results[:request.n_results]
         
         # Convert to search results
         search_results = [
