@@ -655,7 +655,8 @@ def detect_storage_backend_compatibility(system_info, gpu_info):
     compatibility = {
         "cloudflare": {"supported": True, "issues": [], "recommendation": "production"},
         "sqlite_vec": {"supported": True, "issues": [], "recommendation": "development"},
-        "chromadb": {"supported": True, "issues": [], "recommendation": "team"}
+        "chromadb": {"supported": True, "issues": [], "recommendation": "team"},
+        "hybrid": {"supported": True, "issues": [], "recommendation": "recommended"}
     }
     
     # Check ChromaDB compatibility issues
@@ -755,7 +756,8 @@ def choose_storage_backend(system_info, gpu_info, args):
     print_info("  1. Production/Shared (Cloudflare) - Cloud storage, multi-user access, requires credentials")
     print_info("  2. Development/Personal (SQLite-vec) - Local, lightweight, single-user")
     print_info("  3. Team/Multi-client (ChromaDB) - Local server, multiple clients")
-    print_info("  4. Auto-detect - Try optimal backend based on your system")
+    print_info("  4. Hybrid (Recommended) - Fast local SQLite + background Cloudflare sync")
+    print_info("  5. Auto-detect - Try optimal backend based on your system")
     print_info("")
 
     # Show compatibility analysis
@@ -780,9 +782,9 @@ def choose_storage_backend(system_info, gpu_info, args):
 
     while True:
         try:
-            choice = input(f"Choose storage backend [1-4] (default: {default_choice}): ").strip()
+            choice = input(f"Choose storage backend [1-5] (default: 4 - hybrid): ").strip()
             if not choice:
-                choice = default_choice
+                choice = "4"  # Default to hybrid
 
             if choice == "1":
                 return "cloudflare"
@@ -791,12 +793,14 @@ def choose_storage_backend(system_info, gpu_info, args):
             elif choice == "3":
                 return "chromadb"
             elif choice == "4":
+                return "hybrid"
+            elif choice == "5":
                 return "auto_detect"
             else:
-                print_error("Please enter 1, 2, 3, or 4")
+                print_error("Please enter 1, 2, 3, 4, or 5")
         except (EOFError, KeyboardInterrupt):
-            print_info(f"\nUsing recommended backend: sqlite_vec")
-            return "sqlite_vec"
+            print_info(f"\nUsing recommended backend: hybrid")
+            return "hybrid"
 
 def setup_cloudflare_credentials():
     """Interactive setup of Cloudflare credentials."""
@@ -854,7 +858,7 @@ def setup_cloudflare_credentials():
         return None
 
 def save_credentials_to_env(credentials):
-    """Save credentials to .env file."""
+    """Save credentials to .env file and current environment."""
     env_file = Path('.env')
 
     # Read existing .env content if it exists
@@ -884,7 +888,11 @@ def save_credentials_to_env(credentials):
         for key, value in credentials.items():
             f.write(f'{key}={value}\n')
 
-    print_success(f"Credentials saved to .env file")
+    # Also set credentials in current environment for immediate use
+    for key, value in credentials.items():
+        os.environ[key] = value
+
+    print_success(f"Credentials saved to .env file and current environment")
 
 def test_cloudflare_connection(credentials):
     """Test Cloudflare API connection."""
@@ -962,7 +970,56 @@ def install_storage_backend(backend, system_info):
             success_msg="SQLite-vec installed successfully",
             error_msg="Failed to install SQLite-vec"
         )
-            
+
+    elif backend == "hybrid":
+        print_info("Hybrid backend combines fast local SQLite with background Cloudflare sync")
+
+        # First install SQLite-vec for local storage
+        print_info("Installing SQLite-vec for local storage...")
+        sqlite_success = install_package_safe(
+            "sqlite-vec",
+            success_msg="SQLite-vec installed successfully",
+            error_msg="Failed to install SQLite-vec"
+        )
+        if not sqlite_success:
+            print_error("Hybrid backend requires SQLite-vec. Installation failed.")
+            return False
+
+        # Setup Cloudflare credentials for cloud sync
+        print_info("Configuring Cloudflare for background synchronization...")
+        credentials = setup_cloudflare_credentials()
+        if not credentials:
+            print_warning("Cloudflare setup cancelled.")
+            fallback = input("Continue with SQLite-vec only? [Y/n]: ").strip().lower()
+            if not fallback or fallback.startswith('y'):
+                print_info("Falling back to SQLite-vec for local-only operation.")
+                return "sqlite_vec"
+            else:
+                return False
+
+        # Update credentials to set hybrid backend
+        credentials['MCP_MEMORY_STORAGE_BACKEND'] = 'hybrid'
+
+        # Save credentials to .env file
+        save_credentials_to_env(credentials)
+
+        # Test connection
+        connection_ok = test_cloudflare_connection(credentials)
+        if connection_ok:
+            print_success("Hybrid backend configured successfully")
+            print_info("  • Local storage: SQLite-vec (5ms reads)")
+            print_info("  • Cloud sync: Cloudflare (background)")
+            return "hybrid"
+        else:
+            print_warning("Cloudflare connection test failed.")
+            fallback = input("Continue with hybrid (will sync when connection available)? [Y/n]: ").strip().lower()
+            if not fallback or fallback.startswith('y'):
+                print_info("Hybrid backend will sync to Cloudflare when connection is available")
+                return "hybrid"
+            else:
+                print_info("Falling back to SQLite-vec for local development.")
+                return "sqlite_vec"
+
     elif backend == "chromadb":
         chromadb_version = "0.5.23"
         success = install_package_safe(
@@ -1067,9 +1124,14 @@ def install_package(args):
             return False
 
     # Set environment variable for chosen backend
-    if chosen_backend == "sqlite_vec":
-        env['MCP_MEMORY_STORAGE_BACKEND'] = 'sqlite_vec'
-        print_info("Configured to use SQLite-vec storage backend")
+    if chosen_backend in ["sqlite_vec", "hybrid", "cloudflare"]:
+        env['MCP_MEMORY_STORAGE_BACKEND'] = chosen_backend
+        if chosen_backend == "sqlite_vec":
+            print_info("Configured to use SQLite-vec storage backend")
+        elif chosen_backend == "hybrid":
+            print_info("Configured to use Hybrid storage backend (SQLite + Cloudflare)")
+        elif chosen_backend == "cloudflare":
+            print_info("Configured to use Cloudflare storage backend")
     else:
         env['MCP_MEMORY_STORAGE_BACKEND'] = 'chromadb'
         print_info("Configured to use ChromaDB storage backend")
@@ -1242,8 +1304,8 @@ def configure_paths(args):
     
     # Create directories based on storage backend
     storage_backend = os.environ.get('MCP_MEMORY_STORAGE_BACKEND', 'chromadb')
-    
-    if storage_backend == 'sqlite_vec':
+
+    if storage_backend in ['sqlite_vec', 'hybrid', 'cloudflare']:
         # For sqlite-vec, we need a database file path
         storage_path = args.chroma_path or (base_dir / 'sqlite_vec.db')
         storage_dir = storage_path.parent if storage_path.name.endswith('.db') else storage_path
@@ -1319,10 +1381,27 @@ def configure_paths(args):
                         "MCP_MEMORY_BACKUPS_PATH": str(backups_path),
                         "MCP_MEMORY_STORAGE_BACKEND": storage_backend
                     }
-                    
-                    if storage_backend == 'sqlite_vec':
+
+                    if storage_backend in ['sqlite_vec', 'hybrid']:
                         env_config["MCP_MEMORY_SQLITE_PATH"] = str(storage_path)
-                    else:
+                        # Add SQLite pragmas for concurrent access (multi-client support)
+                        env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
+
+                    # Add Cloudflare credentials for hybrid and cloudflare backends
+                    if storage_backend in ['hybrid', 'cloudflare']:
+                        # Read credentials from environment (set during installation)
+                        cloudflare_env_vars = [
+                            'CLOUDFLARE_API_TOKEN',
+                            'CLOUDFLARE_ACCOUNT_ID',
+                            'CLOUDFLARE_D1_DATABASE_ID',
+                            'CLOUDFLARE_VECTORIZE_INDEX'
+                        ]
+                        for var in cloudflare_env_vars:
+                            value = os.environ.get(var)
+                            if value:
+                                env_config[var] = value
+
+                    if storage_backend == 'chromadb':
                         env_config["MCP_MEMORY_CHROMA_PATH"] = str(storage_path)
                     
                     # Create or update the memory server configuration
@@ -1615,8 +1694,8 @@ def main():
                         help='Force compatible versions of PyTorch (2.0.1) and sentence-transformers (2.2.2)')
     parser.add_argument('--fallback-deps', action='store_true',
                         help='Use fallback versions of PyTorch (1.13.1) and sentence-transformers (2.2.2)')
-    parser.add_argument('--storage-backend', choices=['cloudflare', 'sqlite_vec', 'chromadb', 'auto_detect'],
-                        help='Choose storage backend: cloudflare (production), sqlite_vec (development), chromadb (team), or auto_detect')
+    parser.add_argument('--storage-backend', choices=['cloudflare', 'sqlite_vec', 'chromadb', 'hybrid', 'auto_detect'],
+                        help='Choose storage backend: cloudflare (production), sqlite_vec (development), chromadb (team), hybrid (production + local), or auto_detect')
     parser.add_argument('--skip-pytorch', action='store_true',
                         help='Skip PyTorch installation and use ONNX runtime with SQLite-vec backend instead')
     parser.add_argument('--use-homebrew-pytorch', action='store_true',
@@ -1740,11 +1819,22 @@ def main():
     
     print_info("You can now run the MCP Memory Service using the 'memory' command")
     print_info(f"Storage Backend: {final_backend.upper()}")
-    
+
     if final_backend == 'sqlite_vec':
         print_info("✅ Using SQLite-vec - lightweight, fast, minimal dependencies")
         print_info("   • No complex dependencies or build issues")
         print_info("   • Excellent performance for typical use cases")
+    elif final_backend == 'hybrid':
+        print_info("✅ Using Hybrid Backend - RECOMMENDED for production")
+        print_info("   • Fast local SQLite-vec storage (5ms reads)")
+        print_info("   • Background Cloudflare sync for multi-device access")
+        print_info("   • SQLite pragmas configured for concurrent access")
+        print_info("   • Zero user-facing latency for cloud operations")
+    elif final_backend == 'cloudflare':
+        print_info("✅ Using Cloudflare Backend - cloud-only storage")
+        print_info("   • Distributed edge storage with D1 database")
+        print_info("   • Vectorize index for semantic search")
+        print_info("   • Multi-device synchronization")
     else:
         print_info("✅ Using ChromaDB - full-featured vector database")
         print_info("   • Advanced features and extensive ecosystem")

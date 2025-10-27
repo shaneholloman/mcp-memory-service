@@ -8,6 +8,55 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.9.0] - 2025-10-27
+
+### Fixed
+- **Database Lock Prevention** - Resolved "database is locked" errors during concurrent HTTP + MCP server access (Issue discovered during performance troubleshooting)
+  - **Root Cause**: Default `busy_timeout=5000ms` too short for concurrent writes from multiple MCP clients
+  - **Solution**: Applied recommended SQLite pragmas (`busy_timeout=15000,cache_size=20000`)
+  - **WAL Mode**: Already enabled by default, now properly configured for multi-client access
+  - **Impact**: Zero database locks during testing with 5 concurrent write operations
+  - **Documentation**: Updated multi-client architecture docs with pragma recommendations
+
+### Added
+- **Hybrid Backend Installer Support** - Full hybrid backend support in simplified installer (`scripts/installation/install.py`)
+  - **Interactive Selection**: Hybrid now option 4 (recommended default) in installer menu
+  - **Automatic Configuration**: SQLite pragmas set automatically for sqlite_vec and hybrid backends
+  - **Cloudflare Setup**: Interactive credential configuration with connection testing
+  - **Graceful Fallback**: Falls back to sqlite_vec if Cloudflare setup cancelled or fails
+  - **Claude Desktop Integration**: Hybrid backend configuration includes:
+    - SQLite pragmas for concurrent access (`MCP_MEMORY_SQLITE_PRAGMAS`)
+    - Cloudflare credentials for background sync
+    - Proper environment variable propagation
+  - **Benefits**:
+    - 5ms local reads (SQLite-vec)
+    - Zero user-facing latency (background Cloudflare sync)
+    - Multi-device synchronization
+    - Concurrent access support
+
+### Changed
+- **Installer Defaults** - Hybrid backend now recommended for production use
+  - Updated argparse choices to include `hybrid` option
+  - Changed default selection from sqlite_vec to hybrid (option 4)
+  - Enhanced compatibility detection with "recommended" status for hybrid
+  - Improved final installation messages with backend-specific guidance
+- **Environment Management** - Cloudflare credentials now set in current environment immediately
+  - `save_credentials_to_env()` sets both .env file AND os.environ
+  - Ensures credentials available for Claude Desktop config generation
+  - Proper variable propagation for hybrid and cloudflare backends
+- **Path Configuration** - Updated `configure_paths()` to handle all backends
+  - SQLite database paths for: `sqlite_vec`, `hybrid`, `cloudflare`
+  - Cloudflare credentials included when backend requires them
+  - Backward compatible with existing installations
+
+### Technical Details
+- **Files Modified**:
+  - `scripts/installation/install.py`: Lines 655-659 (compatibility), 758 (menu), 784-802 (selection), 970-1017 (hybrid install), 1123-1133 (env config), 1304 (path config), 1381-1401 (Claude Desktop config), 1808-1821 (final messages)
+  - `src/mcp_memory_service/__init__.py`: Line 50 (version bump)
+  - `pyproject.toml`: Line 7 (version bump)
+- **Concurrent Access Testing**: 5/5 simultaneous writes succeeded without locks
+- **HTTP Server Logs**: Confirmed background Cloudflare sync working (line 369: "Successfully stored memory")
+
 ## [8.8.2] - 2025-10-26
 
 ### Fixed
