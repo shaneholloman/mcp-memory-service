@@ -288,7 +288,7 @@ Note: For the HTTP server interface, use `MCP_HTTP_HOST`, `MCP_HTTP_PORT`, and `
 | `MCP_MEMORY_STORAGE_BACKEND` | `sqlite_vec` | `sqlite_vec`, `chroma`, or `cloudflare` |
 | `MCP_MEMORY_SQLITE_PATH` | `<base>/sqlite_vec.db` | SQLite-vec database file path |
 | `MCP_MEMORY_SQLITEVEC_PATH` | `none` | Alternate var for SQLite path (if set, used) |
-| `MCP_MEMORY_SQLITE_PRAGMAS` | `none` | Override SQLite pragmas (e.g. `journal_mode=WAL,busy_timeout=5000`) |
+| `MCP_MEMORY_SQLITE_PRAGMAS` | `none` | Override SQLite pragmas (e.g. `busy_timeout=15000,cache_size=20000`) |
 | `MCP_MDNS_ENABLED` | `true` | Enable mDNS advertising/discovery |
 | `MCP_MDNS_SERVICE_NAME` | `MCP Memory Service` | mDNS service name |
 | `MCP_MDNS_SERVICE_TYPE` | `_mcp-memory._tcp.local.` | mDNS service type |
@@ -307,10 +307,12 @@ Deprecated (replaced):
 #### SQLite Configuration
 
 ```bash
-# Optimize for concurrent access
-export MCP_MEMORY_SQLITE_BUSY_TIMEOUT=5000
-export MCP_MEMORY_SQLITE_CACHE_SIZE=10000
-export MCP_MEMORY_SQLITE_JOURNAL_MODE=WAL
+# Optimize for concurrent access (v8.9.0+)
+# Recommended values for HTTP + MCP server concurrent access
+export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=15000,cache_size=20000"
+
+# Note: WAL mode (journal_mode=WAL) is enabled by default
+# These values are automatically configured by the installer for hybrid/sqlite_vec backends
 ```
 
 #### HTTP Server Tuning
@@ -328,13 +330,30 @@ export MCP_HTTP_KEEPALIVE=true
 
 #### 1. Database Lock Errors
 
-**Symptom**: `database is locked` errors
-**Solution**: Enable WAL mode and check file permissions:
+**Symptom**: `database is locked` errors during concurrent HTTP + MCP server access
+
+**Solution (v8.9.0+)**: Configure proper SQLite pragmas for concurrent access:
 
 ```bash
-# WAL is enabled by default; verify file permissions instead
+# Set recommended pragma values (15 second timeout, larger cache)
+export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=15000,cache_size=20000"
+
+# Restart both HTTP server and MCP server to apply changes
+# Note: The installer automatically configures these values for hybrid/sqlite_vec backends
+```
+
+**Root Cause**: Default `busy_timeout=5000ms` (5 seconds) is too short when both HTTP server and MCP server access the same SQLite database. The fix increases timeout to 15 seconds and cache to 20,000 pages.
+
+**Additional checks** (if issue persists):
+```bash
+# Verify WAL mode is enabled (should be default)
+sqlite3 /path/to/memory.db "PRAGMA journal_mode;"
+# Should show: wal
+
+# Check file permissions
 chmod 666 /path/to/memory.db
-chmod 777 /path/to/memory.db-wal || true
+chmod 666 /path/to/memory.db-wal 2>/dev/null || true
+chmod 666 /path/to/memory.db-shm 2>/dev/null || true
 ```
 
 #### 2. Network Access Issues

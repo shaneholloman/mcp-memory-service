@@ -23,7 +23,7 @@ Overrides:
 SQLite-vec options:
 
 - `MCP_MEMORY_SQLITE_PATH` or `MCP_MEMORY_SQLITEVEC_PATH`: Path to `.db` file. Default `${BASE_DIR}/sqlite_vec.db`.
-- `MCP_MEMORY_SQLITE_PRAGMAS`: CSV list of custom pragmas e.g. `busy_timeout=10000,cache_size=20000`.
+- `MCP_MEMORY_SQLITE_PRAGMAS`: CSV list of custom pragmas e.g. `busy_timeout=15000,cache_size=20000` (v8.9.0+ recommended values for concurrent access).
 
 Chroma options:
 

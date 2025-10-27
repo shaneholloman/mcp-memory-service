@@ -235,18 +235,18 @@ The system automatically detects the optimal coordination mode:
 You can customize SQLite behavior using environment variables:
 
 ```bash
-# Custom pragma configuration
-export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=10000,cache_size=20000,mmap_size=268435456"
+# Recommended configuration (v8.9.0+) - For concurrent HTTP + MCP access
+export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=15000,cache_size=20000"
 
-# Example configurations:
-# High concurrency setup
-export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=30000,wal_autocheckpoint=1000"
+# Example configurations for different scenarios:
+# High concurrency setup (longer timeout)
+export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=30000,cache_size=20000,wal_autocheckpoint=1000"
 
-# Performance optimized
-export MCP_MEMORY_SQLITE_PRAGMAS="synchronous=OFF,temp_store=MEMORY,cache_size=50000"
+# Performance optimized (use with caution - trades safety for speed)
+export MCP_MEMORY_SQLITE_PRAGMAS="synchronous=NORMAL,temp_store=MEMORY,cache_size=50000,busy_timeout=15000"
 
-# Conservative/safe mode
-export MCP_MEMORY_SQLITE_PRAGMAS="synchronous=FULL,busy_timeout=60000"
+# Conservative/safe mode (maximum data safety)
+export MCP_MEMORY_SQLITE_PRAGMAS="synchronous=FULL,busy_timeout=60000,cache_size=20000"
 ```
 
 #### HTTP Coordination Configuration
@@ -405,7 +405,8 @@ uv add sqlite-vec
 ```
 sqlite3.OperationalError: database is locked
 ```
-**Solutions**: 
+
+**✅ Fixed in v8.9.0** - Proper SQLite pragmas now automatically configured by installer
 
 **For Single Client Issues:**
 ```bash
@@ -414,18 +415,22 @@ pkill -f "mcp-memory-service"
 # Restart Claude Desktop
 ```
 
-**For Multi-Client Setup (Claude Desktop + Claude Code):**
+**For Multi-Client Setup (Claude Desktop + Claude Code + HTTP Server):**
 ```bash
-# WAL mode should handle this automatically, but if issues persist:
+# v8.9.0+ Solution: Configure recommended pragma values
+export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=15000,cache_size=20000"
 
-# 1. Increase busy timeout
-export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=30000"
+# Restart all services to apply changes
+# Note: Installer automatically sets these for hybrid/sqlite_vec backends
 
-# 2. Check for stale lock files
+# If issues persist, try longer timeout:
+export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=30000,cache_size=20000"
+
+# Check for stale lock files (rare)
 ls -la /path/to/your/database-wal
 ls -la /path/to/your/database-shm
 
-# 3. If stale locks exist (no active processes), remove them
+# If stale locks exist (no active processes), remove them
 rm /path/to/your/database-wal
 rm /path/to/your/database-shm
 
