@@ -85,6 +85,34 @@ bash scripts/maintenance/fast_cleanup_duplicates.sh
 
 </details>
 
+### PyPI Installation (Simplest)
+
+**Install from PyPI:**
+```bash
+# Install latest version from PyPI
+pip install mcp-memory-service
+
+# Or with uv (faster)
+uv pip install mcp-memory-service
+```
+
+**Then configure Claude Desktop** by adding to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or equivalent:
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "memory",
+      "args": ["server"],
+      "env": {
+        "MCP_MEMORY_STORAGE_BACKEND": "hybrid"
+      }
+    }
+  }
+}
+```
+
+For advanced configuration with the interactive installer, clone the repo and run `python scripts/installation/install.py`.
+
 ### Traditional Setup Options
 
 **Universal Installer (Most Compatible):**
