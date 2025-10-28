@@ -15,9 +15,9 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 **v8.9.0: Production-Ready Hybrid Backend** (Latest Release - Oct 27, 2025)
+### 🆕 **v8.12.1: MemoryService Architecture + Critical Fixes** (Latest Release - Oct 28, 2025)
 
-**🎯 Zero Database Locks + Auto-Configuration** - The most reliable release yet:
+**🎯 Unified Business Logic + Production Stability** - Complete DRY refactoring with battle-tested fixes:
 
 ```bash
 # One-command installation with auto-configuration
@@ -33,25 +33,46 @@ cd mcp-memory-service && python install.py
 # Done! Fast local + cloud sync with zero database locks
 ```
 
-**✨ What's New in v8.9.0:**
-- 🏆 **Hybrid Backend Default** - Fast 5ms local SQLite + background Cloudflare sync
-- 🔒 **Zero Database Locks** - Concurrent HTTP + MCP server access works flawlessly
-  - Fixed "database is locked" errors
-  - Auto-configured SQLite pragmas (`busy_timeout=15000,cache_size=20000`)
-  - Tested: 5/5 concurrent writes succeeded
-- ⚙️ **Auto-Configuration** - Installer handles everything:
-  - SQLite pragmas for multi-client access
-  - Cloudflare credential setup with testing
-  - Claude Desktop hybrid backend config
-- 🚀 **Zero User-Facing Latency** - Cloud sync happens in background
-- 📱 **Multi-Device Sync** - Access memories everywhere
+**✨ What's New in v8.12.x:**
+- 🏗️ **MemoryService Architecture** (v8.12.0) - Centralized business logic layer
+  - Single source of truth for all memory operations
+  - 80% code duplication eliminated between MCP and HTTP servers
+  - Consistent behavior across all interfaces
+  - 55 comprehensive tests (34 unit + 21 integration)
+- 🔧 **Production Stability** (v8.12.1) - Critical bugfixes from real-world deployment
+  - Fixed import-time evaluation bugs preventing HTTP server startup
+  - Resolved dashboard loading errors (missing tags parameter)
+  - Fixed analytics metrics discrepancy (accurate counts for >1000 memories)
+  - Timeline: 4 critical bugs discovered and fixed within 4 hours
+- ✅ **Test Coverage Improvements** - Created Issue #190 for HTTP server integration tests
+- 🚀 **Performance** - Database-level filtering, efficient SQL COUNT operations
 
-**📖 Complete Guide**: [v8.9.0 CHANGELOG](CHANGELOG.md#890---2025-10-27)
+**📖 Complete Guide**: [v8.12.1 CHANGELOG](CHANGELOG.md#8121---2025-10-28)
 
 ---
 
 <details>
-<summary>📜 <strong>Previous Releases</strong> (v8.8, v8.7, v8.6, v8.4...)</summary>
+<summary>📜 <strong>Previous Releases</strong> (v8.11, v8.10, v8.9, v8.8...)</summary>
+
+### **v8.11.0: JSON and CSV Document Loaders** (Oct 28, 2025)
+- Complete JSON loader with nested structure flattening
+- CSV loader with auto-detection (delimiters, headers, encoding)
+- 29 comprehensive unit tests (15 JSON + 14 CSV)
+- Fixed false advertising of JSON/CSV support in SUPPORTED_FORMATS
+
+### **v8.10.0: Complete Analytics Dashboard** (Oct 28, 2025)
+- Memory Types Breakdown (pie chart)
+- Activity Heatmap (GitHub-style calendar)
+- Top Tags Report with co-occurrence patterns
+- Recent Activity Report (hourly/daily/weekly breakdowns)
+- Storage Report with largest memories and efficiency metrics
+- Streak tracking for consecutive activity days
+
+### **v8.9.0: Production-Ready Hybrid Backend** (Oct 27, 2025)
+- Hybrid backend as recommended default (5ms local + cloud sync)
+- Zero database locks with auto-configured SQLite pragmas
+- Auto-configuration installer for seamless setup
+- Tested: 5/5 concurrent writes succeeded without errors
 
 ### **v8.8.2: Document Upload Tag Validation** (Oct 26, 2025)
 - Fixed bloated tags from space-separated file paths
