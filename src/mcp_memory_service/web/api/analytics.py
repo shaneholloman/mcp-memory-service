@@ -189,26 +189,18 @@ async def get_analytics_overview(
         else:
             stats = {}
 
-        # Calculate memories this week
-        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-        week_ago_ts = week_ago.timestamp()
-
-        # TODO: Move date-based counting to storage layer for efficiency
-        # Current implementation is inefficient and may miss data
-        memories_this_week = 0
-        try:
-            recent_memories = await storage.get_recent_memories(n=1000)  # Get recent batch
-            memories_this_week = sum(1 for m in recent_memories if m.created_at and m.created_at > week_ago_ts)
-        except Exception as e:
-            logger.warning(f"Failed to calculate weekly memories: {e}")
-            memories_this_week = 0
+        # Get memories_this_week from storage stats (accurate for all memories)
+        memories_this_week = stats.get("memories_this_week", 0)
 
         # Calculate memories this month
+        # TODO: Add memories_this_month to storage.get_stats() for consistency
         month_ago = datetime.now(timezone.utc) - timedelta(days=30)
         month_ago_ts = month_ago.timestamp()
         memories_this_month = 0
         try:
-            recent_memories = await storage.get_recent_memories(n=2000)  # Get larger batch
+            # Use larger sample for monthly calculation
+            # Note: This may be inaccurate if there are >5000 memories
+            recent_memories = await storage.get_recent_memories(n=5000)
             memories_this_month = sum(1 for m in recent_memories if m.created_at and m.created_at > month_ago_ts)
         except Exception as e:
             logger.warning(f"Failed to calculate monthly memories: {e}")
