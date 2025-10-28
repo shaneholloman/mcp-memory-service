@@ -152,14 +152,14 @@ async def store_memory(
         if INCLUDE_HOSTNAME:
             # Prioritize client-provided hostname, then header, then fallback to server
             # 1. Check if client provided hostname in request body
-        if request.client_hostname:
-            client_hostname = request.client_hostname
-        # 2. Check for X-Client-Hostname header
-        elif http_request.headers.get('X-Client-Hostname'):
-            client_hostname = http_request.headers.get('X-Client-Hostname')
-        # 3. Fallback to server hostname (original behavior)
-        else:
-            client_hostname = socket.gethostname()
+            if request.client_hostname:
+                client_hostname = request.client_hostname
+            # 2. Check for X-Client-Hostname header
+            elif http_request.headers.get('X-Client-Hostname'):
+                client_hostname = http_request.headers.get('X-Client-Hostname')
+            # 3. Fallback to server hostname (original behavior)
+            else:
+                client_hostname = socket.gethostname()
 
         # Use injected MemoryService for consistent business logic (hostname tagging handled internally)
         result = await memory_service.store_memory(

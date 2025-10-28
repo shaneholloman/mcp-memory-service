@@ -18,7 +18,7 @@ FastAPI dependencies for the HTTP interface.
 
 import logging
 from typing import Optional
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 
 from ..storage.base import MemoryStorage
 from ..services.memory_service import MemoryService
@@ -42,10 +42,8 @@ def get_storage() -> MemoryStorage:
     return _storage
 
 
-def get_memory_service(storage: MemoryStorage = None) -> MemoryService:
+def get_memory_service(storage: MemoryStorage = Depends(get_storage)) -> MemoryService:
     """Get a MemoryService instance with the configured storage backend."""
-    if storage is None:
-        storage = get_storage()
     return MemoryService(storage)
 
 
