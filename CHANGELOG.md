@@ -8,6 +8,53 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.11.0] - 2025-10-28
+
+### Added
+- **JSON Document Loader** - Complete implementation of JSON file ingestion (Issue #181, PR #187)
+  - **Nested Structure Flattening**: Converts nested JSON to searchable text with dot notation or bracket notation
+  - **Configurable Strategies**: Choose flattening style, max depth, type inclusion
+  - **Array Handling**: Multiple modes (expand, summarize, flatten) for different use cases
+  - **Comprehensive Tests**: 15 unit tests covering all functionality
+  - **Use Cases**: Knowledge base exports, API documentation, config files, structured metadata
+
+- **CSV Document Loader** - Complete implementation of CSV file ingestion (Issue #181, PR #187)
+  - **Auto-Detection**: Automatically detects delimiters (comma, semicolon, tab, pipe) and headers
+  - **Row-Based Formatting**: Converts tabular data to searchable text with column context
+  - **Encoding Support**: Auto-detects UTF-8, UTF-16, UTF-32, Latin-1, CP1252
+  - **Large File Handling**: Efficient row-based chunking for scalability
+  - **Comprehensive Tests**: 14 unit tests covering all functionality
+  - **Use Cases**: Data dictionaries, reference tables, tabular documentation, log analysis
+
+### Fixed
+- **False Advertising** - Resolved issue where JSON and CSV were listed in `SUPPORTED_FORMATS` but had no loader implementations
+  - Previous behavior: Upload would fail with "No loader available" error
+  - New behavior: Full functional support with proper chunking and metadata
+
+### Changed
+- **Ingestion Module** - Updated to register new JSON and CSV loaders
+- **Test Coverage** - Added 29 new unit tests (15 JSON + 14 CSV)
+
+## [8.10.0] - 2025-10-28
+
+### Added
+- **Complete Analytics Dashboard Implementation** (Issue #182, PR #183)
+  - Memory Types Breakdown (pie chart)
+  - Activity Heatmap (GitHub-style calendar with 90d/6mo/1yr periods)
+  - Top Tags Report (usage trends, co-occurrence patterns)
+  - Recent Activity Report (hourly/daily/weekly breakdowns)
+  - Storage Report (largest memories, efficiency metrics)
+  - Streak Tracking (current and longest consecutive days)
+
+### Fixed
+- **Activity Streak Calculation** - Fixed current streak to include today check
+- **Total Days Calculation** - Corrected date span vs active days count
+- **Longest Streak Initialization** - Fixed from 0 to 1
+
+### Changed
+- **Analytics API** - Added 5 new endpoints with Pydantic models
+- **Dashboard Documentation** - Updated wiki with complete analytics features
+
 ## [8.9.0] - 2025-10-27
 
 ### Fixed
