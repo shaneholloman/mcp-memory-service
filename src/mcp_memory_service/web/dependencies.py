@@ -42,8 +42,10 @@ def get_storage() -> MemoryStorage:
     return _storage
 
 
-def get_memory_service(storage: MemoryStorage = get_storage()) -> MemoryService:
+def get_memory_service(storage: MemoryStorage = None) -> MemoryService:
     """Get a MemoryService instance with the configured storage backend."""
+    if storage is None:
+        storage = get_storage()
     return MemoryService(storage)
 
 
