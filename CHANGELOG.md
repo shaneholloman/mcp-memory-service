@@ -8,6 +8,64 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.12.0] - 2025-10-28
+
+### Added
+- **MemoryService Architecture** - Centralized business logic layer (Issue #188, PR #189)
+  - Single source of truth for all memory operations
+  - Consistent behavior across API endpoints and MCP tools
+  - 80% code duplication reduction between API and MCP servers
+  - Dependency injection pattern for clean architecture
+  - **Comprehensive Test Coverage**:
+    - 34 unit tests (100% pass rate)
+    - 21 integration tests for API layer
+    - End-to-end workflow tests with real storage
+    - Performance validation for database-level filtering
+
+### Fixed
+- **Critical Bug #1**: `split_content()` missing required `max_length` parameter
+  - Impact: Would crash immediately on any content chunking operation
+  - Fix: Added proper parameter passing with storage backend max_length
+- **Critical Bug #2**: `storage.delete_memory()` method does not exist in base class
+  - Impact: Delete functionality completely broken
+  - Fix: Changed to use `storage.delete(content_hash)` from base class
+- **Critical Bug #3**: `storage.get_memory()` method does not exist in base class
+  - Impact: Get by hash functionality completely broken
+  - Fix: Implemented using `get_all_memories()` with client-side filtering
+- **Critical Bug #4**: `storage.health_check()` method does not exist in base class
+  - Impact: Health check functionality completely broken
+  - Fix: Changed to use `storage.get_stats()` from base class
+- **Critical Bug #5**: `storage.search_by_tags()` method mismatch (plural vs singular)
+  - Impact: Tag search functionality completely broken
+  - Fix: Changed to use `storage.search_by_tag()` (singular) from base class
+- **Critical Bug #6**: Incorrect chunking logic comparing `len(content) > CONTENT_PRESERVE_BOUNDARIES`
+  - Impact: ALL content >1 character would trigger chunking (CONTENT_PRESERVE_BOUNDARIES is boolean `True`)
+  - Fix: Proper comparison using `storage.max_content_length` numeric value
+- **Critical Bug #7**: Missing `store()` return value handling
+  - Impact: Success/failure not properly tracked
+  - Fix: Proper unpacking of `(success, message)` tuple from storage operations
+
+### Changed
+- **API Endpoints** - Refactored to use MemoryService dependency injection
+  - `/api/memories` (list, create) uses MemoryService
+  - `/api/search` endpoints use MemoryService
+  - Consistent response formatting via service layer
+- **Code Maintainability** - Removed 356 lines of duplicated code
+  - Single place to modify business logic
+  - Unified error handling
+  - Consistent hostname tagging logic
+- **Performance** - Database-level filtering prevents O(n) memory loading
+  - Scalable pagination with offset/limit at storage layer
+  - Efficient tag and type filtering
+
+### Technical Details
+- **Files Modified**: 6 files, 1469 additions, 356 deletions
+- **Test Coverage**: 55 new tests (34 unit + 21 integration)
+- **Bug Discovery**: Comprehensive testing revealed 7 critical bugs that would have made the release non-functional
+- **Quality Process**: Test-driven debugging approach prevented broken release
+
+**Note**: This release demonstrates the critical importance of comprehensive testing before merging architectural changes. All 7 bugs were caught through systematic unit and integration testing.
+
 ## [8.11.0] - 2025-10-28
 
 ### Added
