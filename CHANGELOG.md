@@ -8,6 +8,48 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.12.1] - 2025-10-28
+
+### Fixed
+- **Critical Production Bug #1** (ef2c64d): Import-time default parameter evaluation in `get_memory_service()`
+  - **Error**: `HTTPException: 503: Storage not initialized` during module import
+  - **Root Cause**: Python evaluates default parameters at function definition time, not call time
+  - **Impact**: HTTP server couldn't start - module import failed immediately
+  - **Fix**: Changed from `storage: MemoryStorage = get_storage()` to `storage: MemoryStorage = Depends(get_storage)`
+  - **Technical**: FastAPI's `Depends()` defers evaluation until request time and integrates with dependency injection
+
+- **Critical Production Bug #2** (77de4d2): Syntax error + missing FastAPI Depends import in `memories.py`
+  - **Error**: `SyntaxError: expected an indented block after 'if' statement on line 152`
+  - **Root Cause**: `if INCLUDE_HOSTNAME:` had no indented body, nested if-elif-else block not indented
+  - **Impact**: SyntaxError prevented module import + FastAPI validation failure
+  - **Fix**: Properly indented hostname resolution logic, added missing `Depends` import to dependencies.py
+
+- **Critical Production Bug #3** (f935c56): Missing `tags` parameter in `count_all_memories()` across all storage backends
+  - **Error**: `TypeError: count_all_memories() got an unexpected keyword argument 'tags'`
+  - **User Report**: "failed to load dashboard data"
+  - **Root Cause**: MemoryService called `count_all_memories(memory_type=type, tags=tags)` but base class and implementations didn't accept tags parameter
+  - **Impact**: Dashboard completely broken - GET /api/memories returned 500 errors
+  - **Fix**: Updated 4 files (base.py, hybrid.py, sqlite_vec.py, cloudflare.py) to add tags parameter with SQL LIKE filtering
+  - **Why Tests Missed It**: AsyncMock accepts ANY parameters, never tested real storage backend implementations
+
+- **Analytics Metrics Bug** (8beeb07): Analytics tab showed different metrics than Dashboard tab
+  - **Problem**: Dashboard queried ALL memories, Analytics sampled only 1000 recent memories
+  - **Impact**: "This Week" count was inaccurate when total memories > 1000
+  - **Fix**: Changed Analytics endpoint to use `storage.get_stats()` instead of sampling
+  - **Performance**: Eliminated O(n) memory loading for simple count operation, now uses efficient SQL COUNT
+
+### Changed
+- **Analytics Endpoint Performance** - Increased monthly sample from 2,000 to 5,000 memories
+- **Code Quality** - Added TODO comments for moving monthly calculations to storage layer
+
+### Technical Details
+- **Timeline**: All 4 bugs discovered and fixed within 4 hours of v8.12.0 release (15:03 UTC → 22:03 UTC)
+- **Post-Mortem**: Created Issue #190 for HTTP server integration tests to prevent future production bugs
+- **Test Coverage Gap**: v8.12.0 had 55 tests but zero HTTP server integration tests
+- **Lesson Learned**: Tests used mocked storage that never actually started the server or tested real FastAPI dependency injection
+
+**Note**: This patch release resolves all production issues from v8.12.0 architectural changes. Comprehensive analysis stored in memory with tag `v8.12.0,post-release-bugs`.
+
 ## [8.12.0] - 2025-10-28
 
 ### Added
