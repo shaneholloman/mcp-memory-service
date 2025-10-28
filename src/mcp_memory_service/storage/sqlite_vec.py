@@ -1877,21 +1877,40 @@ SOLUTIONS:
         """
         return await self.get_all_memories(limit=n, offset=0)
 
-    async def count_all_memories(self, memory_type: Optional[str] = None) -> int:
+    async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
         """
         Get total count of memories in storage.
 
         Args:
             memory_type: Optional filter by memory type
+            tags: Optional filter by tags (memories matching ANY of the tags)
 
         Returns:
-            Total number of memories, optionally filtered by type
+            Total number of memories, optionally filtered by type and/or tags
         """
         try:
             await self.initialize()
 
+            # Build query with filters
+            conditions = []
+            params = []
+
             if memory_type is not None:
-                cursor = self.conn.execute('SELECT COUNT(*) FROM memories WHERE memory_type = ?', (memory_type,))
+                conditions.append('memory_type = ?')
+                params.append(memory_type)
+
+            if tags:
+                # Filter by tags - match ANY tag (OR logic)
+                tag_conditions = ' OR '.join(['tags LIKE ?' for _ in tags])
+                conditions.append(f'({tag_conditions})')
+                # Add each tag with wildcards for LIKE matching
+                for tag in tags:
+                    params.append(f'%{tag}%')
+
+            # Build final query
+            if conditions:
+                query = 'SELECT COUNT(*) FROM memories WHERE ' + ' AND '.join(conditions)
+                cursor = self.conn.execute(query, tuple(params))
             else:
                 cursor = self.conn.execute('SELECT COUNT(*) FROM memories')
 

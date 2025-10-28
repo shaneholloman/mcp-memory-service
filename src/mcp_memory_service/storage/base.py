@@ -260,15 +260,16 @@ class MemoryStorage(ABC):
         """
         return []
     
-    async def count_all_memories(self, memory_type: Optional[str] = None) -> int:
+    async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
         """
         Get total count of memories in storage.
 
         Args:
             memory_type: Optional filter by memory type
+            tags: Optional filter by tags (memories matching ANY of the tags)
 
         Returns:
-            Total number of memories, optionally filtered by type
+            Total number of memories, optionally filtered by type and/or tags
         """
         return 0
 

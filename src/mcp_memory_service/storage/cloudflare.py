@@ -1262,23 +1262,39 @@ class CloudflareStorage(MemoryStorage):
             logger.error(f"Error getting memories with cursor: {str(e)}")
             return []
 
-    async def count_all_memories(self, memory_type: Optional[str] = None) -> int:
+    async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
         """
         Get total count of memories in storage.
 
         Args:
             memory_type: Optional filter by memory type
+            tags: Optional filter by tags (memories matching ANY of the tags)
 
         Returns:
-            Total number of memories, optionally filtered by type
+            Total number of memories, optionally filtered by type and/or tags
         """
         try:
+            # Build query with filters
+            conditions = []
+            params = []
+
             if memory_type is not None:
-                sql = "SELECT COUNT(*) as count FROM memories WHERE memory_type = ?"
-                params = [memory_type]
+                conditions.append('memory_type = ?')
+                params.append(memory_type)
+
+            if tags:
+                # Filter by tags - match ANY tag (OR logic)
+                tag_conditions = ' OR '.join(['tags LIKE ?' for _ in tags])
+                conditions.append(f'({tag_conditions})')
+                # Add each tag with wildcards for LIKE matching
+                for tag in tags:
+                    params.append(f'%{tag}%')
+
+            # Build final query
+            if conditions:
+                sql = 'SELECT COUNT(*) as count FROM memories WHERE ' + ' AND '.join(conditions)
             else:
-                sql = "SELECT COUNT(*) as count FROM memories"
-                params = []
+                sql = 'SELECT COUNT(*) as count FROM memories'
 
             payload = {"sql": sql, "params": params}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
