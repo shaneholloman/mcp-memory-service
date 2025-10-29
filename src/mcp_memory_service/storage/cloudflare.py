@@ -910,21 +910,43 @@ class CloudflareStorage(MemoryStorage):
             payload = {"sql": sql, "params": [n]}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
             result = response.json()
-            
+
             memories = []
             if result.get("success") and result.get("result", [{}])[0].get("results"):
                 for row in result["result"][0]["results"]:
                     memory = await self._load_memory_from_row(row)
                     if memory:
                         memories.append(memory)
-            
+
             logger.info(f"Retrieved {len(memories)} recent memories")
             return memories
-            
+
         except Exception as e:
             logger.error(f"Failed to get recent memories: {e}")
             return []
-    
+
+    async def get_largest_memories(self, n: int = 10) -> List[Memory]:
+        """Get n largest memories by content length."""
+        try:
+            sql = "SELECT * FROM memories ORDER BY LENGTH(content) DESC LIMIT ?"
+            payload = {"sql": sql, "params": [n]}
+            response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+            result = response.json()
+
+            memories = []
+            if result.get("success") and result.get("result", [{}])[0].get("results"):
+                for row in result["result"][0]["results"]:
+                    memory = await self._load_memory_from_row(row)
+                    if memory:
+                        memories.append(memory)
+
+            logger.info(f"Retrieved {len(memories)} largest memories")
+            return memories
+
+        except Exception as e:
+            logger.error(f"Failed to get largest memories: {e}")
+            return []
+
     def sanitized(self, tags):
         """Sanitize and normalize tags to a JSON string.
 

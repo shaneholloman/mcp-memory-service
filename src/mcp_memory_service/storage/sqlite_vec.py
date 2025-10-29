@@ -1868,14 +1868,61 @@ SOLUTIONS:
     async def get_recent_memories(self, n: int = 10) -> List[Memory]:
         """
         Get n most recent memories.
-        
+
         Args:
             n: Number of recent memories to return
-            
+
         Returns:
             List of the n most recent Memory objects
         """
         return await self.get_all_memories(limit=n, offset=0)
+
+    async def get_largest_memories(self, n: int = 10) -> List[Memory]:
+        """
+        Get n largest memories by content length.
+
+        Args:
+            n: Number of largest memories to return
+
+        Returns:
+            List of the n largest Memory objects ordered by content length descending
+        """
+        try:
+            await self.initialize()
+
+            # Query for largest memories by content length
+            query = """
+                SELECT content_hash, content, tags, memory_type, metadata, created_at, updated_at
+                FROM memories
+                ORDER BY LENGTH(content) DESC
+                LIMIT ?
+            """
+
+            cursor = self.conn.execute(query, (n,))
+            rows = cursor.fetchall()
+
+            memories = []
+            for row in rows:
+                try:
+                    memory = Memory(
+                        content_hash=row[0],
+                        content=row[1],
+                        tags=json.loads(row[2]) if row[2] else [],
+                        memory_type=row[3],
+                        metadata=json.loads(row[4]) if row[4] else {},
+                        created_at=row[5],
+                        updated_at=row[6]
+                    )
+                    memories.append(memory)
+                except Exception as parse_error:
+                    logger.warning(f"Failed to parse memory {row[0]}: {parse_error}")
+                    continue
+
+            return memories
+
+        except Exception as e:
+            logger.error(f"Error getting largest memories: {e}")
+            return []
 
     async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
         """

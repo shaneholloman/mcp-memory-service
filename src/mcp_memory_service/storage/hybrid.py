@@ -651,7 +651,7 @@ class HybridMemoryStorage(MemoryStorage):
 
         try:
             # Get memory count from both storages to compare
-            primary_stats = self.primary.get_stats()
+            primary_stats = await self.primary.get_stats()
             secondary_stats = await self.secondary.get_stats()
 
             primary_count = primary_stats.get('total_memories', 0)
@@ -943,6 +943,10 @@ class HybridMemoryStorage(MemoryStorage):
     async def get_recent_memories(self, n: int = 10) -> List[Memory]:
         """Get recent memories from primary storage."""
         return await self.primary.get_recent_memories(n)
+
+    async def get_largest_memories(self, n: int = 10) -> List[Memory]:
+        """Get largest memories by content length from primary storage."""
+        return await self.primary.get_largest_memories(n)
 
     async def recall(self, query: Optional[str] = None, n_results: int = 5, start_timestamp: Optional[float] = None, end_timestamp: Optional[float] = None) -> List[MemoryQueryResult]:
         """
