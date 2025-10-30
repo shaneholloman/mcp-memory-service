@@ -172,12 +172,37 @@ async def store_memory(
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
-    return await memory_service.store_memory(
+    result = await memory_service.store_memory(
         content=content,
         tags=tags,
         memory_type=memory_type,
         metadata=metadata,
         client_hostname=client_hostname
+    )
+
+    # Transform MemoryService response to MCP tool format
+    if not result.get("success"):
+        return StoreMemoryFailure(
+            success=False,
+            message=result.get("error", "Failed to store memory")
+        )
+
+    # Handle chunked response (multiple memories)
+    if "memories" in result:
+        chunk_hashes = [mem["content_hash"] for mem in result["memories"]]
+        return StoreMemorySplitSuccess(
+            success=True,
+            message=f"Successfully stored {len(result['memories'])} memory chunks",
+            chunks_created=result["total_chunks"],
+            chunk_hashes=chunk_hashes
+        )
+
+    # Handle single memory response
+    memory_data = result["memory"]
+    return StoreMemorySuccess(
+        success=True,
+        message="Memory stored successfully",
+        content_hash=memory_data["content_hash"]
     )
 
 @mcp.tool()
