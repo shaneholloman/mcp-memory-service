@@ -15,9 +15,13 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 **v8.13.2: Production Stability** (Latest Release - Oct 30, 2025)
+### 🆕 Latest Release: **v8.13.2** (Oct 30, 2025)
 
-**🎯 Concurrent Access + Sync Script Fixes** - Zero database locks with working synchronization:
+Production stability release fixing concurrent access and backend synchronization. Zero database locks achieved with proper connection timeout configuration, MCP and HTTP servers now coexist perfectly, and memory sync script restored with updated API calls.
+
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8132---2025-10-30) | [Release Notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v8.13.2) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+
+---
 
 ```bash
 # One-command installation with auto-configuration
@@ -32,90 +36,6 @@ cd mcp-memory-service && python install.py
 
 # Done! Fast local + cloud sync with zero database locks
 ```
-
-**✨ What's New in v8.13.x:**
-- 🔧 **Concurrent Access Fix** (v8.13.1) - Zero database locks restored
-  - Fixed "database is locked" errors when MCP and HTTP servers run together
-  - Connection timeout now set BEFORE opening database (critical fix)
-  - Detects already-initialized database to skip DDL operations
-  - MCP tools now work perfectly while HTTP server is running
-- 🔄 **Sync Script Fix** (v8.13.2) - Memory backend synchronization restored
-  - Fixed broken sync_memory_backends.py calling non-existent store_memory()
-  - Updated to use proper Memory object creation and storage.store()
-  - Now successfully syncs between Cloudflare and SQLite backends
-- 📊 **HTTP Integration Tests** (v8.13.0) - 32 comprehensive tests prevent production bugs
-- 🏗️ **MemoryService Architecture** (v8.12.x) - 80% code duplication eliminated
-
-**📖 Complete Guide**: [v8.13.2 CHANGELOG](CHANGELOG.md#8132---2025-10-30)
-
----
-
-<details>
-<summary>📜 <strong>Previous Releases</strong> (v8.12, v8.11, v8.10, v8.9...)</summary>
-
-### **v8.12.1: MemoryService Architecture + Critical Fixes** (Oct 28, 2025)
-- Fixed import-time evaluation bugs preventing HTTP server startup
-- Resolved dashboard loading errors (missing tags parameter)
-- Fixed analytics metrics discrepancy (accurate counts for >1000 memories)
-- 4 critical bugs discovered and fixed within 4 hours
-
-### **v8.12.0: MemoryService Architecture** (Oct 28, 2025)
-- Centralized business logic layer (single source of truth)
-- 80% code duplication eliminated between MCP and HTTP servers
-- Consistent behavior across all interfaces
-- 55 comprehensive tests (34 unit + 21 integration)
-
-### **v8.11.0: JSON and CSV Document Loaders** (Oct 28, 2025)
-- Complete JSON loader with nested structure flattening
-- CSV loader with auto-detection (delimiters, headers, encoding)
-- 29 comprehensive unit tests (15 JSON + 14 CSV)
-- Fixed false advertising of JSON/CSV support in SUPPORTED_FORMATS
-
-### **v8.10.0: Complete Analytics Dashboard** (Oct 28, 2025)
-- Memory Types Breakdown (pie chart)
-- Activity Heatmap (GitHub-style calendar)
-- Top Tags Report with co-occurrence patterns
-- Recent Activity Report (hourly/daily/weekly breakdowns)
-- Storage Report with largest memories and efficiency metrics
-- Streak tracking for consecutive activity days
-
-### **v8.9.0: Production-Ready Hybrid Backend** (Oct 27, 2025)
-- Hybrid backend as recommended default (5ms local + cloud sync)
-- Zero database locks with auto-configured SQLite pragmas
-- Auto-configuration installer for seamless setup
-- Tested: 5/5 concurrent writes succeeded without errors
-
-### **v8.8.2: Document Upload Tag Validation** (Oct 26, 2025)
-- Fixed bloated tags from space-separated file paths
-- Enhanced file:// URI handling with proper URL decoding
-- Processing mode toggle for batch/individual uploads
-
-### **v8.8.0: DRY Refactoring** (Oct 26, 2025)
-- Eliminated 364 lines of code duplication between MCP/HTTP servers
-- Created MemoryService class as single source of truth
-- Bug fixes now apply to both protocols automatically
-
-### **v8.7.0: Cosine Similarity & Maintenance Tools** (Oct 20, 2025)
-- Fixed 0% similarity scores (migrated to cosine distance, now 70-79%)
-- 1800x faster duplicate cleanup (5s vs 2.5 hours)
-- Automatic migration on startup
-```bash
-# Maintenance scripts for power users
-python scripts/maintenance/regenerate_embeddings.py
-bash scripts/maintenance/fast_cleanup_duplicates.sh
-```
-
-### **v8.6.0: Document Ingestion System** (Oct 15, 2025)
-- Interactive drag-and-drop document upload (PDF, TXT, MD, JSON)
-- Document viewer with chunk-by-chunk browsing
-- Smart tagging with validation (max 100 chars)
-- Optional semtools for enhanced PDF/DOCX/PPTX parsing
-
-### **v8.4.0: Memory Hooks Recency Optimization**
-- Recent memory prioritization (80% better context)
-- Automatically surfaces memories <7 days old
-
-</details>
 
 ### PyPI Installation (Simplest)
 
