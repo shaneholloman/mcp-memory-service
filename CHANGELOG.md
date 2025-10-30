@@ -8,6 +8,31 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.13.3] - 2025-10-30
+
+### Fixed
+- **Critical: MCP Memory Tools Broken** - v8.12.0 regression preventing all MCP memory operations
+  - **Error**: `KeyError: 'message'` when calling any MCP memory tool (store, retrieve, search, etc.)
+  - **User Impact**: MCP tools completely non-functional - "Error storing memory: 'message'"
+  - **Root Cause** (mcp_server.py:175): Return format mismatch between MemoryService and MCP tool expectations
+    - MCP tool expects: `{success: bool, message: str, content_hash: str}`
+    - MemoryService returns: `{success: bool, memory: {...}}`
+    - MCP protocol tries to access missing 'message' field → KeyError
+  - **Why It Persisted**: HTTP API doesn't require these specific fields, so integration tests passed
+  - **Fix** (mcp_server.py:173-206): Transform MemoryService response to MCP TypedDict format
+    - Capture result from MemoryService.store_memory()
+    - Extract content_hash from nested memory object
+    - Add descriptive "message" field
+    - Handle 3 cases: failure (error message), chunked (multiple memories), single memory
+  - **Result**: MCP tools now work correctly with proper error messages
+  - **Note**: Requires MCP server restart (`/mcp` command in Claude Code) to load fix
+
+### Technical Details
+- **Introduced**: v8.12.0 MemoryService architecture refactoring (#176)
+- **Affected Tools**: store_memory, all MCP protocol operations
+- **HTTP API**: Unaffected (different response format requirements)
+- **Test Gap**: No integration tests validating MCP tool response formats
+
 ## [8.13.2] - 2025-10-30
 
 ### Fixed
