@@ -10,13 +10,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🎯 v8.13.2**: **Production Stability** - Sync script restored and concurrent access perfected. Fixed broken backend synchronization (store_memory API migration) and zero database locks achieved with proper connection timeout configuration.
+> **🚨 v8.13.3**: **MCP Tools Restored** - CRITICAL patch fixing v8.12.0 regression that broke all MCP memory operations. Transform MemoryService responses to proper MCP TypedDict format. Requires MCP server restart (/mcp command) to load fix.
 
-> **🔧 v8.13.1**: **Concurrent Access Fix** - Zero database locks restored. Connection timeout now set BEFORE opening database, detects already-initialized database to skip DDL operations. MCP and HTTP servers coexist perfectly.
+> **🔄 v8.13.2**: **Sync Script Restored** - Fixed broken backend synchronization (store_memory API migration). Proper Memory object creation with storage.store() method.
+
+> **🔧 v8.13.1**: **Concurrent Access Fix** - Zero database locks restored. Connection timeout now set BEFORE opening database, detects already-initialized database to skip DDL operations.
 
 > **📊 v8.13.0**: **HTTP Integration Tests** - 32 comprehensive tests prevent production bugs. Server startup validation, dependency injection tests, storage interface compatibility checks.
-
-> **🏗️ v8.12.x**: **MemoryService Architecture** - Centralized business logic with 80% code duplication reduction. Database-level filtering prevents performance scaling issues. 4 critical production bugs fixed within 4 hours.
 
 > **🧠 v8.5.1**: **Dynamic Memory Weight Adjustment** - Intelligent auto-calibration prevents stale memories from dominating context! Automatically detects memory age vs git activity mismatches and adapts weights/boosts accordingly. No more manual config tweaks!
 

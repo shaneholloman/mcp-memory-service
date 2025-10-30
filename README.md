@@ -15,11 +15,11 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.13.2** (Oct 30, 2025)
+### 🆕 Latest Release: **v8.13.3** (Oct 30, 2025)
 
-Production stability release fixing concurrent access and backend synchronization. Zero database locks achieved with proper connection timeout configuration, MCP and HTTP servers now coexist perfectly, and memory sync script restored with updated API calls.
+Critical patch fixing MCP memory tools broken since v8.12.0. Restores all MCP operations (store, retrieve, search, delete) by transforming MemoryService responses to proper MCP TypedDict format. **Requires MCP server restart** (`/mcp` command) to load fix.
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8132---2025-10-30) | [Release Notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v8.13.2) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8133---2025-10-30) | [Release Notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v8.13.3) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
