@@ -8,6 +8,35 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.13.1] - 2025-10-30
+
+### Fixed
+- **Critical Concurrent Access Bug**: MCP server initialization failed with "database is locked" when HTTP server running
+  - **Error**: `sqlite3.OperationalError: database is locked` during MCP tool initialization
+  - **User Impact**: MCP memory tools completely non-functional while HTTP server running - "this worked before without any flaws"
+  - **Root Cause #1** (sqlite_vec.py:329): Connection timeout set AFTER opening database instead of during connection
+    - Original: `sqlite3.connect(path)` used default 5-second timeout, then applied `PRAGMA busy_timeout=15000`
+    - SQLite only respects timeout parameter passed to `connect()`, not pragma applied afterward
+    - MCP server timed out before it could set the higher timeout value
+  - **Root Cause #2** (sqlite_vec.py:467-476): Both servers attempting DDL operations (CREATE TABLE, CREATE INDEX) simultaneously
+    - Even with WAL mode, DDL operations require brief exclusive locks
+    - No detection of already-initialized database before running DDL
+  - **Fix #1** (sqlite_vec.py:291-326): Parse `busy_timeout` from `MCP_MEMORY_SQLITE_PRAGMAS` environment variable BEFORE opening connection
+    - Convert from milliseconds to seconds (15000ms → 15.0s)
+    - Pass timeout to `sqlite3.connect(path, timeout=15.0)` for immediate effect
+    - Allows MCP server to wait up to 15 seconds for HTTP server's DDL operations
+  - **Fix #2** (sqlite_vec.py:355-373): Detect already-initialized database and skip DDL operations
+    - Check if `memories` and `memory_embeddings` tables exist after loading sqlite-vec extension
+    - If tables exist, just load embedding model and mark as initialized
+    - Prevents "database is locked" errors from concurrent CREATE TABLE/INDEX attempts
+  - **Result**: MCP and HTTP servers now coexist without conflicts, maintaining pre-v8.9.0 concurrent access behavior
+
+### Technical Details
+- **Timeline**: Bug discovered during memory consolidation testing, fixed same day
+- **Affected Versions**: v8.9.0 introduced database lock prevention pragmas but didn't fix concurrent initialization
+- **Test Validation**: MCP health check returns healthy with 1857 memories while HTTP server running
+- **Log Evidence**: "Database already initialized by another process, skipping DDL operations" confirms fix working
+
 ## [8.13.0] - 2025-10-29
 
 ### Added

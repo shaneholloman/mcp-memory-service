@@ -287,10 +287,27 @@ search without requiring local SQLite extensions.
 To switch backends permanently, set: MCP_MEMORY_STORAGE_BACKEND=cloudflare
 """
                 raise RuntimeError(detailed_error.strip())
-            
-            # Connect to database
-            self.conn = sqlite3.connect(self.db_path)
-            
+
+            # Calculate timeout from custom pragmas BEFORE opening connection
+            # This ensures busy_timeout is set from the start, not after connection
+            timeout_seconds = 15.0  # Default: 15 seconds
+            custom_pragmas_env = os.environ.get("MCP_MEMORY_SQLITE_PRAGMAS", "")
+            if "busy_timeout" in custom_pragmas_env:
+                # Parse busy_timeout value (in milliseconds, convert to seconds)
+                for pragma_pair in custom_pragmas_env.split(","):
+                    if "busy_timeout" in pragma_pair and "=" in pragma_pair:
+                        try:
+                            timeout_ms = int(pragma_pair.split("=")[1].strip())
+                            timeout_seconds = timeout_ms / 1000.0
+                            logger.info(f"Using custom timeout: {timeout_seconds}s from MCP_MEMORY_SQLITE_PRAGMAS")
+                            break
+                        except (ValueError, IndexError) as e:
+                            logger.warning(f"Failed to parse busy_timeout from env: {e}, using default {timeout_seconds}s")
+
+            # Connect to database with timeout set from the start
+            # This prevents "database is locked" errors when multiple servers initialize concurrently
+            self.conn = sqlite3.connect(self.db_path, timeout=timeout_seconds)
+
             # Load sqlite-vec extension with proper error handling
             try:
                 self.conn.enable_load_extension(True)
@@ -334,7 +351,27 @@ SOLUTIONS:
   • Check SQLite version: python -c "import sqlite3; print(sqlite3.sqlite_version)"
 """
                 raise RuntimeError(detailed_error.strip())
-            
+
+            # Check if database is already initialized by another process
+            # This prevents DDL lock conflicts when multiple servers start concurrently
+            try:
+                cursor = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memories'")
+                memories_table_exists = cursor.fetchone() is not None
+
+                cursor = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'")
+                embeddings_table_exists = cursor.fetchone() is not None
+
+                if memories_table_exists and embeddings_table_exists:
+                    # Database is already initialized, just load the embedding model and mark as initialized
+                    logger.info("Database already initialized by another process, skipping DDL operations")
+                    await self._initialize_embedding_model()
+                    self._initialized = True
+                    logger.info(f"SQLite-vec storage initialized successfully (existing database) with embedding dimension: {self.embedding_dimension}")
+                    return
+            except sqlite3.Error as e:
+                # If we can't check tables (e.g., database locked), proceed with normal initialization
+                logger.debug(f"Could not check existing tables (will attempt full initialization): {e}")
+
             # Apply default pragmas for concurrent access
             default_pragmas = {
                 "journal_mode": "WAL",  # Enable WAL mode for concurrent access
