@@ -8,6 +8,21 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.13.2] - 2025-10-30
+
+### Fixed
+- **Memory Sync Script Broken** (#193): Fixed sync_memory_backends.py calling non-existent `store_memory()` method
+  - **Error**: `AttributeError: 'CloudflareStorage' object has no attribute 'store_memory'`
+  - **User Impact**: Sync script completely non-functional - couldn't sync memories between Cloudflare and SQLite backends
+  - **Root Cause** (scripts/sync/sync_memory_backends.py:144-147): Script used old `store_memory()` API that no longer exists
+  - **Fix** (#194, b69de83): Updated to use proper `Memory` object creation and `storage.store()` method
+    - Create `Memory` object with `content`, `content_hash`, `tags`, `metadata`, `created_at`
+    - Call `await target_storage.store(memory_obj)` instead of non-existent `store_memory()`
+    - Added safe `.get('metadata', {})` to prevent KeyError on missing metadata
+    - Fixed import order to comply with PEP 8 (config → models → storage)
+  - **Result**: Sync script now successfully syncs memories between backends
+  - **Credit**: Fix by AMP via PR #194, reviewed by Gemini
+
 ## [8.13.1] - 2025-10-30
 
 ### Fixed
