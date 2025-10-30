@@ -270,10 +270,28 @@ class MemoryClient {
                             // Extract memory objects from results and preserve similarity_score
                             const memories = response.results
                                 .filter(result => result && result.memory)
-                                .map(result => ({
-                                    ...result.memory,
-                                    similarity_score: result.similarity_score
-                                }));
+                                .map(result => {
+                                    const memory = { ...result.memory };
+
+                                    // FIX: API returns Unix timestamps in SECONDS, but JavaScript Date expects MILLISECONDS
+                                    // Convert created_at and updated_at from seconds to milliseconds
+                                    if (memory.created_at && typeof memory.created_at === 'number') {
+                                        // Only convert if value looks like seconds (< year 2100 in milliseconds = 4102444800000)
+                                        if (memory.created_at < 4102444800) {
+                                            memory.created_at = memory.created_at * 1000;
+                                        }
+                                    }
+                                    if (memory.updated_at && typeof memory.updated_at === 'number') {
+                                        if (memory.updated_at < 4102444800) {
+                                            memory.updated_at = memory.updated_at * 1000;
+                                        }
+                                    }
+
+                                    return {
+                                        ...memory,
+                                        similarity_score: result.similarity_score
+                                    };
+                                });
                             resolve(memories);
                         } else {
                             resolve([]);
