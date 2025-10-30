@@ -30,12 +30,13 @@ from datetime import datetime
 # Add src directory to path so we can import from the mcp_memory_service package
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from mcp_memory_service.storage.cloudflare import CloudflareStorage
-from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 from mcp_memory_service.config import (
     CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_VECTORIZE_INDEX,
     CLOUDFLARE_D1_DATABASE_ID, BASE_DIR
 )
+from mcp_memory_service.models.memory import Memory
+from mcp_memory_service.storage.cloudflare import CloudflareStorage
+from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 
 # Configure logging
 logging.basicConfig(
@@ -140,14 +141,21 @@ class MemorySync:
 
             if not dry_run:
                 try:
-                    await target_storage.store_memory(
+                    memory_obj = Memory(
                         content=source_memory['content'],
-                        metadata=source_memory['metadata']
+                        content_hash=source_memory['hash'],
+                        tags=source_memory.get('tags', []),
+                        metadata=source_memory.get('metadata', {}),
+                        created_at=source_memory.get('timestamp'),
                     )
-                    added_count += 1
-                    logger.debug(f"Added memory: {source_memory['id'][:8]}...")
+                    success, message = await target_storage.store(memory_obj)
+                    if success:
+                        added_count += 1
+                        logger.debug(f"Added memory: {source_memory['hash'][:8]}...")
+                    else:
+                        logger.warning(f"Failed to store memory {source_memory['hash']}: {message}")
                 except Exception as e:
-                    logger.error(f"Error storing memory {source_memory['id']}: {e}")
+                    logger.error(f"Error storing memory {source_memory['hash']}: {e}")
             else:
                 added_count += 1
 
