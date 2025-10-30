@@ -8,6 +8,37 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.13.4] - 2025-10-30
+
+### Fixed
+- **Critical: Memory Hooks Showing Incorrect Ages** (#195) - Timestamp unit mismatch causing 20,371-day ages
+  - **Error**: Memory hooks reporting `avgAge: 20371 days, medianAge: 20371 days` when actual age was 6 days
+  - **User Impact**: Recent memories didn't surface, auto-calibration incorrectly triggered "stale memory" warnings
+  - **Root Cause** (claude-hooks/utilities/memory-client.js:273): Timestamp unit mismatch
+    - HTTP API returns Unix timestamps in **SECONDS**: `1758344479.729`
+    - JavaScript `Date()` expects **MILLISECONDS**: Interpreted as `Jan 21, 1970` (55 years ago)
+    - Age calculation: `(now - 1758344479ms) / 86400000 = 20371 days`
+  - **Symptoms**:
+    - `[Memory Age Analyzer] { avgAge: 20371, recentPercent: 0, isStale: true }`
+    - Hooks showed "Stale memory set detected (median: 20371d old)"
+    - Recent development work (< 7 days) never surfaced in context
+  - **Fix** (claude-hooks/utilities/memory-client.js:273-294, commit 5c54894):
+    - Convert API timestamps from seconds to milliseconds (`× 1000`)
+    - Added year 2100 check (`< 4102444800`) to prevent double-conversion
+    - Applied in `_performApiPost()` response handler for both `created_at` and `updated_at`
+  - **Result**:
+    - `avgAge: 6 days, medianAge: 5 days, recentPercent: 100%, isStale: false`
+    - Recent memories surface correctly
+    - Auto-calibration works properly
+    - Git context weight adjusts based on actual ages
+  - **Note**: Affects all users using HTTP protocol for memory hooks
+
+### Technical Details
+- **Affected Component**: Claude Code memory awareness hooks (HTTP protocol path)
+- **File Changed**: `claude-hooks/utilities/memory-client.js` (lines 273-294)
+- **Deployment**: Hooks loaded from repository automatically, no server restart needed
+- **Issue**: https://github.com/doobidoo/mcp-memory-service/issues/195
+
 ## [8.13.3] - 2025-10-30
 
 ### Fixed
