@@ -15,9 +15,9 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 **v8.12.1: MemoryService Architecture + Critical Fixes** (Latest Release - Oct 28, 2025)
+### 🆕 **v8.13.2: Production Stability** (Latest Release - Oct 30, 2025)
 
-**🎯 Unified Business Logic + Production Stability** - Complete DRY refactoring with battle-tested fixes:
+**🎯 Concurrent Access + Sync Script Fixes** - Zero database locks with working synchronization:
 
 ```bash
 # One-command installation with auto-configuration
@@ -33,26 +33,37 @@ cd mcp-memory-service && python install.py
 # Done! Fast local + cloud sync with zero database locks
 ```
 
-**✨ What's New in v8.12.x:**
-- 🏗️ **MemoryService Architecture** (v8.12.0) - Centralized business logic layer
-  - Single source of truth for all memory operations
-  - 80% code duplication eliminated between MCP and HTTP servers
-  - Consistent behavior across all interfaces
-  - 55 comprehensive tests (34 unit + 21 integration)
-- 🔧 **Production Stability** (v8.12.1) - Critical bugfixes from real-world deployment
-  - Fixed import-time evaluation bugs preventing HTTP server startup
-  - Resolved dashboard loading errors (missing tags parameter)
-  - Fixed analytics metrics discrepancy (accurate counts for >1000 memories)
-  - Timeline: 4 critical bugs discovered and fixed within 4 hours
-- ✅ **Test Coverage Improvements** - Created Issue #190 for HTTP server integration tests
-- 🚀 **Performance** - Database-level filtering, efficient SQL COUNT operations
+**✨ What's New in v8.13.x:**
+- 🔧 **Concurrent Access Fix** (v8.13.1) - Zero database locks restored
+  - Fixed "database is locked" errors when MCP and HTTP servers run together
+  - Connection timeout now set BEFORE opening database (critical fix)
+  - Detects already-initialized database to skip DDL operations
+  - MCP tools now work perfectly while HTTP server is running
+- 🔄 **Sync Script Fix** (v8.13.2) - Memory backend synchronization restored
+  - Fixed broken sync_memory_backends.py calling non-existent store_memory()
+  - Updated to use proper Memory object creation and storage.store()
+  - Now successfully syncs between Cloudflare and SQLite backends
+- 📊 **HTTP Integration Tests** (v8.13.0) - 32 comprehensive tests prevent production bugs
+- 🏗️ **MemoryService Architecture** (v8.12.x) - 80% code duplication eliminated
 
-**📖 Complete Guide**: [v8.12.1 CHANGELOG](CHANGELOG.md#8121---2025-10-28)
+**📖 Complete Guide**: [v8.13.2 CHANGELOG](CHANGELOG.md#8132---2025-10-30)
 
 ---
 
 <details>
-<summary>📜 <strong>Previous Releases</strong> (v8.11, v8.10, v8.9, v8.8...)</summary>
+<summary>📜 <strong>Previous Releases</strong> (v8.12, v8.11, v8.10, v8.9...)</summary>
+
+### **v8.12.1: MemoryService Architecture + Critical Fixes** (Oct 28, 2025)
+- Fixed import-time evaluation bugs preventing HTTP server startup
+- Resolved dashboard loading errors (missing tags parameter)
+- Fixed analytics metrics discrepancy (accurate counts for >1000 memories)
+- 4 critical bugs discovered and fixed within 4 hours
+
+### **v8.12.0: MemoryService Architecture** (Oct 28, 2025)
+- Centralized business logic layer (single source of truth)
+- 80% code duplication eliminated between MCP and HTTP servers
+- Consistent behavior across all interfaces
+- 55 comprehensive tests (34 unit + 21 integration)
 
 ### **v8.11.0: JSON and CSV Document Loaders** (Oct 28, 2025)
 - Complete JSON loader with nested structure flattening

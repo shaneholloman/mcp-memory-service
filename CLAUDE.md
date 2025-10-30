@@ -10,11 +10,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🎯 v8.12.1**: **MemoryService Architecture** - Centralized business logic with 80% code duplication reduction. Database-level filtering prevents performance scaling issues. Enhanced error handling and dependency injection.
+> **🎯 v8.13.2**: **Production Stability** - Sync script restored and concurrent access perfected. Fixed broken backend synchronization (store_memory API migration) and zero database locks achieved with proper connection timeout configuration.
 
-> **🔧 v8.12.0**: **Post-Release Bug Fixes** - Critical production issues resolved within 4 hours. Import-time evaluation fixes, syntax error corrections, interface compatibility updates. Enhanced testing requirements for architecture changes.
+> **🔧 v8.13.1**: **Concurrent Access Fix** - Zero database locks restored. Connection timeout now set BEFORE opening database, detects already-initialized database to skip DDL operations. MCP and HTTP servers coexist perfectly.
 
-> **🚀 v8.9.0**: **Hybrid Backend Support** - Improved performance with background Cloudflare synchronization. Database lock fixes and maintenance script enhancements.
+> **📊 v8.13.0**: **HTTP Integration Tests** - 32 comprehensive tests prevent production bugs. Server startup validation, dependency injection tests, storage interface compatibility checks.
+
+> **🏗️ v8.12.x**: **MemoryService Architecture** - Centralized business logic with 80% code duplication reduction. Database-level filtering prevents performance scaling issues. 4 critical production bugs fixed within 4 hours.
 
 > **🧠 v8.5.1**: **Dynamic Memory Weight Adjustment** - Intelligent auto-calibration prevents stale memories from dominating context! Automatically detects memory age vs git activity mismatches and adapts weights/boosts accordingly. No more manual config tweaks!
 
