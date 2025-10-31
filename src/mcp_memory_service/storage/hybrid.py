@@ -971,6 +971,10 @@ class HybridMemoryStorage(MemoryStorage):
         """Get all memories from primary storage."""
         return await self.primary.get_all_memories(limit=limit, offset=offset, memory_type=memory_type, tags=tags)
 
+    async def get_by_hash(self, content_hash: str) -> Optional[Memory]:
+        """Get a memory by its content hash from primary storage."""
+        return await self.primary.get_by_hash(content_hash)
+
     async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
         """Get total count of memories from primary storage."""
         return await self.primary.count_all_memories(memory_type=memory_type, tags=tags)

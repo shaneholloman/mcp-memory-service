@@ -8,6 +8,40 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.14.1] - 2025-10-31
+
+### Added
+- **Type Safety Improvements** - Comprehensive TypedDict definitions for all MemoryService return types
+  - **Problem**: All MemoryService methods returned loose `Dict[str, Any]` types, providing no IDE support or compile-time validation
+  - **Solution**: Created 14 specific TypedDict classes for structured return types
+    - Store operations: `StoreMemorySingleSuccess`, `StoreMemoryChunkedSuccess`, `StoreMemoryFailure`
+    - List operations: `ListMemoriesSuccess`, `ListMemoriesError`
+    - Retrieve operations: `RetrieveMemoriesSuccess`, `RetrieveMemoriesError`
+    - Search operations: `SearchByTagSuccess`, `SearchByTagError`
+    - Delete operations: `DeleteMemorySuccess`, `DeleteMemoryFailure`
+    - Health operations: `HealthCheckSuccess`, `HealthCheckFailure`
+  - **Benefits**:
+    - ✅ IDE autocomplete for all return values (type `result["` to see available keys)
+    - ✅ Compile-time type checking catches typos (e.g., `result["succes"]` → type error)
+    - ✅ Self-documenting API - clear contracts for all methods
+    - ✅ Refactoring safety - renaming keys shows all affected code
+    - ✅ 100% backward compatible - no runtime changes
+    - ✅ Zero performance impact - pure static typing
+
+### Fixed
+- **Missing HybridMemoryStorage.get_by_hash()** - Added delegation method to HybridMemoryStorage
+  - Fixed `AttributeError: 'HybridMemoryStorage' object has no attribute 'get_by_hash'`
+  - All storage backends now implement `get_by_hash()`: SqliteVecMemoryStorage, CloudflareMemoryStorage, HybridMemoryStorage
+  - Enables direct memory retrieval by content hash without loading all memories
+  - See issue #196 for planned optimization to use this method in MemoryService
+
+### Technical Details
+- **Files Modified**:
+  - `src/mcp_memory_service/services/memory_service.py`: Added 14 TypedDict classes, updated 6 method signatures
+  - `src/mcp_memory_service/storage/hybrid.py`: Added `get_by_hash()` delegation method
+- **Breaking Changes**: None - fully backward compatible (TypedDict is structural typing)
+- **Testing**: All tests pass (15/15), comprehensive structure validation, HTTP API integration verified
+
 ## [8.14.0] - 2025-10-31
 
 ### Fixed

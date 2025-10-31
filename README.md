@@ -15,13 +15,13 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.14.0** (Oct 31, 2025)
+### 🆕 Latest Release: **v8.14.1** (Oct 31, 2025)
 
-**Comprehensive Tag Normalization** with DRY principle - eliminates all tag validation errors by creating a single source of truth for tag handling. Now accepts **all tag formats everywhere**: comma-separated strings (`"tag1,tag2"`), arrays (`["tag1", "tag2"]`), single strings, and even in `metadata.tags` field. Tags from parameter and metadata are intelligently merged with deduplication.
+**Type Safety Improvements & Bug Fixes** - Enhanced developer experience with comprehensive TypedDict return types for all MemoryService methods, providing IDE autocomplete and compile-time type checking. Fixed missing `get_by_hash()` method in HybridMemoryStorage that was causing 500 errors.
 
-**Benefits**: ✅ No more validation errors ✅ Use any format anywhere ✅ DRY compliance ✅ Fully backward compatible
+**Benefits**: ✅ Full IDE autocomplete support ✅ Compile-time type checking ✅ Self-documenting code ✅ Zero runtime overhead ✅ 100% backward compatible
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8140---2025-10-31) | [Release Notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v8.14.0) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8141---2025-10-31) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
