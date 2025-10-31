@@ -698,7 +698,17 @@ Windows-specific subprocess management issue. Even with `process.exit(0)`, Node.
 
 **Workarounds**:
 
-1. **Disable SessionStart hooks** (current recommendation):
+1. **Use `/session-start` slash command** (recommended):
+```bash
+claude /session-start
+```
+- Provides same functionality as automatic SessionStart hook
+- Works on all platforms (Windows, macOS, Linux)
+- Safe manual alternative - no configuration changes needed
+- Installer automatically skips SessionStart configuration on Windows
+- See: `claude_commands/session-start.md` for full documentation
+
+2. **Disable SessionStart hooks** (if manually configured):
 ```json
 {
   "hooks": {
@@ -707,7 +717,7 @@ Windows-specific subprocess management issue. Even with `process.exit(0)`, Node.
 }
 ```
 
-2. **Use UserPromptSubmit hooks instead** (these work on Windows):
+3. **Use UserPromptSubmit hooks instead** (these work on Windows):
 ```json
 {
   "hooks": {
@@ -727,7 +737,7 @@ Windows-specific subprocess management issue. Even with `process.exit(0)`, Node.
 }
 ```
 
-3. **Manual invocation when needed**:
+4. **Manual hook invocation** (advanced):
 ```bash
 node C:\Users\username\.claude\hooks\core\session-start.js
 ```

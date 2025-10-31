@@ -4,6 +4,24 @@ This directory contains conversational Claude Code commands that integrate memor
 
 ## Available Commands
 
+### `/session-start` - Manual Session Initialization
+Display session memory context manually by running the session-start hook. **Windows Workaround**: Required for Windows users due to SessionStart hook bug (#160). Works on all platforms.
+
+**Usage:**
+```bash
+claude /session-start
+```
+
+**Why this exists:**
+- Windows users cannot use automatic SessionStart hooks (causes Claude Code to hang)
+- Provides same functionality as automatic session-start hook
+- Safe manual alternative that works on all platforms (Windows, macOS, Linux)
+
+**What it does:**
+- Loads relevant project memories at session start
+- Analyzes git history and recent changes
+- Displays categorized memory context (recent work, current problems, additional context)
+
 ### `/memory-store` - Store Current Context
 Store information in your MCP Memory Service with proper context and tagging. Automatically detects project context, applies relevant tags, and includes machine hostname for source tracking.
 

@@ -46,6 +46,7 @@ Three complementary ways to view session memory context:
    - Updates every 300ms with latest session memory context
    - **Requires**: `jq` (JSON parser) and Claude Code statusLine configuration
    - **Platform**: Linux/macOS (Windows SessionStart hook broken - issue #160)
+   - **Windows Workaround**: Use `/session-start` slash command for manual session initialization
 
 ### ✨ **Hook v2.2.0**: Enhanced Output Control
 - **Clean Output Mode**: Configurable verbosity levels for minimal or detailed output
