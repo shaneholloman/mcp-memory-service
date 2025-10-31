@@ -944,10 +944,7 @@ async function executeSessionStart(context) {
             if (context.injectSystemMessage) {
                 await context.injectSystemMessage(contextMessage);
 
-                // Print success message
-                if (!cleanMode) {
-                    console.log(`${CONSOLE_COLORS.GREEN}✅ Memory Hook${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Context injected ${CONSOLE_COLORS.GRAY}(${maxMemories} memories)${CONSOLE_COLORS.RESET}`);
-                }
+                // Print success message (removed - summary already shown in tree header)
 
                 // Write detailed session context log file (Option 3)
                 try {

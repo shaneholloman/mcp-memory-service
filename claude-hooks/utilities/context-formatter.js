@@ -315,10 +315,16 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
 
                         // Additional wrapped lines with proper tree continuation
                         for (let i = 1; i < lines.length; i++) {
-                            // Continuation lines maintain the vertical tree structure
-                            const continuePrefix = isLast
-                                ? `   ${COLORS.CYAN}│${COLORS.RESET}  `  // Still show tree for wrapped content
-                                : `${COLORS.CYAN}│${COLORS.RESET}  ${COLORS.CYAN}│${COLORS.RESET}  `;
+                            let continuePrefix;
+                            if (isLastMemory) {
+                                // Last memory in category - no vertical line after └─
+                                continuePrefix = isLast ? '          ' : '      ';
+                            } else {
+                                // Not last memory - maintain vertical tree structure
+                                continuePrefix = isLast
+                                    ? `   ${COLORS.CYAN}│${COLORS.RESET}  `
+                                    : `${COLORS.CYAN}│${COLORS.RESET}  ${COLORS.CYAN}│${COLORS.RESET}  `;
+                            }
                             contextMessage += `${continuePrefix}${lines[i]}\n`;
                         }
                     }
@@ -356,8 +362,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         });
     }
 
-    contextMessage += `\n${COLORS.CYAN}╰────────────────────────────────────────────────────────────────────────────────╯${COLORS.RESET}\n`;
-
+    // Tree structure ends naturally with └─, no need for separate closing frame
     return contextMessage;
 }
 
