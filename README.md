@@ -178,6 +178,7 @@ These warnings disappear after the first successful run. The service is working 
 - **[📝 Examples](https://github.com/doobidoo/mcp-memory-service/wiki/09-Examples)** - Practical code examples and workflows
 
 ### 📂 Internal Documentation
+- **[📊 Repository Statistics](docs/statistics/REPOSITORY_STATISTICS.md)** - 10 months of development metrics, activity patterns, and insights
 - **[🏗️ Architecture Specs](docs/architecture/)** - Search enhancement specifications and design documents
 - **[👩‍💻 Development Docs](docs/development/)** - AI agent instructions, release checklist, refactoring notes
 - **[🚀 Deployment Guides](docs/deployment/)** - Docker, dual-service, and production deployment
