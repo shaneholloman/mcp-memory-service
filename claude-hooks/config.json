@@ -4,7 +4,7 @@
     "preferredProtocol": "http",
     "fallbackEnabled": true,
     "http": {
-      "endpoint": "http://localhost:8889",
+      "endpoint": "http://127.0.0.1:8000",
       "apiKey": "VhOGAoUOE5_BMzu-phDORdyXHNMcDRBxvndK_Uop",
       "healthCheckTimeout": 3000,
       "useDetailedHealthCheck": true
@@ -18,7 +18,7 @@
         "-s",
         "hybrid"
       ],
-      "serverWorkingDir": "/Users/hkr/Documents/GitHub/mcp-memory-service",
+      "serverWorkingDir": "/home/hkr/repositories/mcp-memory-service",
       "connectionTimeout": 2000,
       "toolCallTimeout": 3000
     },
@@ -34,8 +34,7 @@
     "recentTimeWindow": "last week",
     "fallbackTimeWindow": "last 2 weeks",
     "showStorageSource": true,
-    "sourceDisplayMode": "brief",
-    "sortByCreationDate": true
+    "sourceDisplayMode": "brief"
   },
   "projectDetection": {
     "gitRepository": true,
@@ -119,7 +118,21 @@
     "showRecencyInfo": true,
     "showPhaseDetails": true,
     "showGitAnalysis": true,
-    "cleanMode": false
+    "cleanMode": false,
+    "style": "balanced",
+    "showScoringBreakdown": false,
+    "adaptiveTruncation": true,
+    "prioritySections": [
+      "recent-work",
+      "current-problems",
+      "key-decisions",
+      "additional-context"
+    ]
+  },
+  "contentLength": {
+    "manyMemories": 300,
+    "fewMemories": 500,
+    "veryFewMemories": 800
   },
   "naturalTriggers": {
     "enabled": true,

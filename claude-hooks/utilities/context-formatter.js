@@ -183,11 +183,27 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         includeTimestamp = true,
         maxContentLengthCLI = 400,
         maxContentLengthCategorized = 350,
-        storageInfo = null
+        storageInfo = null,
+        adaptiveTruncation = true,
+        contentLengthConfig = null
     } = options;
 
     if (!memories || memories.length === 0) {
         return `\n${COLORS.CYAN}╭────────────────────────────────────────────────────────────────────────────────╮${COLORS.RESET}\n${COLORS.CYAN}│${COLORS.RESET} 🧠 ${COLORS.BRIGHT}Memory Context${COLORS.RESET}                                                              ${COLORS.CYAN}│${COLORS.RESET}\n${COLORS.CYAN}╰────────────────────────────────────────────────────────────────────────────────╯${COLORS.RESET}\n${COLORS.CYAN}┌─${COLORS.RESET} ${COLORS.GRAY}No relevant memories found for this session.${COLORS.RESET}\n`;
+    }
+
+    // Determine adaptive content length based on memory count
+    const estimatedMemoryCount = Math.min(memories.length, maxMemories);
+    let adaptiveContentLength = maxContentLengthCLI;
+
+    if (adaptiveTruncation && contentLengthConfig) {
+        if (estimatedMemoryCount >= 5) {
+            adaptiveContentLength = contentLengthConfig.manyMemories || 300;
+        } else if (estimatedMemoryCount >= 3) {
+            adaptiveContentLength = contentLengthConfig.fewMemories || 500;
+        } else {
+            adaptiveContentLength = contentLengthConfig.veryFewMemories || 800;
+        }
     }
 
     // Filter out null/generic memories and limit number
@@ -198,7 +214,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         if (validMemories.length >= maxMemories) break;
 
         const formatted = formatMemoryForCLI(memory, memoryIndex, {
-            maxContentLength: maxContentLengthCLI,
+            maxContentLength: adaptiveContentLength,
             includeDate: includeTimestamp
         });
 
@@ -208,10 +224,8 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         }
     }
 
-    // Build header with project info
-    let contextMessage = `\n${COLORS.CYAN}╭────────────────────────────────────────────────────────────────────────────────╮${COLORS.RESET}\n`;
-    contextMessage += `${COLORS.CYAN}│${COLORS.RESET} 🧠 ${COLORS.BRIGHT}Injected Memory Context${COLORS.RESET}                                                      ${COLORS.CYAN}│${COLORS.RESET}\n`;
-    contextMessage += `${COLORS.CYAN}╰────────────────────────────────────────────────────────────────────────────────╯${COLORS.RESET}\n`;
+    // Build unified tree structure (no separate decorative box)
+    let contextMessage = '';
 
     // Add project summary in enhanced CLI format
     if (includeProjectSummary && projectContext) {
@@ -221,7 +235,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         if (frameworks?.length) projectInfo.push(frameworks.slice(0, 2).join(', '));
         if (tools?.length) projectInfo.push(tools.slice(0, 2).join(', '));
 
-        contextMessage += `${COLORS.CYAN}┌─${COLORS.RESET} 🧠 ${COLORS.BRIGHT}Memory Context${COLORS.RESET} ${COLORS.DIM}→${COLORS.RESET} ${COLORS.BLUE}${projectInfo.join(', ')}${COLORS.RESET}\n`;
+        contextMessage += `\n${COLORS.CYAN}┌─${COLORS.RESET} 🧠 ${COLORS.BRIGHT}Injected Memory Context${COLORS.RESET} ${COLORS.DIM}→${COLORS.RESET} ${COLORS.BLUE}${projectInfo.join(', ')}${COLORS.RESET}\n`;
 
         // Add storage information if available
         if (storageInfo) {
@@ -250,7 +264,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
             contextMessage += `${COLORS.CYAN}│${COLORS.RESET}\n`;
         }
     } else {
-        contextMessage += `${COLORS.CYAN}┌─${COLORS.RESET} 🧠 ${COLORS.BRIGHT}Memory Context${COLORS.RESET}\n`;
+        contextMessage += `\n${COLORS.CYAN}┌─${COLORS.RESET} 🧠 ${COLORS.BRIGHT}Injected Memory Context${COLORS.RESET}\n`;
         contextMessage += `${COLORS.CYAN}├─${COLORS.RESET} 📚 ${COLORS.BRIGHT}${validMemories.length} memories loaded${COLORS.RESET}\n`;
     }
 
@@ -261,14 +275,10 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         const categories = groupMemoriesByCategory(validMemories.map(v => v.memory));
 
         const categoryInfo = {
-            gitContext: { title: 'Current Development', icon: '⚡', color: COLORS.BRIGHT },
-            recent: { title: 'Recent Work', icon: '🕒', color: COLORS.GREEN },
-            decisions: { title: 'Architecture & Design', icon: '🏗️', color: COLORS.YELLOW },
-            architecture: { title: 'Architecture & Design', icon: '🏗️', color: COLORS.YELLOW },
-            insights: { title: 'Key Insights', icon: '💡', color: COLORS.MAGENTA },
-            bugs: { title: 'Bug Fixes & Issues', icon: '🐛', color: COLORS.GREEN },
-            features: { title: 'Features & Implementation', icon: '✨', color: COLORS.BLUE },
-            other: { title: 'Additional Context', icon: '📝', color: COLORS.GRAY }
+            'recent-work': { title: 'Recent Work', icon: '🔥', color: COLORS.GREEN },
+            'current-problems': { title: 'Current Problems', icon: '⚠️', color: COLORS.YELLOW },
+            'key-decisions': { title: 'Key Decisions', icon: '🎯', color: COLORS.CYAN },
+            'additional-context': { title: 'Additional Context', icon: '📋', color: COLORS.GRAY }
         };
 
         let hasContent = false;
@@ -300,13 +310,16 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
                             : `${connector}${COLORS.CYAN}├─${COLORS.RESET} `;
 
                         // Wrap long content lines
-                        const lines = wrapText(formatted, 76, 6);
+                        const lines = wrapText(formatted, 70, 6);
                         contextMessage += `${prefix}${lines[0]}\n`;
 
-                        // Additional wrapped lines with proper indentation
+                        // Additional wrapped lines with proper tree continuation
                         for (let i = 1; i < lines.length; i++) {
-                            const continueConnector = isLast ? '      ' : `${COLORS.CYAN}│${COLORS.RESET}     `;
-                            contextMessage += `${continueConnector}${lines[i]}\n`;
+                            // Continuation lines maintain the vertical tree structure
+                            const continuePrefix = isLast
+                                ? `   ${COLORS.CYAN}│${COLORS.RESET}  `  // Still show tree for wrapped content
+                                : `${COLORS.CYAN}│${COLORS.RESET}  ${COLORS.CYAN}│${COLORS.RESET}  `;
+                            contextMessage += `${continuePrefix}${lines[i]}\n`;
                         }
                     }
                 });
@@ -406,7 +419,7 @@ function formatMemoryForCLI(memory, index, options = {}) {
             return null;
         }
 
-        // Format date with recency indicators and color
+        // Format date with standardized recency indicators
         let dateStr = '';
         if (includeDate && memory.created_at_iso) {
             const date = new Date(memory.created_at_iso);
@@ -416,16 +429,16 @@ function formatMemoryForCLI(memory, index, options = {}) {
             if (daysDiff < 1) {
                 dateStr = ` ${COLORS.GREEN}🕒 today${COLORS.RESET}`;
             } else if (daysDiff < 2) {
-                dateStr = ` ${COLORS.GREEN}📅 yesterday${COLORS.RESET}`;
+                dateStr = ` ${COLORS.CYAN}📅 yesterday${COLORS.RESET}`;
             } else if (daysDiff <= 7) {
-                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                dateStr = ` ${COLORS.CYAN}📅 ${dayName}${COLORS.RESET}`;
+                const daysAgo = Math.floor(daysDiff);
+                dateStr = ` ${COLORS.CYAN}📅 ${daysAgo}d ago${COLORS.RESET}`;
             } else if (daysDiff <= 30) {
                 const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                dateStr = ` ${COLORS.DIM}${formattedDate}${COLORS.RESET}`;
+                dateStr = ` ${COLORS.CYAN}📅 ${formattedDate}${COLORS.RESET}`;
             } else {
                 const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                dateStr = ` ${COLORS.GRAY}(${formattedDate})${COLORS.RESET}`;
+                dateStr = ` ${COLORS.GRAY}📅 ${formattedDate}${COLORS.RESET}`;
             }
         }
 
@@ -468,14 +481,30 @@ function extractMeaningfulContent(content, maxLength = 500, options = {}) {
     if (!content || typeof content !== 'string') {
         return 'No content available';
     }
-    
+
     const {
         convertMarkdown = isCLIEnvironment(),  // Auto-convert in CLI mode
         stripMarkdown = false  // Just strip without ANSI colors
     } = options;
-    
+
+    // Sanitize content - remove embedded formatting characters that conflict with tree structure
+    let sanitizedContent = content
+        // Remove checkmarks and bullets
+        .replace(/[✅✓✔]/g, '')
+        .replace(/^[\s]*[•▪▫]\s*/gm, '')
+        // Remove list markers at start of lines
+        .replace(/^[\s]*[-*]\s*/gm, '')
+        // Clean up multiple spaces
+        .replace(/\s{2,}/g, ' ')
+        // Remove markdown bold/italic
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/__([^_]+)__/g, '$1')
+        .replace(/_([^_]+)_/g, '$1')
+        .trim();
+
     // Check if this is a session summary with structured sections
-    if (content.includes('# Session Summary') || content.includes('## 🎯') || content.includes('## 🏛️') || content.includes('## 💡')) {
+    if (sanitizedContent.includes('# Session Summary') || sanitizedContent.includes('## 🎯') || sanitizedContent.includes('## 🏛️') || sanitizedContent.includes('## 💡')) {
         const sections = {
             decisions: [],
             insights: [],
@@ -483,9 +512,9 @@ function extractMeaningfulContent(content, maxLength = 500, options = {}) {
             nextSteps: [],
             topics: []
         };
-        
+
         // Extract structured sections
-        const lines = content.split('\n');
+        const lines = sanitizedContent.split('\n');
         let currentSection = null;
         
         for (const line of lines) {
@@ -548,29 +577,43 @@ function extractMeaningfulContent(content, maxLength = 500, options = {}) {
         }
     }
     
-    // For non-structured content, apply markdown conversion first if needed
-    let processedContent = content;
+    // For non-structured content, use sanitized version
+    let processedContent = sanitizedContent;
     if (convertMarkdown) {
-        processedContent = convertMarkdownToANSI(content, { stripOnly: stripMarkdown });
+        processedContent = convertMarkdownToANSI(sanitizedContent, { stripOnly: stripMarkdown });
     }
-    
+
+    // Smart first-sentence extraction for very short limits
+    if (maxLength < 400) {
+        // Try to get just the first 1-2 sentences
+        const sentenceMatch = processedContent.match(/^[^.!?]+[.!?]\s*[^.!?]+[.!?]?/);
+        if (sentenceMatch && sentenceMatch[0].length <= maxLength) {
+            return sentenceMatch[0].trim();
+        }
+        // Try just first sentence
+        const firstSentence = processedContent.match(/^[^.!?]+[.!?]/);
+        if (firstSentence && firstSentence[0].length <= maxLength) {
+            return firstSentence[0].trim();
+        }
+    }
+
     // Then use smart truncation
     if (processedContent.length <= maxLength) {
         return processedContent;
     }
-    
+
     // Try to find a good breaking point (sentence, paragraph, or code block)
     const breakPoints = ['. ', '\n\n', '\n', '; '];
-    
+
     for (const breakPoint of breakPoints) {
         const lastBreak = processedContent.lastIndexOf(breakPoint, maxLength - 3);
         if (lastBreak > maxLength * 0.7) { // Only use if we keep at least 70% of desired length
-            return processedContent.substring(0, lastBreak + (breakPoint === '. ' ? 1 : 0)) + '...';
+            return processedContent.substring(0, lastBreak + (breakPoint === '. ' ? 1 : 0)).trim();
         }
     }
-    
+
     // Fallback to hard truncation
-    return processedContent.substring(0, maxLength - 3) + '...';
+    return processedContent.substring(0, maxLength - 3).trim() + '...';
 }
 
 /**
@@ -743,24 +786,21 @@ function groupMemoriesByCategory(memories, options = {}) {
     try {
         // First deduplicate to remove redundant content
         const deduplicated = deduplicateMemories(memories, options);
-        
+
         const categories = {
-            gitContext: [],
-            recent: [],
-            decisions: [],
-            architecture: [],
-            insights: [],
-            bugs: [],
-            features: [],
-            other: []
+            'recent-work': [],
+            'current-problems': [],
+            'key-decisions': [],
+            'additional-context': []
         };
-        
+
         const now = new Date();
-        
+
         deduplicated.forEach(memory => {
             const type = memory.memory_type?.toLowerCase() || 'other';
             const tags = memory.tags || [];
-            
+            const content = memory.content?.toLowerCase() || '';
+
             // Check if memory is recent (within last week)
             let isRecent = false;
             if (memory.created_at_iso) {
@@ -768,34 +808,41 @@ function groupMemoriesByCategory(memories, options = {}) {
                 const daysDiff = (now - memDate) / (1000 * 60 * 60 * 24);
                 isRecent = daysDiff <= 7;
             }
-            
-            // Prioritize git context categorization (highest priority)
-            if (memory._gitContextType) {
-                categories.gitContext.push(memory);
+
+            // Detect current problems (issues, bugs, blockers, TODOs)
+            const isProblem =
+                type === 'issue' || type === 'bug' || type === 'bug-fix' ||
+                tags.some(tag => ['issue', 'bug', 'blocked', 'todo', 'problem', 'blocker', 'fix'].includes(tag.toLowerCase())) ||
+                content.includes('issue #') || content.includes('bug:') || content.includes('blocked');
+
+            // Detect key decisions (architecture, design, technical choices)
+            const isKeyDecision =
+                type === 'decision' || type === 'architecture' ||
+                tags.some(tag => ['decision', 'architecture', 'design', 'key-decisions', 'why'].includes(tag.toLowerCase())) ||
+                content.includes('decided to') || content.includes('architecture:');
+
+            // Categorize with priority: recent-work > current-problems > key-decisions > additional-context
+            if (isRecent && memory._gitContextType) {
+                // Git context memories from recent development
+                categories['recent-work'].push(memory);
+            } else if (isProblem) {
+                categories['current-problems'].push(memory);
             } else if (isRecent) {
-                categories.recent.push(memory);
-            } else if (type === 'decision' || tags.some(tag => tag.includes('decision'))) {
-                categories.decisions.push(memory);
-            } else if (type === 'architecture' || tags.some(tag => tag.includes('architecture'))) {
-                categories.architecture.push(memory);
-            } else if (type === 'insight' || tags.some(tag => tag.includes('insight'))) {
-                categories.insights.push(memory);
-            } else if (type === 'bug-fix' || tags.some(tag => tag.includes('bug'))) {
-                categories.bugs.push(memory);
-            } else if (type === 'feature' || tags.some(tag => tag.includes('feature'))) {
-                categories.features.push(memory);
+                categories['recent-work'].push(memory);
+            } else if (isKeyDecision) {
+                categories['key-decisions'].push(memory);
             } else {
-                categories.other.push(memory);
+                categories['additional-context'].push(memory);
             }
         });
-        
+
         return categories;
-        
+
     } catch (error) {
         if (options?.verbose !== false) {
             console.warn('[Context Formatter] Error grouping memories:', error.message);
         }
-        return { other: memories };
+        return { 'additional-context': memories };
     }
 }
 

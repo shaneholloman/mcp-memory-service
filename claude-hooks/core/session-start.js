@@ -560,14 +560,14 @@ async function executeSessionStart(context) {
         const timeDecayRate = config.memoryScoring?.timeDecayRate || 0.1;
         const enableConversationContext = config.memoryScoring?.enableConversationContext || false;
         const minRelevanceScore = config.memoryScoring?.minRelevanceScore || 0.3;
-        const showPhaseDetails = config.output?.showPhaseDetails !== false; // Default to true
-        
+        const showPhaseDetails = config.output?.showPhaseDetails !== false && config.output?.style !== 'balanced'; // Hide in balanced mode
+
         if (recentFirstMode) {
             // Phase 0: Git Context Phase (NEW - highest priority for repository-aware memories)
             if (gitContext && gitContext.developmentKeywords.keywords.length > 0) {
                 const maxGitMemories = config.gitAnalysis?.maxGitMemories || 3;
                 const gitQueries = buildGitContextQuery(projectContext, gitContext.developmentKeywords, context.userMessage);
-                
+
                 if (verbose && showPhaseDetails && !cleanMode && gitQueries.length > 0) {
                     console.log(`${CONSOLE_COLORS.GREEN}⚡ Phase 0${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Git-aware memory search (${maxGitMemories} slots, ${gitQueries.length} queries)`);
                 }
@@ -870,21 +870,29 @@ async function executeSessionStart(context) {
                         }
                     }
 
-                    // Show detailed breakdown for top memory
-                    if (idx === 0 && m.scoreBreakdown && config.output?.showScoringBreakdown !== false) {
+                    // Show detailed breakdown for top memory (only if explicitly enabled)
+                    if (idx === 0 && m.scoreBreakdown) {
                         const bd = m.scoreBreakdown;
-                        console.log(`${CONSOLE_COLORS.CYAN}  📊 Top Memory Breakdown${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET}`);
-                        console.log(`${CONSOLE_COLORS.CYAN}    • Time Decay${CONSOLE_COLORS.RESET}: ${(bd.timeDecay * 100).toFixed(0)}% ${CONSOLE_COLORS.GRAY}(${ageText})${CONSOLE_COLORS.RESET}`);
-                        console.log(`${CONSOLE_COLORS.CYAN}    • Tag Match${CONSOLE_COLORS.RESET}: ${(bd.tagRelevance * 100).toFixed(0)}%`);
-                        console.log(`${CONSOLE_COLORS.CYAN}    • Content${CONSOLE_COLORS.RESET}: ${(bd.contentRelevance * 100).toFixed(0)}%`);
-                        console.log(`${CONSOLE_COLORS.CYAN}    • Quality${CONSOLE_COLORS.RESET}: ${(bd.contentQuality * 100).toFixed(0)}%`);
-                        if (bd.recencyBonus > 0) {
-                            console.log(`${CONSOLE_COLORS.CYAN}    • Recency Bonus${CONSOLE_COLORS.RESET}: ${CONSOLE_COLORS.GREEN}+${(bd.recencyBonus * 100).toFixed(0)}%${CONSOLE_COLORS.RESET}`);
-                        }
-                        // Show git context boost if applied
-                        if (m._wasBoosted && m._originalScore) {
-                            const boostAmount = ((m.relevanceScore - m._originalScore) * 100).toFixed(0);
-                            console.log(`${CONSOLE_COLORS.CYAN}    • Git Boost${CONSOLE_COLORS.RESET}: ${CONSOLE_COLORS.YELLOW}+${boostAmount}%${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}(${(m._originalScore * 100).toFixed(0)}% → ${(m.relevanceScore * 100).toFixed(0)}%)${CONSOLE_COLORS.RESET}`);
+                        const showBreakdown = config.output?.showScoringBreakdown === true;
+
+                        if (showBreakdown) {
+                            console.log(`${CONSOLE_COLORS.CYAN}  📊 Top Memory Breakdown${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET}`);
+                            console.log(`${CONSOLE_COLORS.CYAN}    • Time Decay${CONSOLE_COLORS.RESET}: ${(bd.timeDecay * 100).toFixed(0)}% ${CONSOLE_COLORS.GRAY}(${ageText})${CONSOLE_COLORS.RESET}`);
+                            console.log(`${CONSOLE_COLORS.CYAN}    • Tag Match${CONSOLE_COLORS.RESET}: ${(bd.tagRelevance * 100).toFixed(0)}%`);
+                            console.log(`${CONSOLE_COLORS.CYAN}    • Content${CONSOLE_COLORS.RESET}: ${(bd.contentRelevance * 100).toFixed(0)}%`);
+                            console.log(`${CONSOLE_COLORS.CYAN}    • Quality${CONSOLE_COLORS.RESET}: ${(bd.contentQuality * 100).toFixed(0)}%`);
+                            if (bd.recencyBonus > 0) {
+                                console.log(`${CONSOLE_COLORS.CYAN}    • Recency Bonus${CONSOLE_COLORS.RESET}: ${CONSOLE_COLORS.GREEN}+${(bd.recencyBonus * 100).toFixed(0)}%${CONSOLE_COLORS.RESET}`);
+                            }
+                            // Show git context boost if applied
+                            if (m._wasBoosted && m._originalScore) {
+                                const boostAmount = ((m.relevanceScore - m._originalScore) * 100).toFixed(0);
+                                console.log(`${CONSOLE_COLORS.CYAN}    • Git Boost${CONSOLE_COLORS.RESET}: ${CONSOLE_COLORS.YELLOW}+${boostAmount}%${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}(${(m._originalScore * 100).toFixed(0)}% → ${(m.relevanceScore * 100).toFixed(0)}%)${CONSOLE_COLORS.RESET}`);
+                            }
+                        } else if (config.logging?.enableDebug) {
+                            // Log to debug file instead of console
+                            const debugMsg = `[Memory Scorer] Top memory breakdown: TimeDecay=${(bd.timeDecay * 100).toFixed(0)}%, TagMatch=${(bd.tagRelevance * 100).toFixed(0)}%, Content=${(bd.contentRelevance * 100).toFixed(0)}%, Quality=${(bd.contentQuality * 100).toFixed(0)}%, RecencyBonus=${(bd.recencyBonus * 100).toFixed(0)}%`;
+                            console.log(debugMsg);
                         }
                     }
 
@@ -904,29 +912,6 @@ async function executeSessionStart(context) {
                     message: '🧠 Loading relevant memory context...'
                 };
             
-            // Sort by creation date if configured (after relevance filtering)
-            const sortByDate = config.memoryService?.sortByCreationDate !== false; // Default true
-            if (sortByDate) {
-                scoredMemories = scoredMemories.sort((a, b) => {
-                    // Handle both Unix timestamps (seconds) and ISO strings
-                    const getTimestamp = (mem) => {
-                        if (mem.created_at_iso) {
-                            return new Date(mem.created_at_iso).getTime();
-                        } else if (mem.created_at) {
-                            // created_at is in seconds, convert to milliseconds
-                            return mem.created_at * 1000;
-                        }
-                        return 0;
-                    };
-                    const dateA = getTimestamp(a);
-                    const dateB = getTimestamp(b);
-                    return dateB - dateA; // Newest first
-                });
-                if (verbose && showMemoryDetails && !cleanMode) {
-                    console.log(`${CONSOLE_COLORS.CYAN}📅 Sort Order${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} By creation date (newest first)`);
-                }
-            }
-
             // Take top scored memories based on strategy
             const maxMemories = Math.min(strategy.maxMemories || config.memoryService.maxMemoriesPerSession, scoredMemories.length);
             const topMemories = scoredMemories.slice(0, maxMemories);
@@ -950,29 +935,17 @@ async function executeSessionStart(context) {
                 maxContentLength: config.contextFormatting?.maxContentLength || 500,
                 maxContentLengthCLI: config.contextFormatting?.maxContentLengthCLI || 400,
                 maxContentLengthCategorized: config.contextFormatting?.maxContentLengthCategorized || 350,
-                storageInfo: showStorageSource ? (storageInfo || detectStorageBackend(config)) : null
+                storageInfo: showStorageSource ? (storageInfo || detectStorageBackend(config)) : null,
+                adaptiveTruncation: config.output?.adaptiveTruncation !== false,
+                contentLengthConfig: config.contentLength
             });
             
             // Inject context into session
             if (context.injectSystemMessage) {
                 await context.injectSystemMessage(contextMessage);
 
-                // Print visible summary for user (Option 1)
+                // Print success message
                 if (!cleanMode) {
-                    console.log(`\n${CONSOLE_COLORS.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CONSOLE_COLORS.RESET}`);
-                    console.log(`${CONSOLE_COLORS.CYAN}🧠 Session Memory Context${CONSOLE_COLORS.RESET}`);
-                    console.log(`${CONSOLE_COLORS.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CONSOLE_COLORS.RESET}`);
-                    console.log(`${CONSOLE_COLORS.BRIGHT}Project:${CONSOLE_COLORS.RESET} ${projectContext.name} ${CONSOLE_COLORS.GRAY}(${projectContext.language})${CONSOLE_COLORS.RESET}`);
-                    if (storageInfo) {
-                        console.log(`${CONSOLE_COLORS.BRIGHT}Storage:${CONSOLE_COLORS.RESET} ${storageInfo.icon} ${storageInfo.description}`);
-                    }
-                    const recentText = recentCount > 0 ? ` ${CONSOLE_COLORS.GREEN}(${recentCount} recent)${CONSOLE_COLORS.RESET}` : '';
-                    console.log(`${CONSOLE_COLORS.BRIGHT}Memories:${CONSOLE_COLORS.RESET} 🧠 ${maxMemories}${recentText}`);
-                    if (gitContext && gitContext.commits.length > 0) {
-                        const topKeywords = gitContext.developmentKeywords.keywords.slice(0, 3).join(', ');
-                        console.log(`${CONSOLE_COLORS.BRIGHT}Git Context:${CONSOLE_COLORS.RESET} 📊 ${gitContext.commits.length} commits ${CONSOLE_COLORS.GRAY}(${topKeywords})${CONSOLE_COLORS.RESET}`);
-                    }
-                    console.log(`${CONSOLE_COLORS.GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CONSOLE_COLORS.RESET}\n`);
                     console.log(`${CONSOLE_COLORS.GREEN}✅ Memory Hook${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Context injected ${CONSOLE_COLORS.GRAY}(${maxMemories} memories)${CONSOLE_COLORS.RESET}`);
                 }
 
@@ -1104,15 +1077,8 @@ if (require.main === module) {
         workingDirectory: process.cwd(),
         sessionId: 'test-session',
         injectSystemMessage: async (message) => {
-            const lines = message.split('\n');
-            const maxLength = Math.min(80, Math.max(25, ...lines.map(l => l.length)));
-            const border = '─'.repeat(maxLength - 2);
-            
-            console.log(`\n${CONSOLE_COLORS.CYAN}╭─${border}─╮${CONSOLE_COLORS.RESET}`);
-            console.log(`${CONSOLE_COLORS.CYAN}│${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.BRIGHT}🧠 Injected Memory Context${CONSOLE_COLORS.RESET}${' '.repeat(maxLength - 27)} ${CONSOLE_COLORS.CYAN}│${CONSOLE_COLORS.RESET}`);
-            console.log(`${CONSOLE_COLORS.CYAN}╰─${border}─╯${CONSOLE_COLORS.RESET}`);
+            // Just print the message - it already has its own formatting from context-formatter.js
             console.log(message);
-            console.log(`${CONSOLE_COLORS.CYAN}╰─${border}─╯${CONSOLE_COLORS.RESET}`);
         }
     };
     
