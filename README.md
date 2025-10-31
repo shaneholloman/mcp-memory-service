@@ -15,19 +15,22 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.14.2** (Oct 31, 2025)
+### 🆕 Latest Release: **v8.15.0** (Oct 31, 2025)
 
-**Performance Optimization** - Dramatically improved `get_memory_by_hash()` performance with O(1) direct database lookup instead of O(n) memory scan. Up to **100x faster** for large datasets (1000+ memories).
+**Windows Platform Support** - Full Windows compatibility with intelligent workarounds for Claude Code SessionStart hook limitation.
 
-**Performance Impact**:
-- Small datasets (10-100): ~2x faster
-- Medium datasets (100-1000): ~10-50x faster
-- Large datasets (1000+): ~100x+ faster
-- Memory usage: Single object vs entire dataset
+**What's New**:
+- ✨ **New `/session-start` slash command** - Manual session initialization that works on all platforms
+- 🪟 **Windows-aware installer** - Automatic platform detection prevents configuration issues
+- 📚 **Enhanced documentation** - Comprehensive Windows troubleshooting and workarounds
+- 🛡️ **Safe installation** - Prevents SessionStart hook deadlock on Windows (#160)
 
-**Implementation**: Added abstract `get_by_hash()` method to all storage backends (SqliteVec, Cloudflare, Hybrid) with O(1) direct hash lookup.
+**Platform Support**:
+- Windows: `/session-start` command + UserPromptSubmit hooks ✅
+- macOS: All features including automatic SessionStart hooks ✅
+- Linux: All features including automatic SessionStart hooks ✅
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8142---2025-10-31) | [Issue #196](https://github.com/doobidoo/mcp-memory-service/issues/196) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8150---2025-10-31) | [Issue #160](https://github.com/doobidoo/mcp-memory-service/issues/160) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
@@ -223,6 +226,8 @@ These warnings disappear after the first successful run. The service is working 
 ### 🔗 **Universal Compatibility**
 - **Claude Desktop** - Native MCP integration
 - **Claude Code** - **HTTP transport** + Memory-aware development with hooks
+  - 🪟 **Windows Support**: `/session-start` command for manual session initialization (workaround for issue #160)
+  - 🍎 **macOS/Linux**: Full automatic SessionStart hooks + slash command
 - **VS Code, Cursor, Continue** - IDE extensions
 - **13+ AI applications** - REST API compatibility
 
