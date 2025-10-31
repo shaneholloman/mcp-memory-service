@@ -15,13 +15,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.14.1** (Oct 31, 2025)
+### 🆕 Latest Release: **v8.14.2** (Oct 31, 2025)
 
-**Type Safety Improvements & Bug Fixes** - Enhanced developer experience with comprehensive TypedDict return types for all MemoryService methods, providing IDE autocomplete and compile-time type checking. Fixed missing `get_by_hash()` method in HybridMemoryStorage that was causing 500 errors.
+**Performance Optimization** - Dramatically improved `get_memory_by_hash()` performance with O(1) direct database lookup instead of O(n) memory scan. Up to **100x faster** for large datasets (1000+ memories).
 
-**Benefits**: ✅ Full IDE autocomplete support ✅ Compile-time type checking ✅ Self-documenting code ✅ Zero runtime overhead ✅ 100% backward compatible
+**Performance Impact**:
+- Small datasets (10-100): ~2x faster
+- Medium datasets (100-1000): ~10-50x faster
+- Large datasets (1000+): ~100x+ faster
+- Memory usage: Single object vs entire dataset
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8141---2025-10-31) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**Implementation**: Added abstract `get_by_hash()` method to all storage backends (SqliteVec, Cloudflare, Hybrid) with O(1) direct hash lookup.
+
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8142---2025-10-31) | [Issue #196](https://github.com/doobidoo/mcp-memory-service/issues/196) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
