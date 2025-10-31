@@ -787,8 +787,6 @@ class HookInstaller:
                             ]
                         }
                     ]
-                }
-            }
 
             # Add mid-conversation hook if Natural Memory Triggers are installed
             if install_mid_conversation:

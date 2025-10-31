@@ -8,6 +8,24 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.15.1] - 2025-10-31
+
+### Fixed
+- **Critical Python Syntax Error in Hook Installer** - Fixed IndentationError in `claude-hooks/install_hooks.py` (line 790)
+  - **Issue**: Extra closing braces in SessionEnd hook configuration caused installation to fail
+  - **Symptom**: `IndentationError: unexpected indent` when running `python install_hooks.py`
+  - **Root Cause**: Git merge conflict resolution left two extra `}` characters (lines 790-791)
+  - **Impact**: Users could not install or update hooks after pulling v8.15.0
+  - **Fix**: Removed extra closing braces, corrected indentation
+  - **Files Modified**: `claude-hooks/install_hooks.py`
+  - **Testing**: Verified successful installation on macOS after fix
+
+### Technical Details
+- **Line Numbers**: 788-791 in install_hooks.py
+- **Error Type**: IndentationError (Python syntax)
+- **Detection Method**: Manual testing during hook reinstallation
+- **Resolution Time**: Immediate (same-day patch)
+
 ## [8.15.0] - 2025-10-31
 
 ### Added
