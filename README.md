@@ -15,11 +15,13 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.13.3** (Oct 30, 2025)
+### 🆕 Latest Release: **v8.14.0** (Oct 31, 2025)
 
-Critical patch fixing MCP memory tools broken since v8.12.0. Restores all MCP operations (store, retrieve, search, delete) by transforming MemoryService responses to proper MCP TypedDict format. **Requires MCP server restart** (`/mcp` command) to load fix.
+**Comprehensive Tag Normalization** with DRY principle - eliminates all tag validation errors by creating a single source of truth for tag handling. Now accepts **all tag formats everywhere**: comma-separated strings (`"tag1,tag2"`), arrays (`["tag1", "tag2"]`), single strings, and even in `metadata.tags` field. Tags from parameter and metadata are intelligently merged with deduplication.
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8133---2025-10-30) | [Release Notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v8.13.3) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**Benefits**: ✅ No more validation errors ✅ Use any format anywhere ✅ DRY compliance ✅ Fully backward compatible
+
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8140---2025-10-31) | [Release Notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v8.14.0) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
