@@ -8,6 +8,52 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.14.0] - 2025-10-31
+
+### Fixed
+- **Comprehensive Tag Normalization** - DRY solution for all tag format handling
+  - **Problem**: Inconsistent tag handling across different APIs caused validation errors
+    - Top-level `tags` parameter accepted strings, but MemoryService expected arrays
+    - `metadata.tags` field had no normalization, causing "is not of type 'array'" errors
+    - Comma-separated strings like `"tag1,tag2,tag3"` were not split into arrays
+    - Normalization logic was duplicated in some methods but missing in others
+  - **Root Cause**:
+    - MCP/HTTP adapters accepted `Union[str, List[str], None]` in signatures
+    - But passed values to MemoryService without normalization
+    - MemoryService expected `Optional[List[str]]`, causing type mismatch
+    - `search_by_tag()` had normalization, but `store_memory()` did not (DRY violation)
+  - **Solution** (DRY Principle Applied):
+    - Created centralized `normalize_tags()` utility function (services/memory_service.py:27-56)
+    - Handles ALL input formats:
+      - `None` → `[]`
+      - `"tag1,tag2,tag3"` → `["tag1", "tag2", "tag3"]`
+      - `"single-tag"` → `["single-tag"]`
+      - `["tag1", "tag2"]` → `["tag1", "tag2"]` (passthrough)
+    - Updated `MemoryService.store_memory()` to:
+      - Accept `Union[str, List[str], None]` type hint
+      - Normalize both `tags` parameter and `metadata.tags` field
+      - Merge tags from both sources with deduplication
+    - Updated `MemoryService.search_by_tag()` to use utility (removed duplicate code)
+  - **Files Modified**:
+    - `src/mcp_memory_service/services/memory_service.py`: Added normalize_tags(), updated store_memory() and search_by_tag()
+    - `src/mcp_memory_service/mcp_server.py`: Updated docstring to reflect all formats supported
+  - **Benefits**:
+    - ✅ Single source of truth for tag normalization (DRY)
+    - ✅ All tag formats work everywhere (top-level, metadata, any protocol)
+    - ✅ No more validation errors for comma-separated strings
+    - ✅ Fully backward compatible
+    - ✅ Consistent behavior across all endpoints
+  - **User Impact**:
+    - Can use any tag format anywhere without errors
+    - No need to remember which parameter accepts which format
+    - Improved developer experience and reduced friction
+
+### Technical Details
+- **Affected Components**: MemoryService (business logic layer), MCP server documentation
+- **Breaking Changes**: None - fully backward compatible
+- **Tag Merge Behavior**: When tags provided in both parameter and metadata, they are merged and deduplicated
+- **Testing**: Verified with all format combinations (None, string, comma-separated, array, metadata.tags)
+
 ## [8.13.5] - 2025-10-31
 
 ### Fixed

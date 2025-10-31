@@ -24,6 +24,38 @@ from ..utils.hashing import generate_content_hash
 logger = logging.getLogger(__name__)
 
 
+def normalize_tags(tags: Union[str, List[str], None]) -> List[str]:
+    """
+    Normalize tags to a consistent list format.
+
+    Handles all input formats:
+    - None → []
+    - "tag1,tag2,tag3" → ["tag1", "tag2", "tag3"]
+    - "single-tag" → ["single-tag"]
+    - ["tag1", "tag2"] → ["tag1", "tag2"]
+
+    Args:
+        tags: Tags in any supported format (None, string, comma-separated string, or list)
+
+    Returns:
+        List of tag strings, empty list if None or empty string
+    """
+    if tags is None:
+        return []
+
+    if isinstance(tags, str):
+        # Empty string returns empty list
+        if not tags.strip():
+            return []
+        # Split by comma if present, otherwise single tag
+        if ',' in tags:
+            return [tag.strip() for tag in tags.split(',') if tag.strip()]
+        return [tags.strip()]
+
+    # Already a list - return as-is
+    return tags
+
+
 class MemoryResult(TypedDict):
     """Type definition for memory operation results."""
     content: str
@@ -116,7 +148,7 @@ class MemoryService:
     async def store_memory(
         self,
         content: str,
-        tags: Optional[List[str]] = None,
+        tags: Union[str, List[str], None] = None,
         memory_type: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
         client_hostname: Optional[str] = None
@@ -124,20 +156,32 @@ class MemoryService:
         """
         Store a new memory with validation and content processing.
 
+        Accepts tags in multiple formats for maximum flexibility:
+        - None → []
+        - "tag1,tag2,tag3" → ["tag1", "tag2", "tag3"]
+        - "single-tag" → ["single-tag"]
+        - ["tag1", "tag2"] → ["tag1", "tag2"]
+
         Args:
             content: The memory content
-            tags: Optional tags for the memory
+            tags: Optional tags for the memory (string, comma-separated string, or list)
             memory_type: Optional memory type classification
-            metadata: Optional additional metadata
+            metadata: Optional additional metadata (can also contain tags)
             client_hostname: Optional client hostname for source tagging
 
         Returns:
             Dictionary with operation result
         """
         try:
-            # Prepare tags and metadata with optional hostname tagging
-            final_tags = tags or []
+            # Normalize tags from parameter (handles all formats)
+            final_tags = normalize_tags(tags)
+
+            # Extract and normalize metadata.tags if present
             final_metadata = metadata or {}
+            if metadata and "tags" in metadata:
+                metadata_tags = normalize_tags(metadata.get("tags"))
+                # Merge with parameter tags and remove duplicates
+                final_tags = list(set(final_tags + metadata_tags))
 
             # Apply hostname tagging if provided (for consistent source tracking)
             if client_hostname:
@@ -292,9 +336,8 @@ class MemoryService:
             Dictionary with matching memories
         """
         try:
-            # Normalize tags to list
-            if isinstance(tags, str):
-                tags = [tags]
+            # Normalize tags to list (handles all formats including comma-separated)
+            tags = normalize_tags(tags)
 
             # Search using database-level filtering
             # Note: Using search_by_tag from base class (singular)

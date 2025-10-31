@@ -150,17 +150,16 @@ async def store_memory(
         metadata: Additional metadata for the memory
         client_hostname: Client machine hostname for source tracking
 
-    **IMPORTANT - Tag Formats (Both Supported):**
-    The tags parameter accepts BOTH formats:
+    **Tag Formats - All Formats Supported:**
+    Both the tags parameter AND metadata.tags accept ALL formats:
     - ✅ Array format: tags=["tag1", "tag2", "tag3"]
-    - ✅ String format: tags="tag1,tag2,tag3"
+    - ✅ Comma-separated string: tags="tag1,tag2,tag3"
+    - ✅ Single string: tags="single-tag"
+    - ✅ In metadata: metadata={"tags": "tag1,tag2", "type": "note"}
+    - ✅ In metadata (array): metadata={"tags": ["tag1", "tag2"], "type": "note"}
 
-    Both will be normalized to an array internally.
-
-    **IMPORTANT - Metadata Tag Format:**
-    When providing tags in the metadata parameter, they MUST be an array:
-    - ✅ CORRECT: metadata={"tags": ["tag1", "tag2"], "type": "note"}
-    - ❌ WRONG: metadata={"tags": "tag1,tag2", "type": "note"}
+    All formats are automatically normalized internally. If tags are provided in both
+    the tags parameter and metadata.tags, they will be merged (duplicates removed).
 
     Returns:
         Dictionary with:
