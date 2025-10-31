@@ -8,6 +8,34 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.13.5] - 2025-10-31
+
+### Fixed
+- **Memory Hooks Display Polish** - Visual improvements for cleaner, more professional CLI output
+  - **Issue**: Multiple visual inconsistencies in memory hooks tree structure display
+  - **Problems Identified**:
+    1. Redundant bottom frame (`╰────╯`) after tree naturally ended with `└─`
+    2. Wrapped text continuation showing vertical lines (`│`) after last items
+    3. Duplicate final summary message ("Context injected") when header already shows count
+    4. Embedded formatting (✅, •, markdown) conflicting with tree structure
+    5. Excessive content length despite adaptive truncation
+  - **Fixes** (commits ed46d24, 998a39c):
+    - **Content Sanitization**: Remove checkmarks, bullets, markdown formatting that conflicts with tree characters
+    - **Smart Truncation**: Extract first 1-2 sentences for <400 char limits using sentence boundary detection
+    - **Tree Continuation Logic**: Last items show clean indentation without vertical lines on wrapped text
+    - **Remove Redundant Frame**: Tree ends naturally with `└─`, no separate closing box
+    - **Remove Duplicate Message**: Header shows "X memories loaded", no redundant final summary
+  - **Files Modified**:
+    - `claude-hooks/utilities/context-formatter.js`: Content sanitization, smart truncation, tree continuation fixes
+    - `claude-hooks/core/session-start.js`: Removed redundant success message
+  - **Result**: Clean, consistent tree structure with proper visual hierarchy and no redundancy
+  - **User Impact**: Professional CLI output, easier to scan, maintains continuous blue tree lines properly
+
+### Technical Details
+- **Affected Component**: Claude Code memory awareness hooks (SessionStart display)
+- **Deployment**: Hooks loaded from repository automatically, no server restart needed
+- **Testing**: Verified with mock execution and real Claude Code session
+
 ## [8.13.4] - 2025-10-30
 
 ### Fixed
