@@ -3,6 +3,18 @@
 **Analysis Period**: December 26, 2024 - October 31, 2025 (10 months)
 **Generated**: October 31, 2025
 
+## 📊 Visualizations
+
+This report includes 5 generated visualizations in [`charts/`](charts/):
+
+1. **[Monthly Activity](charts/monthly_activity.png)** - Commits and releases over time (dual-axis chart)
+2. **[Activity Patterns](charts/activity_patterns.png)** - Hourly and daily commit patterns
+3. **[Contributors](charts/contributors.png)** - Contributor distribution pie chart
+4. **[October Sprint](charts/october_sprint.png)** - October 2025 detailed daily breakdown
+5. **[Growth Trajectory](charts/growth_trajectory.png)** - Cumulative commits and releases
+
+To regenerate charts: `uv run python generate_charts.py` (requires pandas, matplotlib, seaborn)
+
 ---
 
 ## Executive Summary
