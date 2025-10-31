@@ -129,7 +129,20 @@ class MemoryStorage(ABC):
     async def delete(self, content_hash: str) -> Tuple[bool, str]:
         """Delete a memory by its hash."""
         pass
-    
+
+    @abstractmethod
+    async def get_by_hash(self, content_hash: str) -> Optional[Memory]:
+        """
+        Get a memory by its content hash using direct O(1) lookup.
+
+        Args:
+            content_hash: The content hash of the memory to retrieve
+
+        Returns:
+            Memory object if found, None otherwise
+        """
+        pass
+
     @abstractmethod
     async def delete_by_tag(self, tag: str) -> Tuple[int, str]:
         """Delete memories by tag. Returns (count_deleted, message)."""

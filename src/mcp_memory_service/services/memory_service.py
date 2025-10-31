@@ -469,7 +469,7 @@ class MemoryService:
 
     async def get_memory_by_hash(self, content_hash: str) -> Dict[str, Any]:
         """
-        Retrieve a specific memory by its content hash.
+        Retrieve a specific memory by its content hash using O(1) direct lookup.
 
         Args:
             content_hash: The content hash of the memory
@@ -478,10 +478,8 @@ class MemoryService:
             Dictionary with memory data or error
         """
         try:
-            # Get all memories and find by hash (storage base doesn't have get_memory)
-            # This is inefficient but maintains compatibility
-            all_memories = await self.storage.get_all_memories(limit=None, offset=0)
-            memory = next((m for m in all_memories if m.content_hash == content_hash), None)
+            # Use direct O(1) lookup via storage.get_by_hash()
+            memory = await self.storage.get_by_hash(content_hash)
 
             if memory:
                 return {

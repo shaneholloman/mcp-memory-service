@@ -330,7 +330,7 @@ async def test_api_delete_memory_not_found(mock_storage):
 @pytest.mark.asyncio
 async def test_api_get_memory_by_hash_uses_service(mock_storage, sample_memory):
     """Test GET /api/memories/{hash} uses MemoryService."""
-    mock_storage.get_memory.return_value = sample_memory
+    mock_storage.get_by_hash.return_value = sample_memory
 
     service = MemoryService(storage=mock_storage)
 
@@ -338,6 +338,7 @@ async def test_api_get_memory_by_hash_uses_service(mock_storage, sample_memory):
 
     assert result["found"] is True
     assert result["memory"]["content_hash"] == "test_hash_123"
+    mock_storage.get_by_hash.assert_called_once_with("test_hash_123")
 
 
 # Test Dependency Injection
