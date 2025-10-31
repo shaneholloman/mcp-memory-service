@@ -8,6 +8,60 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.15.0] - 2025-10-31
+
+### Added
+- **`/session-start` Slash Command** - Manual session initialization for all platforms
+  - Provides same functionality as automatic SessionStart hook
+  - Displays project context, git history, relevant memories
+  - **Platform**: Works on Windows, macOS, Linux
+  - **Use Case**: Primary workaround for Windows SessionStart hook bug (#160)
+  - **Location**: `claude_commands/session-start.md`
+  - **Benefits**:
+    - ✅ Safe manual alternative to automatic hooks
+    - ✅ No configuration changes needed
+    - ✅ Full memory awareness functionality
+    - ✅ Prevents Claude Code hangs on Windows
+
+### Changed
+- **Windows-Aware Installer** - Platform detection and automatic configuration
+  - Detects Windows platform during hook installation
+  - Automatically skips SessionStart hook configuration on Windows
+  - Shows clear warning about SessionStart limitation
+  - Suggests `/session-start` slash command as alternative
+  - Also skips statusLine configuration on Windows (requires bash)
+  - **Files Modified**: `claude-hooks/install_hooks.py` (lines 749-817)
+  - **User Impact**: Prevents Windows users from accidentally breaking Claude Code
+
+### Documentation
+- **Enhanced Windows Support Documentation**
+  - Updated `claude_commands/README.md` with `/session-start` command details
+  - Added Windows workaround section to `claude-hooks/README.md`
+  - Updated `CLAUDE.md` with `/session-start` as #1 recommended workaround
+  - Added comprehensive troubleshooting guidance
+  - Updated GitHub issue #160 with new workaround instructions
+
+### Fixed
+- **Windows Installation Experience** - Prevents SessionStart hook deadlock (Issue #160)
+  - **Previous Behavior**: Windows users install hooks → Claude Code hangs → frustration
+  - **New Behavior**: Windows users see warning → skip SessionStart → use `/session-start` → works
+  - **Breaking Change**: None - fully backward compatible
+  - **Upstream Issue**: Awaiting fix from Anthropic Claude Code team (claude-code#9542)
+
+### Technical Details
+- **Files Created**: 1 new slash command
+  - `claude_commands/session-start.md` - Full command documentation
+- **Files Modified**: 4 files
+  - `claude-hooks/install_hooks.py` - Windows platform detection and warnings
+  - `claude_commands/README.md` - Added `/session-start` to available commands
+  - `claude-hooks/README.md` - Added slash command workaround reference
+  - `CLAUDE.md` - Updated workaround prioritization
+
+- **Platform Compatibility**:
+  - ✅ Windows: `/session-start` command works, automatic hooks skipped
+  - ✅ macOS: All features work (automatic hooks + slash command)
+  - ✅ Linux: All features work (automatic hooks + slash command)
+
 ## [8.14.2] - 2025-10-31
 
 ### Performance
