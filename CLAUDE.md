@@ -674,6 +674,100 @@ If you find a `data/memory.db` file in your project directory:
 - Configured location: `~/Library/Application Support/mcp-memory/sqlite_vec.db` (macOS)
 - Verify: `curl http://localhost:8000/api/health` should show correct memory count
 
+### SessionEnd Hook Troubleshooting
+
+**Common Confusion**: Many users expect SessionEnd hooks to fire when they press Ctrl+C twice, but this is **not** how Claude Code works.
+
+#### 🔍 When SessionEnd Hooks Actually Trigger
+
+**SessionEnd fires ONLY on actual session termination**:
+- ✅ `/exit` command - Graceful session termination
+- ✅ Terminal/window close - Process termination
+- ✅ Normal Claude Code exit - Graceful shutdown
+
+**SessionEnd does NOT fire on**:
+- ❌ Ctrl+C (once) - Interrupts input only
+- ❌ Ctrl+C (twice) - Suspends session
+- ❌ Session resume - Continues existing session (fires `SessionStart:resume` instead)
+
+**Key Insight**: When you press Ctrl+C twice and later resume, you see:
+```
+SessionStart:resume hook success
+```
+This confirms you **resumed** an existing session - no SessionEnd was triggered.
+
+#### 🐛 Common Issue: "My Session Didn't Create a Memory"
+
+**Symptom**: You exited Claude Code with Ctrl+C, resumed later, but no `session-consolidation` memory exists.
+
+**Root Cause**: Ctrl+C **suspends** the session, it doesn't **end** it. Only `/exit` or terminal close triggers SessionEnd.
+
+**Solution**: Always use `/exit` to properly terminate sessions if you want memories created.
+
+#### 🔌 Common Issue: Connection Failures
+
+**Symptom**:
+```
+⚠️ Memory Connection → Failed to connect using any available protocol
+💾 Storage → 💾 Unknown Storage (http://127.0.0.1:8000)
+```
+
+**Root Cause**: HTTP/HTTPS protocol mismatch between hook config and server.
+
+**Diagnosis**:
+```bash
+# Check server protocol
+systemctl --user status mcp-memory-http.service
+# Look for: "Uvicorn running on https://..." or "http://..."
+
+# Check hook config
+grep endpoint ~/.claude/hooks/config.json
+```
+
+**Solution**: Update `~/.claude/hooks/config.json` to match server:
+```json
+{
+  "memoryService": {
+    "http": {
+      "endpoint": "https://localhost:8000",  // Match your server protocol
+      "apiKey": "your-api-key"
+    }
+  }
+}
+```
+
+#### 📋 SessionEnd Memory Requirements
+
+Even if SessionEnd fires, memory creation requires:
+1. **Minimum session length**: 100+ characters (configurable)
+2. **Minimum confidence**: > 0.1 from conversation analysis
+3. **Session consolidation enabled**: `enableSessionConsolidation: true` in config
+
+**What gets extracted**:
+- Topics (implementation, debugging, architecture, etc.)
+- Decisions ("decided to", "will use", "chose to")
+- Insights ("learned that", "discovered", "realized")
+- Code changes ("implemented", "created", "refactored")
+- Next steps ("next we need", "TODO", "remaining")
+
+#### 🔧 Quick Verification
+
+```bash
+# Check recent session memories
+curl -sk "https://localhost:8000/api/search/by-tag" \
+  -H "Content-Type: application/json" \
+  -d '{"tags": ["session-consolidation"], "limit": 5}' | \
+  python -m json.tool | grep created_at_iso
+
+# Test SessionEnd hook manually
+node ~/.claude/hooks/core/session-end.js
+
+# Verify connection
+curl -sk "https://localhost:8000/api/health"
+```
+
+**Detailed Guide**: See `docs/troubleshooting/session-end-hooks.md` for comprehensive troubleshooting steps, diagnosis checklist, and technical details.
+
 ### Windows SessionStart Hook Issue
 
 **🚨 CRITICAL BUG**: SessionStart hooks with `matchers: ["*"]` cause Claude Code to hang indefinitely on Windows.
