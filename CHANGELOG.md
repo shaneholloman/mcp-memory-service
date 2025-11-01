@@ -8,6 +8,68 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Memory Type Consolidation Tool** 🆕 - Professional-grade database maintenance for type taxonomy cleanup
+  - **Script**: `scripts/maintenance/consolidate_memory_types.py` (v1.0.0)
+  - **Configuration**: `scripts/maintenance/consolidation_mappings.json` (168 predefined mappings)
+  - **Performance**: ~5 seconds for 1,000 memory updates
+  - **Safety Features**:
+    - ✅ Automatic timestamped backups before execution
+    - ✅ Dry-run mode for safe preview
+    - ✅ Transaction safety (atomic with rollback)
+    - ✅ Database lock detection
+    - ✅ HTTP server status warnings
+    - ✅ Disk space verification
+    - ✅ Backup integrity validation
+  - **Consolidates**: 341 fragmented types → 24 core taxonomy types
+  - **Real-world test**: 1,049 memories updated in 5s (59% of database)
+  - **Type reduction**: 342 → 128 unique types (63% reduction)
+  - **Zero data loss**: Only type reassignments, preserves all content
+
+- **Standardized Memory Type Taxonomy** - 24 core types organized into 5 categories
+  - **Content Types** (4): note, reference, document, guide
+  - **Activity Types** (5): session, implementation, analysis, troubleshooting, test
+  - **Artifact Types** (4): fix, feature, release, deployment
+  - **Progress Types** (2): milestone, status
+  - **Infrastructure Types** (5): configuration, infrastructure, process, security, architecture
+  - **Other Types** (4): documentation, solution, achievement, technical
+  - **Purpose**: Prevents future type fragmentation
+  - **Benefits**: Improved query efficiency, consistent naming, better semantic grouping
+
+### Changed
+- **CLAUDE.md** - Added Memory Type Taxonomy section to Development Guidelines
+  - Documents 24 core types with clear usage guidelines
+  - Provides examples of what to avoid (bug-fix vs fix, technical-* prefixes)
+  - Added consolidation commands to Essential Commands section
+  - Includes best practices for maintaining type consistency
+
+### Documentation
+- **Comprehensive Maintenance Documentation**
+  - Updated `scripts/maintenance/README.md` with consolidation tool guide
+  - Added to Quick Reference table with performance metrics
+  - Detailed usage instructions with safety prerequisites
+  - Recovery procedures for backup restoration
+  - Maintenance schedule recommendations (monthly dry-run checks)
+  - **Real-world example**: Production consolidation results from Nov 2025
+
+### Technical Details
+- **Consolidation Mappings**:
+  - NULL/empty → `note` (609 memories in real test)
+  - Milestone/completion variants → `milestone` (21 source types → 60 memories)
+  - Session variants → `session` (8 source types → 37 memories)
+  - Technical-* prefix removal → base types (62 memories)
+  - Project-* prefix removal → base types (67 memories)
+  - Fix/bug variants → `fix` (8 source types → 28 memories)
+  - See `consolidation_mappings.json` for complete mapping list (168 rules)
+
+### Notes
+- **Customizable**: Edit `consolidation_mappings.json` to customize behavior
+- **Idempotent**: Safe to run multiple times with same mappings
+- **Platform support**: Linux, macOS, Windows (disk space check requires statvfs)
+- **Recommended schedule**: Run --dry-run monthly, execute when types exceed 150
+
 ## [8.15.1] - 2025-10-31
 
 ### Fixed

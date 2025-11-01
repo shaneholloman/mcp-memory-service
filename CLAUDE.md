@@ -54,6 +54,12 @@ python scripts/sync/sync_memory_backends.py --dry-run   # Preview sync
 python scripts/sync/claude_sync_commands.py backup      # Cloudflare → SQLite
 python scripts/sync/claude_sync_commands.py restore     # SQLite → Cloudflare
 
+# Database Maintenance (NEW v8.16.0)
+python scripts/maintenance/consolidate_memory_types.py --dry-run  # Preview type consolidation (safe)
+python scripts/maintenance/consolidate_memory_types.py            # Execute type consolidation
+python scripts/maintenance/find_all_duplicates.py                 # Find duplicate memories
+bash scripts/maintenance/fast_cleanup_duplicates.sh               # Remove duplicates quickly
+
 # Service Management
 scripts/service/memory_service_manager.sh status       # Check service status
 scripts/service/memory_service_manager.sh start-cloudflare # Start with Cloudflare
@@ -77,6 +83,8 @@ node ~/.claude/hooks/test-natural-triggers.js          # Test trigger system
 # Debug & Troubleshooting
 npx @modelcontextprotocol/inspector uv run memory server # MCP Inspector
 python scripts/database/simple_timestamp_check.py       # Database health check
+python scripts/maintenance/consolidate_memory_types.py --dry-run  # Preview type consolidation
+python scripts/maintenance/consolidate_memory_types.py  # Execute type consolidation
 df -h /                                               # Check disk space (critical for Litestream)
 journalctl -u mcp-memory-service -f                   # Monitor service logs
 
@@ -467,6 +475,49 @@ export CLOUDFLARE_VECTORIZE_INDEX="mcp-memory-index"
 - Memory operations handle duplicates via content hashing
 - Time parsing supports natural language ("yesterday", "last week")
 - Use semantic commit messages for version management
+
+#### **Memory Type Taxonomy** (Updated Nov 2025)
+Database consolidated from 342 fragmented types to 128 organized types. Use these **24 core types** for all new memories:
+
+**Content Types:**
+- `note` - General notes, observations, summaries
+- `reference` - Reference materials, knowledge base entries
+- `document` - Formal documents, code snippets
+- `guide` - How-to guides, tutorials, troubleshooting guides
+
+**Activity Types:**
+- `session` - Work sessions, development sessions
+- `implementation` - Implementation work, integrations
+- `analysis` - Analysis, reports, investigations
+- `troubleshooting` - Problem-solving, debugging
+- `test` - Testing activities, validation
+
+**Artifact Types:**
+- `fix` - Bug fixes, corrections
+- `feature` - New features, enhancements
+- `release` - Releases, release notes
+- `deployment` - Deployments, deployment records
+
+**Progress Types:**
+- `milestone` - Milestones, completions, achievements
+- `status` - Status updates, progress reports
+
+**Infrastructure Types:**
+- `configuration` - Configurations, setups, settings
+- `infrastructure` - Infrastructure changes, system updates
+- `process` - Processes, workflows, procedures
+- `security` - Security-related memories
+- `architecture` - Architecture decisions, design patterns
+
+**Other Types:**
+- `documentation` - Documentation artifacts
+- `solution` - Solutions, resolutions
+- `achievement` - Accomplishments, successes
+
+**Usage Notes:**
+- Avoid creating new type variations (e.g., use `fix` not `bug-fix`, `bugfix`, `technical-fix`)
+- Avoid redundant prefixes (e.g., use `solution` not `technical-solution`, `project-solution`)
+- Run `python scripts/maintenance/consolidate_memory_types.py --dry-run` to preview type cleanup
 
 ### 🏗️ **Architecture & Testing**
 - Storage backends must implement abstract base class
