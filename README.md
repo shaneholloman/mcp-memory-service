@@ -15,22 +15,24 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.15.0** (Oct 31, 2025)
+### 🆕 Latest Release: **v8.16.0** (Nov 1, 2025)
 
-**Windows Platform Support** - Full Windows compatibility with intelligent workarounds for Claude Code SessionStart hook limitation.
+**Database Maintenance & Type Consolidation** - Professional-grade tools for maintaining memory database health and organization.
 
 **What's New**:
-- ✨ **New `/session-start` slash command** - Manual session initialization that works on all platforms
-- 🪟 **Windows-aware installer** - Automatic platform detection prevents configuration issues
-- 📚 **Enhanced documentation** - Comprehensive Windows troubleshooting and workarounds
-- 🛡️ **Safe installation** - Prevents SessionStart hook deadlock on Windows (#160)
+- 🧹 **Memory Type Consolidation Tool** - Consolidate 300+ fragmented types into 24 standardized types
+- 🛡️ **Comprehensive Safety System** - Auto-backups, lock detection, disk space validation
+- ⚡ **5-Second Performance** - Consolidate 1,000+ memories in seconds
+- 📊 **24-Type Taxonomy** - Standardized memory types prevent future fragmentation
+- 🔧 **Customizable Mappings** - JSON config with 168 predefined consolidation rules
+- 📚 **Production-Tested** - Real-world test: 1,049 memories, 63% type reduction, zero data loss
 
-**Platform Support**:
-- Windows: `/session-start` command + UserPromptSubmit hooks ✅
-- macOS: All features including automatic SessionStart hooks ✅
-- Linux: All features including automatic SessionStart hooks ✅
+**Database Health**:
+- Before: 342 fragmented types, 609 NULL/empty memories
+- After: 128 organized types, all memories properly categorized
+- Impact: Improved query efficiency, consistent naming, better semantic grouping
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8150---2025-10-31) | [Issue #160](https://github.com/doobidoo/mcp-memory-service/issues/160) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8160---2025-11-01) | [Maintenance Guide](scripts/maintenance/README.md#consolidate_memory_typespy-new) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
