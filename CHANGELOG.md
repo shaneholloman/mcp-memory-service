@@ -8,6 +8,32 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.16.1] - 2025-11-02
+
+### Fixed
+- **Critical Bug**: Fixed `KeyError: 'message'` in MCP server handler (`server.py:2118`)
+  - **Issue**: [#198](https://github.com/doobidoo/mcp-memory-service/issues/198)
+  - **Root Cause**: `handle_store_memory()` attempted to access non-existent `result["message"]` key
+  - **Impact**: All memory store operations via MCP `server.py` handler failed completely
+  - **Fix**: Properly handle `MemoryService.store_memory()` response format:
+    - Success (single): `{"success": True, "memory": {...}}`
+    - Success (chunked): `{"success": True, "memories": [...], "total_chunks": N}`
+    - Failure: `{"success": False, "error": "..."}`
+  - **Response Messages**: Now include truncated content hash for verification
+  - **Related**: This was part of issue #197 where async/await bug was fixed in v8.16.0, but this response format bug was missed
+
+### Added
+- **Integration Tests**: New test suite for MCP handler methods (`tests/integration/test_mcp_handlers.py`)
+  - **Coverage**: 11 test cases for `handle_store_memory()`, `handle_retrieve_memory()`, `handle_search_by_tag()`
+  - **Regression Tests**: Specific tests for issue #198 to prevent future KeyError bugs
+  - **Test Scenarios**: Success, chunked response, error handling, edge cases
+  - **Purpose**: Prevent similar bugs in future releases
+
+### Technical Details
+- **Affected Handler**: Only `handle_store_memory()` was affected by this bug
+- **Fixed Code Pattern**: Matches the correct pattern used in `mcp_server.py:182-205`
+- **Backward Compatibility**: No breaking changes, only fixes broken functionality
+
 ## [8.16.0] - 2025-11-01
 
 ### Added
