@@ -8,6 +8,23 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.16.2] - 2025-11-03
+
+### Fixed
+- **Critical Bug**: Fixed bidirectional sync script crash due to incorrect Memory attribute access
+  - **File**: `scripts/sync/sync_memory_backends.py`
+  - **Root Cause**: Script accessed non-existent `memory.id` and `memory.hash` attributes instead of correct `memory.content_hash`
+  - **Impact**: Bidirectional sync between SQLite-vec and Cloudflare backends completely broken
+  - **Lines Fixed**: 81, 121, 137, 146, 149, 151, 153, 155, 158
+  - **Testing**: Dry-run validated with 1,978 SQLite memories and 1,958 Cloudflare memories
+  - **Result**: Successfully identified 338 memories to sync, 1,640 duplicates correctly skipped
+
+### Technical Details
+- **Error Type**: `AttributeError: 'Memory' object has no attribute 'id'/'hash'`
+- **Correct Attribute**: `content_hash` - SHA-256 based unique identifier for memory content
+- **Affected Methods**: `get_all_memories_from_backend()`, `_sync_between_backends()`
+- **Backward Compatibility**: No breaking changes, only fixes broken functionality
+
 ## [8.16.1] - 2025-11-02
 
 ### Fixed
