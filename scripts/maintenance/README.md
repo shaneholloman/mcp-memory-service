@@ -6,6 +6,7 @@ This directory contains maintenance and diagnostic scripts for the MCP Memory Se
 
 | Script | Purpose | Performance | Use Case |
 |--------|---------|-------------|----------|
+| [`check_memory_types.py`](#check_memory_typespy-new) | Display type distribution | <1s | Quick health check, pre/post-consolidation validation |
 | [`consolidate_memory_types.py`](#consolidate_memory_typespy-new) | Consolidate fragmented types | ~5s for 1000 updates | Type taxonomy cleanup, reduce fragmentation |
 | [`regenerate_embeddings.py`](#regenerate_embeddingspy) | Regenerate all embeddings | ~5min for 2600 memories | After cosine migration or embedding corruption |
 | [`fast_cleanup_duplicates.sh`](#fast_cleanup_duplicatessh) | Fast duplicate removal | <5s for 100+ duplicates | Bulk duplicate cleanup |
@@ -16,6 +17,57 @@ This directory contains maintenance and diagnostic scripts for the MCP Memory Se
 | [`cleanup_corrupted_encoding.py`](#cleanup_corrupted_encodingpy) | Fix encoding issues | Varies | Repair encoding corruption |
 
 ## Detailed Documentation
+
+### `check_memory_types.py` 🆕
+
+**Purpose**: Quick diagnostic tool to display memory type distribution in the database.
+
+**When to Use**:
+- Before running consolidation to see what needs cleanup
+- After consolidation to verify results
+- Regular health checks to monitor type fragmentation
+- When investigating memory organization issues
+
+**Usage**:
+```bash
+# Display type distribution (Windows)
+python scripts/maintenance/check_memory_types.py
+
+# On macOS/Linux, update the database path in the script first
+```
+
+**Output Example**:
+```
+Memory Type Distribution
+============================================================
+Total memories: 1,978
+Unique types: 128
+
+Memory Type                              Count      %
+------------------------------------------------------------
+note                                       609  30.8%
+session                                     89   4.5%
+fix                                         67   3.4%
+milestone                                   60   3.0%
+reference                                   45   2.3%
+...
+```
+
+**Performance**: < 1 second for any database size (read-only SQL query)
+
+**Features**:
+- Shows top 30 types by frequency
+- Displays total memory count and unique type count
+- Identifies NULL/empty types as "(empty/NULL)"
+- Percentage calculation for easy analysis
+- Zero risk (read-only operation)
+
+**Workflow Integration**:
+1. Run `check_memory_types.py` to identify fragmentation
+2. If types > 150, consider running consolidation
+3. Run `consolidate_memory_types.py --dry-run` to preview
+4. Execute `consolidate_memory_types.py` to clean up
+5. Run `check_memory_types.py` again to verify improvement
 
 ### `consolidate_memory_types.py` 🆕
 

@@ -55,6 +55,7 @@ python scripts/sync/claude_sync_commands.py backup      # Cloudflare → SQLite
 python scripts/sync/claude_sync_commands.py restore     # SQLite → Cloudflare
 
 # Database Maintenance (NEW v8.16.0)
+python scripts/maintenance/check_memory_types.py                  # Check memory type distribution
 python scripts/maintenance/consolidate_memory_types.py --dry-run  # Preview type consolidation (safe)
 python scripts/maintenance/consolidate_memory_types.py            # Execute type consolidation
 python scripts/maintenance/find_all_duplicates.py                 # Find duplicate memories
