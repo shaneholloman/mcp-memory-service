@@ -15,24 +15,29 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.16.0** (Nov 1, 2025)
+### 🆕 Latest Release: **v8.17.0** (Nov 4, 2025)
 
-**Database Maintenance & Type Consolidation** - Professional-grade tools for maintaining memory database health and organization.
+**Cross-Platform Consolidation & Dashboard Improvements** - Platform-aware database maintenance and visual enhancements.
 
 **What's New**:
-- 🧹 **Memory Type Consolidation Tool** - Consolidate 300+ fragmented types into 24 standardized types
-- 🛡️ **Comprehensive Safety System** - Auto-backups, lock detection, disk space validation
-- ⚡ **5-Second Performance** - Consolidate 1,000+ memories in seconds
-- 📊 **24-Type Taxonomy** - Standardized memory types prevent future fragmentation
-- 🔧 **Customizable Mappings** - JSON config with 168 predefined consolidation rules
-- 📚 **Production-Tested** - Real-world test: 1,049 memories, 63% type reduction, zero data loss
+- 🖥️ **Platform-Aware Consolidation** - Auto-detects macOS, Windows, Linux database paths
+- 📝 **External JSON Configuration** - Edit consolidation mappings without code changes (294 mappings)
+- 📚 **Agent System Documentation** - New AGENTS.md with amp-bridge integration guide
+- 📊 **Dashboard Chart Fixes** - Resolved analytics chart layout and proportionality issues
 
-**Database Health**:
-- Before: 342 fragmented types, 609 NULL/empty memories
-- After: 128 organized types, all memories properly categorized
-- Impact: Improved query efficiency, consistent naming, better semantic grouping
+**Cross-Platform Support**:
+- macOS: `~/Library/Application Support/mcp-memory/sqlite_vec.db`
+- Windows: `%LOCALAPPDATA%/mcp-memory/sqlite_vec.db`
+- Linux: `~/.local/share/mcp-memory/sqlite_vec.db`
+- Auto-detection using `platform.system()` - works seamlessly everywhere
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8160---2025-11-01) | [Maintenance Guide](scripts/maintenance/README.md#consolidate_memory_typespy-new) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**Dashboard Improvements**:
+- Fixed: Chart bars rendering outside containers
+- Fixed: Uniform bar sizes despite different values
+- Enhanced: 200px pixel scale for proper visualization
+- Enhanced: CSS container constraints with accurate proportions
+
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8170---2025-11-04) | [PR #201](https://github.com/doobidoo/mcp-memory-service/pull/201) | [PR #200](https://github.com/doobidoo/mcp-memory-service/pull/200) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
