@@ -8,6 +8,45 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.17.0] - 2025-11-04
+
+### Added
+- **Platform-Aware Consolidation Tool** - Cross-platform database path detection for memory type consolidation
+  - **Auto-detection**: macOS (`~/Library/Application Support`), Windows (`%LOCALAPPDATA%`), Linux (`~/.local/share`)
+  - **Script**: `scripts/maintenance/consolidate_memory_types.py` enhanced with `platform.system()` detection
+  - **Benefit**: Works seamlessly across all platforms without manual path configuration
+  - **PR**: [#201](https://github.com/doobidoo/mcp-memory-service/pull/201)
+
+- **External JSON Configuration** - Editable consolidation mappings for flexible type management
+  - **File**: `scripts/maintenance/consolidation_mappings.json` (294 mappings, v1.1.0)
+  - **Schema**: JSON Schema validation with taxonomy documentation
+  - **Extensibility**: Add custom type mappings without code changes
+  - **Taxonomy**: 24 core types organized into 5 categories
+  - **PR**: [#201](https://github.com/doobidoo/mcp-memory-service/pull/201)
+
+- **Agent System Documentation** - Comprehensive agent guidelines for development workflows
+  - **File**: `AGENTS.md` - Central documentation for available agents
+  - **Agent**: `amp-bridge` - Amp CLI integration for research without credit consumption
+  - **Integration**: Semi-automated file-based workflow with Amp's `@file` reference syntax
+  - **CLAUDE.md**: Updated with Amp CLI Bridge architecture and quick start guide
+  - **PR**: [#201](https://github.com/doobidoo/mcp-memory-service/pull/201)
+
+### Fixed
+- **Dashboard Analytics Chart Layout** - Resolved rendering and proportionality issues
+  - **Fixed**: Chart bars rendering outside containers
+  - **Fixed**: Uniform bar sizes despite different values
+  - **Fixed**: Memory type distribution showing incorrect proportions
+  - **Enhancement**: Switched to 200px pixel scale for proper visualization
+  - **Enhancement**: CSS container constraints with `overflow-x: auto` and flexbox improvements
+  - **Files**: `web/static/app.js`, `web/static/index.html`, `web/static/style.css`
+  - **PR**: [#200](https://github.com/doobidoo/mcp-memory-service/pull/200)
+
+### Technical Details
+- **Platform Detection**: Uses `platform.system()` for "Darwin" (macOS), "Windows", and Linux
+- **Backward Compatibility**: Existing scripts continue to work with new platform-aware paths
+- **Agent Workflow**: Claude Code creates prompts → User runs `amp @prompt-file` → Amp writes response → Agent presents results
+- **Chart Rendering**: Dashboard now properly visualizes memory distribution with accurate proportions
+
 ## [8.16.2] - 2025-11-03
 
 ### Fixed
