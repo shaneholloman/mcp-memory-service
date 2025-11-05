@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
+> **🔧 v8.17.1**: **Critical Analytics Fix & Maintenance Utilities** - Dashboard now shows accurate memory count (fixed 1,000 sampling limit). New intelligent tag repair and type assignment tools for database cleanup.
+
 > **🚨 v8.13.3**: **MCP Tools Restored** - CRITICAL patch fixing v8.12.0 regression that broke all MCP memory operations. Transform MemoryService responses to proper MCP TypedDict format. Requires MCP server restart (/mcp command) to load fix.
 
 > **🔄 v8.13.2**: **Sync Script Restored** - Fixed broken backend synchronization (store_memory API migration). Proper Memory object creation with storage.store() method.
@@ -60,6 +62,10 @@ python scripts/maintenance/consolidate_memory_types.py --dry-run  # Preview type
 python scripts/maintenance/consolidate_memory_types.py            # Execute type consolidation
 python scripts/maintenance/find_all_duplicates.py                 # Find duplicate memories
 bash scripts/maintenance/fast_cleanup_duplicates.sh               # Remove duplicates quickly
+python scripts/maintenance/repair_malformed_tags.py --dry-run     # Preview malformed tag repairs (v8.17.1)
+python scripts/maintenance/repair_malformed_tags.py               # Repair JSON serialization artifacts in tags (v8.17.1)
+python scripts/maintenance/assign_memory_types.py --dry-run       # Preview intelligent type assignment (v8.17.1)
+python scripts/maintenance/assign_memory_types.py                 # Assign types to untyped memories (v8.17.1)
 
 # Service Management
 scripts/service/memory_service_manager.sh status       # Check service status
