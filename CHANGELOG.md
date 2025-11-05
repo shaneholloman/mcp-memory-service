@@ -38,6 +38,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Source**: Adapted from [PR #199](https://github.com/doobidoo/mcp-memory-service/pull/199) by Ray Walker (27Bslash6)
   - **Commit**: [ca5ccf3](https://github.com/doobidoo/mcp-memory-service/commit/ca5ccf3f460feca06d3c9232303a6e528ca2c76f)
 
+## [8.17.1] - 2025-11-05
+
+### Fixed
+- **CRITICAL: Dashboard Analytics Accuracy** - Fixed analytics endpoint showing incorrect memory count
+  - **Issue**: Dashboard displayed 1,000 memories (sampling) instead of actual 2,222 total
+  - **Root Cause**: Analytics endpoint used `get_recent_memories(n=1000)` sampling approach instead of direct SQL query
+  - **Solution**: Direct SQL query via `storage.primary.conn` for `HybridMemoryStorage` backend
+  - **File**: `src/mcp_memory_service/web/api/analytics.py` (line 386)
+  - **Impact**: Dashboard now shows accurate memory totals for all storage backends
+  - **Additional Fix**: Corrected attribute check from `storage.sqlite` to `storage.primary` for hybrid backend detection
+
+### Added
+- **Malformed Tags Repair Utility** - Intelligent repair tool for JSON serialization artifacts in tags
+  - **Script**: `scripts/maintenance/repair_malformed_tags.py`
+  - **Repaired**: 1,870 malformed tags across 369 memories
+  - **Patterns Detected**: JSON quotes (`\"tag\"`), brackets (`[tag]`), mixed artifacts
+  - **Features**: Multi-tier parser, dry-run mode, automatic backups, progress tracking
+  - **Safety**: Creates backup before modifications, validates repairs
+
+- **Intelligent Memory Type Assignment** - Automated type inference for untyped memories
+  - **Script**: `scripts/maintenance/assign_memory_types.py`
+  - **Processed**: 119 untyped memories with multi-tier inference algorithm
+  - **Inference Methods**:
+    - Tag-based mapping (80+ tag-to-type associations)
+    - Pattern-based detection (40+ content patterns)
+    - Metadata analysis (activity indicators)
+    - Fallback heuristics (default to "note")
+  - **Confidence Scoring**: High/medium/low confidence levels for inference quality
+  - **Features**: Dry-run mode, automatic backups, detailed statistics
+
+### Technical Details
+- **Analytics Fix**: Removed "Using sampling approach" warning from logs
+- **Database Backups**: Both maintenance scripts create timestamped backups before modifications
+- **Type Taxonomy**: Follows 24 core types from consolidated memory type system
+- **Hybrid Backend**: Scripts properly detect and handle `HybridMemoryStorage` architecture
+
 ## [8.17.0] - 2025-11-04
 
 ### Added

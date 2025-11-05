@@ -377,18 +377,59 @@ async def get_memory_type_distribution(
     Returns statistics about how memories are categorized by type.
     """
     try:
-        # Get recent memories to analyze types
-        # This is a sampling approach - for better accuracy, we'd need
-        # type counting in the storage layer
-        memories = await storage.get_recent_memories(n=1000)
+        # Try to get accurate counts from storage layer if available
+        if hasattr(storage, 'get_type_counts'):
+            type_counts_data = await storage.get_type_counts()
+            type_counts = dict(type_counts_data)
+            total_memories = sum(type_counts.values())
+        # For Hybrid storage, access underlying SQLite primary storage
+        elif hasattr(storage, 'primary') and hasattr(storage.primary, 'conn') and storage.primary.conn:
+            # Hybrid storage - access underlying SQLite storage
+            import sqlite3
+            cursor = storage.primary.conn.cursor()
+            cursor.execute("""
+                SELECT
+                    CASE
+                        WHEN memory_type IS NULL OR memory_type = '' THEN 'untyped'
+                        ELSE memory_type
+                    END as mem_type,
+                    COUNT(*) as count
+                FROM memories
+                GROUP BY mem_type
+            """)
+            type_counts = {row[0]: row[1] for row in cursor.fetchall()}
 
-        # Count by type
-        type_counts = defaultdict(int)
-        for memory in memories:
-            mem_type = memory.memory_type or "untyped"
-            type_counts[mem_type] += 1
+            cursor.execute("SELECT COUNT(*) FROM memories")
+            total_memories = cursor.fetchone()[0]
+        elif hasattr(storage, 'conn') and storage.conn:
+            # Direct SQLite storage
+            import sqlite3
+            cursor = storage.conn.cursor()
+            cursor.execute("""
+                SELECT
+                    CASE
+                        WHEN memory_type IS NULL OR memory_type = '' THEN 'untyped'
+                        ELSE memory_type
+                    END as mem_type,
+                    COUNT(*) as count
+                FROM memories
+                GROUP BY mem_type
+            """)
+            type_counts = {row[0]: row[1] for row in cursor.fetchall()}
 
-        total_memories = len(memories)
+            cursor.execute("SELECT COUNT(*) FROM memories")
+            total_memories = cursor.fetchone()[0]
+        else:
+            # Fallback to sampling approach (less accurate for large databases)
+            logger.warning("Using sampling approach for memory type distribution - results may not reflect entire database")
+            memories = await storage.get_recent_memories(n=1000)
+
+            type_counts = defaultdict(int)
+            for memory in memories:
+                mem_type = memory.memory_type or "untyped"
+                type_counts[mem_type] += 1
+
+            total_memories = len(memories)
 
         # Convert to response format
         types = []
