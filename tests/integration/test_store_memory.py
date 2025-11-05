@@ -9,83 +9,97 @@ import sys
 
 # Import MCP client
 try:
-    from mcp import Client
-except ImportError:
-    print("MCP client not found. Install with: pip install mcp")
+    from mcp import ClientSession
+    from mcp.client.stdio import stdio_client, StdioServerParameters
+except ImportError as e:
+    print(f"MCP client not found: {e}")
+    print("Install with: pip install mcp")
     sys.exit(1)
 
 async def store_memory():
     """Store a test memory."""
     try:
-        # Connect to memory service
-        client = Client("memory")
-        
-        # Wait for connection
-        await client.initialize()
-        print("Connected to memory service!")
-        
-        # Get available tools
-        tools = await client.list_tools()
-        print(f"Found {len(tools)} tools")
-        
-        # Find store_memory tool
-        store_tool = None
-        for tool in tools:
-            if tool.name == "store_memory":
-                store_tool = tool
-                break
-        
-        if not store_tool:
-            print("ERROR: store_memory tool not found")
-            return
-        
-        # Create a test memory
-        memory_data = {
-            "content": "This is a test memory created by the test_store_memory.py script.",
-            "metadata": {
-                "tags": ["test", "example", "python"],
-                "type": "note"
-            }
-        }
-        
-        # Store the memory
-        print(f"\nStoring test memory: {memory_data['content']}")
-        result = await client.call_tool("store_memory", memory_data)
-        
-        # Print result
-        if result:
-            print("\nResult:")
-            print(result[0].text)
-        else:
-            print("No result returned")
-        
-        # Try to retrieve the memory
-        print("\nRetrieving memory...")
-        retrieve_result = await client.call_tool("retrieve_memory", {"query": "test memory", "n_results": 5})
-        
-        # Print result
-        if retrieve_result:
-            print("\nRetrieve Result:")
-            print(retrieve_result[0].text)
-        else:
-            print("No retrieve result returned")
-            
-        # Check database health
-        print("\nChecking database health...")
-        health_result = await client.call_tool("check_database_health", {})
-        
-        # Print result
-        if health_result:
-            print("\nHealth Check Result:")
-            print(health_result[0].text)
-        else:
-            print("No health check result returned")
-        
+        # Configure MCP server connection
+        server_params = StdioServerParameters(
+            command="uv",
+            args=["run", "memory", "server"],
+            env=None
+        )
+
+        # Connect to memory service using stdio_client
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                # Initialize the session
+                await session.initialize()
+                print("Connected to memory service!")
+
+                # List available tools
+                tools_response = await session.list_tools()
+                print(f"Found {len(tools_response.tools)} tools")
+
+                # Find store_memory tool
+                store_tool = None
+                for tool in tools_response.tools:
+                    if tool.name == "store_memory":
+                        store_tool = tool
+                        break
+
+                if not store_tool:
+                    print("ERROR: store_memory tool not found")
+                    return
+
+                # Create a test memory
+                memory_data = {
+                    "content": "This is a test memory created by the test_store_memory.py script.",
+                    "metadata": {
+                        "tags": "test,example,python",  # Comma-separated string format
+                        "type": "note"
+                    }
+                }
+
+                # Store the memory
+                print(f"\nStoring test memory: {memory_data['content']}")
+                result = await session.call_tool("store_memory", memory_data)
+
+                # Print result
+                if result:
+                    print("\nResult:")
+                    for content_item in result.content:
+                        if hasattr(content_item, 'text'):
+                            print(content_item.text)
+                else:
+                    print("No result returned")
+
+                # Try to retrieve the memory
+                print("\nRetrieving memory...")
+                retrieve_result = await session.call_tool("retrieve_memory", {"query": "test memory", "n_results": 5})
+
+                # Print result
+                if retrieve_result:
+                    print("\nRetrieve Result:")
+                    for content_item in retrieve_result.content:
+                        if hasattr(content_item, 'text'):
+                            print(content_item.text)
+                else:
+                    print("No retrieve result returned")
+
+                # Check database health
+                print("\nChecking database health...")
+                health_result = await session.call_tool("check_database_health", {})
+
+                # Print result
+                if health_result:
+                    print("\nHealth Check Result:")
+                    for content_item in health_result.content:
+                        if hasattr(content_item, 'text'):
+                            print(content_item.text)
+                else:
+                    print("No health check result returned")
+
     except Exception as e:
         print(f"ERROR: {str(e)}")
-    finally:
-        # Disconnect client
-        await client.shutdown()
+        import traceback
+        traceback.print_exc()
 
 async def main():
     """Main function."""
