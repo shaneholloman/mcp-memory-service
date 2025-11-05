@@ -10,6 +10,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.18.0] - 2025-11-05
+
+### Performance
+- **Analytics Dashboard Optimization** - 90% performance improvement for dashboard analytics
+  - **New Method**: `get_memory_timestamps()` added to all storage backends (SQLite-Vec, Cloudflare, Hybrid)
+  - **Optimization**: Single optimized SQL query instead of N individual queries for timestamp retrieval
+  - **Impact**: Dashboard analytics load significantly faster, especially with large memory datasets
+  - **PR**: [#203](https://github.com/doobidoo/mcp-memory-service/pull/203)
+  - **Issue**: [#186](https://github.com/doobidoo/mcp-memory-service/issues/186)
+
+### Added
+- **Type Safety Enhancements** - Pydantic models for analytics data structures
+  - **Models**: `LargestMemory` (content hash, size, created timestamp) and `GrowthTrendPoint` (date, cumulative count)
+  - **Benefit**: Enhanced type checking and validation for analytics endpoints
+  - **File**: `src/mcp_memory_service/web/api/analytics.py`
+
+### Fixed
+- **Weekly Activity Year Handling** - Fixed incorrect aggregation of same week numbers across different years
+  - **Issue**: Week 1 of 2024 and Week 1 of 2025 were being combined in weekly activity charts
+  - **Solution**: Year included in grouping logic for proper temporal separation
+  - **Impact**: Weekly activity charts now accurately reflect year boundaries
+
+### Technical Details
+- **Storage Interface**: `get_memory_timestamps()` method added to base `MemoryStorage` class
+- **Backend Implementation**: Optimized SQL queries for SQLite-Vec, Cloudflare D1, and Hybrid storage
+- **Code Quality**: Import organization and naming consistency improvements per Gemini Code Assist review
+
 ## [8.17.1] - 2025-11-05
 
 ### Documentation
