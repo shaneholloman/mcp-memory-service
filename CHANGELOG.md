@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.18.1] - 2025-11-05
+
+### Fixed
+- **Test Suite Import Errors** - Resolved critical import failures blocking all test collection
+  - **MCP Client Import**: Updated from deprecated `mcp` module to `mcp.client.session` (v1.1.2 API)
+  - **Storage Path Import**: Removed obsolete `CHROMA_PATH` constant that no longer exists in current architecture
+  - **Impact**: Restored ability to collect and run 190 test cases across unit, integration, and E2E test suites
+  - **PR**: [#205](https://github.com/doobidoo/mcp-memory-service/pull/205)
+  - **Issue**: [#204](https://github.com/doobidoo/mcp-memory-service/issues/204)
+
+### Technical Details
+- **Test Files Updated**: `tests/unit/test_import.py`, `tests/integration/test_store_memory.py`
+- **Import Fix**: `from mcp import ClientSession, StdioServerParameters` → `from mcp.client.session import ClientSession`
+- **Cleanup**: Removed dependency on deprecated storage constants
+
 ## [8.18.0] - 2025-11-05
 
 ### Performance

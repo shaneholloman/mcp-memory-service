@@ -15,29 +15,22 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.18.0** (Nov 5, 2025)
+### 🆕 Latest Release: **v8.18.1** (Nov 5, 2025)
 
-**Analytics Dashboard Optimization** - 90% performance improvement for dashboard analytics and type safety enhancements.
+**Test Suite Import Fix** - Resolved critical import errors blocking all test collection.
 
 **What's New**:
-- ⚡ **90% Performance Boost** - New `get_memory_timestamps()` method optimizes analytics queries (single SQL query vs N queries)
-- 🎯 **Type Safety** - Pydantic models for analytics data (`LargestMemory`, `GrowthTrendPoint`)
-- 📅 **Weekly Activity Fix** - Year handling corrects Week 1 aggregation across different years
-- 🚀 **All Storage Backends** - Optimizations implemented in SQLite-Vec, Cloudflare, and Hybrid storage
+- 🔧 **Test Suite Restored** - Fixed import failures that prevented 190 tests from running
+- 📦 **MCP Client Update** - Migrated from deprecated `mcp` module to `mcp.client.session` (v1.1.2 API)
+- 🧹 **Architecture Cleanup** - Removed obsolete `CHROMA_PATH` constant from old storage backend
+- ✅ **Full Test Coverage** - All unit, integration, and E2E tests now collect and run successfully
 
-**Cross-Platform Support**:
-- macOS: `~/Library/Application Support/mcp-memory/sqlite_vec.db`
-- Windows: `%LOCALAPPDATA%/mcp-memory/sqlite_vec.db`
-- Linux: `~/.local/share/mcp-memory/sqlite_vec.db`
-- Auto-detection using `platform.system()` - works seamlessly everywhere
+**Technical Details**:
+- Updated test imports to use current MCP SDK API
+- Removed dependencies on deprecated storage constants
+- Verified test collection across all test suites
 
-**Dashboard Improvements**:
-- Fixed: Chart bars rendering outside containers
-- Fixed: Uniform bar sizes despite different values
-- Enhanced: 200px pixel scale for proper visualization
-- Enhanced: CSS container constraints with accurate proportions
-
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8180---2025-11-05) | [PR #203](https://github.com/doobidoo/mcp-memory-service/pull/203) | [Issue #186](https://github.com/doobidoo/mcp-memory-service/issues/186) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8181---2025-11-05) | [PR #205](https://github.com/doobidoo/mcp-memory-service/pull/205) | [Issue #204](https://github.com/doobidoo/mcp-memory-service/issues/204) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
