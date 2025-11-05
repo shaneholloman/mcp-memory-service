@@ -1,0 +1,173 @@
+name: Performance Issue
+description: Report slow operations, memory leaks, or performance degradation
+title: "[Performance]: "
+labels: ["performance", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a performance issue! Detailed metrics help us diagnose and optimize the system.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: Describe the performance problem you're experiencing
+      placeholder: Memory search is taking >5 seconds when...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operation
+    attributes:
+      label: Affected Operation
+      description: Which operation is experiencing performance issues?
+      options:
+        - Memory Storage (store_memory)
+        - Memory Retrieval (recall_memory, retrieve)
+        - Search Operations (semantic/tag/time search)
+        - Document Ingestion (PDF/DOCX processing)
+        - Dashboard Loading (HTTP UI)
+        - Server Startup/Initialization
+        - Background Sync (hybrid backend)
+        - Database Operations (general)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Performance Metrics
+      description: Provide timing information or benchmarks
+      placeholder: |
+        Current performance: 10 seconds
+        Expected performance: <1 second
+        Tested with: 1000 memories, 5 concurrent requests
+      value: |
+        - Operation time:
+        - Memory count in database:
+        - Concurrent operations:
+        - CPU usage:
+        - Memory usage:
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this performance issue?
+      placeholder: |
+        1. Insert 10,000 memories using...
+        2. Run search query...
+        3. Observe >5 second response time
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: storage-backend
+    attributes:
+      label: Storage Backend
+      description: Which backend shows the performance issue?
+      options:
+        - sqlite-vec (local)
+        - cloudflare (remote)
+        - hybrid (sqlite + cloudflare)
+        - All backends
+        - Unsure
+    validations:
+      required: true
+
+  - type: input
+    id: database-size
+    attributes:
+      label: Database Size
+      description: Number of memories and approximate disk size
+      placeholder: "5000 memories, 50MB database file"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: trend
+    attributes:
+      label: Performance Trend
+      description: Is this a new issue or has it gotten worse over time?
+      options:
+        - Always been slow
+        - Recently degraded (specify version)
+        - Gets worse with more data
+        - Intermittent (sometimes fast, sometimes slow)
+        - After specific change/upgrade
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: System specifications that might affect performance
+      placeholder: |
+        OS: macOS 14.1
+        CPU: M2 Max (12 cores)
+        RAM: 32GB
+        Disk: SSD (NVMe)
+        Python: 3.11.5
+        Version: v8.17.0
+      value: |
+        - OS:
+        - CPU:
+        - RAM:
+        - Disk Type:
+        - Python Version:
+        - MCP Version:
+    validations:
+      required: true
+
+  - type: textarea
+    id: profiling
+    attributes:
+      label: Profiling Data (Optional)
+      description: |
+        If you've profiled the operation, include results:
+        - Python cProfile output
+        - Database query EXPLAIN QUERY PLAN
+        - Network latency measurements (for remote backends)
+      placeholder: Paste profiling data here
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Logs showing timing or performance warnings
+      placeholder: Paste logs with timestamps
+      render: shell
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: Have you found any temporary workarounds?
+      placeholder: |
+        Reducing batch size helps...
+        Switching to different backend improves...
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify you've completed these steps
+      options:
+        - label: I've verified this is a performance regression (not expected behavior)
+          required: true
+        - label: I've included specific timing measurements (not just "it's slow")
+          required: true
+        - label: I've tested with latest version to confirm issue still exists
+          required: true
+        - label: I've described database size and environment specifications
+          required: true

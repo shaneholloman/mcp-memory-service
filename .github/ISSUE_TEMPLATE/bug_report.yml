@@ -1,0 +1,170 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill out the sections below to help us diagnose and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior
+      placeholder: |
+        1. Configure storage backend as...
+        2. Run command...
+        3. Observe error...
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: The memory should be stored successfully...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened (include error messages)
+      placeholder: |
+        Error: database is locked
+        Traceback...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: storage-backend
+    attributes:
+      label: Storage Backend
+      description: Which storage backend are you using?
+      options:
+        - sqlite-vec (local)
+        - cloudflare (remote)
+        - hybrid (sqlite + cloudflare)
+        - unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Docker
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: Output of `python --version`
+      placeholder: "Python 3.11.5"
+    validations:
+      required: true
+
+  - type: input
+    id: mcp-version
+    attributes:
+      label: MCP Memory Service Version
+      description: Output of `uv run memory --version` or check `pyproject.toml`
+      placeholder: "v8.17.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation Method
+      options:
+        - Source (git clone)
+        - pip/uv install
+        - Docker
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface Used
+      description: How are you accessing the memory service?
+      options:
+        - Claude Desktop (MCP)
+        - Claude Code (CLI)
+        - HTTP API (dashboard)
+        - Python API (direct import)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Relevant parts of your `.env` file or Claude Desktop config (redact API keys)
+      placeholder: |
+        MCP_MEMORY_STORAGE_BACKEND=hybrid
+        MCP_HTTP_ENABLED=true
+        # Cloudflare credentials redacted
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Logs from server, MCP client, or error messages
+      placeholder: Paste relevant logs here
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context about the problem:
+        - Recent changes or upgrades
+        - Concurrent usage (multiple clients)
+        - Network conditions (if using remote backend)
+        - Screenshots (if dashboard issue)
+      placeholder: Any additional information that might help...
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify you've completed these steps
+      options:
+        - label: I've searched existing issues and this is not a duplicate
+          required: true
+        - label: I'm using the latest version (or specified version above)
+          required: true
+        - label: I've included all required environment information
+          required: true
+        - label: I've redacted sensitive information (API keys, tokens)
+          required: true

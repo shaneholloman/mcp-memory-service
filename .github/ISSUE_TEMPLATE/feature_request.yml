@@ -1,0 +1,124 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature! Please provide details about your use case and proposed solution.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What problem does this feature solve? What are you trying to accomplish?
+      placeholder: |
+        I'm trying to... but currently the system doesn't support...
+        This would help with...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this feature to work?
+      placeholder: |
+        Add a new MCP tool that allows...
+        The API endpoint should accept...
+        When the user runs...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches have you considered? How do you currently work around this?
+      placeholder: |
+        I've tried using... but it doesn't work because...
+        Other projects solve this by...
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component Affected
+      description: Which part of the system would this feature affect?
+      options:
+        - Storage Backend (sqlite/cloudflare/hybrid)
+        - MCP Tools (memory operations)
+        - HTTP API (dashboard/REST endpoints)
+        - Document Ingestion (PDF/DOCX/PPTX)
+        - Claude Code Integration (hooks/commands)
+        - Configuration/Setup
+        - Documentation
+        - Testing/CI
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to your workflow?
+      options:
+        - Critical (blocking my work)
+        - High (significant improvement)
+        - Medium (nice to have)
+        - Low (future consideration)
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or Mockups
+      description: |
+        Provide examples of how this would work:
+        - API request/response examples
+        - CLI command examples
+        - UI mockups (for dashboard features)
+        - Code snippets
+      placeholder: |
+        # Example usage
+        claude /memory-export --format json --tags important
+
+        # Expected output
+        {"memories": [...], "count": 42}
+      render: shell
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact on Existing Functionality
+      description: Would this change affect existing features or require breaking changes?
+      placeholder: |
+        This would require...
+        Existing users would need to...
+        Backward compatibility...
+
+  - type: textarea
+    id: similar
+    attributes:
+      label: Similar Features in Other Projects
+      description: Are there similar features in other projects we can learn from?
+      placeholder: |
+        Project X implements this as...
+        Library Y has a similar API that works like...
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify you've completed these steps
+      options:
+        - label: I've searched existing issues and feature requests
+          required: true
+        - label: I've described a specific use case (not just "it would be nice")
+          required: true
+        - label: I've considered the impact on existing functionality
+          required: true
+        - label: I'm willing to help test this feature once implemented
+          required: false
