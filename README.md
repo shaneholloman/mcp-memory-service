@@ -15,13 +15,15 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.17.0** (Nov 4, 2025)
+### 🆕 Latest Release: **v8.17.1** (Nov 5, 2025)
 
-**Cross-Platform Consolidation & Dashboard Improvements** - Platform-aware database maintenance and visual enhancements.
+**Critical Analytics Fix & Maintenance Utilities** - Dashboard accuracy restored, intelligent database cleanup tools.
 
 **What's New**:
-- 🖥️ **Platform-Aware Consolidation** - Auto-detects macOS, Windows, Linux database paths
-- 📝 **External JSON Configuration** - Edit consolidation mappings without code changes (294 mappings)
+- 🔧 **CRITICAL FIX**: Dashboard analytics now shows accurate memory count (was showing 1,000 sampling limit)
+- 🛠️ **Malformed Tags Repair** - Intelligent repair tool for JSON serialization artifacts (repaired 1,870 tags)
+- 🧠 **Intelligent Type Assignment** - Multi-tier inference for untyped memories (80+ tag mappings, 40+ patterns)
+- 📚 **Documentation Harvest** - 2,400+ lines of project management templates from PR #199
 - 📚 **Agent System Documentation** - New AGENTS.md with amp-bridge integration guide
 - 📊 **Dashboard Chart Fixes** - Resolved analytics chart layout and proportionality issues
 
