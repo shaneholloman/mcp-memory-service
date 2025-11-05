@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.17.1] - 2025-11-05
+
 ### Documentation
 - **Workflow Documentation Harvest** - Comprehensive project management templates adapted from PR #199
   - **GitHub Issue Templates**: Structured bug/feature/performance reports with environment validation
@@ -37,8 +39,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Files**: `.github/ISSUE_TEMPLATE/`, `docs/testing/regression-tests.md`, `docs/development/pr-review-guide.md`, `docs/development/issue-management.md`, `docs/development/release-checklist.md`
   - **Source**: Adapted from [PR #199](https://github.com/doobidoo/mcp-memory-service/pull/199) by Ray Walker (27Bslash6)
   - **Commit**: [ca5ccf3](https://github.com/doobidoo/mcp-memory-service/commit/ca5ccf3f460feca06d3c9232303a6e528ca2c76f)
-
-## [8.17.1] - 2025-11-05
 
 ### Fixed
 - **CRITICAL: Dashboard Analytics Accuracy** - Fixed analytics endpoint showing incorrect memory count
