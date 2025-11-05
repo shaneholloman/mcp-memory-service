@@ -149,11 +149,30 @@ When creating pull requests:
    - Run `uv lock` to update lock file
    - Commit with message: "chore: bump version to v{version}"
 
-3. **Documentation Updates**:
-   - Add CHANGELOG.md entry following project format
-   - Update README.md if user-facing changes exist
-   - Update CLAUDE.md if workflow/commands changed
-   - Commit with message: "docs: update for v{version} release"
+3. **Documentation Updates** (CRITICAL - Must be done in correct order):
+
+   a. **CHANGELOG.md**:
+      - **FIRST**: Check for `## [Unreleased]` section
+      - If found, move ALL unreleased entries into the new version section
+      - Add new version entry following project format: `## [x.y.z] - YYYY-MM-DD`
+      - Ensure empty `## [Unreleased]` section remains at top
+      - Verify all changes from commits are documented
+
+   b. **README.md**:
+      - **ALWAYS update** the "Latest Release" section near top of file
+      - Update version number: `### 🆕 Latest Release: **vX.Y.Z** (Mon DD, YYYY)`
+      - Update "What's New" bullet points with CHANGELOG highlights
+      - Keep list concise (4-6 key items with emojis)
+      - Match tone and format of existing entries
+
+   c. **CLAUDE.md**:
+      - Add version callout in Overview section if significant changes
+      - Update "Essential Commands" if new scripts/commands added
+      - Update "Database Maintenance" section for new maintenance utilities
+      - Update any workflow documentation affected by changes
+
+   d. **Commit**:
+      - Commit message: "docs: update CHANGELOG, README, and CLAUDE.md for v{version}"
 
 4. **Branch and PR Management**:
    - Create feature branch if needed: `git checkout -b release/v{version}`
@@ -182,8 +201,11 @@ When creating pull requests:
 **Self-Verification Checklist**:
 - [ ] Version follows semantic versioning strictly
 - [ ] All three version files updated (init, pyproject, lock)
-- [ ] CHANGELOG.md entry is detailed and well-formatted
-- [ ] README.md updated if user-facing changes exist
+- [ ] **CHANGELOG.md**: `[Unreleased]` section collected and moved to version entry
+- [ ] **CHANGELOG.md**: Entry is detailed and well-formatted
+- [ ] **README.md**: "Latest Release" section updated with version and highlights
+- [ ] **CLAUDE.md**: New commands/utilities documented in appropriate sections
+- [ ] **CLAUDE.md**: Version callout added if significant changes
 - [ ] Git tag created and pushed
 - [ ] GitHub release created with comprehensive notes
 - [ ] All related issues identified and tracked
