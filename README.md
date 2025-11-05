@@ -15,17 +15,15 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.17.1** (Nov 5, 2025)
+### 🆕 Latest Release: **v8.18.0** (Nov 5, 2025)
 
-**Critical Analytics Fix & Maintenance Utilities** - Dashboard accuracy restored, intelligent database cleanup tools.
+**Analytics Dashboard Optimization** - 90% performance improvement for dashboard analytics and type safety enhancements.
 
 **What's New**:
-- 🔧 **CRITICAL FIX**: Dashboard analytics now shows accurate memory count (was showing 1,000 sampling limit)
-- 🛠️ **Malformed Tags Repair** - Intelligent repair tool for JSON serialization artifacts (repaired 1,870 tags)
-- 🧠 **Intelligent Type Assignment** - Multi-tier inference for untyped memories (80+ tag mappings, 40+ patterns)
-- 📚 **Documentation Harvest** - 2,400+ lines of project management templates from PR #199
-- 📚 **Agent System Documentation** - New AGENTS.md with amp-bridge integration guide
-- 📊 **Dashboard Chart Fixes** - Resolved analytics chart layout and proportionality issues
+- ⚡ **90% Performance Boost** - New `get_memory_timestamps()` method optimizes analytics queries (single SQL query vs N queries)
+- 🎯 **Type Safety** - Pydantic models for analytics data (`LargestMemory`, `GrowthTrendPoint`)
+- 📅 **Weekly Activity Fix** - Year handling corrects Week 1 aggregation across different years
+- 🚀 **All Storage Backends** - Optimizations implemented in SQLite-Vec, Cloudflare, and Hybrid storage
 
 **Cross-Platform Support**:
 - macOS: `~/Library/Application Support/mcp-memory/sqlite_vec.db`
@@ -39,7 +37,7 @@
 - Enhanced: 200px pixel scale for proper visualization
 - Enhanced: CSS container constraints with accurate proportions
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8170---2025-11-04) | [PR #201](https://github.com/doobidoo/mcp-memory-service/pull/201) | [PR #200](https://github.com/doobidoo/mcp-memory-service/pull/200) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8180---2025-11-05) | [PR #203](https://github.com/doobidoo/mcp-memory-service/pull/203) | [Issue #186](https://github.com/doobidoo/mcp-memory-service/issues/186) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
