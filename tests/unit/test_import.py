@@ -15,10 +15,16 @@ try:
     print("SUCCESS: Successfully imported mcp_memory_service.server.main")
     
     # Test basic configuration
-    from mcp_memory_service.config import SERVER_NAME, SERVER_VERSION, CHROMA_PATH
+    from mcp_memory_service.config import (
+        SERVER_NAME,
+        SERVER_VERSION,
+        STORAGE_BACKEND,
+        DATABASE_PATH
+    )
     print(f"SUCCESS: Server name: {SERVER_NAME}")
     print(f"SUCCESS: Server version: {SERVER_VERSION}")
-    print(f"SUCCESS: ChromaDB path: {CHROMA_PATH}")
+    print(f"SUCCESS: Storage backend: {STORAGE_BACKEND}")
+    print(f"SUCCESS: Database path: {DATABASE_PATH}")
     
     print("SUCCESS: All imports successful - the memory service is ready to use!")
     
