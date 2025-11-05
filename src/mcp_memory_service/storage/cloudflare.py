@@ -23,7 +23,7 @@ import hashlib
 import asyncio
 import time
 from typing import List, Dict, Any, Tuple, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import httpx
 
 from .base import MemoryStorage
@@ -986,6 +986,46 @@ class CloudflareStorage(MemoryStorage):
 
         except Exception as e:
             logger.error(f"Failed to get largest memories: {e}")
+            return []
+
+    async def get_memory_timestamps(self, days: Optional[int] = None) -> List[float]:
+        """
+        Get memory creation timestamps only, without loading full memory objects.
+
+        This is an optimized method for analytics that only needs timestamps,
+        avoiding the overhead of loading full memory content and embeddings.
+
+        Args:
+            days: Optional filter to only get memories from last N days
+
+        Returns:
+            List of Unix timestamps (float) in descending order (newest first)
+        """
+        try:
+            if days is not None:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                cutoff_timestamp = cutoff.timestamp()
+
+                sql = "SELECT created_at FROM memories WHERE created_at >= ? ORDER BY created_at DESC"
+                payload = {"sql": sql, "params": [cutoff_timestamp]}
+            else:
+                sql = "SELECT created_at FROM memories ORDER BY created_at DESC"
+                payload = {"sql": sql, "params": []}
+
+            response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+            result = response.json()
+
+            timestamps = []
+            if result.get("success") and result.get("result", [{}])[0].get("results"):
+                for row in result["result"][0]["results"]:
+                    if row.get("created_at") is not None:
+                        timestamps.append(float(row["created_at"]))
+
+            logger.info(f"Retrieved {len(timestamps)} memory timestamps")
+            return timestamps
+
+        except Exception as e:
+            logger.error(f"Failed to get memory timestamps: {e}")
             return []
 
     def sanitized(self, tags):

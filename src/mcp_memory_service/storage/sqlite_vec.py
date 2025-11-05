@@ -27,7 +27,7 @@ import sys
 import platform
 from collections import Counter
 from typing import List, Dict, Any, Tuple, Optional, Set, Callable
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import asyncio
 import random
 
@@ -1959,6 +1959,50 @@ SOLUTIONS:
 
         except Exception as e:
             logger.error(f"Error getting largest memories: {e}")
+            return []
+
+    async def get_memory_timestamps(self, days: Optional[int] = None) -> List[float]:
+        """
+        Get memory creation timestamps only, without loading full memory objects.
+
+        This is an optimized method for analytics that only needs timestamps,
+        avoiding the overhead of loading full memory content and embeddings.
+
+        Args:
+            days: Optional filter to only get memories from last N days
+
+        Returns:
+            List of Unix timestamps (float) in descending order (newest first)
+        """
+        try:
+            await self.initialize()
+
+            if days is not None:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                cutoff_timestamp = cutoff.timestamp()
+
+                query = """
+                    SELECT created_at
+                    FROM memories
+                    WHERE created_at >= ?
+                    ORDER BY created_at DESC
+                """
+                cursor = self.conn.execute(query, (cutoff_timestamp,))
+            else:
+                query = """
+                    SELECT created_at
+                    FROM memories
+                    ORDER BY created_at DESC
+                """
+                cursor = self.conn.execute(query)
+
+            rows = cursor.fetchall()
+            timestamps = [row[0] for row in rows if row[0] is not None]
+
+            return timestamps
+
+        except Exception as e:
+            logger.error(f"Error getting memory timestamps: {e}")
             return []
 
     async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
