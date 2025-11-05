@@ -37,14 +37,8 @@ async def store_memory():
                 tools_response = await session.list_tools()
                 print(f"Found {len(tools_response.tools)} tools")
 
-                # Find store_memory tool
-                store_tool = None
-                for tool in tools_response.tools:
-                    if tool.name == "store_memory":
-                        store_tool = tool
-                        break
-
-                if not store_tool:
+                # Check if store_memory tool exists
+                if not any(tool.name == "store_memory" for tool in tools_response.tools):
                     print("ERROR: store_memory tool not found")
                     return
 
