@@ -181,14 +181,19 @@ When creating pull requests:
    - Tag PR for Gemini Code Assist review
    - Monitor review feedback and iterate
 
-5. **Release Creation**:
-   - After PR approval and merge
-   - Create annotated git tag: `git tag -a v{version} -m "Release v{version}"`
-   - Push tag: `git push origin v{version}`
-   - Create GitHub release with:
+5. **Release Creation** (CRITICAL - Follow this exact sequence):
+   - **Step 1**: Merge PR to develop branch
+   - **Step 2**: Merge develop into main branch
+   - **Step 3**: Switch to main branch: `git checkout main`
+   - **Step 4**: Pull latest: `git pull origin main`
+   - **Step 5**: NOW create annotated git tag on main: `git tag -a v{version} -m "Release v{version}"`
+   - **Step 6**: Push tag: `git push origin v{version}`
+   - **Step 7**: Create GitHub release with:
      - Tag: v{version}
      - Title: "v{version} - {brief description}"
      - Body: CHANGELOG entry + highlights
+
+   **WARNING**: Do NOT create the tag before merging to main. Tags must point to main branch commits, not develop branch commits. Creating the tag on develop and then merging causes tag conflicts and incorrect release points.
 
 6. **Post-Release Actions**:
    - Verify GitHub Actions workflows (Docker Publish, Publish and Test, HTTP-MCP Bridge)
@@ -206,7 +211,10 @@ When creating pull requests:
 - [ ] **README.md**: "Latest Release" section updated with version and highlights
 - [ ] **CLAUDE.md**: New commands/utilities documented in appropriate sections
 - [ ] **CLAUDE.md**: Version callout added if significant changes
-- [ ] Git tag created and pushed
+- [ ] PR merged to develop, then develop merged to main
+- [ ] Git tag created on main branch (NOT develop)
+- [ ] Tag points to main merge commit (verify with `git log --oneline --graph --all --decorate`)
+- [ ] Git tag pushed to remote
 - [ ] GitHub release created with comprehensive notes
 - [ ] All related issues identified and tracked
 - [ ] PR description is complete and accurate
