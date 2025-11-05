@@ -398,30 +398,32 @@ async def test_search_by_tag_error_handling(memory_service, mock_storage):
 @pytest.mark.asyncio
 async def test_get_memory_by_hash_found(memory_service, mock_storage, sample_memory):
     """Test getting memory by hash when found."""
-    mock_storage.get_all_memories.return_value = [sample_memory]
+    mock_storage.get_by_hash.return_value = sample_memory
 
     result = await memory_service.get_memory_by_hash("test_hash_123")
 
     assert result["found"] is True
     assert "memory" in result
     assert result["memory"]["content_hash"] == "test_hash_123"
+    mock_storage.get_by_hash.assert_called_once_with("test_hash_123")
 
 
 @pytest.mark.asyncio
 async def test_get_memory_by_hash_not_found(memory_service, mock_storage):
     """Test getting memory by hash when not found."""
-    mock_storage.get_all_memories.return_value = []
+    mock_storage.get_by_hash.return_value = None
 
     result = await memory_service.get_memory_by_hash("nonexistent_hash")
 
     assert result["found"] is False
     assert result["content_hash"] == "nonexistent_hash"
+    mock_storage.get_by_hash.assert_called_once_with("nonexistent_hash")
 
 
 @pytest.mark.asyncio
 async def test_get_memory_by_hash_error(memory_service, mock_storage):
     """Test error handling in get_memory_by_hash."""
-    mock_storage.get_all_memories.side_effect = Exception("Database error")
+    mock_storage.get_by_hash.side_effect = Exception("Database error")
 
     result = await memory_service.get_memory_by_hash("test_hash")
 

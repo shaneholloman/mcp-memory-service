@@ -69,6 +69,107 @@ class MemoryResult(TypedDict):
     updated_at_iso: str
 
 
+# Store Memory Return Types
+class StoreMemorySingleSuccess(TypedDict):
+    """Return type for successful single memory storage."""
+    success: bool
+    memory: MemoryResult
+
+
+class StoreMemoryChunkedSuccess(TypedDict):
+    """Return type for successful chunked memory storage."""
+    success: bool
+    memories: List[MemoryResult]
+    total_chunks: int
+    original_hash: str
+
+
+class StoreMemoryFailure(TypedDict):
+    """Return type for failed memory storage."""
+    success: bool
+    error: str
+
+
+# List Memories Return Types
+class ListMemoriesSuccess(TypedDict):
+    """Return type for successful memory listing."""
+    memories: List[MemoryResult]
+    page: int
+    page_size: int
+    total: int
+    has_more: bool
+
+
+class ListMemoriesError(TypedDict):
+    """Return type for failed memory listing."""
+    success: bool
+    error: str
+    memories: List[MemoryResult]
+    page: int
+    page_size: int
+
+
+# Retrieve Memories Return Types
+class RetrieveMemoriesSuccess(TypedDict):
+    """Return type for successful memory retrieval."""
+    memories: List[MemoryResult]
+    query: str
+    count: int
+
+
+class RetrieveMemoriesError(TypedDict):
+    """Return type for failed memory retrieval."""
+    memories: List[MemoryResult]
+    query: str
+    error: str
+
+
+# Search by Tag Return Types
+class SearchByTagSuccess(TypedDict):
+    """Return type for successful tag search."""
+    memories: List[MemoryResult]
+    tags: List[str]
+    match_type: str
+    count: int
+
+
+class SearchByTagError(TypedDict):
+    """Return type for failed tag search."""
+    memories: List[MemoryResult]
+    tags: List[str]
+    error: str
+
+
+# Delete Memory Return Types
+class DeleteMemorySuccess(TypedDict):
+    """Return type for successful memory deletion."""
+    success: bool
+    content_hash: str
+
+
+class DeleteMemoryFailure(TypedDict):
+    """Return type for failed memory deletion."""
+    success: bool
+    content_hash: str
+    error: str
+
+
+# Health Check Return Types
+class HealthCheckSuccess(TypedDict, total=False):
+    """Return type for successful health check."""
+    healthy: bool
+    storage_type: str
+    total_memories: int
+    last_updated: str
+    # Additional fields from storage stats (marked as not required via total=False)
+
+
+class HealthCheckFailure(TypedDict):
+    """Return type for failed health check."""
+    healthy: bool
+    error: str
+
+
 class MemoryService:
     """
     Shared service for memory operations with consistent business logic.
@@ -87,7 +188,7 @@ class MemoryService:
         page_size: int = 10,
         tag: Optional[str] = None,
         memory_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Union[ListMemoriesSuccess, ListMemoriesError]:
         """
         List memories with pagination and optional filtering.
 
@@ -152,7 +253,7 @@ class MemoryService:
         memory_type: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
         client_hostname: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Union[StoreMemorySingleSuccess, StoreMemoryChunkedSuccess, StoreMemoryFailure]:
         """
         Store a new memory with validation and content processing.
 
@@ -281,7 +382,7 @@ class MemoryService:
         n_results: int = 10,
         tags: Optional[List[str]] = None,
         memory_type: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Union[RetrieveMemoriesSuccess, RetrieveMemoriesError]:
         """
         Retrieve memories by semantic search with optional filtering.
 
@@ -324,7 +425,7 @@ class MemoryService:
         self,
         tags: Union[str, List[str]],
         match_all: bool = False
-    ) -> Dict[str, Union[List[MemoryResult], str, bool, int]]:
+    ) -> Union[SearchByTagSuccess, SearchByTagError]:
         """
         Search memories by tags with flexible matching options.
 
@@ -368,7 +469,7 @@ class MemoryService:
 
     async def get_memory_by_hash(self, content_hash: str) -> Dict[str, Any]:
         """
-        Retrieve a specific memory by its content hash.
+        Retrieve a specific memory by its content hash using O(1) direct lookup.
 
         Args:
             content_hash: The content hash of the memory
@@ -377,10 +478,8 @@ class MemoryService:
             Dictionary with memory data or error
         """
         try:
-            # Get all memories and find by hash (storage base doesn't have get_memory)
-            # This is inefficient but maintains compatibility
-            all_memories = await self.storage.get_all_memories(limit=None, offset=0)
-            memory = next((m for m in all_memories if m.content_hash == content_hash), None)
+            # Use direct O(1) lookup via storage.get_by_hash()
+            memory = await self.storage.get_by_hash(content_hash)
 
             if memory:
                 return {
@@ -401,7 +500,7 @@ class MemoryService:
                 "error": f"Failed to get memory: {str(e)}"
             }
 
-    async def delete_memory(self, content_hash: str) -> Dict[str, Any]:
+    async def delete_memory(self, content_hash: str) -> Union[DeleteMemorySuccess, DeleteMemoryFailure]:
         """
         Delete a memory by its content hash.
 
@@ -433,7 +532,7 @@ class MemoryService:
                 "error": f"Failed to delete memory: {str(e)}"
             }
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> Union[HealthCheckSuccess, HealthCheckFailure]:
         """
         Perform a health check on the memory storage system.
 

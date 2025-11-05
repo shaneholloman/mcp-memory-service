@@ -15,13 +15,31 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.14.0** (Oct 31, 2025)
+### 🆕 Latest Release: **v8.17.1** (Nov 5, 2025)
 
-**Comprehensive Tag Normalization** with DRY principle - eliminates all tag validation errors by creating a single source of truth for tag handling. Now accepts **all tag formats everywhere**: comma-separated strings (`"tag1,tag2"`), arrays (`["tag1", "tag2"]`), single strings, and even in `metadata.tags` field. Tags from parameter and metadata are intelligently merged with deduplication.
+**Critical Analytics Fix & Maintenance Utilities** - Dashboard accuracy restored, intelligent database cleanup tools.
 
-**Benefits**: ✅ No more validation errors ✅ Use any format anywhere ✅ DRY compliance ✅ Fully backward compatible
+**What's New**:
+- 🔧 **CRITICAL FIX**: Dashboard analytics now shows accurate memory count (was showing 1,000 sampling limit)
+- 🛠️ **Malformed Tags Repair** - Intelligent repair tool for JSON serialization artifacts (repaired 1,870 tags)
+- 🧠 **Intelligent Type Assignment** - Multi-tier inference for untyped memories (80+ tag mappings, 40+ patterns)
+- 📚 **Documentation Harvest** - 2,400+ lines of project management templates from PR #199
+- 📚 **Agent System Documentation** - New AGENTS.md with amp-bridge integration guide
+- 📊 **Dashboard Chart Fixes** - Resolved analytics chart layout and proportionality issues
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8140---2025-10-31) | [Release Notes](https://github.com/doobidoo/mcp-memory-service/releases/tag/v8.14.0) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**Cross-Platform Support**:
+- macOS: `~/Library/Application Support/mcp-memory/sqlite_vec.db`
+- Windows: `%LOCALAPPDATA%/mcp-memory/sqlite_vec.db`
+- Linux: `~/.local/share/mcp-memory/sqlite_vec.db`
+- Auto-detection using `platform.system()` - works seamlessly everywhere
+
+**Dashboard Improvements**:
+- Fixed: Chart bars rendering outside containers
+- Fixed: Uniform bar sizes despite different values
+- Enhanced: 200px pixel scale for proper visualization
+- Enhanced: CSS container constraints with accurate proportions
+
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8170---2025-11-04) | [PR #201](https://github.com/doobidoo/mcp-memory-service/pull/201) | [PR #200](https://github.com/doobidoo/mcp-memory-service/pull/200) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
@@ -169,6 +187,7 @@ These warnings disappear after the first successful run. The service is working 
 - **[📝 Examples](https://github.com/doobidoo/mcp-memory-service/wiki/09-Examples)** - Practical code examples and workflows
 
 ### 📂 Internal Documentation
+- **[📊 Repository Statistics](docs/statistics/REPOSITORY_STATISTICS.md)** - 10 months of development metrics, activity patterns, and insights
 - **[🏗️ Architecture Specs](docs/architecture/)** - Search enhancement specifications and design documents
 - **[👩‍💻 Development Docs](docs/development/)** - AI agent instructions, release checklist, refactoring notes
 - **[🚀 Deployment Guides](docs/deployment/)** - Docker, dual-service, and production deployment
@@ -217,6 +236,8 @@ These warnings disappear after the first successful run. The service is working 
 ### 🔗 **Universal Compatibility**
 - **Claude Desktop** - Native MCP integration
 - **Claude Code** - **HTTP transport** + Memory-aware development with hooks
+  - 🪟 **Windows Support**: `/session-start` command for manual session initialization (workaround for issue #160)
+  - 🍎 **macOS/Linux**: Full automatic SessionStart hooks + slash command
 - **VS Code, Cursor, Continue** - IDE extensions
 - **13+ AI applications** - REST API compatibility
 

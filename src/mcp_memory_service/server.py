@@ -2114,8 +2114,22 @@ class MemoryServer:
                 client_hostname=client_hostname
             )
 
-            # Convert MemoryService result to HTTP response format
-            return [types.TextContent(type="text", text=result["message"])]
+            # Convert MemoryService result to MCP response format
+            if not result.get("success"):
+                error_msg = result.get("error", "Unknown error")
+                return [types.TextContent(type="text", text=f"Error storing memory: {error_msg}")]
+
+            if "memories" in result:
+                # Chunked response - multiple memories created
+                num_chunks = len(result["memories"])
+                original_hash = result.get("original_hash", "unknown")
+                message = f"Successfully stored {num_chunks} memory chunks (original hash: {original_hash[:8]}...)"
+            else:
+                # Single memory response
+                memory_hash = result["memory"]["content_hash"]
+                message = f"Memory stored successfully (hash: {memory_hash[:8]}...)"
+
+            return [types.TextContent(type="text", text=message)]
 
         except Exception as e:
             logger.error(f"Error storing memory: {str(e)}\n{traceback.format_exc()}")

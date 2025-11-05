@@ -746,21 +746,37 @@ class HookInstaller:
             settings_dir.mkdir(parents=True, exist_ok=True)
             settings_file = settings_dir / 'settings.json'
 
+            # Windows-specific warning for SessionStart hooks (issue #160)
+            skip_session_start = False
+            if self.platform_name == 'windows':
+                self.warn("⚠️  Windows Platform Detected - SessionStart Hook Limitation")
+                self.warn("SessionStart hooks cause Claude Code to hang on Windows (issue #160)")
+                self.warn("Workaround: Use '/session-start' slash command instead")
+                self.info("Skipping SessionStart hook configuration for Windows")
+                self.info("See: https://github.com/doobidoo/mcp-memory-service/issues/160")
+                skip_session_start = True
+
             # Create hook configuration
             hook_config = {
-                "hooks": {
-                    "SessionStart": [
-                        {
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": f'node "{self.claude_hooks_dir}/core/session-start.js"',
-                                    "timeout": 10
-                                }
-                            ]
-                        }
-                    ],
-                    "SessionEnd": [
+                "hooks": {}
+            }
+
+            # Add SessionStart only on non-Windows platforms
+            if not skip_session_start:
+                hook_config["hooks"]["SessionStart"] = [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": f'node "{self.claude_hooks_dir}/core/session-start.js"',
+                                "timeout": 10
+                            }
+                        ]
+                    }
+                ]
+
+            # SessionEnd works on all platforms
+            hook_config["hooks"]["SessionEnd"] = [
                         {
                             "hooks": [
                                 {
@@ -771,8 +787,6 @@ class HookInstaller:
                             ]
                         }
                     ]
-                }
-            }
 
             # Add mid-conversation hook if Natural Memory Triggers are installed
             if install_mid_conversation:
@@ -788,15 +802,17 @@ class HookInstaller:
                     }
                 ]
 
-            # Add statusLine configuration for v8.5.7+ (if statusline.sh exists)
+            # Add statusLine configuration for v8.5.7+ (Unix/Linux/macOS only - requires bash)
             statusline_script = self.claude_hooks_dir / 'statusline.sh'
-            if statusline_script.exists():
+            if statusline_script.exists() and self.platform_name != 'windows':
                 hook_config["statusLine"] = {
                     "type": "command",
                     "command": str(statusline_script),
                     "padding": 0
                 }
                 self.info("Added statusLine configuration for memory awareness display")
+            elif statusline_script.exists() and self.platform_name == 'windows':
+                self.info("Skipping statusLine (requires bash - not available on Windows)")
 
             # Handle existing settings with intelligent merging
             final_config = hook_config

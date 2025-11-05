@@ -126,11 +126,101 @@ This checklist ensures that critical bugs like the HTTP-MCP bridge issues are ca
 
 ## Release Process
 
-### ✅ Version Management
-- [ ] Version numbers updated in all files
-- [ ] Changelog includes all critical fixes
-- [ ] Git tags created with release notes
-- [ ] Semantic versioning rules followed
+### ✅ Version Management (3-File Procedure)
+- [ ] **Update `src/mcp_memory_service/__init__.py`**
+  - [ ] Update `__version__` string (e.g., `"8.17.0"`)
+  - [ ] Verify version format follows semantic versioning (MAJOR.MINOR.PATCH)
+
+- [ ] **Update `pyproject.toml`**
+  - [ ] Update `version` field in `[project]` section
+  - [ ] Ensure version matches `__init__.py` exactly
+
+- [ ] **Lock dependencies**
+  - [ ] Run `uv lock` to update `uv.lock` file
+  - [ ] Commit all three files together in version bump commit
+
+- [ ] **Semantic Versioning Rules**
+  - [ ] MAJOR: Breaking changes (API changes, removed features)
+  - [ ] MINOR: New features (backward compatible)
+  - [ ] PATCH: Bug fixes (no API changes)
+
+### ✅ CHANGELOG Quality Gates
+- [ ] **Format Validation**
+  - [ ] Follows [Keep a Changelog](https://keepachangelog.com/) format
+  - [ ] Version header includes date: `## [8.17.0] - 2025-11-04`
+  - [ ] Changes categorized: Added/Changed/Fixed/Removed/Deprecated/Security
+
+- [ ] **Content Requirements**
+  - [ ] All user-facing changes documented
+  - [ ] Breaking changes clearly marked with **BREAKING**
+  - [ ] Performance improvements include metrics (e.g., "50% faster")
+  - [ ] Bug fixes reference issue numbers (e.g., "Fixes #123")
+  - [ ] Technical details for maintainers in appropriate sections
+
+- [ ] **Migration Guidance** (if breaking changes)
+  - [ ] Before/after code examples provided
+  - [ ] Environment variable changes documented
+  - [ ] Database migration scripts linked
+  - [ ] Deprecation timeline specified
+
+### ✅ GitHub Workflow Verification
+- [ ] **All Workflows Pass** (check Actions tab)
+  - [ ] Docker Publish workflow (builds multi-platform images)
+  - [ ] Publish and Test workflow (PyPI publish + installation tests)
+  - [ ] HTTP-MCP Bridge Tests (validates MCP protocol compliance)
+  - [ ] Platform Tests (macOS/Windows/Linux matrix)
+
+- [ ] **Docker Images Built**
+  - [ ] `mcp-memory-service:latest` tag updated
+  - [ ] `mcp-memory-service:v8.x.x` version tag created
+  - [ ] Multi-platform images (linux/amd64, linux/arm64)
+
+- [ ] **PyPI Package Published**
+  - [ ] Package available at https://pypi.org/project/mcp-memory-service/
+  - [ ] Installation test passes: `pip install mcp-memory-service==8.x.x`
+
+### ✅ Git Tag and Release
+- [ ] **Create annotated Git tag**
+  ```bash
+  git tag -a v8.x.x -m "Release v8.x.x: Brief description"
+  ```
+  - [ ] Tag follows `vMAJOR.MINOR.PATCH` format
+  - [ ] Tag message summarizes key changes
+
+- [ ] **Push tag to remote**
+  ```bash
+  git push origin v8.x.x
+  ```
+  - [ ] Tag triggers release workflows
+
+- [ ] **Create GitHub Release**
+  - [ ] Title: `vx.x.x - Short Description`
+  - [ ] Body: Copy relevant CHANGELOG section
+  - [ ] Mark as pre-release if RC version
+  - [ ] Attach any release artifacts (if applicable)
+
+### ✅ Post-Release Issue Closure
+- [ ] **Review Fixed Issues**
+  - [ ] Search for issues closed by commits in this release
+  - [ ] Verify each issue is actually resolved
+
+- [ ] **Close Issues with Context**
+  ```markdown
+  Resolved in v8.x.x via #PR_NUMBER
+
+  [Link to CHANGELOG entry]
+  [Link to relevant Wiki page if applicable]
+
+  Thank you for reporting this issue!
+  ```
+  - [ ] Include PR link for traceability
+  - [ ] Reference CHANGELOG section
+  - [ ] Tag issues with `released` label
+
+- [ ] **Update Related Documentation**
+  - [ ] Wiki pages updated with new features/fixes
+  - [ ] Troubleshooting guides reflect resolved issues
+  - [ ] FAQ updated if new common questions emerged
 
 ### ✅ Communication
 - [ ] Release notes highlight critical fixes
@@ -176,5 +266,69 @@ This checklist ensures that critical bugs like the HTTP-MCP bridge issues are ca
   3. Fix bug and verify test passes
   4. Release hotfix within 24 hours
   5. Post-mortem to prevent similar issues
+
+---
+
+## Rollback Procedure
+
+### ✅ Emergency Rollback (if release breaks production)
+
+**When to Rollback:**
+- Critical functionality broken (storage, retrieval, MCP protocol)
+- Data corruption risk identified
+- Security vulnerability introduced
+- Widespread user-reported failures
+
+**Rollback Steps:**
+
+1. **Immediate Actions**
+   - [ ] Create GitHub issue documenting the problem
+   - [ ] Tag issue with `critical`, `rollback-needed`
+   - [ ] Notify users via GitHub Discussions/Release notes
+
+2. **Docker Rollback**
+   ```bash
+   # Tag previous version as latest
+   git checkout vPREVIOUS_VERSION
+   docker build -t mcp-memory-service:latest .
+   docker push mcp-memory-service:latest
+   ```
+   - [ ] Verify previous Docker image works
+   - [ ] Update documentation to reference previous version
+
+3. **PyPI Rollback** (yank bad version)
+   ```bash
+   # Yank the broken version (keeps it available but discourages use)
+   pip install twine
+   twine yank mcp-memory-service==8.x.x
+   ```
+   - [ ] Yank version on PyPI
+   - [ ] Publish notice in release notes
+
+4. **Git Tag Management**
+   - [ ] Keep the bad tag for history (don't delete)
+   - [ ] Create new hotfix tag (e.g., `v8.x.x+1`) with fix
+   - [ ] Mark GitHub Release as "This release has known issues - use v8.x.x-1 instead"
+
+5. **User Communication**
+   - [ ] Post issue explaining problem and rollback
+   - [ ] Update README with rollback instructions
+   - [ ] Pin issue to repository
+   - [ ] Post in Discussions with migration path
+
+6. **Post-Rollback Analysis**
+   - [ ] Document what went wrong in post-mortem
+   - [ ] Add regression test to prevent recurrence
+   - [ ] Update this checklist with lessons learned
+   - [ ] Review release testing procedures
+
+**Recovery Timeline:**
+- Hour 1: Identify issue, create GitHub issue, begin rollback
+- Hour 2-4: Complete rollback, verify previous version works
+- Hour 4-24: Investigate root cause, prepare hotfix
+- Day 2: Release hotfix with comprehensive tests
+- Week 1: Post-mortem, update testing procedures
+
+---
 
 This checklist must be completed for every release to prevent critical bugs from reaching users.

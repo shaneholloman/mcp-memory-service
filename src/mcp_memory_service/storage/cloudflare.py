@@ -658,11 +658,52 @@ class CloudflareStorage(MemoryStorage):
             
             logger.info(f"Successfully deleted memory: {content_hash}")
             return True, "Memory deleted successfully"
-            
+
         except Exception as e:
             logger.error(f"Failed to delete memory {content_hash}: {e}")
             return False, f"Deletion failed: {str(e)}"
-    
+
+    async def get_by_hash(self, content_hash: str) -> Optional[Memory]:
+        """Get a memory by its content hash using direct O(1) D1 lookup."""
+        try:
+            # Query D1 for the memory
+            sql = "SELECT * FROM memories WHERE content_hash = ?"
+            payload = {"sql": sql, "params": [content_hash]}
+            response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+            result = response.json()
+
+            if not result.get("success") or not result.get("result", [{}])[0].get("results"):
+                return None
+
+            row = result["result"][0]["results"][0]
+
+            # Load content from R2 if needed
+            content = row["content"]
+            if row.get("r2_key") and content.startswith("[R2 Content:"):
+                content = await self._load_r2_content(row["r2_key"])
+
+            # Load tags
+            tags = await self._load_memory_tags(row["id"])
+
+            # Construct Memory object
+            memory = Memory(
+                content=content,
+                content_hash=content_hash,
+                tags=tags,
+                memory_type=row.get("memory_type"),
+                metadata=json.loads(row["metadata_json"]) if row.get("metadata_json") else {},
+                created_at=row.get("created_at"),
+                created_at_iso=row.get("created_at_iso"),
+                updated_at=row.get("updated_at"),
+                updated_at_iso=row.get("updated_at_iso")
+            )
+
+            return memory
+
+        except Exception as e:
+            logger.error(f"Failed to get memory by hash {content_hash}: {e}")
+            return None
+
     async def _delete_vectorize_vector(self, vector_id: str) -> None:
         """Delete vector from Vectorize."""
         # Correct endpoint uses underscores, not hyphens

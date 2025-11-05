@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation & Wiki
+    url: https://github.com/doobidoo/mcp-memory-service/wiki
+    about: Check the Wiki for setup guides, troubleshooting, and advanced usage
+  - name: 💬 GitHub Discussions
+    url: https://github.com/doobidoo/mcp-memory-service/discussions
+    about: Ask questions, share ideas, or discuss general topics with the community
+  - name: 🔍 Search Existing Issues
+    url: https://github.com/doobidoo/mcp-memory-service/issues
+    about: Check if your issue has already been reported or solved

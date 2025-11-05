@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
+> **🔧 v8.17.1**: **Critical Analytics Fix & Maintenance Utilities** - Dashboard now shows accurate memory count (fixed 1,000 sampling limit). New intelligent tag repair and type assignment tools for database cleanup.
+
 > **🚨 v8.13.3**: **MCP Tools Restored** - CRITICAL patch fixing v8.12.0 regression that broke all MCP memory operations. Transform MemoryService responses to proper MCP TypedDict format. Requires MCP server restart (/mcp command) to load fix.
 
 > **🔄 v8.13.2**: **Sync Script Restored** - Fixed broken backend synchronization (store_memory API migration). Proper Memory object creation with storage.store() method.
@@ -54,6 +56,17 @@ python scripts/sync/sync_memory_backends.py --dry-run   # Preview sync
 python scripts/sync/claude_sync_commands.py backup      # Cloudflare → SQLite
 python scripts/sync/claude_sync_commands.py restore     # SQLite → Cloudflare
 
+# Database Maintenance (NEW v8.16.0)
+python scripts/maintenance/check_memory_types.py                  # Check memory type distribution
+python scripts/maintenance/consolidate_memory_types.py --dry-run  # Preview type consolidation (safe)
+python scripts/maintenance/consolidate_memory_types.py            # Execute type consolidation
+python scripts/maintenance/find_all_duplicates.py                 # Find duplicate memories
+bash scripts/maintenance/fast_cleanup_duplicates.sh               # Remove duplicates quickly
+python scripts/maintenance/repair_malformed_tags.py --dry-run     # Preview malformed tag repairs (v8.17.1)
+python scripts/maintenance/repair_malformed_tags.py               # Repair JSON serialization artifacts in tags (v8.17.1)
+python scripts/maintenance/assign_memory_types.py --dry-run       # Preview intelligent type assignment (v8.17.1)
+python scripts/maintenance/assign_memory_types.py                 # Assign types to untyped memories (v8.17.1)
+
 # Service Management
 scripts/service/memory_service_manager.sh status       # Check service status
 scripts/service/memory_service_manager.sh start-cloudflare # Start with Cloudflare
@@ -74,9 +87,14 @@ node ~/.claude/hooks/test-natural-triggers.js          # Test trigger system
 # Note: Context-provider commands are integrated into MCP client automatically
 # No manual commands needed - contexts activate automatically during sessions
 
+# Amp CLI Bridge (Semi-Automated File-Based Workflow)
+# Usage: Claude Code creates prompt → Shows you command → You run: amp @{prompt-file} → Response appears
+
 # Debug & Troubleshooting
 npx @modelcontextprotocol/inspector uv run memory server # MCP Inspector
 python scripts/database/simple_timestamp_check.py       # Database health check
+python scripts/maintenance/consolidate_memory_types.py --dry-run  # Preview type consolidation
+python scripts/maintenance/consolidate_memory_types.py  # Execute type consolidation
 df -h /                                               # Check disk space (critical for Litestream)
 journalctl -u mcp-memory-service -f                   # Monitor service logs
 
@@ -468,6 +486,49 @@ export CLOUDFLARE_VECTORIZE_INDEX="mcp-memory-index"
 - Time parsing supports natural language ("yesterday", "last week")
 - Use semantic commit messages for version management
 
+#### **Memory Type Taxonomy** (Updated Nov 2025)
+Database consolidated from 342 fragmented types to 128 organized types. Use these **24 core types** for all new memories:
+
+**Content Types:**
+- `note` - General notes, observations, summaries
+- `reference` - Reference materials, knowledge base entries
+- `document` - Formal documents, code snippets
+- `guide` - How-to guides, tutorials, troubleshooting guides
+
+**Activity Types:**
+- `session` - Work sessions, development sessions
+- `implementation` - Implementation work, integrations
+- `analysis` - Analysis, reports, investigations
+- `troubleshooting` - Problem-solving, debugging
+- `test` - Testing activities, validation
+
+**Artifact Types:**
+- `fix` - Bug fixes, corrections
+- `feature` - New features, enhancements
+- `release` - Releases, release notes
+- `deployment` - Deployments, deployment records
+
+**Progress Types:**
+- `milestone` - Milestones, completions, achievements
+- `status` - Status updates, progress reports
+
+**Infrastructure Types:**
+- `configuration` - Configurations, setups, settings
+- `infrastructure` - Infrastructure changes, system updates
+- `process` - Processes, workflows, procedures
+- `security` - Security-related memories
+- `architecture` - Architecture decisions, design patterns
+
+**Other Types:**
+- `documentation` - Documentation artifacts
+- `solution` - Solutions, resolutions
+- `achievement` - Accomplishments, successes
+
+**Usage Notes:**
+- Avoid creating new type variations (e.g., use `fix` not `bug-fix`, `bugfix`, `technical-fix`)
+- Avoid redundant prefixes (e.g., use `solution` not `technical-solution`, `project-solution`)
+- Run `python scripts/maintenance/consolidate_memory_types.py --dry-run` to preview type cleanup
+
 ### 🏗️ **Architecture & Testing**
 - Storage backends must implement abstract base class
 - All features require corresponding tests
@@ -674,6 +735,100 @@ If you find a `data/memory.db` file in your project directory:
 - Configured location: `~/Library/Application Support/mcp-memory/sqlite_vec.db` (macOS)
 - Verify: `curl http://localhost:8000/api/health` should show correct memory count
 
+### SessionEnd Hook Troubleshooting
+
+**Common Confusion**: Many users expect SessionEnd hooks to fire when they press Ctrl+C twice, but this is **not** how Claude Code works.
+
+#### 🔍 When SessionEnd Hooks Actually Trigger
+
+**SessionEnd fires ONLY on actual session termination**:
+- ✅ `/exit` command - Graceful session termination
+- ✅ Terminal/window close - Process termination
+- ✅ Normal Claude Code exit - Graceful shutdown
+
+**SessionEnd does NOT fire on**:
+- ❌ Ctrl+C (once) - Interrupts input only
+- ❌ Ctrl+C (twice) - Suspends session
+- ❌ Session resume - Continues existing session (fires `SessionStart:resume` instead)
+
+**Key Insight**: When you press Ctrl+C twice and later resume, you see:
+```
+SessionStart:resume hook success
+```
+This confirms you **resumed** an existing session - no SessionEnd was triggered.
+
+#### 🐛 Common Issue: "My Session Didn't Create a Memory"
+
+**Symptom**: You exited Claude Code with Ctrl+C, resumed later, but no `session-consolidation` memory exists.
+
+**Root Cause**: Ctrl+C **suspends** the session, it doesn't **end** it. Only `/exit` or terminal close triggers SessionEnd.
+
+**Solution**: Always use `/exit` to properly terminate sessions if you want memories created.
+
+#### 🔌 Common Issue: Connection Failures
+
+**Symptom**:
+```
+⚠️ Memory Connection → Failed to connect using any available protocol
+💾 Storage → 💾 Unknown Storage (http://127.0.0.1:8000)
+```
+
+**Root Cause**: HTTP/HTTPS protocol mismatch between hook config and server.
+
+**Diagnosis**:
+```bash
+# Check server protocol
+systemctl --user status mcp-memory-http.service
+# Look for: "Uvicorn running on https://..." or "http://..."
+
+# Check hook config
+grep endpoint ~/.claude/hooks/config.json
+```
+
+**Solution**: Update `~/.claude/hooks/config.json` to match server:
+```json
+{
+  "memoryService": {
+    "http": {
+      "endpoint": "https://localhost:8000",  // Match your server protocol
+      "apiKey": "your-api-key"
+    }
+  }
+}
+```
+
+#### 📋 SessionEnd Memory Requirements
+
+Even if SessionEnd fires, memory creation requires:
+1. **Minimum session length**: 100+ characters (configurable)
+2. **Minimum confidence**: > 0.1 from conversation analysis
+3. **Session consolidation enabled**: `enableSessionConsolidation: true` in config
+
+**What gets extracted**:
+- Topics (implementation, debugging, architecture, etc.)
+- Decisions ("decided to", "will use", "chose to")
+- Insights ("learned that", "discovered", "realized")
+- Code changes ("implemented", "created", "refactored")
+- Next steps ("next we need", "TODO", "remaining")
+
+#### 🔧 Quick Verification
+
+```bash
+# Check recent session memories
+curl -sk "https://localhost:8000/api/search/by-tag" \
+  -H "Content-Type: application/json" \
+  -d '{"tags": ["session-consolidation"], "limit": 5}' | \
+  python -m json.tool | grep created_at_iso
+
+# Test SessionEnd hook manually
+node ~/.claude/hooks/core/session-end.js
+
+# Verify connection
+curl -sk "https://localhost:8000/api/health"
+```
+
+**Detailed Guide**: See `docs/troubleshooting/session-end-hooks.md` for comprehensive troubleshooting steps, diagnosis checklist, and technical details.
+
 ### Windows SessionStart Hook Issue
 
 **🚨 CRITICAL BUG**: SessionStart hooks with `matchers: ["*"]` cause Claude Code to hang indefinitely on Windows.
@@ -698,7 +853,17 @@ Windows-specific subprocess management issue. Even with `process.exit(0)`, Node.
 
 **Workarounds**:
 
-1. **Disable SessionStart hooks** (current recommendation):
+1. **Use `/session-start` slash command** (recommended):
+```bash
+claude /session-start
+```
+- Provides same functionality as automatic SessionStart hook
+- Works on all platforms (Windows, macOS, Linux)
+- Safe manual alternative - no configuration changes needed
+- Installer automatically skips SessionStart configuration on Windows
+- See: `claude_commands/session-start.md` for full documentation
+
+2. **Disable SessionStart hooks** (if manually configured):
 ```json
 {
   "hooks": {
@@ -707,7 +872,7 @@ Windows-specific subprocess management issue. Even with `process.exit(0)`, Node.
 }
 ```
 
-2. **Use UserPromptSubmit hooks instead** (these work on Windows):
+3. **Use UserPromptSubmit hooks instead** (these work on Windows):
 ```json
 {
   "hooks": {
@@ -727,7 +892,7 @@ Windows-specific subprocess management issue. Even with `process.exit(0)`, Node.
 }
 ```
 
-3. **Manual invocation when needed**:
+4. **Manual hook invocation** (advanced):
 ```bash
 node C:\Users\username\.claude\hooks\core\session-start.js
 ```
@@ -738,6 +903,192 @@ node C:\Users\username\.claude\hooks\core\session-start.js
 - Windows: Fatal hang ❌
 
 **Impact**: Critical for Windows users. SessionStart hooks are completely unusable until Claude Code fixes subprocess management on Windows.
+
+---
+
+## Amp CLI Bridge (Semi-Automated Workflow) 🆕
+
+**Purpose**: Leverage Amp CLI capabilities (research, code analysis, web search) from Claude Code without consuming Claude Code credits, using a semi-automated file-based workflow where you manually run Amp commands.
+
+### Architecture
+
+```
+Claude Code (@agent-amp-bridge) → .claude/amp/prompts/pending/{uuid}.json
+                                            ↓
+                          You run: amp @prompts/pending/{uuid}.json
+                                            ↓
+                          Amp writes: responses/ready/{uuid}.json
+                                            ↓
+                   Claude Code reads response ← Workflow continues
+```
+
+### Quick Start
+
+**1. Claude Code creates prompt**:
+```
+You: "Use @agent-amp-bridge to research TypeScript 5.0 features"
+Claude: [Creates prompt file and shows command]
+```
+
+**2. Run the command shown**:
+```bash
+amp @.claude/amp/prompts/pending/research-xyz.json
+```
+
+**3. Amp processes and writes response**:
+- Amp reads the prompt from the file
+- Processes using your authenticated free-tier session
+- Writes response to `.claude/amp/responses/ready/research-xyz.json`
+
+**4. Claude Code continues automatically**:
+- Detects response file
+- Reads and presents results
+- Archives processed files
+
+### How It Works
+
+1. **Claude Code Agent** (`@agent-amp-bridge`):
+   - Generates UUID for each request
+   - Writes prompt to `.claude/amp/prompts/pending/{uuid}.json`
+   - **Includes file-write instructions** in the prompt
+   - Polls `.claude/amp/responses/ready/{uuid}.json` for response
+   - Presents results when available
+
+2. **You (Manual Step)**:
+   - Run: `./scripts/amp/next-prompt.sh` to see command
+   - Execute: `amp @.claude/amp/prompts/pending/{uuid}.json`
+   - Amp reads prompt and writes response file
+
+3. **Amp Processing**:
+   - Reads prompt from JSON file using `@` file reference
+   - Processes using your authenticated session (free tier credits)
+   - Follows embedded instructions to write response JSON
+   - Writes to `.claude/amp/responses/ready/{uuid}.json`
+
+4. **File Structure**:
+   ```
+   .claude/amp/
+   ├── prompts/
+   │   └── pending/        # Prompts waiting for you to process
+   ├── responses/
+   │   ├── ready/          # Responses written by Amp
+   │   └── consumed/       # Archive of processed responses
+   └── README.md           # Documentation
+   ```
+
+### Message Format
+
+**Prompt** (`.claude/amp/prompts/pending/{uuid}.json`):
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2025-11-04T20:00:00.000Z",
+  "prompt": "Research async/await best practices in Python",
+  "context": {
+    "project": "mcp-memory-service",
+    "cwd": "/path/to/project"
+  },
+  "options": {
+    "timeout": 300000,
+    "format": "markdown"
+  }
+}
+```
+
+**Response** (`.claude/amp/responses/ready/{uuid}.json`):
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2025-11-04T20:05:00.000Z",
+  "success": true,
+  "output": "## Async/Await Best Practices\n\n...",
+  "error": null,
+  "duration": 300000
+}
+```
+
+### Configuration
+
+**File**: `.claude/amp/config.json`
+
+```json
+{
+  "pollInterval": 1000,      // Check for new prompts every 1s
+  "timeout": 300000,          // 5 minute timeout per prompt
+  "debug": false,             // Enable debug logging
+  "ampCommand": "amp"         // Amp CLI command
+}
+```
+
+### Use Cases
+
+✅ **Web Research**: "Research latest React 18 features"
+✅ **Code Analysis**: "Analyze our storage backend architecture"
+✅ **Documentation**: "Generate API docs for MCP tools"
+✅ **Code Generation**: "Create TypeScript type definitions"
+✅ **Best Practices**: "Find OAuth 2.1 security recommendations"
+
+### Manual Inspection (Optional)
+
+**List pending prompts:**
+```bash
+ls -lt .claude/amp/prompts/pending/
+```
+
+**View prompt content:**
+```bash
+cat .claude/amp/prompts/pending/{uuid}.json | jq -r '.prompt'
+```
+
+**Note**: The agent automatically shows you the exact command when creating each prompt.
+
+### Troubleshooting
+
+**Amp CLI credit errors:**
+```bash
+# Test if Amp is authenticated
+amp
+
+# If credits exhausted:
+# - Free tier limits may be daily/monthly
+# - Check status: https://ampcode.com/settings
+# - Wait for refresh or upgrade subscription
+```
+
+**Response not appearing:**
+```bash
+# Verify Amp wrote the file
+ls -lt .claude/amp/responses/ready/
+
+# Check if Amp followed file-write instructions
+# The prompt explicitly tells Amp where to write
+```
+
+**Permission issues:**
+```bash
+# Ensure directories exist
+ls -la .claude/amp/
+
+# Check write permissions
+touch .claude/amp/responses/ready/test.json && rm .claude/amp/responses/ready/test.json
+```
+
+### Benefits
+
+- ✅ **Zero Claude Code Credits**: All Amp API calls use your separate authenticated session
+- ✅ **Uses Free Tier**: Works with Amp's free tier (when credits available)
+- ✅ **Simple Workflow**: No background processes, just manual command execution
+- ✅ **Full Control**: You decide when/what to process
+- ✅ **Fault Tolerant**: File-based queue survives crashes
+- ✅ **Audit Trail**: All prompts/responses saved for debugging
+- ✅ **Reusable**: Can replay prompts or review past responses
+
+### Limitations
+
+- 🖐️ **Manual Step Required**: You must run the `amp @` command for each prompt
+- 💰 **Amp Credits**: Still consumes Amp API credits (free tier limits apply)
+- ⏱️ **Semi-Async**: Claude Code waits for you to process the prompt
+- 📝 **Best for Research**: Optimized for async research tasks, not real-time chat
 
 ---
 

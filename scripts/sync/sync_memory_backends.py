@@ -78,11 +78,14 @@ class MemorySync:
             memories = []
             for memory in memories_list:
                 memory_dict = {
-                    'id': memory.id,
+                    'content_hash': memory.content_hash,
                     'content': memory.content,
                     'metadata': memory.metadata,
-                    'timestamp': memory.timestamp,
-                    'hash': memory.hash
+                    'tags': memory.tags,
+                    'created_at': memory.created_at,
+                    'created_at_iso': memory.created_at_iso,
+                    'updated_at': memory.updated_at,
+                    'updated_at_iso': memory.updated_at_iso,
                 }
                 memories.append(memory_dict)
 
@@ -118,7 +121,7 @@ class MemorySync:
         target_memories = await self.get_all_memories_from_backend(target_backend)
 
         # Create hash sets for quick lookup
-        target_hashes = {mem['hash'] for mem in target_memories if mem.get('hash')}
+        target_hashes = {mem['content_hash'] for mem in target_memories if mem.get('content_hash')}
         target_content_hashes = {
             self.calculate_content_hash(mem['content'], mem['metadata'])
             for mem in target_memories
@@ -134,7 +137,7 @@ class MemorySync:
             # Check if memory already exists (by hash or content)
             content_hash = self.calculate_content_hash(source_memory['content'], source_memory['metadata'])
 
-            if (source_memory.get('hash') in target_hashes or
+            if (source_memory.get('content_hash') in target_hashes or
                 content_hash in target_content_hashes):
                 skipped_count += 1
                 continue
@@ -143,19 +146,19 @@ class MemorySync:
                 try:
                     memory_obj = Memory(
                         content=source_memory['content'],
-                        content_hash=source_memory['hash'],
+                        content_hash=source_memory['content_hash'],
                         tags=source_memory.get('tags', []),
                         metadata=source_memory.get('metadata', {}),
-                        created_at=source_memory.get('timestamp'),
+                        created_at=source_memory.get('created_at'),
                     )
                     success, message = await target_storage.store(memory_obj)
                     if success:
                         added_count += 1
-                        logger.debug(f"Added memory: {source_memory['hash'][:8]}...")
+                        logger.debug(f"Added memory: {source_memory['content_hash'][:8]}...")
                     else:
-                        logger.warning(f"Failed to store memory {source_memory['hash']}: {message}")
+                        logger.warning(f"Failed to store memory {source_memory['content_hash']}: {message}")
                 except Exception as e:
-                    logger.error(f"Error storing memory {source_memory['hash']}: {e}")
+                    logger.error(f"Error storing memory {source_memory['content_hash']}: {e}")
             else:
                 added_count += 1
 
