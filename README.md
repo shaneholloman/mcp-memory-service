@@ -15,22 +15,22 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.18.1** (Nov 5, 2025)
+### 🆕 Latest Release: **v8.18.2** (Nov 6, 2025)
 
-**Test Suite Import Fix** - Resolved critical import errors blocking all test collection.
+**MCP Retrieve Memory Fix** - Fixed critical bug preventing MCP memory retrieval.
 
 **What's New**:
-- 🔧 **Test Suite Restored** - Fixed import failures that prevented 190 tests from running
-- 📦 **MCP Client Update** - Migrated from deprecated `mcp` module to `mcp.client.session` (v1.1.2 API)
-- 🧹 **Architecture Cleanup** - Removed obsolete `CHROMA_PATH` constant from old storage backend
-- ✅ **Full Test Coverage** - All unit, integration, and E2E tests now collect and run successfully
+- 🐛 **Critical Bugfix** - Fixed 'MemoryService' object has no attribute 'retrieve_memory' error
+- ✅ **MCP Tool Restored** - MCP retrieve_memory tool now fully functional
+- 🔧 **Method Name Fix** - Corrected handler calls from `retrieve_memory()` to `retrieve_memories()`
+- 🧹 **Parameter Cleanup** - Removed unsupported `min_similarity` parameter
 
 **Technical Details**:
-- Updated test imports to use current MCP SDK API
-- Removed dependencies on deprecated storage constants
-- Verified test collection across all test suites
+- Root cause: Method name mismatch from Oct 28 refactoring (commit 36e9845)
+- Fixed server.py line 2153 and mcp_server.py line 227
+- All 4 retrieve-related tests pass
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8181---2025-11-05) | [PR #205](https://github.com/doobidoo/mcp-memory-service/pull/205) | [Issue #204](https://github.com/doobidoo/mcp-memory-service/issues/204) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8182---2025-11-06) | [Issue #207](https://github.com/doobidoo/mcp-memory-service/issues/207) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 

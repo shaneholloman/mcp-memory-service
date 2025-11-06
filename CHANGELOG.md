@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.18.2] - 2025-11-06
+
 ### Fixed
 - **MCP Tool Handler Method Name** - Fixed critical bug where MCP tool handlers called non-existent `retrieve_memory()` method
   - **Root Cause**: Method name mismatch introduced in commit 36e9845 during MemoryService refactoring (Oct 28, 2025)
