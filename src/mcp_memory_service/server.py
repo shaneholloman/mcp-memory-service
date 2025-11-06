@@ -2150,7 +2150,7 @@ class MemoryServer:
             start_time = time.time()
 
             # Call shared MemoryService business logic
-            result = await self.memory_service.retrieve_memory(
+            result = await self.memory_service.retrieve_memories(
                 query=query,
                 n_results=n_results
             )

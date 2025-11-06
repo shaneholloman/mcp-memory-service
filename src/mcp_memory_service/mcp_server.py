@@ -208,8 +208,7 @@ async def store_memory(
 async def retrieve_memory(
     query: str,
     ctx: Context,
-    n_results: int = 5,
-    min_similarity: float = 0.0
+    n_results: int = 5
 ) -> Dict[str, Any]:
     """
     Retrieve memories based on semantic similarity to a query.
@@ -217,17 +216,15 @@ async def retrieve_memory(
     Args:
         query: Search query for semantic similarity
         n_results: Maximum number of results to return
-        min_similarity: Minimum similarity score threshold
 
     Returns:
         Dictionary with retrieved memories and metadata
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
-    return await memory_service.retrieve_memory(
+    return await memory_service.retrieve_memories(
         query=query,
-        n_results=n_results,
-        min_similarity=min_similarity
+        n_results=n_results
     )
 
 @mcp.tool()
