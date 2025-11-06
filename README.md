@@ -8,6 +8,7 @@
 [![Works with Cursor](https://img.shields.io/badge/Works%20with-Cursor-orange)](https://cursor.sh)
 [![MCP Protocol](https://img.shields.io/badge/MCP-Compatible-4CAF50?style=flat)](https://modelcontextprotocol.io/)
 [![Multi-Client](https://img.shields.io/badge/Multi--Client-13+%20Apps-FF6B35?style=flat)](https://github.com/doobidoo/mcp-memory-service/wiki)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/doobidoo/mcp-memory-service)
 
 **Production-ready MCP memory service** with **zero database locks**, **hybrid backend** (fast local + cloud sync), and **intelligent memory search** for **AI assistants**. Features **v8.9.0 auto-configuration** for multi-client access, **5ms local reads** with background Cloudflare sync, **Natural Memory Triggers** with 85%+ accuracy, and **OAuth 2.1 team collaboration**. Works with **Claude Desktop, VS Code, Cursor, Continue, and 13+ AI applications**.
 
