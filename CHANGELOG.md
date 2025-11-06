@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Removed
+- **Obsolete ChromaDB Test Infrastructure** - Removed all test files referencing deprecated ChromaDB storage backend
+  - **Deleted Files**:
+    - `tests/performance/test_caching.py` - ChromaDB-specific performance tests
+    - `tests/test_timestamp_recall.py` - Timestamp tests using ChromaDB APIs
+    - `tests/test_tag_storage.py` - Tag storage tests for ChromaDB
+    - `tests/integration/test_storage.py` - ChromaDB storage diagnostic script
+    - `tests/unit/test_tags.py` - Tag deletion tests using deprecated CHROMA_PATH
+    - `tests/test_content_splitting.py::test_chromadb_limit()` - ChromaDB content limit test
+  - **Updated**: `tests/conftest.py` - Generic database testing fixture (removed ChromaDB reference)
+  - **Context**: ChromaDB backend was fully replaced by SQLite-vec, Cloudflare, and Hybrid backends
+  - **Impact**: Test suite no longer has broken imports or references to removed storage layer
+
 ## [8.18.2] - 2025-11-06
 
 ### Fixed

@@ -189,13 +189,6 @@ class TestBackendLimits:
         # Verify the class constant matches config
         assert CloudflareStorage._MAX_CONTENT_LENGTH == CLOUDFLARE_MAX_CONTENT_LENGTH
 
-    def test_chromadb_limit(self):
-        """Test that ChromaDB backend uses config constant."""
-        from src.mcp_memory_service.storage.chroma import ChromaMemoryStorage
-        from src.mcp_memory_service.config import CHROMADB_MAX_CONTENT_LENGTH
-
-        assert ChromaMemoryStorage._MAX_CONTENT_LENGTH == CHROMADB_MAX_CONTENT_LENGTH
-
     def test_sqlitevec_unlimited(self):
         """Test that SQLite-vec backend uses config constant."""
         from src.mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
