@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.18.2] - 2025-11-06
+
+### Fixed
+- **MCP Tool Handler Method Name** - Fixed critical bug where MCP tool handlers called non-existent `retrieve_memory()` method
+  - **Root Cause**: Method name mismatch introduced in commit 36e9845 during MemoryService refactoring (Oct 28, 2025)
+  - **Symptom**: `'MemoryService' object has no attribute 'retrieve_memory'` error when using MCP retrieve_memory tool
+  - **Fix**: Updated handlers to call correct `retrieve_memories()` method (plural)
+  - **Files Modified**: `src/mcp_memory_service/server.py` (line 2153), `src/mcp_memory_service/mcp_server.py` (line 227)
+  - **Additional**: Removed unsupported `min_similarity` parameter from MCP tool definition
+  - **Impact**: MCP retrieve_memory tool now functions correctly
+  - **Issue**: [#207](https://github.com/doobidoo/mcp-memory-service/issues/207)
+
 ## [8.18.1] - 2025-11-05
 
 ### Fixed
