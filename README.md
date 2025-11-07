@@ -16,31 +16,22 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.19.0** (Nov 7, 2025)
+### 🆕 Latest Release: **v8.19.1** (Nov 7, 2025)
 
-**Code Execution Interface API** 🚀 - Revolutionary 75-90% token reduction for all memory operations!
+**Critical Bug Fixes** 🔧
 
-**What's New**:
-- 🚀 **Code Execution API** - Direct Python API for 90% token reduction
+**What's Fixed**:
+- 🔧 **MCP Tool Fixes** - Resolved retrieve_memory and search_by_tag regressions (Issue #211)
+- ✅ **Hybrid Storage** - Both tools now work correctly with hybrid backend
+- 🚀 **Code Execution API** - All v8.19.0 features remain available
+
+**v8.19.0 Features** (Released earlier today):
+- 🚀 **Code Execution API** - Revolutionary 75-90% token reduction for all memory operations
 - ⚡ **Session Hook Migration** - 75% reduction in session startup tokens
 - 📊 **Cost Savings** - $23-2,382/year depending on usage scale
 - 🔄 **Auto-Enabled** - New installations use code execution by default
-- 🛡️ **Zero Breaking Changes** - Automatic MCP fallback, 100% backward compatible
 
-**Token Reductions (Validated)**:
-- Session hooks: 3,600 → 900 tokens (75%)
-- Search operations: 2,625 → 385 tokens (85%)
-- Store operations: 150 → 15 tokens (90%)
-- Health checks: 125 → 20 tokens (84%)
-
-**5-Minute Migration**:
-```bash
-git pull  # Update to v8.19.0
-python install.py  # Code execution enabled by default
-# Done! 75-90% token reduction automatically ✅
-```
-
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8190---2025-11-07) | [Migration Guide](docs/migration/code-execution-api-quick-start.md) | [Issue #206](https://github.com/doobidoo/mcp-memory-service/issues/206) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8191---2025-11-07) | [Issue #211](https://github.com/doobidoo/mcp-memory-service/issues/211) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 

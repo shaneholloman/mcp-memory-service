@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.19.1] - 2025-11-07
+
+### Fixed
+- **Critical MCP Tool Regressions** (Issue #211) - Two core MCP tools broken in v8.19.0
+  - **retrieve_memory**: Fixed parameter error where unsupported 'tags' parameter was passed to storage.retrieve()
+    - Removed unsupported parameters from storage call
+    - Implemented post-retrieval filtering in MemoryService
+    - File: `src/mcp_memory_service/services/memory_service.py`
+  - **search_by_tag**: Fixed type error where code assumed created_at was always string
+    - Added type checking for both float (timestamp) and string (ISO format)
+    - Uses `datetime.fromtimestamp()` for floats, `datetime.fromisoformat()` for strings
+    - Files: `src/mcp_memory_service/server.py` (handle_search_by_tag, handle_retrieve_memory)
+  - **Impact**: Both tools now work correctly with hybrid storage backend
+  - **Root Cause**: v8.19.0 refactoring introduced incompatibilities with hybrid storage
+
 ## [8.19.0] - 2025-11-07
 
 ### Added

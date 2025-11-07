@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
+> **🔧 v8.19.1**: **Critical MCP Tool Fixes** - Resolved retrieve_memory and search_by_tag regressions affecting hybrid storage users (Issue #211).
+
 > **🔧 v8.17.1**: **Critical Analytics Fix & Maintenance Utilities** - Dashboard now shows accurate memory count (fixed 1,000 sampling limit). New intelligent tag repair and type assignment tools for database cleanup.
 
 > **🚨 v8.13.3**: **MCP Tools Restored** - CRITICAL patch fixing v8.12.0 regression that broke all MCP memory operations. Transform MemoryService responses to proper MCP TypedDict format. Requires MCP server restart (/mcp command) to load fix.
