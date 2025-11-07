@@ -396,15 +396,35 @@ class MemoryService:
             Dictionary with search results
         """
         try:
+            # Retrieve memories using semantic search
+            # Note: storage.retrieve() only supports query and n_results
+            # We'll filter by tags/type after retrieval if needed
             memories = await self.storage.retrieve(
                 query=query,
-                n_results=n_results,
-                tags=tags,
-                memory_type=memory_type
+                n_results=n_results
             )
 
+            # Apply optional post-filtering
+            filtered_memories = memories
+            if tags or memory_type:
+                filtered_memories = []
+                for memory in memories:
+                    # Filter by tags if specified
+                    if tags:
+                        memory_tags = memory.metadata.get('tags', []) if hasattr(memory, 'metadata') else []
+                        if not any(tag in memory_tags for tag in tags):
+                            continue
+
+                    # Filter by memory_type if specified
+                    if memory_type:
+                        mem_type = memory.metadata.get('memory_type', '') if hasattr(memory, 'metadata') else ''
+                        if mem_type != memory_type:
+                            continue
+
+                    filtered_memories.append(memory)
+
             results = []
-            for memory in memories:
+            for memory in filtered_memories:
                 results.append(self._format_memory_response(memory))
 
             return {

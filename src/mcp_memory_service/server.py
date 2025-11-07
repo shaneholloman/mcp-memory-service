@@ -2176,7 +2176,11 @@ class MemoryServer:
                 if created_at:
                     # Parse ISO string and format
                     try:
-                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        # Handle both float (timestamp) and string (ISO format) types
+                        if isinstance(created_at, (int, float)):
+                            dt = datetime.fromtimestamp(created_at)
+                        else:
+                            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                         memory_info.append(f"Timestamp: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
                     except (ValueError, TypeError):
                         memory_info.append(f"Timestamp: {created_at}")
@@ -2229,9 +2233,13 @@ class MemoryServer:
                 created_at = memory.get("created_at")
                 if created_at:
                     try:
-                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        # Handle both float (timestamp) and string (ISO format) types
+                        if isinstance(created_at, (int, float)):
+                            dt = datetime.fromtimestamp(created_at)
+                        else:
+                            dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                         memory_info.append(f"Timestamp: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
-                    except (ValueError, TypeError):
+                    except (ValueError, TypeError) as e:
                         memory_info.append(f"Timestamp: {created_at}")
 
                 memory_info.extend([

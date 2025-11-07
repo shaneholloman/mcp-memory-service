@@ -299,18 +299,32 @@ async def test_retrieve_memories_basic(memory_service, mock_storage, sample_memo
     assert result["count"] == 3
     assert len(result["memories"]) == 3
 
+    # After fix: storage.retrieve() only accepts query and n_results
     mock_storage.retrieve.assert_called_once_with(
         query="test query",
-        n_results=3,
-        tags=None,
-        memory_type=None
+        n_results=3
     )
 
 
 @pytest.mark.asyncio
 async def test_retrieve_memories_with_filters(memory_service, mock_storage, sample_memories):
     """Test retrieval with tag and type filters."""
-    mock_storage.retrieve.return_value = sample_memories[:1]
+    # Return memories that will be filtered by MemoryService
+    mock_storage.retrieve.return_value = sample_memories
+
+    # Create a memory with matching tags for filtering
+    from mcp_memory_service.models.memory import Memory
+    import hashlib
+    content_hash = hashlib.sha256("test content".encode()).hexdigest()
+    matching_memory = Memory(
+        content="test content",
+        content_hash=content_hash,
+        tags=["tag1"],
+        memory_type="note",
+        created_at=1234567890.0
+    )
+    matching_memory.metadata = {"tags": ["tag1"], "memory_type": "note"}
+    mock_storage.retrieve.return_value = [matching_memory]
 
     result = await memory_service.retrieve_memories(
         query="test",
@@ -319,11 +333,11 @@ async def test_retrieve_memories_with_filters(memory_service, mock_storage, samp
         memory_type="note"
     )
 
+    # After fix: storage.retrieve() only accepts query and n_results
+    # Filtering is done by MemoryService after retrieval
     mock_storage.retrieve.assert_called_once_with(
         query="test",
-        n_results=5,
-        tags=["tag1"],
-        memory_type="note"
+        n_results=5
     )
 
 
