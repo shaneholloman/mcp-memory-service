@@ -380,7 +380,7 @@ Workflow automation agents using Gemini CLI, Groq API, and Amp CLI. All agents i
 | **code-quality-guard** | Gemini CLI / Groq API | Fast code quality analysis | Active | Pre-commit, pre-PR |
 | **gemini-pr-automator** | Gemini CLI | Automated PR review loops | Active | Post-PR creation |
 
-**Groq Bridge** (Optional): Ultra-fast inference for code-quality-guard agent (~10x faster than Gemini). Supports multiple models including Kimi K2 (256K context, excellent for agentic coding). See `docs/integrations/groq-bridge.md` for setup.
+**Groq Bridge** (RECOMMENDED): Ultra-fast inference for code-quality-guard agent (~10x faster than Gemini, 200-300ms vs 2-3s). Supports multiple models including Kimi K2 (256K context, excellent for agentic coding). **Pre-commit hooks now use Groq as primary LLM** with Gemini fallback, avoiding OAuth browser authentication interruptions. See `docs/integrations/groq-bridge.md` for setup.
 
 ### GitHub Release Manager
 
@@ -426,7 +426,17 @@ bash scripts/maintenance/scan_todos.sh
 
 # Pre-commit hook (auto-install)
 ln -s ../../scripts/hooks/pre-commit .git/hooks/pre-commit
+
+# Pre-commit hook setup (RECOMMENDED: Groq for fast, non-interactive checks)
+export GROQ_API_KEY="your-groq-api-key"  # Primary (200-300ms, no OAuth)
+# Falls back to Gemini CLI if Groq unavailable
+# Skips checks gracefully if neither available
 ```
+
+**Pre-commit Hook LLM Priority:**
+1. **Groq API** (Primary) - Fast (200-300ms), simple API key auth, no browser interruption
+2. **Gemini CLI** (Fallback) - Slower (2-3s), OAuth browser flow may interrupt commits
+3. **Skip checks** - If neither available, commit proceeds without quality gates
 
 See [.claude/agents/code-quality-guard.md](.claude/agents/code-quality-guard.md) for complete workflows and quality standards.
 

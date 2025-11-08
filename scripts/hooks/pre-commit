@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/hooks/pre-commit - Pre-commit quality checks using Gemini CLI
+# scripts/hooks/pre-commit - Pre-commit quality checks using Groq (primary) or Gemini (fallback)
 #
 # Installation: ln -s ../../scripts/hooks/pre-commit .git/hooks/pre-commit
 #
@@ -7,6 +7,11 @@
 # 1. Code complexity (blocks if >8, warns if >7)
 # 2. Security vulnerabilities (blocks on any findings)
 # 3. Basic code quality issues
+#
+# LLM Selection Priority:
+# 1. Groq API (fast, simple API key auth, 200-300ms)
+# 2. Gemini CLI (fallback, slower, browser OAuth)
+# 3. Skip checks (if neither available)
 
 set -e
 
@@ -19,12 +24,33 @@ NC='\033[0m' # No Color
 echo "Running pre-commit quality checks..."
 echo ""
 
-# Check if Gemini CLI is available
-if ! command -v gemini &> /dev/null; then
-    echo -e "${YELLOW}⚠️  Gemini CLI not found, skipping quality checks${NC}"
-    echo "Install Gemini CLI to enable automated quality gates"
+# Determine which LLM to use (Groq preferred, Gemini fallback)
+LLM_CMD=""
+LLM_NAME=""
+
+# Get script directory for Groq wrapper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Check for Groq first (preferred - fast, no OAuth issues)
+if [ -x "$SCRIPT_DIR/scripts/utils/groq" ] && [ -n "$GROQ_API_KEY" ]; then
+    LLM_CMD="$SCRIPT_DIR/scripts/utils/groq"
+    LLM_NAME="Groq"
+    echo -e "${GREEN}✓${NC} Using Groq API (fast mode)"
+# Fall back to Gemini if available
+elif command -v gemini &> /dev/null; then
+    LLM_CMD="gemini"
+    LLM_NAME="Gemini"
+    echo -e "${YELLOW}⚠️${NC} Using Gemini CLI (may require browser auth)"
+# Skip checks if neither available
+else
+    echo -e "${YELLOW}⚠️  No LLM available (Groq or Gemini), skipping quality checks${NC}"
+    echo "To enable automated quality gates:"
+    echo "  - Install Groq: export GROQ_API_KEY=your-key (recommended)"
+    echo "  - OR install Gemini CLI: npm install -g @google/generative-ai-cli"
     exit 0
 fi
+
+echo ""
 
 # Get staged Python files (store once for efficiency)
 staged_files=$(git diff --cached --name-only --diff-filter=AM | grep '\.py$' || echo "")
@@ -50,7 +76,7 @@ while IFS= read -r file; do
 
     # Complexity check
     echo "Checking complexity..."
-    complexity_result=$(gemini "Analyze code complexity. Rate each function 1-10. Report ONLY functions with score >7 in format: 'FunctionName: Score X'. Be concise. File:
+    complexity_result=$($LLM_CMD "Analyze code complexity. Rate each function 1-10. Report ONLY functions with score >7 in format: 'FunctionName: Score X'. Be concise. File:
 
 $(cat "$file")" || echo "")
 
@@ -71,7 +97,7 @@ $(cat "$file")" || echo "")
 
     # Security check
     echo "Checking for security issues..."
-    security_result=$(gemini "Security scan. Check ONLY for: SQL injection (raw SQL), XSS (unescaped HTML), command injection (os.system, subprocess shell=True), hardcoded secrets.
+    security_result=$($LLM_CMD "Security scan. Check ONLY for: SQL injection (raw SQL), XSS (unescaped HTML), command injection (os.system, subprocess shell=True), hardcoded secrets.
 
 IMPORTANT: Output format:
 - If ANY vulnerability found, start response with: VULNERABILITY_DETECTED: [type]
