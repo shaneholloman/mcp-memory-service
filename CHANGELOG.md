@@ -13,11 +13,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [8.20.0] - 2025-11-08
 
 ### Added
+- **GraphQL PR Review Integration** - GitHub GraphQL API for advanced PR operations
+  - `resolve_threads.sh` - Auto-resolve review threads when commits address feedback (saves 2+ min/PR)
+  - `thread_status.sh` - Display all review threads with resolution status
+  - Reusable GraphQL helper library in `scripts/pr/lib/graphql_helpers.sh`
+  - Smart commit tracking for resolved vs outdated threads
 - **PR Automation Workflow** - Comprehensive Gemini Code Assist integration
   - `auto_review.sh` - Automated iterative PR review cycles (saves 10-30 min/PR)
   - `quality_gate.sh` - Pre-PR quality checks (complexity, security, tests, breaking changes)
   - `generate_tests.sh` - Auto-generate pytest tests for new code
   - `detect_breaking_changes.sh` - API diff analysis with severity classification
+- **Amp Bridge Redesign** - Direct code execution mode for batch operations
+  - Execute prompts directly without prompt file management
+  - Batch processing support for multiple operations
+  - Improved error handling and output formatting
 - **Code Quality Guard Agent** - Fast automated code quality analysis
   - Pre-commit hook for complexity scoring (blocks >8, warns >7)
   - Security pattern detection (SQL injection, XSS, command injection)
@@ -40,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Graceful degradation if Gemini CLI not installed
 
 ### Documentation
+- Added `docs/pr-graphql-integration.md` - GraphQL PR review integration guide
 - Added `docs/integrations/groq-bridge.md` - Setup and usage guide for Groq integration
 - Added `docs/integrations/groq-integration-summary.md` - Integration overview
 - Added `docs/integrations/groq-model-comparison.md` - Performance benchmarks and model selection
@@ -57,6 +67,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Updated example configs - Modernized to use Python module approach
 
 ### Fixed
+- **PR Automation Scripts** - Addressed all Gemini Code Assist review feedback
+  - Removed hardcoded repository name from all PR scripts (now dynamic with `gh repo view`)
+  - Fixed script path handling in documentation examples
+  - Improved error messages and validation in GraphQL helpers
+  - Enhanced documentation with correct usage examples
 - Removed all ChromaDB artifacts from active code (deprecated in v8.0.0)
   - Fixed broken test imports (`CHROMADB_MAX_CONTENT_LENGTH` removed)
   - Updated integration tests to remove `--chroma-path` CLI assertions
