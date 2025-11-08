@@ -815,10 +815,20 @@ class HybridMemoryStorage(MemoryStorage):
         """Search memories in primary storage."""
         return await self.primary.search(query, n_results)
 
-    async def search_by_tag(self, tags: List[str], match_all: bool = False) -> List[Memory]:
-        """Search memories by tags in primary storage."""
-        operation = "AND" if match_all else "OR"
-        return await self.primary.search_by_tags(tags, operation=operation)
+    async def search_by_tag(self, tags: List[str], time_start: Optional[float] = None) -> List[Memory]:
+        """Search memories by tags in primary storage with optional time filtering.
+
+        This method performs an OR search for tags. The `match_all` (AND) logic
+        is handled at the API layer.
+
+        Args:
+            tags: List of tags to search for
+            time_start: Optional Unix timestamp (in seconds) to filter memories created after this time
+
+        Returns:
+            List of Memory objects matching the tag criteria and time filter
+        """
+        return await self.primary.search_by_tag(tags, time_start=time_start)
 
     async def search_by_tags(self, tags: List[str], match_all: bool = False) -> List[Memory]:
         """Search memories by tags (alternative method signature)."""
