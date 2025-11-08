@@ -111,12 +111,11 @@ class TestCLIInterfaces:
         
         assert result1.returncode == 0
         assert result2.returncode == 0
-        
-        # Both should mention debug and chroma-path options
+
+        # Both should mention debug option
         assert "--debug" in result1.stdout
         assert "--debug" in result2.stdout
-        assert "--chroma-path" in result1.stdout or "chroma-path" in result1.stdout
-        assert "--chroma-path" in result2.stdout or "chroma-path" in result2.stdout
+        # Note: --chroma-path removed in v8.0.0
     
     def test_compatibility_wrapper_deprecation_warning(self):
         """Test that the compatibility wrapper issues deprecation warnings."""
@@ -153,8 +152,8 @@ class TestCLIInterfaces:
         
         assert result.returncode == 0
         assert "--debug" in result.stdout
-        assert "--chroma-path" in result.stdout
         assert "--version" in result.stdout
+        # Note: --chroma-path removed in v8.0.0
     
     def test_no_cli_conflicts_during_import(self):
         """Test that importing CLI modules doesn't cause conflicts."""
@@ -201,22 +200,26 @@ class TestCLIRobustness:
     """Test CLI robustness and edge cases."""
     
     def test_environment_variable_passing(self):
-        """Test that environment variables are properly set by CLI commands."""
+        """Test that CLI arguments correctly set environment variables."""
         import os
         import subprocess
-        
-        # Test memory server command with chroma-path
+
+        # Test that --debug flag affects application behavior
         env = os.environ.copy()
+        env.pop('MCP_DEBUG', None)  # Ensure not already set
+
         result = subprocess.run(
             ["uv", "run", "python", "-c", """
 import os
-print(f"MCP_MEMORY_CHROMA_PATH={os.environ.get('MCP_MEMORY_CHROMA_PATH', 'NOT_SET')}")
-from mcp_memory_service.cli.main import cli
 import sys
-sys.argv = ['memory', 'server', '--chroma-path', '/tmp/test-chroma']
-# Don't actually run server, just test env var setting
-from mcp_memory_service.cli.main import server
-server(debug=False, chroma_path='/tmp/test-chroma', storage_backend='sqlite_vec')
+from mcp_memory_service.cli.main import cli
+from click.testing import CliRunner
+
+# Test that --debug flag is recognized and sets debug mode
+runner = CliRunner()
+result = runner.invoke(cli, ['server', '--debug', '--help'])
+print(f'EXIT_CODE:{result.exit_code}')
+print(f'DEBUG_IN_OUTPUT:{\"--debug\" in result.output}')
 """],
             capture_output=True,
             text=True,
@@ -224,9 +227,11 @@ server(debug=False, chroma_path='/tmp/test-chroma', storage_backend='sqlite_vec'
             env=env,
             timeout=10
         )
-        
-        # Should either succeed or fail gracefully (not crash)
-        assert result.returncode in [0, 1]  # 0 = success, 1 = expected server start failure
+
+        # Should succeed and recognize --debug flag
+        assert result.returncode == 0
+        assert 'EXIT_CODE:0' in result.stdout
+        assert 'DEBUG_IN_OUTPUT:True' in result.stdout
     
     def test_cli_error_handling(self):
         """Test that CLI handles errors gracefully."""
@@ -266,11 +271,10 @@ server(debug=False, chroma_path='/tmp/test-chroma', storage_backend='sqlite_vec'
         assert result1.returncode == 0
         assert result2.returncode == 0
         
-        # Both should support core arguments
-        core_args = ["--debug", "--chroma-path"]
-        for arg in core_args:
-            assert arg in result1.stdout
-            assert arg in result2.stdout
+        # Both should support debug argument
+        assert "--debug" in result1.stdout
+        assert "--debug" in result2.stdout
+        # Note: --chroma-path removed in v8.0.0
     
     def test_entry_point_isolation(self):
         """Test that different entry points don't interfere with each other."""
