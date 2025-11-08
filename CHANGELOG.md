@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.20.1] - 2025-11-08
+
+### Fixed
+- **retrieve_memory MCP tool**: Fixed MemoryQueryResult serialization error introduced in v8.19.1
+  - Extract Memory object from MemoryQueryResult before formatting response
+  - Add similarity_score to response for consistency with recall_memory
+  - Affects all backends (sqlite-vec, cloudflare, hybrid)
+  - Issue #211 follow-up fix - thanks @VibeCodeChef for detailed testing!
+
 ## [8.20.0] - 2025-11-08
 
 ### Added

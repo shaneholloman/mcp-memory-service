@@ -424,8 +424,11 @@ class MemoryService:
                     filtered_memories.append(memory)
 
             results = []
-            for memory in filtered_memories:
-                results.append(self._format_memory_response(memory))
+            for result in filtered_memories:
+                # Extract Memory object from MemoryQueryResult and add similarity score
+                memory_dict = self._format_memory_response(result.memory)
+                memory_dict['similarity_score'] = result.relevance_score
+                results.append(memory_dict)
 
             return {
                 "memories": results,
