@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.20.0**: **PR Automation & Code Quality** - Automated Gemini review cycles (saves 10-30 min/PR), pre-commit hooks for complexity/security checks, Groq bridge integration (10x faster), and comprehensive agent ecosystem for development workflow automation. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.21.0**: **Amp PR Automator & Memory Hook Fix** - OAuth-free PR automation with Amp CLI (parallel quality checks, test generation, breaking change detection), fixed tag+time filtering bug in memory hooks (Issue #214). Lightweight alternative to Gemini PR Automator without browser auth interruptions. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

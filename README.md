@@ -16,24 +16,24 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.20.1** (Nov 8, 2025)
+### 🆕 Latest Release: **v8.21.0** (Nov 8, 2025)
 
-**Hotfix: retrieve_memory MCP Tool** 🐛
+**Amp PR Automator & Memory Hook Fix** 🤖🔧
 
-**What's Fixed**:
-- 🔧 **retrieve_memory serialization** - Fixed MemoryQueryResult object handling (Issue #211)
-- ✨ **similarity_score** - Added to response for consistency with recall_memory
-- 🎯 **All backends** - Fix applies to sqlite-vec, cloudflare, and hybrid
+**What's New**:
+- 🤖 **Amp PR Automator** - OAuth-free PR automation with parallel quality checks (1,240+ lines)
+- 🔧 **Memory hook fix** - Tag+time filtering bug resolved (Issue #214, PR #215)
+- ⚡ **Fast analysis** - Parallel complexity, security, type hint checks
+- 📝 **Test generation** - Auto-create pytest tests for new code
+- 🚨 **Breaking changes** - API diff analysis with severity classification
 
 **Previous Releases**:
-- **v8.20.0** - PR Automation & Code Quality (Gemini review cycles, Groq bridge, pre-commit hooks)
+- **v8.20.1** - retrieve_memory serialization fix (Issue #211)
+- **v8.20.0** - PR Automation & Code Quality (Gemini review cycles, Groq bridge)
 - **v8.19.1** - Critical MCP tool fixes (retrieve_memory, search_by_tag)
 - **v8.19.0** - Code Execution API (75-90% token reduction)
-- ⚡ **Session Hook Migration** - 75% reduction in session startup tokens
-- 📊 **Cost Savings** - $23-2,382/year depending on usage scale
-- 🔄 **Auto-Enabled** - New installations use code execution by default
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8191---2025-11-07) | [Issue #211](https://github.com/doobidoo/mcp-memory-service/issues/211) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8210---2025-11-08) | [PR #215](https://github.com/doobidoo/mcp-memory-service/pull/215) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 

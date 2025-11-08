@@ -10,6 +10,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.21.0] - 2025-11-08
+
+### Added
+- **Amp PR Automator Agent** - Lightweight PR automation using Amp CLI (1,240+ lines)
+  - OAuth-free alternative to Gemini PR Automator with file-based workflow
+  - `.claude/agents/amp-pr-automator.md` - Complete agent definition
+  - `scripts/pr/amp_quality_gate.sh` - Parallel complexity, security, type hint checks
+  - `scripts/pr/amp_collect_results.sh` - Aggregate Amp analysis results
+  - `scripts/pr/amp_suggest_fixes.sh` - Generate fix suggestions from review feedback
+  - `scripts/pr/amp_generate_tests.sh` - Create pytest tests for new code
+  - `scripts/pr/amp_detect_breaking_changes.sh` - Identify API breaking changes
+  - `scripts/pr/amp_pr_review.sh` - Complete review workflow orchestration
+  - Fast parallel processing with UUID-based prompt/response tracking
+  - Credit conservation through focused, non-interactive tasks
+
+### Fixed
+- **Memory Hook Tag+Time Filtering** (Issue #214, PR #215) - Fixed semantic over-filtering bug
+  - Enhanced `search_by_tag()` with optional `time_start` parameter across all backends
+  - Replaced limited `parse_time_query` with robust `parse_time_expression` from `utils.time_parser`
+  - Fixed HTTP client time filter format (ISO date instead of custom string)
+  - Improved SQL construction clarity in Cloudflare backend
+  - Removed unused `match_all` parameter from hybrid backend (regression fix)
+  - Quality gate: 9.2/10 (Gemini Code Assist review - 4 critical issues fixed)
+  - Time parser tests: 14/14 PASS (100%)
+
 ## [8.20.1] - 2025-11-08
 
 ### Fixed
