@@ -16,18 +16,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.20.0** (Nov 8, 2025)
+### 🆕 Latest Release: **v8.20.1** (Nov 8, 2025)
 
-**PR Automation & Code Quality** 🤖🛡️
+**Hotfix: retrieve_memory MCP Tool** 🐛
 
-**What's New**:
-- 🤖 **PR Automation** - Automated Gemini review cycles (saves 10-30 min/PR)
-- 🛡️ **Code Quality Guard** - Pre-commit hooks prevent complexity >8, detect security issues
-- ⚡ **Groq Bridge** - 10x faster LLM calls for code analysis (200-300ms response time)
-- 📋 **TODO Tracking** - Automated prioritization with impact analysis
-- 🧹 **ChromaDB Cleanup** - Removed all deprecated artifacts from active code
+**What's Fixed**:
+- 🔧 **retrieve_memory serialization** - Fixed MemoryQueryResult object handling (Issue #211)
+- ✨ **similarity_score** - Added to response for consistency with recall_memory
+- 🎯 **All backends** - Fix applies to sqlite-vec, cloudflare, and hybrid
 
 **Previous Releases**:
+- **v8.20.0** - PR Automation & Code Quality (Gemini review cycles, Groq bridge, pre-commit hooks)
 - **v8.19.1** - Critical MCP tool fixes (retrieve_memory, search_by_tag)
 - **v8.19.0** - Code Execution API (75-90% token reduction)
 - ⚡ **Session Hook Migration** - 75% reduction in session startup tokens
