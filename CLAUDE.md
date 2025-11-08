@@ -160,7 +160,7 @@ mcp context optimize                           # Get optimization suggestions
 
 **2. Release Workflow Context** 🆕 (`mcp_memory_release_workflow`)
 - **PR Review Cycle**: Iterative Gemini Code Assist workflow (Fix → Comment → /gemini review → Wait 1min → Repeat)
-- **Version Management**: Three-file procedure (__init__.py → pyproject.toml → uv lock)
+- **Version Management**: Four-file procedure (__init__.py → pyproject.toml → README.md → uv lock)
 - **CHANGELOG Management**: Format guidelines, conflict resolution (combine PR entries)
 - **Documentation Matrix**: When to use CHANGELOG vs Wiki vs CLAUDE.md vs code comments
 - **Release Procedure**: Merge → Tag → Push → Verify workflows (Docker Publish, Publish and Test, HTTP-MCP Bridge)
@@ -284,17 +284,46 @@ Use 24 core types: `note`, `reference`, `document`, `guide`, `session`, `impleme
 - **Mobile Testing**: Confirm responsive design at 768px and 1024px breakpoints
 
 ### 🚀 **Version Management**
-**Three-File Version Bump Procedure:**
+
+**⚠️ CRITICAL**: **ALWAYS use the github-release-manager agent for ALL releases** (major, minor, patch, and hotfixes). Manual release workflows miss steps and are error-prone.
+
+**Four-File Version Bump Procedure:**
 1. Update `src/mcp_memory_service/__init__.py` (line 50: `__version__ = "X.Y.Z"`)
 2. Update `pyproject.toml` (line 7: `version = "X.Y.Z"`)
-3. Run `uv lock` to update dependency lock file
-4. Commit all three files together
+3. Update `README.md` (line 19: Latest Release section)
+4. Run `uv lock` to update dependency lock file
+5. Commit all four files together
 
 **Release Workflow:**
-- Use `.claude/agents/github-release-manager.md` agent for complete release procedure
+- **ALWAYS** use `.claude/agents/github-release-manager.md` agent for complete release procedure
+- Agent ensures: README.md updates, GitHub Release creation, proper issue tracking
+- Manual workflows miss documentation steps (see v8.20.1 lesson learned)
 - Document milestones in CHANGELOG.md with performance metrics
 - Create descriptive git tags: `git tag -a vX.Y.Z -m "description"`
 - See [docs/development/release-checklist.md](docs/development/release-checklist.md) for full checklist
+
+**Hotfix Workflow (Critical Bugs):**
+- **Speed target**: 8-10 minutes from bug report to release (achievable with AI assistance)
+- **Process**: Fix → Test → Four-file bump → Commit → github-release-manager agent
+- **Issue management**: Post detailed root cause analysis, don't close until user confirms fix works
+- **Example**: v8.20.1 (8 minutes: bug report → fix → release → user notification)
+
+### 🤖 **Agent-First Development**
+
+**Principle**: Use agents for workflows, not manual steps. Manual workflows are error-prone and miss documentation updates.
+
+**Agent Usage Matrix:**
+| Task | Agent | Why |
+|------|-------|-----|
+| **Any release** (major/minor/patch/hotfix) | github-release-manager | Ensures README.md, CHANGELOG.md, GitHub Release, issue tracking |
+| **Batch code fixes** | amp-bridge | Fast parallel execution, syntax validation |
+| **PR review automation** | gemini-pr-automator | Saves 10-30 min/PR, auto-resolves threads |
+| **Code quality checks** | code-quality-guard | Pre-commit complexity/security scanning |
+
+**Manual vs Agent Comparison:**
+- ❌ Manual v8.20.1: Forgot README.md, incomplete GitHub Release
+- ✅ With agent v8.20.1: All files updated, proper release created
+- **Lesson**: Always use agents, even for "simple" hotfixes
 
 ### 🔧 **Configuration & Deployment**
 - Run `python scripts/validation/validate_configuration_complete.py` when troubleshooting setup issues
@@ -365,7 +394,7 @@ Proactive release workflow automation with issue tracking, version management, a
 ```
 
 **Capabilities:**
-- **Version Management**: Three-file procedure (__init__.py → pyproject.toml → uv lock)
+- **Version Management**: Four-file procedure (__init__.py → pyproject.toml → README.md → uv lock)
 - **CHANGELOG Management**: Format guidelines, conflict resolution (combine PR entries)
 - **Documentation Matrix**: Automatic CHANGELOG, CLAUDE.md, README.md updates
 - **Issue Tracking**: Auto-detects "fixes #", suggests closures with smart comments
