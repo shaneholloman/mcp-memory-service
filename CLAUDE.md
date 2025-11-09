@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.22.1**: **Document Ingestion Tag Parsing Fix** - Fixed critical data corruption bug where tags were stored character-by-character instead of as complete strings. Root cause: `extend()` method treated comma-separated tag strings as iterables. Result: Tags like "claude-code-hooks,update-investigation" became ['c','l','a','u','d','e','-',...]. Fix: Added type checking to properly handle string vs list tag formats. 13 affected memories automatically repaired. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.22.2**: **Complete Tag Parsing Fix** - Extended v8.22.1 character-split tags fix to all remaining locations (server.py MCP handlers, cli/ingestion.py). All tag parsing code paths now include type checking. 6 additional memories repaired. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

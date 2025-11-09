@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.22.2] - 2025-11-09
+
+### Fixed
+- **Complete Tag Parsing Fix** - Extended v8.22.1 fix to all remaining locations where tag parsing bug existed
+  - **Additional Files Fixed**:
+    - `src/mcp_memory_service/server.py` - MCP ingest_document and ingest_directory tool handlers (2 locations)
+    - `src/mcp_memory_service/cli/ingestion.py` - CLI ingest_file and ingest_directory commands (2 locations)
+  - **Root Cause**: Same as v8.22.1 - `.extend()` on comma-separated string treated as character iterable
+  - **Impact**: MCP tools and CLI commands now correctly parse comma-separated tags
+  - **Database Repair**: 6 additional memories repaired from metadata backup (total 19 across both releases)
+  - **Verification**: All tag parsing code paths now include `isinstance()` type checking
+
 ## [8.22.1] - 2025-11-09
 
 ### Fixed

@@ -16,23 +16,23 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.22.1** (Nov 9, 2025)
+### 🆕 Latest Release: **v8.22.2** (Nov 9, 2025)
 
-**Document Ingestion Tag Parsing Fix** 🐛🔧
+**Complete Tag Parsing Fix** 🐛🔧
 
-**Critical Bug Fix**:
-- 🔧 **Character-split tags fixed** - Tags were being stored as individual characters instead of complete strings
-- 🔍 **Root cause** - `extend()` method treated comma-separated tag strings as iterables, adding each character separately
-- 💾 **Database repair** - 13 affected memories automatically repaired from metadata backup
-- ✅ **Prevention** - Added type checking to handle both string and list tag formats properly
+**Extended v8.22.1 fix to all code paths**:
+- 🔧 **MCP tool handlers fixed** - server.py ingest_document and ingest_directory tools
+- 🔧 **CLI commands fixed** - ingestion.py file and directory ingestion
+- 💾 **Database repair** - 6 additional memories repaired (19 total)
+- ✅ **Comprehensive** - All 4 files with tag parsing now include type checking
 
 **Previous Releases**:
+- **v8.22.1** - Document ingestion tag parsing fix (13 memories repaired)
 - **v8.21.0** - Amp PR Automator & memory hook fix (Issue #214, PR #215)
 - **v8.20.1** - retrieve_memory serialization fix (Issue #211)
 - **v8.20.0** - PR Automation & Code Quality (Gemini review cycles, Groq bridge)
-- **v8.19.1** - Critical MCP tool fixes (retrieve_memory, search_by_tag)
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8220---2025-11-09) | [Issue #214](https://github.com/doobidoo/mcp-memory-service/issues/214) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8222---2025-11-09) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
