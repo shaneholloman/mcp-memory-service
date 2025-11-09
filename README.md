@@ -153,6 +153,22 @@ These warnings disappear after the first successful run. The service is working 
 - **Fallback**: Use Cloudflare or Hybrid backend: `--storage-backend cloudflare` or `--storage-backend hybrid`
 - See [Troubleshooting Guide](docs/troubleshooting/general.md#macos-sqlite-extension-issues) for details
 
+## 🎯 Memory Awareness in Action
+
+**Intelligent Context Injection** - See how the memory service automatically surfaces relevant information at session start:
+
+<img src="docs/assets/images/memory-awareness-hooks-example.png" alt="Memory Awareness Hooks in Action" width="100%" />
+
+**What you're seeing:**
+- 🧠 **Automatic memory injection** - 8 relevant memories found from 2,526 total
+- 📂 **Smart categorization** - Recent Work, Current Problems, Additional Context
+- 📊 **Git-aware analysis** - Recent commits and keywords automatically extracted
+- 🎯 **Relevance scoring** - Top memories scored at 100% (today), 89% (8d ago), 84% (today)
+- ⚡ **Fast retrieval** - SQLite-vec backend with 5ms read performance
+- 🔄 **Background sync** - Hybrid backend syncing to Cloudflare
+
+**Result**: Claude starts every session with full project context - no manual prompting needed.
+
 ## 📚 Complete Documentation
 
 **👉 Visit our comprehensive [Wiki](https://github.com/doobidoo/mcp-memory-service/wiki) for detailed guides:**
