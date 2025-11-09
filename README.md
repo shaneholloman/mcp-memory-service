@@ -173,8 +173,8 @@ These warnings disappear after the first successful run. The service is working 
 
 **👉 Visit our comprehensive [Wiki](https://github.com/doobidoo/mcp-memory-service/wiki) for detailed guides:**
 
-### 🧠 v7.1.0 Natural Memory Triggers (Latest)
-- **[Natural Memory Triggers v7.1.0 Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Natural-Memory-Triggers-v7.1.0)** - Intelligent automatic memory awareness
+### 🧠 v7.1.3 Natural Memory Triggers (Latest)
+- **[Natural Memory Triggers v7.1.3 Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Natural-Memory-Triggers-v7.1.0)** - Intelligent automatic memory awareness
   - ✅ **85%+ trigger accuracy** with semantic pattern detection
   - ✅ **Multi-tier performance** (50ms instant → 150ms fast → 500ms intensive)
   - ✅ **CLI management system** for real-time configuration

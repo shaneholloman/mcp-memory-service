@@ -1,4 +1,4 @@
-# Natural Memory Triggers v7.1.0 - CLI Reference
+# Natural Memory Triggers v7.1.3 - CLI Reference
 
 Complete reference for the CLI management system that provides real-time configuration and monitoring of Natural Memory Triggers without requiring file edits or Claude Code restarts.
 
@@ -597,4 +597,4 @@ Monitor system performance with cron job:
 
 ---
 
-The CLI controller provides complete control over Natural Memory Triggers v7.1.0, enabling real-time optimization of your intelligent memory awareness system! 🚀
+The CLI controller provides complete control over Natural Memory Triggers v7.1.3, enabling real-time optimization of your intelligent memory awareness system! 🚀

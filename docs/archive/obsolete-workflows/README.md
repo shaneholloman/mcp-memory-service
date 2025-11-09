@@ -8,7 +8,7 @@ This directory contains historical documentation of workflows that have been sup
 
 **Original Purpose**: Manual prompt with curl commands to load memory context at Claude Code session start.
 
-**Why Obsolete**: Completely superseded by Natural Memory Triggers v7.1.0+ (September 2025).
+**Why Obsolete**: Completely superseded by Natural Memory Triggers v7.1.3+ (September 2025).
 
 #### Evolution Timeline
 

@@ -1,6 +1,6 @@
 # Dual Protocol Memory Hooks (Legacy)
 
-> **Note**: This feature has been superseded by Natural Memory Triggers v7.1.0+. This documentation is kept for reference only.
+> **Note**: This feature has been superseded by Natural Memory Triggers v7.1.3+. This documentation is kept for reference only.
 
 **Dual Protocol Memory Hooks** (v7.0.0+) provide intelligent memory awareness with automatic protocol detection:
 
@@ -43,7 +43,7 @@
 
 ## Migration to Natural Memory Triggers
 
-If you're using Dual Protocol Hooks, consider migrating to Natural Memory Triggers v7.1.0+ which offers:
+If you're using Dual Protocol Hooks, consider migrating to Natural Memory Triggers v7.1.3+ which offers:
 - 85%+ trigger accuracy
 - Multi-tier performance optimization
 - CLI management system

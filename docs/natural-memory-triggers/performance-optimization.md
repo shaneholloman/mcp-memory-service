@@ -1,4 +1,4 @@
-# Natural Memory Triggers v7.1.0 - Performance Optimization Guide
+# Natural Memory Triggers v7.1.3 - Performance Optimization Guide
 
 This guide provides comprehensive strategies for optimizing Natural Memory Triggers performance to achieve the best balance of speed, accuracy, and resource usage for your specific workflow.
 
@@ -589,4 +589,4 @@ chmod +x ~/nmt-auto-optimize.sh
 
 ---
 
-**Natural Memory Triggers v7.1.0** provides extensive performance optimization capabilities to ensure optimal speed and accuracy for your specific development workflow! 🚀
+**Natural Memory Triggers v7.1.3** provides extensive performance optimization capabilities to ensure optimal speed and accuracy for your specific development workflow! 🚀

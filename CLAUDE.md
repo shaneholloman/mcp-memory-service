@@ -42,7 +42,7 @@ See [scripts/README.md](scripts/README.md) for complete command reference.
 - **Storage Backends**: SQLite-Vec (5ms reads), Cloudflare (edge), Hybrid (local + cloud sync)
 - **Web Interface**: FastAPI dashboard at `http://127.0.0.1:8000/` with REST API
 - **Document Ingestion**: PDF, DOCX, PPTX loaders (see [docs/document-ingestion.md](docs/document-ingestion.md))
-- **Memory Hooks**: Natural Memory Triggers v7.1.0+ with 85%+ accuracy (see below)
+- **Memory Hooks**: Natural Memory Triggers v7.1.3+ with 85%+ accuracy (see below)
 
 **Key Patterns:**
 - Async/await for I/O, type safety (Python 3.10+), platform hardware optimization (CUDA/MPS/DirectML/ROCm)
@@ -95,7 +95,7 @@ export MCP_API_KEY="$(openssl rand -base64 32)" # Generate secure API key
 
 > **🚨 CRITICAL - Windows Users**: SessionStart hooks with `matchers: ["*"]` cause Claude Code to hang indefinitely on Windows. This is a confirmed bug (#160). **Workaround**: Disable SessionStart hooks or use UserPromptSubmit hooks instead. See [Windows SessionStart Hook Issue](#windows-sessionstart-hook-issue) below.
 
-### Natural Memory Triggers v7.1.0 (Latest)
+### Natural Memory Triggers v7.1.3 (Latest)
 
 **Intelligent automatic memory retrieval** with advanced semantic analysis and multi-tier performance optimization:
 

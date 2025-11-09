@@ -1,4 +1,4 @@
-# Natural Memory Triggers v7.1.0 - Installation Guide
+# Natural Memory Triggers v7.1.3 - Installation Guide
 
 This guide provides detailed installation instructions for Natural Memory Triggers, the intelligent automatic memory awareness system for Claude Code.
 
@@ -396,7 +396,7 @@ ls -la ~/.claude/hooks/core/
 
 After successful installation:
 
-1. **Read the User Guide**: Comprehensive usage instructions at [Natural Memory Triggers v7.1.0 Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Natural-Memory-Triggers-v7.1.0)
+1. **Read the User Guide**: Comprehensive usage instructions at [Natural Memory Triggers v7.1.3 Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Natural-Memory-Triggers-v7.1.0)
 
 2. **Try the System**: Ask Claude Code questions like:
    - "What approach did we use for authentication?"
@@ -418,4 +418,4 @@ After successful installation:
 
 ---
 
-**Natural Memory Triggers v7.1.0** transforms Claude Code into an intelligent development assistant that automatically understands when you need context from your project history! 🚀
+**Natural Memory Triggers v7.1.3** transforms Claude Code into an intelligent development assistant that automatically understands when you need context from your project history! 🚀
