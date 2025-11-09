@@ -59,14 +59,30 @@ This triggers graceful shutdown and SessionEnd hook execution.
 
 ---
 
-## Common Issue: Connection Failures
+## Common Issue: Connection Failures (SessionEnd & SessionStart)
 
-### Symptom
+> **Note**: This issue affects both SessionEnd and SessionStart hooks, but with different symptoms:
+> - **SessionEnd**: Hard failure - cannot store session memory
+> - **SessionStart**: Soft failure - falls back to MCP tools, shows "No relevant memories found"
+>
+> See [hooks-quick-reference.md](hooks-quick-reference.md#sessionstart-hook-issues) for detailed SessionStart troubleshooting.
+
+### Symptom (SessionEnd)
 
 During SessionStart, you see:
 ```
 ⚠️ Memory Connection → Failed to connect using any available protocol
 💾 Storage → 💾 Unknown Storage (http://127.0.0.1:8000)
+```
+
+### Symptom (SessionStart)
+
+Multiple "MCP Fallback" messages and no memories loaded:
+```
+↩️  MCP Fallback → Using standard MCP tools
+↩️  MCP Fallback → Using standard MCP tools
+↩️  MCP Fallback → Using standard MCP tools
+📭 Memory Search → No relevant memories found
 ```
 
 ### Root Cause
