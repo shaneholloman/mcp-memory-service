@@ -3346,7 +3346,12 @@ Memories Archived: {report.memories_archived}"""
                     # Combine document tags with chunk metadata tags
                     all_tags = tags.copy()
                     if chunk.metadata.get('tags'):
-                        all_tags.extend(chunk.metadata['tags'])
+                        # Handle tags from chunk metadata (can be string or list)
+                        chunk_tags = chunk.metadata['tags']
+                        if isinstance(chunk_tags, str):
+                            # Split comma-separated string into list
+                            chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
+                        all_tags.extend(chunk_tags)
                     
                     # Create memory object
                     memory = Memory(
@@ -3488,9 +3493,14 @@ Memories Archived: {report.memories_archived}"""
                             all_tags = tags.copy()
                             all_tags.append(f"source_dir:{directory_path.name}")
                             all_tags.append(f"file_type:{file_path.suffix.lstrip('.')}")
-                            
+
                             if chunk.metadata.get('tags'):
-                                all_tags.extend(chunk.metadata['tags'])
+                                # Handle tags from chunk metadata (can be string or list)
+                                chunk_tags = chunk.metadata['tags']
+                                if isinstance(chunk_tags, str):
+                                    # Split comma-separated string into list
+                                    chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
+                                all_tags.extend(chunk_tags)
                             
                             # Create memory object
                             memory = Memory(

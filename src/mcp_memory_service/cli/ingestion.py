@@ -102,7 +102,12 @@ def ingest_document(file_path: Path, tags: tuple, chunk_size: int, chunk_overlap
                         # Combine CLI tags with chunk metadata tags
                         all_tags = list(tags)
                         if chunk.metadata.get('tags'):
-                            all_tags.extend(chunk.metadata['tags'])
+                            # Handle tags from chunk metadata (can be string or list)
+                            chunk_tags = chunk.metadata['tags']
+                            if isinstance(chunk_tags, str):
+                                # Split comma-separated string into list
+                                chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
+                            all_tags.extend(chunk_tags)
                         
                         # Create memory object
                         memory = Memory(
@@ -276,9 +281,14 @@ def ingest_directory(directory_path: Path, tags: tuple, recursive: bool, extensi
                                 all_tags = list(tags)
                                 all_tags.append(f"source_dir:{directory_path.name}")
                                 all_tags.append(f"file_type:{file_path.suffix.lstrip('.')}")
-                                
+
                                 if chunk.metadata.get('tags'):
-                                    all_tags.extend(chunk.metadata['tags'])
+                                    # Handle tags from chunk metadata (can be string or list)
+                                    chunk_tags = chunk.metadata['tags']
+                                    if isinstance(chunk_tags, str):
+                                        # Split comma-separated string into list
+                                        chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
+                                    all_tags.extend(chunk_tags)
                                 
                                 # Create memory object
                                 memory = Memory(
