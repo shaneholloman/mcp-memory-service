@@ -1,7 +1,7 @@
 {
   "codeExecution": {
     "enabled": true,
-    "timeout": 8000,
+    "timeout": 15000,
     "fallbackToMCP": true,
     "enableMetrics": true,
     "pythonPath": "python3"
@@ -91,7 +91,7 @@
   "hooks": {
     "sessionStart": {
       "enabled": true,
-      "timeout": 10000,
+      "timeout": 20000,
       "priority": "high"
     },
     "midConversation": {
@@ -199,12 +199,5 @@
     "enableDebug": true,
     "logToFile": true,
     "logFilePath": "./claude-hooks.log"
-  },
-  "codeExecution": {
-    "enabled": true,
-    "timeout": 8000,
-    "fallbackToMCP": true,
-    "pythonPath": "python3",
-    "enableMetrics": true
   }
 }

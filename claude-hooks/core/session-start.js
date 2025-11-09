@@ -311,10 +311,46 @@ async function queryMemoryServiceViaCode(query, config) {
         // Escape query strings for safe shell execution
         const escapeForPython = (str) => str.replace(/"/g, '\\"').replace(/\n/g, '\\n');
 
-        // Build Python code for memory search
-        const pythonCode = `
+        // Build Python code for memory search with time filter support
+        // Use v8.19.0+ Code Execution Interface API for optimal performance
+        const pythonCode = query.timeFilter ? `
 import sys
 import json
+from datetime import datetime
+from mcp_memory_service.api import search
+
+try:
+    # Execute search with time filter (v8.21.0+ API enhancement)
+    results = search("${escapeForPython(query.semanticQuery || '')}", limit=${query.limit || 8}, time_filter="${escapeForPython(query.timeFilter)}")
+
+    # Format compact output
+    output = {
+        'success': True,
+        'memories': [
+            {
+                'hash': m.hash,
+                'preview': m.preview,
+                'tags': list(m.tags),
+                'created': m.created,
+                'created_at': m.created,
+                'created_at_iso': datetime.fromtimestamp(m.created).isoformat(),
+                'score': m.score,
+                'content': m.preview  # Use preview as content for compatibility
+            }
+            for m in results.memories
+        ],
+        'total': results.total,
+        'method': 'code_execution'
+    }
+    print(json.dumps(output))
+    sys.exit(0)
+except Exception as e:
+    print(json.dumps({'success': False, 'error': str(e), 'method': 'code_execution'}))
+    sys.exit(1)
+` : `
+import sys
+import json
+from datetime import datetime
 from mcp_memory_service.api import search
 
 try:
@@ -330,6 +366,8 @@ try:
                 'preview': m.preview,
                 'tags': list(m.tags),
                 'created': m.created,
+                'created_at': m.created,
+                'created_at_iso': datetime.fromtimestamp(m.created).isoformat(),
                 'score': m.score,
                 'content': m.preview  # Use preview as content for compatibility
             }
@@ -479,7 +517,9 @@ const CONSOLE_COLORS = {
  */
 async function onSessionStart(context) {
     // Global timeout wrapper to prevent hook from hanging
-    const HOOK_TIMEOUT = 8000; // 8 seconds (leave 2s buffer for cleanup)
+    // Config specifies 10s, we use 9.5s to leave 0.5s buffer for cleanup
+    // With 1 git query + 1 recent query, expect ~9.5s total (4.5s each due to Python cold-start)
+    const HOOK_TIMEOUT = 9500; // 9.5 seconds (reduced Phase 0 from 2 to 1 query)
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Hook timeout - completing early')), HOOK_TIMEOUT);
     });
@@ -705,11 +745,11 @@ async function executeSessionStart(context) {
                 const gitQueries = buildGitContextQuery(projectContext, gitContext.developmentKeywords, context.userMessage);
 
                 if (verbose && showPhaseDetails && !cleanMode && gitQueries.length > 0) {
-                    console.log(`${CONSOLE_COLORS.GREEN}⚡ Phase 0${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Git-aware memory search (${maxGitMemories} slots, ${gitQueries.length} queries)`);
+                    console.log(`${CONSOLE_COLORS.GREEN}⚡ Phase 0${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Git-aware memory search (${maxGitMemories} slots, 1 of ${gitQueries.length} queries for 8s timeout)`);
                 }
                 
                 // Execute git-context queries
-                for (const gitQuery of gitQueries.slice(0, 2)) { // Limit to top 2 queries for performance
+                for (const gitQuery of gitQueries.slice(0, 1)) { // Limit to top 1 query to stay within 8s timeout
                     if (allMemories.length >= maxGitMemories) break;
 
                     const gitMemories = await queryMemoryService(memoryClient, {
@@ -790,35 +830,27 @@ async function executeSessionStart(context) {
                 }
             }
             
-            // Phase 2: Important tagged memories - fill remaining slots  
+            // Phase 2: Important tagged memories - fill remaining slots
             const remainingSlots = maxMemories - allMemories.length;
             if (remainingSlots > 0) {
-                // Build enhanced query for important memories
-                let importantSemanticQuery = `${projectContext.name} important decisions architecture`;
-                if (projectContext.language && projectContext.language !== 'Unknown') {
-                    importantSemanticQuery += ` ${projectContext.language}`;
-                }
-                if (projectContext.frameworks?.length > 0) {
-                    importantSemanticQuery += ` ${projectContext.frameworks.join(' ')}`;
-                }
-                
-                const importantQuery = {
-                    tags: [
-                        projectContext.name,
-                        'key-decisions',
-                        'architecture', 
-                        'claude-code-reference'
-                    ].filter(Boolean),
-                    semanticQuery: importantSemanticQuery,
-                    limit: remainingSlots,
-                    timeFilter: 'last-2-weeks'
-                };
-                
+                // Build tag list for important memories
+                const importantTags = [
+                    projectContext.name,
+                    'key-decisions',
+                    'architecture',
+                    'claude-code-reference'
+                ].filter(Boolean);
+
+                const timeFilter = 'last-2-weeks';
+
                 if (verbose && showMemoryDetails && showPhaseDetails && !cleanMode) {
                     console.log(`${CONSOLE_COLORS.BLUE}🎯 Phase 2${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Searching important tagged memories (${remainingSlots} slots)`);
                 }
 
-                const importantMemories = await queryMemoryService(memoryClient, importantQuery, config);
+                // Use new tag-time filtering method for efficient recency prioritization
+                const importantMemories = memoryClient ?
+                    await memoryClient.queryMemoriesByTagsAndTime(importantTags, timeFilter, remainingSlots, false) :
+                    [];
                 
                 // Avoid duplicates by checking content similarity  
                 const newMemories = (importantMemories || []).filter(newMem => 
@@ -1081,6 +1113,9 @@ async function executeSessionStart(context) {
                 await context.injectSystemMessage(contextMessage);
 
                 // Print success message (removed - summary already shown in tree header)
+                // Display the formatted tree to user (CRITICAL - without this, user sees nothing)
+                console.log(contextMessage);
+
 
                 // Write detailed session context log file (Option 3)
                 try {

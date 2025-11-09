@@ -140,37 +140,53 @@ function convertMarkdownToANSI(text, options = {}) {
 /**
  * Wrap text to specified width while preserving words and indentation
  */
-function wrapText(text, maxWidth = 80, indent = 0) {
+function wrapText(text, maxWidth = 80, indent = 0, treePrefix = '') {
     const indentStr = ' '.repeat(indent);
     const effectiveWidth = maxWidth - indent;
 
-    if (text.length <= effectiveWidth) {
-        return [text];
+    // Strip ANSI codes for accurate width calculation
+    const stripAnsi = (str) => str.replace(/\x1b\[[0-9;]*m/g, '');
+
+    // Remove pre-existing newlines to consolidate text into single line
+    // This prevents embedded newlines from breaking tree structure
+    const normalizedText = text.replace(/\n/g, ' ').replace(/\s{2,}/g, ' ').trim();
+
+    const textStripped = stripAnsi(normalizedText);
+    if (textStripped.length <= effectiveWidth) {
+        return [normalizedText];
     }
 
-    const words = text.split(/(\s+)/); // Keep whitespace in array
+    const words = normalizedText.split(/\s+/); // Split on whitespace
     const lines = [];
     let currentLine = '';
 
     for (const word of words) {
-        const testLine = currentLine + word;
-        if (testLine.length <= effectiveWidth) {
+        const testLine = currentLine ? currentLine + ' ' + word : word;
+        const testLineStripped = stripAnsi(testLine);
+
+        if (testLineStripped.length <= effectiveWidth) {
             currentLine = testLine;
-        } else if (currentLine.trim()) {
-            lines.push(currentLine.trim());
-            currentLine = word.trim() + ' ';
+        } else if (currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
         } else {
-            // Word is longer than line width, force break
-            lines.push(word.substring(0, effectiveWidth));
-            currentLine = word.substring(effectiveWidth);
+            // Single word longer than line width, force break
+            const effectiveWordWidth = stripAnsi(word).length;
+            if (effectiveWordWidth > effectiveWidth) {
+                lines.push(word.substring(0, effectiveWidth));
+                currentLine = word.substring(effectiveWidth);
+            } else {
+                currentLine = word;
+            }
         }
     }
 
-    if (currentLine.trim()) {
-        lines.push(currentLine.trim());
+    if (currentLine) {
+        lines.push(currentLine);
     }
 
-    return lines.map((line, idx) => (idx === 0 ? line : indentStr + line));
+    // Apply tree prefix to continuation lines (not just spaces)
+    return lines.map((line, idx) => (idx === 0 ? line : treePrefix + indentStr + line));
 }
 
 /**
@@ -309,24 +325,29 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
                             ? `${connector}${COLORS.CYAN}└─${COLORS.RESET} `
                             : `${connector}${COLORS.CYAN}├─${COLORS.RESET} `;
 
-                        // Wrap long content lines
-                        const lines = wrapText(formatted, 70, 6);
-                        contextMessage += `${prefix}${lines[0]}\n`;
-
-                        // Additional wrapped lines with proper tree continuation
-                        for (let i = 1; i < lines.length; i++) {
-                            let continuePrefix;
-                            if (isLastMemory) {
-                                // Last memory in category - no vertical line after └─
-                                continuePrefix = isLast ? '          ' : '      ';
-                            } else {
-                                // Not last memory - maintain vertical tree structure
-                                continuePrefix = isLast
-                                    ? `   ${COLORS.CYAN}│${COLORS.RESET}  `
-                                    : `${COLORS.CYAN}│${COLORS.RESET}  ${COLORS.CYAN}│${COLORS.RESET}  `;
-                            }
-                            contextMessage += `${continuePrefix}${lines[i]}\n`;
+                        // Calculate tree prefix for continuation lines
+                        let treePrefix;
+                        if (isLastMemory) {
+                            // Last memory in category - no vertical line after └─
+                            treePrefix = isLast ? '   ' : connector;
+                        } else {
+                            // Not last memory - maintain vertical tree structure
+                            treePrefix = isLast
+                                ? `   ${COLORS.CYAN}│${COLORS.RESET}  `
+                                : `${COLORS.CYAN}│${COLORS.RESET}  ${COLORS.CYAN}│${COLORS.RESET}  `;
                         }
+
+                        // Wrap long content lines with tree prefix for continuation
+                        const lines = wrapText(formatted, 70, 6, treePrefix);
+
+                        // Output all lines (first line with prefix, continuation lines already have tree chars)
+                        lines.forEach((line, lineIdx) => {
+                            if (lineIdx === 0) {
+                                contextMessage += `${prefix}${line}\n`;
+                            } else {
+                                contextMessage += `${line}\n`;
+                            }
+                        });
                     }
                 });
                 if (!isLast) contextMessage += `${COLORS.CYAN}│${COLORS.RESET}\n`;
@@ -337,28 +358,34 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
             // Fallback to linear format
             validMemories.forEach(({ formatted }, idx) => {
                 const isLast = idx === validMemories.length - 1;
-                const lines = wrapText(formatted, 76, 3);
-                contextMessage += `${COLORS.CYAN}${isLast ? '└─' : '├─'}${COLORS.RESET} ${lines[0]}\n`;
+                const connector = isLast ? '   ' : `${COLORS.CYAN}│${COLORS.RESET}  `;
+                const lines = wrapText(formatted, 76, 3, connector);
 
-                // Additional wrapped lines
-                for (let i = 1; i < lines.length; i++) {
-                    const connector = isLast ? '   ' : `${COLORS.CYAN}│${COLORS.RESET}  `;
-                    contextMessage += `${connector}${lines[i]}\n`;
-                }
+                // Output all lines (first with tree char, continuation with connector prefix)
+                lines.forEach((line, lineIdx) => {
+                    if (lineIdx === 0) {
+                        contextMessage += `${COLORS.CYAN}${isLast ? '└─' : '├─'}${COLORS.RESET} ${line}\n`;
+                    } else {
+                        contextMessage += `${line}\n`;
+                    }
+                });
             });
         }
     } else {
         // Simple linear formatting with enhanced visual elements
         validMemories.forEach(({ formatted }, idx) => {
             const isLast = idx === validMemories.length - 1;
-            const lines = wrapText(formatted, 76, 3);
-            contextMessage += `${COLORS.CYAN}${isLast ? '└─' : '├─'}${COLORS.RESET} ${lines[0]}\n`;
+            const connector = isLast ? '   ' : `${COLORS.CYAN}│${COLORS.RESET}  `;
+            const lines = wrapText(formatted, 76, 3, connector);
 
-            // Additional wrapped lines
-            for (let i = 1; i < lines.length; i++) {
-                const connector = isLast ? '   ' : `${COLORS.CYAN}│${COLORS.RESET}  `;
-                contextMessage += `${connector}${lines[i]}\n`;
-            }
+            // Output all lines (first with tree char, continuation with connector prefix)
+            lines.forEach((line, lineIdx) => {
+                if (lineIdx === 0) {
+                    contextMessage += `${COLORS.CYAN}${isLast ? '└─' : '├─'}${COLORS.RESET} ${line}\n`;
+                } else {
+                    contextMessage += `${line}\n`;
+                }
+            });
         });
     }
 
@@ -499,6 +526,11 @@ function extractMeaningfulContent(content, maxLength = 500, options = {}) {
         .replace(/^[\s]*[•▪▫]\s*/gm, '')
         // Remove list markers at start of lines
         .replace(/^[\s]*[-*]\s*/gm, '')
+        // Remove embedded Date: lines from old session summaries
+        .replace(/\*\*Date\*\*:.*?\n/gi, '')
+        .replace(/^Date:\s*\n\s*\d{1,2}\.\d{1,2}\.(\d{2,4})?\s*/gim, '')  // Multi-line: "Date:\n  9.11.2025"
+        .replace(/^Date:.*?\n/gim, '')  // Single-line: "Date: 9.11.2025"
+        .replace(/^\d{1,2}\.\d{1,2}\.(\d{2,4})?\s*$/gim, '')  // Standalone date lines
         // Clean up multiple spaces
         .replace(/\s{2,}/g, ' ')
         // Remove markdown bold/italic
@@ -571,9 +603,17 @@ function extractMeaningfulContent(content, maxLength = 500, options = {}) {
         }
         
         if (meaningfulParts.length > 0) {
-            const extracted = meaningfulParts.join(' | ');
+            let extracted = meaningfulParts.join(' | ');
+
+            // Re-sanitize to remove any Date: patterns that survived section extraction
+            extracted = extracted
+                .replace(/Date:\s*\d{1,2}\.\d{1,2}\.(\d{2,4})?/gi, '')  // Remove "Date: 9.11.2025"
+                .replace(/\d{1,2}\.\d{1,2}\.(\d{2,4})?/g, '')  // Remove standalone dates
+                .replace(/\s{2,}/g, ' ')  // Clean up multiple spaces
+                .trim();
+
             const truncated = extracted.length > maxLength ? extracted.substring(0, maxLength - 3) + '...' : extracted;
-            
+
             // Apply markdown conversion if requested
             if (convertMarkdown) {
                 return convertMarkdownToANSI(truncated, { stripOnly: stripMarkdown });
@@ -1041,7 +1081,6 @@ function formatSessionConsolidation(sessionData, projectContext) {
         const timestamp = new Date().toISOString();
         
         let consolidation = `# Session Summary - ${projectContext.name}\n`;
-        consolidation += `**Date**: ${new Date().toLocaleDateString()}\n`;
         consolidation += `**Project**: ${projectContext.name} (${projectContext.language})\n\n`;
         
         if (sessionData.topics && sessionData.topics.length > 0) {

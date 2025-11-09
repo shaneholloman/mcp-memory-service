@@ -42,8 +42,8 @@ Three complementary ways to view session memory context:
    - Contains: project details, storage backend, memory statistics, git analysis, top loaded memories
 
 3. **Status Line Display** ⭐ - Always-visible status bar at bottom of terminal
-   - Format: `🧠 8 (8 recent) | 📊 10 commits`
-   - Updates every 300ms with latest session memory context
+   - Format: `🧠 8 (8 recent) memories | 📊 10 commits`
+   - Displays static session memory context (set once at session start)
    - **Requires**: `jq` (JSON parser) and Claude Code statusLine configuration
    - **Platform**: Linux/macOS (Windows SessionStart hook broken - issue #160)
    - **Windows Workaround**: Use `/session-start` slash command for manual session initialization
