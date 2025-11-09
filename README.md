@@ -16,24 +16,25 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.21.0** (Nov 8, 2025)
+### 🆕 Latest Release: **v8.22.0** (Nov 9, 2025)
 
-**Amp PR Automator & Memory Hook Fix** 🤖🔧
+**Session-Start Hook Stability & UX Improvements** 🔧✨
 
 **What's New**:
-- 🤖 **Amp PR Automator** - OAuth-free PR automation with parallel quality checks (1,240+ lines)
-- 🔧 **Memory hook fix** - Tag+time filtering bug resolved (Issue #214, PR #215)
-- ⚡ **Fast analysis** - Parallel complexity, security, type hint checks
-- 📝 **Test generation** - Auto-create pytest tests for new code
-- 🚨 **Breaking changes** - API diff analysis with severity classification
+- 🕒 **Memory age fix** - Correctly shows recent work ("today", "2d ago") instead of defaulting to 365 days
+- ⏱️ **Timeout improvements** - 15s code execution, 20s sessionStart (prevents DNS retry timeouts)
+- 🎨 **Tree formatting** - ANSI-aware text wrapping, fixed line breaks cutting through tree structure
+- 📅 **Date sanitization** - Enhanced multi-line date removal from session summaries
+- 👁️ **Output visibility** - Restored console.log for user-visible tree display
+- 🧠 **Status bar clarity** - Added "memories" label ("🧠 6 (4 recent) memories")
 
 **Previous Releases**:
+- **v8.21.0** - Amp PR Automator & memory hook fix (Issue #214, PR #215)
 - **v8.20.1** - retrieve_memory serialization fix (Issue #211)
 - **v8.20.0** - PR Automation & Code Quality (Gemini review cycles, Groq bridge)
 - **v8.19.1** - Critical MCP tool fixes (retrieve_memory, search_by_tag)
-- **v8.19.0** - Code Execution API (75-90% token reduction)
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8210---2025-11-08) | [PR #215](https://github.com/doobidoo/mcp-memory-service/pull/215) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8220---2025-11-09) | [Issue #214](https://github.com/doobidoo/mcp-memory-service/issues/214) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 

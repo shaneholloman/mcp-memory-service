@@ -10,6 +10,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.22.0] - 2025-11-09
+
+### Fixed
+- **Session-Start Hook Stability & UX** - Comprehensive reliability and output quality improvements
+  - **Memory Age Calculation**: Fixed memory age analyzer defaulting to 365 days for all memories
+    - Added `created_at_iso` field to Code Execution API response mapping
+    - Now correctly shows recent work (e.g., "🕒 today", "📅 2d ago")
+    - Resolves memory age display bug (Related: Issue #214)
+  - **Timeout Improvements**: Prevents timeouts during DNS retries and slow network operations
+    - Increased code execution timeout: 8000ms → 15000ms
+    - Increased sessionStart hook timeout: 10000ms → 20000ms
+  - **Tree Formatting Enhancements**: Complete rewrite for proper ANSI-aware rendering
+    - ANSI-aware width calculation in wrapText() function
+    - Tree prefix parameter for proper continuation line formatting
+    - Normalized embedded newlines to prevent structure breaks
+    - Fixed line breaks cutting through tree characters (│, ├─, └─)
+  - **Date Sanitization**: Enhanced patterns for multi-line date formats
+    - Removes clutter from old session summaries (e.g., "Date:\n  9.11.")
+    - Added re-sanitization after section extraction
+  - **Output Visibility**: Restored console.log output for user-visible tree display
+    - Critical fix for output regression where tree was invisible to users
+  - **Status Bar Improvements**: Added "memories" label for clarity
+    - Format: "🧠 6 (4 recent) memories" instead of just "🧠 6 (4 recent)"
+    - Corrected documentation: "static" instead of "300ms updates"
+  - **Configuration**: Removed duplicate codeExecution block from config.json
+  - Files modified: `core/session-start.js`, `utilities/context-formatter.js`, `statusline.sh`, `README.md`, `config.json`
+
 ## [8.21.0] - 2025-11-08
 
 ### Added
