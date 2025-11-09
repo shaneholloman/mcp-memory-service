@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.22.0**: **Session-Start Hook Stability & UX Improvements** - Fixed memory age defaulting to 365 days (now shows "today", "2d ago"), increased timeouts (15s/20s to prevent DNS retry failures), ANSI-aware tree formatting (no more broken lines), restored console.log output visibility, enhanced date sanitization. Session-start hooks now more reliable and visually polished. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.22.1**: **Document Ingestion Tag Parsing Fix** - Fixed critical data corruption bug where tags were stored character-by-character instead of as complete strings. Root cause: `extend()` method treated comma-separated tag strings as iterables. Result: Tags like "claude-code-hooks,update-investigation" became ['c','l','a','u','d','e','-',...]. Fix: Added type checking to properly handle string vs list tag formats. 13 affected memories automatically repaired. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

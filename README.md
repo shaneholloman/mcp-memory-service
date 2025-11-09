@@ -16,17 +16,15 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.22.0** (Nov 9, 2025)
+### 🆕 Latest Release: **v8.22.1** (Nov 9, 2025)
 
-**Session-Start Hook Stability & UX Improvements** 🔧✨
+**Document Ingestion Tag Parsing Fix** 🐛🔧
 
-**What's New**:
-- 🕒 **Memory age fix** - Correctly shows recent work ("today", "2d ago") instead of defaulting to 365 days
-- ⏱️ **Timeout improvements** - 15s code execution, 20s sessionStart (prevents DNS retry timeouts)
-- 🎨 **Tree formatting** - ANSI-aware text wrapping, fixed line breaks cutting through tree structure
-- 📅 **Date sanitization** - Enhanced multi-line date removal from session summaries
-- 👁️ **Output visibility** - Restored console.log for user-visible tree display
-- 🧠 **Status bar clarity** - Added "memories" label ("🧠 6 (4 recent) memories")
+**Critical Bug Fix**:
+- 🔧 **Character-split tags fixed** - Tags were being stored as individual characters instead of complete strings
+- 🔍 **Root cause** - `extend()` method treated comma-separated tag strings as iterables, adding each character separately
+- 💾 **Database repair** - 13 affected memories automatically repaired from metadata backup
+- ✅ **Prevention** - Added type checking to handle both string and list tag formats properly
 
 **Previous Releases**:
 - **v8.21.0** - Amp PR Automator & memory hook fix (Issue #214, PR #215)

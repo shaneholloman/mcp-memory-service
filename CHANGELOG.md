@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.22.1] - 2025-11-09
+
+### Fixed
+- **Document Ingestion Tag Parsing** - Fixed critical data corruption bug where tags were stored character-by-character instead of as complete strings
+  - **Root Cause**: When `chunk.metadata['tags']` contained a comma-separated string (e.g., `"claude-code-hooks,update-investigation"`), the `extend()` method treated it as an iterable and added each character individually
+  - **Symptom**: Tags like `"claude-code-hooks,update-investigation,configuration,breaking-changes"` became `['c','l','a','u','d','e','-','c','o','d','e','-','h','o','o','k','s',',','u','p','d','a','t','e',...]` (80+ character tags per memory)
+  - **Impact**: Memories were unsearchable by tags, tag filtering broken, tag display cluttered with single characters
+  - **Fix**: Added `isinstance()` type check to detect string vs list, properly split comma-separated strings before extending tag list
+  - **Database Repair**: 13 affected memories automatically repaired using metadata field (which stored correct tags)
+  - **Files Modified**: `src/mcp_memory_service/web/api/documents.py` (lines 424-430 for single uploads, 536-542 for batch uploads)
+
 ## [8.22.0] - 2025-11-09
 
 ### Fixed
