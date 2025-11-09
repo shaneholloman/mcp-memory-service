@@ -422,7 +422,12 @@ async def process_single_file_upload(
                 all_tags.append(f"upload_id:{upload_id}")
 
                 if chunk.metadata.get('tags'):
-                    all_tags.extend(chunk.metadata['tags'])
+                    # Handle tags from chunk metadata (can be string or list)
+                    chunk_tags = chunk.metadata['tags']
+                    if isinstance(chunk_tags, str):
+                        # Split comma-separated string into list
+                        chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
+                    all_tags.extend(chunk_tags)
 
                 # Add upload_id to metadata
                 chunk_metadata = chunk.metadata.copy() if chunk.metadata else {}
@@ -529,7 +534,12 @@ async def process_batch_upload(
                         all_tags.append(f"upload_id:{batch_id}")
 
                         if chunk.metadata.get('tags'):
-                            all_tags.extend(chunk.metadata['tags'])
+                            # Handle tags from chunk metadata (can be string or list)
+                            chunk_tags = chunk.metadata['tags']
+                            if isinstance(chunk_tags, str):
+                                # Split comma-separated string into list
+                                chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
+                            all_tags.extend(chunk_tags)
 
                         # Add upload_id to metadata
                         chunk_metadata = chunk.metadata.copy() if chunk.metadata else {}
