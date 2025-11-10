@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.22.2**: **Complete Tag Parsing Fix** - Extended v8.22.1 character-split tags fix to all remaining locations (server.py MCP handlers, cli/ingestion.py). All tag parsing code paths now include type checking. 6 additional memories repaired. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.22.3**: **Complete Tag Schema Validation Fix** - Extended oneOf schema pattern to ALL 7 MCP tools with tags parameter (update_memory_metadata, search_by_tag, delete_by_tag, delete_by_tags, delete_by_all_tags, ingest_document, ingest_directory). Added normalize_tags() calls in handlers. Resolves recurring "is not of type 'array'" validation errors. **Action required**: Run `/mcp` in Claude Code to fetch updated schemas. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -63,6 +63,90 @@ See [docs/document-ingestion.md](docs/document-ingestion.md) for full configurat
 Web interface at `http://127.0.0.1:8000/` with CRUD operations, semantic/tag/time search, real-time updates (SSE), mobile responsive. Performance: 25ms page load, <100ms search.
 
 **API Endpoints:** `/api/search`, `/api/search/by-tag`, `/api/search/by-time`, `/api/events`
+
+## Memory Consolidation System 🆕
+
+**Dream-inspired memory consolidation** with automatic scheduling and Code Execution API (v8.23.0+).
+
+### Architecture
+
+**Consolidation Scheduler Location**: HTTP Server (v8.23.0+)
+- Runs 24/7 with HTTP server (independent of MCP server/Claude Desktop)
+- Uses APScheduler for automatic scheduling
+- Accessible via both HTTP API and MCP tools
+- **Benefits**: Persistent, reliable, no dependency on Claude Desktop being open
+
+**Code Execution API** (token-efficient operations):
+```python
+from mcp_memory_service.api import consolidate, scheduler_status
+
+# Trigger consolidation (15 tokens vs 150 MCP tool - 90% reduction)
+result = consolidate('weekly')
+
+# Check scheduler (10 tokens vs 125 - 92% reduction)
+status = scheduler_status()
+```
+
+### HTTP API Endpoints
+
+| Endpoint | Method | Description | Response Time |
+|----------|--------|-------------|---------------|
+| `/api/consolidation/trigger` | POST | Trigger consolidation | ~10-30s |
+| `/api/consolidation/status` | GET | Scheduler status | <5ms |
+| `/api/consolidation/recommendations/{horizon}` | GET | Get recommendations | ~50ms |
+
+**Example Usage:**
+```bash
+# Trigger weekly consolidation
+curl -X POST http://127.0.0.1:8000/api/consolidation/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"time_horizon": "weekly"}'
+
+# Check scheduler status
+curl http://127.0.0.1:8000/api/consolidation/status
+
+# Get recommendations
+curl http://127.0.0.1:8000/api/consolidation/recommendations/weekly
+```
+
+### Configuration
+
+```bash
+# Enable consolidation (default: true)
+export MCP_CONSOLIDATION_ENABLED=true
+
+# Scheduler configuration (in config.py)
+CONSOLIDATION_SCHEDULE = {
+    'daily': '02:00',              # Daily at 2 AM
+    'weekly': 'SUN 03:00',         # Weekly on Sunday at 3 AM
+    'monthly': '01 04:00',         # Monthly on 1st at 4 AM
+    'quarterly': 'disabled',       # Disabled
+    'yearly': 'disabled'           # Disabled
+}
+```
+
+### Features
+
+- **Exponential decay scoring** - Prioritize recent, frequently accessed memories
+- **Creative association discovery** - Find semantic connections (0.3-0.7 similarity)
+- **Semantic clustering** - Group related memories (DBSCAN algorithm)
+- **Compression** - Summarize redundant information (preserves originals)
+- **Controlled forgetting** - Archive low-relevance memories (90+ days inactive)
+
+### Migration from MCP-only Mode (v8.22.x → v8.23.0+)
+
+**No action required** - Consolidation automatically runs in HTTP server if enabled.
+
+**For users without HTTP server:**
+```bash
+# Enable HTTP server in .env
+export MCP_HTTP_ENABLED=true
+
+# Restart service
+systemctl --user restart mcp-memory-http.service
+```
+
+**MCP tools continue working** (backward compatible via internal API calls).
 
 ## Environment Variables
 

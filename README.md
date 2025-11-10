@@ -16,15 +16,16 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.22.2** (Nov 9, 2025)
+### 🆕 Latest Release: **v8.22.3** (Nov 10, 2025)
 
-**Complete Tag Parsing Fix** 🐛🔧
+**Complete Tag Schema Validation Fix** 🐛🔧
 
-**Extended v8.22.1 fix to all code paths**:
-- 🔧 **MCP tool handlers fixed** - server.py ingest_document and ingest_directory tools
-- 🔧 **CLI commands fixed** - ingestion.py file and directory ingestion
-- 💾 **Database repair** - 6 additional memories repaired (19 total)
-- ✅ **Comprehensive** - All 4 files with tag parsing now include type checking
+**Extended oneOf pattern to ALL MCP tool schemas**:
+- 🔧 **7 tool schemas fixed** - Now accept both array and comma-separated string formats
+- 📋 **Tools updated**: update_memory_metadata, search_by_tag, delete_by_tag, delete_by_tags, delete_by_all_tags, ingest_document, ingest_directory
+- 🔄 **Handler normalization** - Added normalize_tags() calls to all affected handlers
+- ⚠️ **Action required**: Run `/mcp` in Claude Code to fetch updated schemas
+- ✅ **Resolves**: Recurring "is not of type 'array'" validation errors
 
 **Previous Releases**:
 - **v8.22.1** - Document ingestion tag parsing fix (13 memories repaired)

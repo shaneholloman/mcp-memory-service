@@ -10,6 +10,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.22.3] - 2025-11-10
+
+### Fixed
+- **Complete Tag Schema Validation Fix**: Extended oneOf schema pattern to ALL MCP tools with tags parameter
+  - Previous fixes (v8.22.1-v8.22.2) only addressed character-split bugs in handler code
+  - Root cause: 7 tools had schemas accepting ONLY arrays, rejecting comma-separated strings at MCP client validation
+  - Updated tool schemas to accept both array and string formats using `oneOf` pattern:
+    - `update_memory_metadata` (line 1733)
+    - `search_by_tag` (line 1428)
+    - `delete_by_tag` (line 1475)
+    - `delete_by_tags` (line 1506)
+    - `delete_by_all_tags` (line 1536)
+    - `ingest_document` (line 1958)
+    - `ingest_directory` (line 2015)
+  - Added `normalize_tags()` calls in all affected handlers to properly parse comma-separated strings
+  - Validation now happens gracefully: client accepts both formats, server normalizes to array
+  - **Breaking**: Users must reconnect MCP client (`/mcp` in Claude Code) to fetch updated schemas
+  - Resolves recurring "Input validation error: 'X' is not of type 'array'" errors
+
+### Technical Details
+- **Validation Flow**: MCP client validates against tool schema → Server normalizes tags → Storage processes
+- **Schema Pattern**: Each tags parameter now uses `{"oneOf": [{"type": "array"}, {"type": "string"}]}`
+- **Handler Updates**: 7 handlers updated to import and call `normalize_tags()` from `services/memory_service.py`
+- **File Modified**: `src/mcp_memory_service/server.py` (schemas + handlers)
+
+### Notes
+- This completes the tag parsing fix saga (v8.22.1 → v8.22.2 → v8.22.3)
+- v8.22.1: Fixed character-split bug in documents.py
+- v8.22.2: Extended fix to server.py and cli/ingestion.py handlers
+- v8.22.3: Fixed JSON schemas to accept comma-separated strings at validation layer
+
 ## [8.22.2] - 2025-11-09
 
 ### Fixed
