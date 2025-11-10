@@ -1684,13 +1684,70 @@ def install_claude_hooks(args, system_info):
             print_info("For Natural Memory Triggers:")
             print_info("  cd claude-hooks && python install_hooks.py --natural-triggers")
 
+def detect_development_context():
+    """Detect if user is likely a developer (has .git directory).
+
+    Returns:
+        bool: True if .git directory exists
+    """
+    git_dir = Path(".git")
+    return git_dir.exists() and git_dir.is_dir()
+
+def recommend_editable_install(args):
+    """Recommend editable install for developers.
+
+    If .git directory detected and --dev not specified, prompts user to use
+    editable install mode. This prevents the common "stale venv vs source code"
+    issue where MCP servers load from site-packages instead of source files.
+
+    Args:
+        args: Parsed command line arguments
+
+    Returns:
+        bool: True if editable install should be used
+    """
+    # If already in dev mode, nothing to do
+    if args.dev:
+        return True
+
+    # Detect development context
+    if detect_development_context():
+        print_warning("Detected git repository - you may be a developer!")
+        print("")
+        print_info("For development, EDITABLE install is strongly recommended:")
+        print_info("  pip install -e .")
+        print("")
+        print_info("Why this matters:")
+        print_info("  • MCP servers load from site-packages, not source files")
+        print_info("  • Without -e flag, source changes won't take effect")
+        print_info("  • System restart won't help - it just relaunches stale code")
+        print_info("  • Common symptom: Code shows v8.23.0 but server reports v8.5.3")
+        print("")
+        print_info("Editable install ensures:")
+        print_info("  • Source changes take effect immediately (after server restart)")
+        print_info("  • No need to reinstall package after every change")
+        print_info("  • Easier debugging and development workflow")
+        print("")
+
+        response = input("Install in EDITABLE mode (recommended for development)? [Y/n]: ").lower().strip()
+        if response == '' or response == 'y' or response == 'yes':
+            args.dev = True
+            print_success("Enabled editable install mode")
+            return True
+        else:
+            print_warning("Proceeding with standard install (not editable)")
+            print_warning("Remember: You'll need to reinstall after every source change!")
+            return False
+
+    return False
+
 def main():
     """Main installation function."""
     parser = argparse.ArgumentParser(description="Install MCP Memory Service")
     parser.add_argument('--dev', action='store_true', help='Install in development mode')
     parser.add_argument('--chroma-path', type=str, help='Path to ChromaDB storage')
     parser.add_argument('--backups-path', type=str, help='Path to backups storage')
-    parser.add_argument('--force-compatible-deps', action='store_true', 
+    parser.add_argument('--force-compatible-deps', action='store_true',
                         help='Force compatible versions of PyTorch (2.0.1) and sentence-transformers (2.2.2)')
     parser.add_argument('--fallback-deps', action='store_true',
                         help='Use fallback versions of PyTorch (1.13.1) and sentence-transformers (2.2.2)')
@@ -1709,7 +1766,10 @@ def main():
     parser.add_argument('--with-chromadb', action='store_true',
                         help='Include ChromaDB backend support (automatically includes ML dependencies)')
     args = parser.parse_args()
-    
+
+    # Check if this is a development context and recommend editable install
+    recommend_editable_install(args)
+
     print_header("MCP Memory Service Installation")
     
     # Step 1: Detect system

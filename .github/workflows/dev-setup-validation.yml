@@ -1,0 +1,260 @@
+name: Development Setup Validation
+
+# Test the development setup procedures and stale venv prevention mechanisms
+on:
+  push:
+    branches: [ main, develop, release/** ]
+    paths:
+      - 'scripts/validation/check_dev_setup.py'
+      - 'scripts/installation/install.py'
+      - 'scripts/hooks/pre-commit'
+      - 'src/mcp_memory_service/__init__.py'
+      - 'pyproject.toml'
+      - '.github/workflows/dev-setup-validation.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/validation/check_dev_setup.py'
+      - 'scripts/installation/install.py'
+      - 'scripts/hooks/pre-commit'
+      - 'src/mcp_memory_service/__init__.py'
+      - 'pyproject.toml'
+  workflow_dispatch:
+
+jobs:
+  test-editable-install:
+    name: Test Editable Install Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Test editable install workflow
+        run: |
+          # Create virtual environment
+          python -m venv test_venv
+          source test_venv/bin/activate
+
+          # Install in editable mode
+          pip install -e .
+
+          # Verify editable install is detected
+          python scripts/validation/check_dev_setup.py
+
+          # Should exit 0 (success)
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Editable install not detected correctly"
+            exit 1
+          fi
+
+          echo "✅ Editable install detection works correctly"
+
+      - name: Verify version consistency check
+        run: |
+          source test_venv/bin/activate
+
+          # Get source version
+          SOURCE_VERSION=$(grep '__version__' src/mcp_memory_service/__init__.py | cut -d'"' -f2)
+
+          # Get installed version
+          INSTALLED_VERSION=$(python -c "import mcp_memory_service; print(mcp_memory_service.__version__)")
+
+          echo "Source version: $SOURCE_VERSION"
+          echo "Installed version: $INSTALLED_VERSION"
+
+          if [ "$SOURCE_VERSION" != "$INSTALLED_VERSION" ]; then
+            echo "ERROR: Version mismatch despite editable install"
+            exit 1
+          fi
+
+          echo "✅ Version consistency check passed"
+
+  test-non-editable-detection:
+    name: Test Non-Editable Install Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Test non-editable install detection
+        run: |
+          # Create virtual environment
+          python -m venv bad_venv
+          source bad_venv/bin/activate
+
+          # Install WITHOUT editable mode (this is the problem case)
+          pip install .
+
+          # Run detection script - should FAIL (exit 1)
+          python scripts/validation/check_dev_setup.py
+          EXIT_CODE=$?
+
+          # We expect failure (exit 1) because it's not editable
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "ERROR: Non-editable install was not detected as a problem"
+            exit 1
+          fi
+
+          echo "✅ Non-editable install correctly detected as problematic"
+
+  test-version-mismatch-detection:
+    name: Test Version Mismatch Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Test version mismatch scenario
+        run: |
+          # Create virtual environment
+          python -m venv mismatch_venv
+          source mismatch_venv/bin/activate
+
+          # Install current version
+          pip install .
+
+          # Simulate version change in source (the stale venv scenario)
+          # Save original version
+          ORIGINAL_VERSION=$(grep '__version__' src/mcp_memory_service/__init__.py)
+
+          # Change source version temporarily
+          sed -i 's/__version__ = ".*"/__version__ = "99.99.99"/' src/mcp_memory_service/__init__.py
+
+          # Run detection script - should FAIL because versions don't match
+          python scripts/validation/check_dev_setup.py
+          EXIT_CODE=$?
+
+          # Restore original version
+          echo "$ORIGINAL_VERSION" | sed 's/.*\(__version__.*\)/\1/' > temp_version
+          sed -i "s/__version__ = .*$/$(cat temp_version)/" src/mcp_memory_service/__init__.py
+          rm temp_version
+
+          # We expect failure (exit 1) because of version mismatch
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "ERROR: Version mismatch was not detected"
+            exit 1
+          fi
+
+          echo "✅ Version mismatch correctly detected"
+
+  test-install-py-developer-detection:
+    name: Test install.py Developer Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Verify .git directory is present
+        run: |
+          if [ ! -d ".git" ]; then
+            echo "ERROR: .git directory not found (developer detection won't work)"
+            exit 1
+          fi
+          echo "✅ .git directory present for developer detection"
+
+      - name: Test developer context detection
+        run: |
+          # Create test script to check if developer detection works
+          python3 << 'EOF'
+          import sys
+          sys.path.insert(0, 'scripts/installation')
+
+          # Import the install script's detection function
+          import install
+
+          # Test developer detection
+          is_dev = install.detect_development_context()
+
+          if not is_dev:
+              print("ERROR: Developer context not detected despite .git directory")
+              sys.exit(1)
+
+          print("✅ Developer context detection works correctly")
+          EOF
+
+  test-runtime-version-warning:
+    name: Test Runtime Version Warning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Test version check function
+        run: |
+          # Create virtual environment
+          python -m venv runtime_venv
+          source runtime_venv/bin/activate
+
+          # Install in editable mode
+          pip install -e .
+
+          # Test the runtime version check function
+          python3 << 'EOF'
+          from mcp_memory_service.server import check_version_consistency
+          import logging
+
+          # Set up logging to see warnings
+          logging.basicConfig(level=logging.WARNING)
+
+          print("Testing version check function...")
+          check_version_consistency()
+          print("✅ Version check function executed without errors")
+          EOF
+
+  summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [test-editable-install, test-non-editable-detection, test-version-mismatch-detection, test-install-py-developer-detection, test-runtime-version-warning]
+    if: always()
+
+    steps:
+      - name: Check all tests passed
+        run: |
+          echo "Development Setup Validation Results:"
+          echo "======================================"
+          if [ "${{ needs.test-editable-install.result }}" == "success" ] && \
+             [ "${{ needs.test-non-editable-detection.result }}" == "success" ] && \
+             [ "${{ needs.test-version-mismatch-detection.result }}" == "success" ] && \
+             [ "${{ needs.test-install-py-developer-detection.result }}" == "success" ] && \
+             [ "${{ needs.test-runtime-version-warning.result }}" == "success" ]; then
+            echo "✅ All development setup validation tests passed!"
+            exit 0
+          else
+            echo "❌ Some validation tests failed"
+            echo "Editable Install: ${{ needs.test-editable-install.result }}"
+            echo "Non-Editable Detection: ${{ needs.test-non-editable-detection.result }}"
+            echo "Version Mismatch Detection: ${{ needs.test-version-mismatch-detection.result }}"
+            echo "install.py Developer Detection: ${{ needs.test-install-py-developer-detection.result }}"
+            echo "Runtime Version Warning: ${{ needs.test-runtime-version-warning.result }}"
+            exit 1
+          fi
