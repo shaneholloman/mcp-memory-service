@@ -10,6 +10,69 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.23.1] - 2025-11-10
+
+### Fixed
+- **Stale Virtual Environment Prevention System** - Comprehensive 6-layer strategy to prevent "stale venv vs source code" version mismatches
+  - **Root Cause**: MCP servers load from site-packages, not source files. System restart doesn't help - it relaunches with same stale package
+  - **Impact**: Prevented issue that caused v8.23.0 tag validation bug to persist despite v8.22.2 fix (source showed v8.23.0 while venv had v8.5.3)
+
+### Added
+- **Phase 1: Automated Detection**
+  - New `scripts/validation/check_dev_setup.py` - Validates source/venv version consistency, detects editable installs
+  - Enhanced `scripts/hooks/pre-commit` - Blocks commits when venv is stale, provides actionable error messages
+  - Added CLAUDE.md development setup section with explicit `pip install -e .` guidance
+
+- **Phase 2: Runtime Warnings**
+  - Added `check_version_consistency()` function in `src/mcp_memory_service/server.py`
+  - Server startup warnings when version mismatch detected (source vs package)
+  - Updated README.md developer section with editable install instructions
+  - Enhanced `docs/development/ai-agent-instructions.md` with proper setup commands
+
+- **Phase 3: Interactive Onboarding**
+  - Enhanced `scripts/installation/install.py` with developer detection (checks for git repo)
+  - Interactive prompt guides developers to use `pip install -e .` for editable installs
+  - New CI/CD workflow `.github/workflows/dev-setup-validation.yml` with 5 comprehensive test jobs:
+    1. Version consistency validation
+    2. Pre-commit hook functionality
+    3. Server startup warnings
+    4. Interactive developer prompts
+    5. Documentation accuracy checks
+
+### Changed
+- **Developer Workflow**: Developers now automatically guided to use `pip install -e .` for proper setup
+- **Pre-commit Hook**: Now validates venv consistency before allowing commits
+- **Installation Process**: Detects developer mode and provides targeted guidance
+
+### Technical Details
+- **6-Layer Prevention System**:
+  1. **Development**: Pre-commit hook blocks bad commits, detection script validates setup
+  2. **Runtime**: Server startup warnings catch edge cases
+  3. **Documentation**: CLAUDE.md, README.md, ai-agent-instructions.md all updated
+  4. **Automation**: check_dev_setup.py, pre-commit hook, CI/CD workflow
+  5. **Interactive**: install.py prompts developers for editable install
+  6. **Testing**: CI/CD workflow with 5 comprehensive test jobs
+
+- **Files Modified**:
+  - `scripts/validation/check_dev_setup.py` - NEW automated detection script
+  - `scripts/hooks/pre-commit` - Enhanced with venv validation
+  - `CLAUDE.md` - Added development setup guidance
+  - `src/mcp_memory_service/server.py` - Added runtime version check
+  - `README.md` - Updated developer section
+  - `docs/development/ai-agent-instructions.md` - Updated setup commands
+  - `scripts/installation/install.py` - Added developer detection
+  - `.github/workflows/dev-setup-validation.yml` - NEW CI/CD validation
+
+### Migration Notes
+- **For Developers**: Run `pip install -e .` to install in editable mode (will be prompted by install.py)
+- **For Users**: No action required - prevention system is transparent for production use
+- **Pre-commit Hook**: Automatically installed during `install.py`, validates on every commit
+
+### Commits Included
+- `670fb74` - Phase 1: Automated detection (check_dev_setup.py, pre-commit hook, CLAUDE.md)
+- `9537259` - Phase 2: Runtime warnings (server.py) + developer documentation
+- `a17bcc7` - Phase 3: Interactive onboarding (install.py) + CI/CD validation
+
 ## [8.23.0] - 2025-11-10
 
 ### Added

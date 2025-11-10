@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.23.0**: **Consolidation Scheduler via Code Execution API** - Dream-based memory consolidation migrated from MCP server to HTTP server, achieving 88% token reduction (803K tokens/year saved) and 24/7 operation independent of Claude Desktop. New HTTP endpoints: `/api/consolidation/trigger`, `/status`, `/recommendations`. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.23.1**: **Stale Virtual Environment Prevention System** - 6-layer strategy preventing "stale venv vs source code" mismatches: automated detection (check_dev_setup.py, pre-commit hook), runtime warnings (server.py), developer guidance (CLAUDE.md, README.md, ai-agent-instructions.md), interactive onboarding (install.py), and CI/CD validation. Solves root cause: MCP servers load from site-packages, not source files. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
