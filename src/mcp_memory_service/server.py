@@ -231,15 +231,59 @@ if not os.getenv('DEBUG_MODE'):
 def check_uv_environment():
     """Check if UV is being used and provide recommendations if not."""
     running_with_uv = 'UV_ACTIVE' in os.environ or any('uv' in arg.lower() for arg in sys.argv)
-    
+
     if not running_with_uv:
         logger.info("Memory server is running without UV. For better performance and dependency management, consider using UV:")
         logger.info("  pip install uv")
         logger.info("  uv run memory")
     else:
         logger.info("Memory server is running with UV")
-    
-    return running_with_uv
+
+def check_version_consistency():
+    """
+    Check if installed package version matches source code version.
+
+    Warns if version mismatch detected (common "stale venv" issue).
+    This helps catch the scenario where source code is updated but
+    the package wasn't reinstalled with 'pip install -e .'.
+    """
+    try:
+        # Get source code version (from __init__.py)
+        source_version = __version__
+
+        # Get installed package version (from package metadata)
+        try:
+            import pkg_resources
+            installed_version = pkg_resources.get_distribution("mcp-memory-service").version
+        except:
+            # If pkg_resources fails, try importlib.metadata (Python 3.8+)
+            try:
+                from importlib import metadata
+                installed_version = metadata.version("mcp-memory-service")
+            except:
+                # Can't determine installed version - skip check
+                return
+
+        # Compare versions
+        if installed_version != source_version:
+            logger.warning("=" * 70)
+            logger.warning("⚠️  VERSION MISMATCH DETECTED!")
+            logger.warning(f"   Source code: v{source_version}")
+            logger.warning(f"   Installed:   v{installed_version}")
+            logger.warning("")
+            logger.warning("   This usually means you need to run:")
+            logger.warning("   pip install -e . --force-reinstall")
+            logger.warning("")
+            logger.warning("   Then restart the MCP server:")
+            logger.warning("   - In Claude Code: Run /mcp")
+            logger.warning("   - In Claude Desktop: Restart the application")
+            logger.warning("=" * 70)
+        else:
+            logger.debug(f"Version check OK: v{source_version}")
+
+    except Exception as e:
+        # Don't fail server startup on version check errors
+        logger.debug(f"Version check failed (non-critical): {e}")
 
 # Configure environment variables based on detected system
 def configure_environment():
@@ -3656,10 +3700,13 @@ async def async_main():
     
     # Run dependency check before starting
     run_dependency_check()
-    
+
     # Check if running with UV
     check_uv_environment()
-    
+
+    # Check for version mismatch (stale venv issue)
+    check_version_consistency()
+
     # Debug logging is now handled by the CLI layer
 
     # Print system diagnostics only for LM Studio (avoid JSON parsing errors in Claude Desktop)

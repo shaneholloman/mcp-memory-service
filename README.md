@@ -80,6 +80,40 @@ uv pip install mcp-memory-service
 
 For advanced configuration with the interactive installer, clone the repo and run `python scripts/installation/install.py`.
 
+### Developer Setup (Contributing)
+
+**For development and contributing**, use editable install to ensure source code changes take effect immediately:
+
+```bash
+# Clone repository
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# CRITICAL: Editable install (code changes take effect immediately)
+pip install -e .
+
+# Verify editable mode (should show source directory, not site-packages)
+pip show mcp-memory-service | grep Location
+# Expected: Location: /path/to/mcp-memory-service/src
+
+# Start development server
+uv run memory server
+```
+
+**⚠️ Important**: Editable install (`-e` flag) ensures MCP servers load from source code, not stale `site-packages`. Without this, source changes won't be reflected until you reinstall the package.
+
+**Version Mismatch Check:**
+```bash
+# Verify installed version matches source code
+python scripts/validation/check_dev_setup.py
+```
+
+See [CLAUDE.md](CLAUDE.md#development-setup-critical) for complete development guidelines.
+
 ### Traditional Setup Options
 
 **Universal Installer (Most Compatible):**
