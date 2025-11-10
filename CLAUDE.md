@@ -354,6 +354,56 @@ export CLOUDFLARE_VECTORIZE_INDEX="mcp-memory-index"
 
 ## Development Guidelines
 
+### 🔧 **Development Setup (CRITICAL)**
+
+**⚠️ ALWAYS use editable install for development** to avoid stale package issues:
+
+```bash
+# REQUIRED for development - loads code from source, not site-packages
+pip install -e .
+
+# Or with uv (preferred)
+uv pip install -e .
+
+# Verify installation mode (CRITICAL CHECK)
+pip show mcp-memory-service | grep Location
+# Should show: Location: /path/to/mcp-memory-service/src
+# NOT: Location: /path/to/venv/lib/python3.x/site-packages
+```
+
+**Why This Matters:**
+- MCP servers load from `site-packages`, not source files
+- Without `-e`, source changes won't be reflected until reinstall
+- System restart won't help - it relaunches with stale package
+- **Common symptom**: Code shows v8.23.0 but server reports v8.5.3
+
+**Development Workflow:**
+1. Clone repo: `git clone https://github.com/doobidoo/mcp-memory-service.git`
+2. Create venv: `python -m venv venv && source venv/bin/activate`
+3. **Editable install**: `pip install -e .` ← CRITICAL STEP
+4. Verify: `python -c "import mcp_memory_service; print(mcp_memory_service.__version__)"`
+5. Start coding - changes take effect after server restart (no reinstall needed)
+
+**Version Mismatch Detection:**
+```bash
+# Quick check script - detects stale venv vs source code
+python scripts/validation/check_dev_setup.py
+
+# Manual verification (both should match):
+grep '__version__' src/mcp_memory_service/__init__.py
+python -c "import mcp_memory_service; print(mcp_memory_service.__version__)"
+```
+
+**Fix Stale Installation:**
+```bash
+# If you see version mismatch or non-editable install:
+pip uninstall mcp-memory-service
+pip install -e .
+
+# Restart MCP servers (in Claude Code):
+# Run: /mcp
+```
+
 ### 🧠 **Memory & Documentation**
 - Use `claude /memory-store` to capture decisions during development
 - Memory operations handle duplicates via content hashing

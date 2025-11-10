@@ -52,6 +52,26 @@ fi
 
 echo ""
 
+# === Development Environment Check ===
+echo "Verifying development environment..."
+if python scripts/validation/check_dev_setup.py > /dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} Development environment OK"
+else
+    echo -e "${RED}⚠️  Development environment issue detected${NC}"
+    echo ""
+    python scripts/validation/check_dev_setup.py
+    echo ""
+    echo "Please fix the development setup before committing."
+    echo "This prevents 'stale venv vs source code' issues."
+    echo ""
+    echo "Quick fix:"
+    echo "  pip install -e . --force-reinstall"
+    echo "  /mcp  # Restart MCP servers in Claude Code"
+    echo ""
+    exit 1
+fi
+echo ""
+
 # Get staged Python files (store once for efficiency)
 staged_files=$(git diff --cached --name-only --diff-filter=AM | grep '\.py$' || echo "")
 
