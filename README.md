@@ -220,6 +220,14 @@ These warnings disappear after the first successful run. The service is working 
 - **[🔗 Integration Guide](https://github.com/doobidoo/mcp-memory-service/wiki/03-Integration-Guide)** - Claude Desktop, **Claude Code HTTP transport**, VS Code, and more
 - **[🛡️ Advanced Configuration](https://github.com/doobidoo/mcp-memory-service/wiki/04-Advanced-Configuration)** - **Updated!** OAuth security, enterprise features
 
+### 🧬 v8.23.0+ Memory Consolidation
+- **[📊 Memory Consolidation System Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Consolidation-System-Guide)** - **NEW!** Automated memory maintenance with real-world performance metrics
+  - ✅ **Dream-inspired consolidation** (decay scoring, association discovery, compression, archival)
+  - ✅ **24/7 automatic scheduling** (daily/weekly/monthly via HTTP server)
+  - ✅ **Token-efficient Code Execution API** (90% token reduction vs MCP tools)
+  - ✅ **Real-world performance data** (4-6 min for 2,495 memories with hybrid backend)
+  - ✅ **Three manual trigger methods** (HTTP API, MCP tools, Python API)
+
 ### 🚀 Setup & Installation
 - **[📋 Installation Guide](https://github.com/doobidoo/mcp-memory-service/wiki/01-Installation-Guide)** - Complete installation for all platforms and use cases
 - **[🖥️ Platform Setup Guide](https://github.com/doobidoo/mcp-memory-service/wiki/02-Platform-Setup-Guide)** - Windows, macOS, and Linux optimizations

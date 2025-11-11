@@ -136,6 +136,22 @@ CONSOLIDATION_SCHEDULE = {
 - **Compression** - Summarize redundant information (preserves originals)
 - **Controlled forgetting** - Archive low-relevance memories (90+ days inactive)
 
+### Performance Expectations
+
+**Real-world metrics** (based on v8.23.1 test with 2,495 memories):
+
+| Backend | First Run | Subsequent Runs | Notes |
+|---------|-----------|----------------|-------|
+| **SQLite-Vec** | 5-25s | 5-25s | Fast, local-only |
+| **Cloudflare** | 2-4min | 1-3min | Network-dependent, cloud-only |
+| **Hybrid** | 4-6min | 2-4min | Slower but provides multi-device sync |
+
+**Why Hybrid takes longer**: Local SQLite operations (~5ms) + Cloudflare cloud sync (~150ms per update). Trade-off: Processing time for data persistence across devices.
+
+**Recommendation**: Hybrid backend is recommended for production despite longer consolidation time - multi-device sync capability is worth it.
+
+**📖 See [Memory Consolidation System Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Consolidation-System-Guide)** for detailed operational guide, monitoring procedures, and troubleshooting.
+
 ### Migration from MCP-only Mode (v8.22.x → v8.23.0+)
 
 **No action required** - Consolidation automatically runs in HTTP server if enabled.
