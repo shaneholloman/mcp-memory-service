@@ -150,7 +150,7 @@ CONSOLIDATION_SCHEDULE = {
 
 **Recommendation**: Hybrid backend is recommended for production despite longer consolidation time - multi-device sync capability is worth it.
 
-**📖 See [Memory Consolidation System Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Consolidation-System-Guide)** for detailed operational guide, monitoring procedures, and troubleshooting.
+**📖 See [Memory Consolidation Guide](docs/guides/memory-consolidation-guide.md)** for detailed operational guide, monitoring procedures, and troubleshooting. Wiki version will be available at: [Memory Consolidation System Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Consolidation-System-Guide)
 
 ### Migration from MCP-only Mode (v8.22.x → v8.23.0+)
 
