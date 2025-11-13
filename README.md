@@ -2,6 +2,10 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![PyPI version](https://img.shields.io/pypi/v/mcp-memory-service?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/mcp-memory-service/)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-memory-service?logo=python&logoColor=white)](https://pypi.org/project/mcp-memory-service/)
+[![CI/CD](https://github.com/doobidoo/mcp-memory-service/actions/workflows/main.yml/badge.svg)](https://github.com/doobidoo/mcp-memory-service/actions/workflows/main.yml)
+[![Downloads](https://img.shields.io/pypi/dm/mcp-memory-service)](https://pypi.org/project/mcp-memory-service/)
+[![Last Commit](https://img.shields.io/github/last-commit/doobidoo/mcp-memory-service)](https://github.com/doobidoo/mcp-memory-service/commits/main)
 [![GitHub stars](https://img.shields.io/github/stars/doobidoo/mcp-memory-service?style=social)](https://github.com/doobidoo/mcp-memory-service/stargazers)
 [![Production Ready](https://img.shields.io/badge/Production-Ready-brightgreen?style=flat&logo=checkmark)](https://github.com/doobidoo/mcp-memory-service#-in-production)
 
@@ -9,6 +13,8 @@
 [![Works with Cursor](https://img.shields.io/badge/Works%20with-Cursor-orange)](https://cursor.sh)
 [![MCP Protocol](https://img.shields.io/badge/MCP-Compatible-4CAF50?style=flat)](https://modelcontextprotocol.io/)
 [![Multi-Client](https://img.shields.io/badge/Multi--Client-13+%20Apps-FF6B35?style=flat)](https://github.com/doobidoo/mcp-memory-service/wiki)
+[![Docker](https://img.shields.io/badge/Docker-Available-2496ED?logo=docker&logoColor=white)](https://github.com/doobidoo/mcp-memory-service/pkgs/container/mcp-memory-service)
+[![Issues](https://img.shields.io/github/issues/doobidoo/mcp-memory-service)](https://github.com/doobidoo/mcp-memory-service/issues)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/doobidoo/mcp-memory-service)
 
 **Production-ready MCP memory service** with **zero database locks**, **hybrid backend** (fast local + cloud sync), and **intelligent memory search** for **AI assistants**. Features **v8.9.0 auto-configuration** for multi-client access, **5ms local reads** with background Cloudflare sync, **Natural Memory Triggers** with 85%+ accuracy, and **OAuth 2.1 team collaboration**. Works with **Claude Desktop, VS Code, Cursor, Continue, and 13+ AI applications**.
