@@ -10,6 +10,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.24.0] - 2025-11-12
+
+### Added
+- **PyPI Publishing Automation** - Package now available via `pip install mcp-memory-service`
+  - **Workflow Automation**: Configured GitHub Actions workflow to automatically publish to PyPI on tag pushes
+  - **Installation Simplification**: Users can now install directly via `pip install mcp-memory-service` or `uv pip install mcp-memory-service`
+  - **Accessibility**: Resolves installation barriers for users without git access or familiarity
+  - **Token Configuration**: Secured with `PYPI_TOKEN` GitHub secret for automated publishing
+  - **Quality Gates**: Publishes only after successful test suite execution
+
+### Changed
+- **Distribution Method**: Added PyPI as primary distribution channel alongside GitHub releases
+- **Installation Documentation**: Updated guides to include pip-based installation as recommended method
+
+### Technical Details
+- **Files Modified**:
+  - `.github/workflows/publish.yml` - NEW workflow for automated PyPI publishing
+  - GitHub repository secrets - Added `PYPI_TOKEN` for authentication
+- **Trigger**: Workflow runs automatically on git tag creation (pattern: `v*.*.*`)
+- **Build System**: Uses Hatchling build backend with `python-semantic-release`
+
+### Migration Notes
+- **For New Users**: Preferred installation is now `pip install mcp-memory-service`
+- **For Existing Users**: No action required - git-based installation continues to work
+- **For Contributors**: Tag creation now triggers PyPI publishing automatically
+
 ## [8.23.1] - 2025-11-10
 
 ### Fixed

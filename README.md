@@ -16,23 +16,22 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.23.1** (Nov 10, 2025)
+### 🆕 Latest Release: **v8.24.0** (Nov 12, 2025)
 
-**Stale Virtual Environment Prevention System** 🛡️🔧
+**PyPI Publishing Enabled** 🎉📦
 
-**6-layer prevention strategy for developer experience**:
-- 🛡️ **Automated detection** - Pre-commit hook blocks commits when venv is stale
-- ⚠️ **Runtime warnings** - Server startup checks for version mismatches
-- 📚 **Developer guidance** - CLAUDE.md, README.md, ai-agent-instructions.md updated
-- 🤖 **Interactive onboarding** - install.py detects developer mode and prompts for `pip install -e .`
-- 🔄 **CI/CD validation** - New workflow with 5 comprehensive test jobs
-- 🐛 **Root cause solved** - MCP servers load from site-packages, not source files
+**Package now available via pip/uv**:
+- 📦 **Install with pip**: `pip install mcp-memory-service` or `uv pip install mcp-memory-service`
+- ✅ **Automated publishing** - GitHub Actions workflow publishes to PyPI on tag creation
+- 🚀 **Easier access** - No git required, resolves installation barriers for non-technical users
+- 🔐 **Secure automation** - Uses `PYPI_TOKEN` GitHub secret for authenticated publishing
+- ✨ **Quality gates** - Only publishes after successful test suite execution
 
 **Previous Releases**:
+- **v8.23.1** - Stale Virtual Environment Prevention System (6-layer developer protection)
 - **v8.23.0** - Consolidation Scheduler via Code Execution API (88% token reduction)
 - **v8.22.3** - Complete tag schema validation fix (7 MCP tools updated)
 - **v8.22.1** - Document ingestion tag parsing fix (13 memories repaired)
-- **v8.21.0** - Amp PR Automator & memory hook fix (Issue #214, PR #215)
 
 **📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8222---2025-11-09) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
