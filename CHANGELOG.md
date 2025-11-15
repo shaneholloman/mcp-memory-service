@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.24.1] - 2025-11-15
+
+### Fixed
+- **Test Infrastructure Failures** - Resolved 27 pre-existing test failures (issue #217)
+  - Fixed async fixture incompatibility in 6 test files (19+ failures)
+  - Corrected missing imports (MCPMemoryServer → MemoryServer, removed MemoryMetadata)
+  - Added missing content_hash parameter to Memory() instantiations
+  - Updated hardcoded version strings (6.3.0 → 8.24.0)
+  - Improved test pass rate from 63% to 71% (412/584 tests passing)
+  - Execution: Automated via amp-bridge agent
+
+### Changed
+- Test suite now has cleaner baseline for detecting new regressions
+- All async test fixtures now use @pytest_asyncio.fixture decorator
+
+### Technical Details
+- **Automated Fix**: Used amp-bridge agent for pattern-based refactoring
+- **Execution Time**: ~15 minutes (vs 1-2 hours manual)
+- **Files Modified**: 11 test files across tests/ and tests/integration/
+- **Root Causes**: Test infrastructure issues, not code bugs
+- **Remaining Failures**: 172 failures remain (backend config, performance, actual bugs)
+
 ## [8.24.0] - 2025-11-12
 
 ### Added

@@ -23,16 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.24.0** (Nov 12, 2025)
+### 🆕 Latest Release: **v8.24.1** (Nov 15, 2025)
 
-**PyPI Publishing Enabled** 🎉📦
+**Test Infrastructure Improvements** 🧪✅
 
-**Package now available via pip/uv**:
-- 📦 **Install with pip**: `pip install mcp-memory-service` or `uv pip install mcp-memory-service`
-- ✅ **Automated publishing** - GitHub Actions workflow publishes to PyPI on tag creation
-- 🚀 **Easier access** - No git required, resolves installation barriers for non-technical users
-- 🔐 **Secure automation** - Uses `PYPI_TOKEN` GitHub secret for authenticated publishing
-- ✨ **Quality gates** - Only publishes after successful test suite execution
+**27 Test Failures Resolved**:
+- ✅ **Fixed async fixtures** - Replaced @pytest.fixture with @pytest_asyncio.fixture (19+ failures)
+- ✅ **Corrected imports** - Fixed MCPMemoryServer → MemoryServer, removed MemoryMetadata (19+ failures)
+- ✅ **Memory instantiation** - Added missing content_hash parameters (5 failures)
+- ✅ **Version consistency** - Updated hardcoded version strings (3 failures)
+- 📈 **Test pass rate** - Improved from 63% to 71% (412/584 tests passing)
+- 🤖 **Automated execution** - Completed via amp-bridge agent in ~15 minutes
 
 **Previous Releases**:
 - **v8.23.1** - Stale Virtual Environment Prevention System (6-layer developer protection)
