@@ -23,23 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.24.3** (Nov 15, 2025)
+### 🆕 Latest Release: **v8.24.4** (Nov 15, 2025)
 
-**Test Coverage & Release Agent Improvements** 🧪🤖
+**Code Quality Improvements from Gemini Code Assist** 🔧✨
 
-**Test Infrastructure**:
-- ✅ **Tag+Time Filtering Tests** - 10 unit tests passing across all backends (SQLite-vec, Cloudflare, Hybrid)
-- ✅ **Validates PR #215** - Ensures tag+time filtering works correctly (fixes semantic over-filtering bug #214)
-- ✅ **API Integration Tests** - Created with documented threading issues for future fix
-- ✅ **Regression Prevention** - Comprehensive coverage for multi-filter memory retrieval scenarios
-
-**Release Agent Reliability**:
-- 🤖 **Fixed version history omission** - Agent was skipping previous releases in README.md
-- ✅ **Enhanced guardrails** - Added CRITICAL section for maintaining Previous Releases list
-- ✅ **Quality assurance** - New checklist item prevents future version history loss
-- 🔧 **Root cause fixed** - Agent now prepends versions instead of replacing entire section
+- ✅ **Regex-based sanitization** - Path separator handling more scalable (documents.py)
+- ✅ **DOM element caching** - Reduced query overhead in setProcessingMode (app.js)
+- ✅ **Upload options caching** - Optimized handleDocumentUpload performance (app.js)
+- ✅ **Indentation consistency** - Fixed HTML formatting for better maintainability (index.html)
+- 🎯 **Zero breaking changes** - Pure code quality improvements
+- 📊 **Performance impact** - Minor optimization through reduced DOM queries
 
 **Previous Releases**:
+- **v8.24.3** - Test Coverage & Release Agent Improvements (tag+time filtering tests, version history fix)
 - **v8.24.2** - CI/CD Workflow Fixes (bash errexit handling, exit code capture)
 - **v8.24.1** - Test Infrastructure Improvements (27 test failures resolved, 63% → 71% pass rate)
 - **v8.24.0** - PyPI Publishing Enabled (automated package publishing via GitHub Actions)

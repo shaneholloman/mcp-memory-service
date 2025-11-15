@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.24.4] - 2025-11-15
+
+### Changed
+- **Code Quality Improvements** - Applied Gemini Code Assist review suggestions (issue #180)
+  - **documents.py:87** - Replaced chained `.replace()` calls with `re.sub()` for path separator sanitization
+  - **app.js:751-762** - Cached DOM elements in setProcessingMode to reduce query overhead
+  - **app.js:551-553, 778-780** - Cached upload option elements to optimize handleDocumentUpload
+  - **index.html:357, 570** - Fixed indentation consistency for closing `</div>` tags
+  - Performance impact: Minor - reduced DOM query overhead
+  - Breaking changes: None
+
+### Technical Details
+- **Files Modified**: `src/mcp_memory_service/web/api/documents.py`, `src/mcp_memory_service/web/static/app.js`, `src/mcp_memory_service/web/static/index.html`
+- **Code Quality**: Regex-based sanitization more scalable, DOM element caching reduces redundant queries
+- **Commit**: ffc6246 - refactor: code quality improvements from Gemini review (issue #180)
+
 ## [8.24.3] - 2025-11-15
 
 ### Fixed

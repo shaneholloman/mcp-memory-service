@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.24.3**: **Test Coverage & Release Agent Improvements** - Added 10 unit tests for tag+time filtering across all backends (validates PR #215, fixes bug #214). Fixed github-release-manager agent systematic version history omission in README.md Previous Releases section. Enhanced agent guardrails with CRITICAL section for maintaining version history integrity. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.24.4**: **Code Quality Improvements from Gemini Code Assist** - Applied 5 code quality enhancements (issue #180): regex-based path sanitization, DOM element caching, HTML indentation fixes. Zero breaking changes, minor performance optimization through reduced DOM query overhead. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
