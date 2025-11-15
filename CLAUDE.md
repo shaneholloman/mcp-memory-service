@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.24.1**: **Test Infrastructure Improvements** - Resolved 27 pre-existing test failures via automated amp-bridge agent execution. Fixed async fixtures (19+ failures), corrected imports (19+ failures), added missing content_hash parameters (5 failures), and updated version strings (3 failures). Test pass rate improved from 63% to 71% (412/584 tests passing). See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.24.2**: **CI/CD Workflow Fixes** - Fixed Development Setup Validation workflow bash errexit handling. Corrected exit code capture using EXIT_CODE=0 and || EXIT_CODE=$? pattern. All 5 workflow tests now passing (version consistency, pre-commit hooks, server warnings, developer prompts, docs accuracy). Related to issue #217 test infrastructure improvements. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

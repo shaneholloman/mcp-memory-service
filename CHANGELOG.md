@@ -10,6 +10,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.24.2] - 2025-11-15
+
+### Fixed
+- **CI/CD Workflow Infrastructure** - Development Setup Validation workflow fixes (issue #217 related)
+  - Fixed bash errexit handling in workflow tests - prevents premature exit on intentional test failures
+  - Corrected exit code capture using EXIT_CODE=0 and || EXIT_CODE=$? pattern
+  - All 5 workflow tests now passing: version consistency, pre-commit hooks, server warnings, developer prompts, docs accuracy
+  - Root cause: bash runs with -e flag (errexit), which exits immediately when commands return non-zero exit codes
+  - Tests intentionally run check_dev_setup.py expecting exit code 1, but bash was exiting before capture
+  - Commits: b4f9a5a, d1bcd67
+
+### Changed
+- Workflow tests can now properly validate that the development setup validator correctly detects problems
+- Exit code capture no longer uses "|| true" pattern (was making all commands return 0)
+
+### Technical Details
+- **Files Modified**: .github/workflows/dev-setup-validation.yml
+- **Pattern Change**:
+  - Before: `python script.py || true` (always returns 0, breaks exit code testing)
+  - After: `EXIT_CODE=0; python script.py || EXIT_CODE=$?` (captures actual exit code, prevents bash exit)
+- **Test Jobs**: All 5 jobs in dev-setup-validation workflow now pass consistently
+- **Context**: Part of test infrastructure improvement efforts (issue #217)
+
 ## [8.24.1] - 2025-11-15
 
 ### Fixed

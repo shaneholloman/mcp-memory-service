@@ -23,17 +23,16 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.24.1** (Nov 15, 2025)
+### 🆕 Latest Release: **v8.24.2** (Nov 15, 2025)
 
-**Test Infrastructure Improvements** 🧪✅
+**CI/CD Workflow Fixes** 🔧✅
 
-**27 Test Failures Resolved**:
-- ✅ **Fixed async fixtures** - Replaced @pytest.fixture with @pytest_asyncio.fixture (19+ failures)
-- ✅ **Corrected imports** - Fixed MCPMemoryServer → MemoryServer, removed MemoryMetadata (19+ failures)
-- ✅ **Memory instantiation** - Added missing content_hash parameters (5 failures)
-- ✅ **Version consistency** - Updated hardcoded version strings (3 failures)
-- 📈 **Test pass rate** - Improved from 63% to 71% (412/584 tests passing)
-- 🤖 **Automated execution** - Completed via amp-bridge agent in ~15 minutes
+**Development Setup Validation Workflow**:
+- ✅ **Fixed bash errexit handling** - Prevents premature exit on intentional test failures
+- ✅ **Proper exit code capture** - Uses EXIT_CODE=0 and || EXIT_CODE=$? pattern
+- ✅ **All 5 workflow tests passing** - Version consistency, pre-commit hooks, server warnings, developer prompts, docs accuracy
+- 🐛 **Root cause** - bash -e flag was terminating before tests could verify validator detected problems
+- 🔍 **Issue context** - Related to #217 test infrastructure improvements
 
 **Previous Releases**:
 - **v8.24.0** - PyPI Publishing Enabled (automated package publishing via GitHub Actions)
