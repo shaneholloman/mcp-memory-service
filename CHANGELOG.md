@@ -10,6 +10,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.25.0] - 2025-11-15
+
+### Added
+- **Hybrid Backend Drift Detection** - Automatic metadata synchronization using `updated_at` timestamps (issue #202)
+  - **Bidirectional awareness**: Detects metadata changes on either backend (SQLite-vec ↔ Cloudflare)
+  - **Periodic drift checks**: Configurable interval via `MCP_HYBRID_DRIFT_CHECK_INTERVAL` (default: 1 hour)
+  - **"Newer timestamp wins" conflict resolution**: Prevents data loss during metadata updates
+  - **Dry-run support**: Preview changes via `python scripts/sync/check_drift.py`
+  - **New configuration variables**:
+    - `MCP_HYBRID_SYNC_UPDATES` - Enable metadata sync (default: true)
+    - `MCP_HYBRID_DRIFT_CHECK_INTERVAL` - Seconds between drift checks (default: 3600)
+    - `MCP_HYBRID_DRIFT_BATCH_SIZE` - Memories to check per scan (default: 100)
+  - **New methods**:
+    - `BackgroundSyncService._detect_and_sync_drift()` - Core drift detection logic with dry-run mode
+    - `CloudflareStorage.get_memories_updated_since()` - Query memories by update timestamp
+  - **Enhanced initial sync**: Now detects and syncs metadata drift for existing memories
+
+### Fixed
+- **Issue #202** - Hybrid backend now syncs metadata updates (tags, types, custom fields)
+  - Previous behavior only detected missing memories, ignoring metadata changes
+  - Prevented silent data loss when memories updated on one backend but not synced
+  - Tag fixes in Cloudflare now properly propagate to local SQLite
+  - Metadata updates no longer diverge between backends
+
+### Changed
+- Initial sync (`_perform_initial_sync`) now compares timestamps for existing memories
+- Periodic sync includes drift detection checks at configurable intervals
+- Sync statistics tracking expanded with drift detection metrics
+
+### Technical Details
+- **Files Modified**:
+  - `src/mcp_memory_service/config.py` - Added 3 configuration variables
+  - `src/mcp_memory_service/storage/hybrid.py` - Drift detection implementation (~150 lines)
+  - `src/mcp_memory_service/storage/cloudflare.py` - Added `get_memories_updated_since()` method
+  - `scripts/sync/check_drift.py` - New dry-run validation script
+- **Architecture**: Timestamp-based drift detection with 1-second clock skew tolerance
+- **Performance**: Non-blocking async operations, configurable batch sizes
+- **Safety**: Opt-in feature, dry-run mode, comprehensive audit logging
+
 ## [8.24.4] - 2025-11-15
 
 ### Changed

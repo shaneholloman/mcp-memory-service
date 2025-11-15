@@ -95,11 +95,20 @@ class BackgroundSyncService:
         self.is_running = False
         self.sync_task = None
         self.last_sync_time = 0
+
+        # Drift detection state (v8.25.0+)
+        self.last_drift_check_time = 0
+        self.drift_check_enabled = getattr(app_config, 'HYBRID_SYNC_UPDATES', True)
+        self.drift_check_interval = getattr(app_config, 'HYBRID_DRIFT_CHECK_INTERVAL', 3600)
+
         self.sync_stats = {
             'operations_processed': 0,
             'operations_failed': 0,
             'last_sync_duration': 0,
-            'cloudflare_available': True
+            'cloudflare_available': True,
+            'last_drift_check': 0,
+            'drift_detected_count': 0,
+            'drift_synced_count': 0
         }
 
         # Health monitoring
@@ -513,12 +522,156 @@ class BackgroundSyncService:
                     for warning in capacity_status.get('warnings', []):
                         logger.warning(warning)
 
+                # Periodic drift detection (v8.25.0+)
+                if self.drift_check_enabled:
+                    time_since_last_check = time.time() - self.last_drift_check_time
+                    if time_since_last_check >= self.drift_check_interval:
+                        logger.info(f"Running periodic drift check (interval: {self.drift_check_interval}s)")
+                        drift_stats = await self._detect_and_sync_drift()
+                        logger.info(f"Drift check complete: {drift_stats}")
+
             except Exception as e:
                 logger.warning(f"Secondary storage health check failed: {e}")
                 self.sync_stats['cloudflare_available'] = False
 
         except Exception as e:
             logger.error(f"Error during periodic sync: {e}")
+
+    async def _detect_and_sync_drift(self, dry_run: bool = False) -> Dict[str, int]:
+        """
+        Detect and sync memories with divergent metadata between backends.
+
+        Compares updated_at timestamps to identify metadata drift (tags, types, custom fields)
+        and synchronizes changes using "newer timestamp wins" strategy.
+
+        Args:
+            dry_run: If True, detect drift but don't apply changes (preview mode)
+
+        Returns:
+            Dictionary with drift detection statistics:
+            - checked: Number of memories examined
+            - drift_detected: Number of memories with divergent metadata
+            - synced: Number of memories synchronized
+            - failed: Number of sync failures
+        """
+        if not self.drift_check_enabled:
+            return {'checked': 0, 'drift_detected': 0, 'synced': 0, 'failed': 0}
+
+        logger.info(f"Starting drift detection scan (dry_run={dry_run})...")
+        stats = {'checked': 0, 'drift_detected': 0, 'synced': 0, 'failed': 0}
+
+        try:
+            # Get batch of recently updated memories from Cloudflare
+            batch_size = getattr(app_config, 'HYBRID_DRIFT_BATCH_SIZE', 100)
+
+            # Strategy: Check memories updated since last drift check
+            time_threshold = self.last_drift_check_time or (time.time() - self.drift_check_interval)
+
+            # Get recently updated from Cloudflare
+            if hasattr(self.secondary, 'get_memories_updated_since'):
+                cf_updated = await self.secondary.get_memories_updated_since(
+                    time_threshold,
+                    limit=batch_size
+                )
+            else:
+                # Fallback: Get recent memories and filter by timestamp
+                cf_memories = await self.secondary.get_all_memories(limit=batch_size)
+                cf_updated = [m for m in cf_memories if m.updated_at and m.updated_at >= time_threshold]
+
+            logger.info(f"Found {len(cf_updated)} memories updated in Cloudflare since last check")
+
+            # Compare with local versions
+            for cf_memory in cf_updated:
+                stats['checked'] += 1
+                try:
+                    local_memory = await self.primary.get_by_hash(cf_memory.content_hash)
+
+                    if not local_memory:
+                        # Memory missing locally - sync it
+                        stats['drift_detected'] += 1
+                        logger.debug(f"Memory {cf_memory.content_hash[:8]} missing locally, syncing...")
+                        if not dry_run:
+                            success, _ = await self.primary.store(cf_memory)
+                            if success:
+                                stats['synced'] += 1
+                        else:
+                            logger.info(f"[DRY RUN] Would sync missing memory: {cf_memory.content_hash[:8]}")
+                            stats['synced'] += 1
+                        continue
+
+                    # Compare updated_at timestamps
+                    cf_updated_at = cf_memory.updated_at or 0
+                    local_updated_at = local_memory.updated_at or 0
+
+                    # Allow 1 second tolerance for timestamp precision
+                    if abs(cf_updated_at - local_updated_at) > 1.0:
+                        stats['drift_detected'] += 1
+                        logger.debug(
+                            f"Drift detected for {cf_memory.content_hash[:8]}: "
+                            f"Cloudflare={cf_updated_at:.2f}, Local={local_updated_at:.2f}"
+                        )
+
+                        # Use "newer timestamp wins" strategy
+                        if cf_updated_at > local_updated_at:
+                            # Cloudflare is newer - update local
+                            if not dry_run:
+                                success, _ = await self.primary.update_memory_metadata(
+                                    cf_memory.content_hash,
+                                    {
+                                        'tags': cf_memory.tags,
+                                        'memory_type': cf_memory.memory_type,
+                                        'metadata': cf_memory.metadata,
+                                    },
+                                    preserve_timestamps=False  # Use Cloudflare timestamps
+                                )
+                                if success:
+                                    stats['synced'] += 1
+                                    logger.info(f"Synced metadata from Cloudflare → local: {cf_memory.content_hash[:8]}")
+                                else:
+                                    stats['failed'] += 1
+                            else:
+                                logger.info(f"[DRY RUN] Would sync metadata from Cloudflare → local: {cf_memory.content_hash[:8]}")
+                                stats['synced'] += 1
+                        else:
+                            # Local is newer - update Cloudflare
+                            if not dry_run:
+                                operation = SyncOperation(
+                                    operation='update',
+                                    content_hash=local_memory.content_hash,
+                                    updates={
+                                        'tags': local_memory.tags,
+                                        'memory_type': local_memory.memory_type,
+                                        'metadata': local_memory.metadata,
+                                    }
+                                )
+                                await self.enqueue_operation(operation)
+                                stats['synced'] += 1
+                                logger.info(f"Queued metadata sync from local → Cloudflare: {local_memory.content_hash[:8]}")
+                            else:
+                                logger.info(f"[DRY RUN] Would queue metadata sync from local → Cloudflare: {local_memory.content_hash[:8]}")
+                                stats['synced'] += 1
+
+                except Exception as e:
+                    logger.warning(f"Error checking drift for memory: {e}")
+                    stats['failed'] += 1
+                    continue
+
+            # Update tracking
+            if not dry_run:
+                self.last_drift_check_time = time.time()
+                self.sync_stats['last_drift_check'] = self.last_drift_check_time
+                self.sync_stats['drift_detected_count'] += stats['drift_detected']
+                self.sync_stats['drift_synced_count'] += stats['synced']
+
+            logger.info(
+                f"Drift detection complete: checked={stats['checked']}, "
+                f"drift_detected={stats['drift_detected']}, synced={stats['synced']}, failed={stats['failed']}"
+            )
+
+        except Exception as e:
+            logger.error(f"Error during drift detection: {e}")
+
+        return stats
 
 
 class HybridMemoryStorage(MemoryStorage):
@@ -722,6 +875,27 @@ class HybridMemoryStorage(MemoryStorage):
                                         logger.info(f"Initial sync progress: {synced_count}/{missing_count} memories synced")
                                 else:
                                     logger.warning(f"Failed to sync memory {cf_memory.content_hash}: {message}")
+                            elif self.sync_service.drift_check_enabled:
+                                # Memory exists - check for metadata drift (v8.25.0+)
+                                cf_updated = cf_memory.updated_at or 0
+                                local_updated = existing.updated_at or 0
+
+                                # If Cloudflare version is newer, sync metadata (1 second tolerance)
+                                if cf_updated > local_updated + 1.0:
+                                    logger.debug(f"Metadata drift detected during initial sync: {cf_memory.content_hash[:8]}")
+                                    success, _ = await self.primary.update_memory_metadata(
+                                        cf_memory.content_hash,
+                                        {
+                                            'tags': cf_memory.tags,
+                                            'memory_type': cf_memory.memory_type,
+                                            'metadata': cf_memory.metadata,
+                                        },
+                                        preserve_timestamps=False
+                                    )
+                                    if success:
+                                        batch_synced += 1
+                                        synced_count += 1
+                                        logger.debug(f"Synced metadata for existing memory: {cf_memory.content_hash[:8]}")
                         except Exception as e:
                             logger.warning(f"Error checking/syncing memory {cf_memory.content_hash}: {e}")
                             continue

@@ -1381,6 +1381,57 @@ class CloudflareStorage(MemoryStorage):
             logger.error(f"Error getting memories with cursor: {str(e)}")
             return []
 
+    async def get_memories_updated_since(self, timestamp: float, limit: int = 100) -> List[Memory]:
+        """
+        Get memories updated since a specific timestamp (v8.25.0+).
+
+        Used by hybrid backend drift detection to find memories with metadata
+        changes that need to be synchronized.
+
+        Args:
+            timestamp: Unix timestamp (seconds since epoch)
+            limit: Maximum number of memories to return (default: 100)
+
+        Returns:
+            List of Memory objects updated after the timestamp, ordered by updated_at DESC
+        """
+        try:
+            # Convert timestamp to ISO format for D1 query
+            from datetime import datetime
+            dt = datetime.utcfromtimestamp(timestamp)
+            iso_timestamp = dt.isoformat()
+
+            query = """
+            SELECT content, content_hash, tags, memory_type, metadata,
+                   created_at, created_at_iso, updated_at, updated_at_iso
+            FROM memories
+            WHERE updated_at_iso > ?
+            ORDER BY updated_at DESC
+            LIMIT ?
+            """
+
+            payload = {"sql": query, "params": [iso_timestamp, limit]}
+            response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+            result = response.json()
+
+            if not result.get("success"):
+                logger.warning(f"Failed to get updated memories: {result.get('error')}")
+                return []
+
+            memories = []
+            if result.get("result", [{}])[0].get("results"):
+                for row in result["result"][0]["results"]:
+                    memory = await self._load_memory_from_row(row)
+                    if memory:
+                        memories.append(memory)
+
+            logger.debug(f"Retrieved {len(memories)} memories updated since {iso_timestamp}")
+            return memories
+
+        except Exception as e:
+            logger.error(f"Error getting updated memories: {e}")
+            return []
+
     async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
         """
         Get total count of memories in storage.

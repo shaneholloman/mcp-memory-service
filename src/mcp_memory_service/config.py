@@ -426,6 +426,11 @@ if STORAGE_BACKEND == 'hybrid':
     HYBRID_HEALTH_CHECK_INTERVAL = int(os.getenv('MCP_HYBRID_HEALTH_CHECK_INTERVAL', '60'))  # 1 minute
     HYBRID_SYNC_ON_STARTUP = os.getenv('MCP_HYBRID_SYNC_ON_STARTUP', 'true').lower() == 'true'
 
+    # Drift detection and metadata sync (v8.25.0+)
+    HYBRID_SYNC_UPDATES = os.getenv('MCP_HYBRID_SYNC_UPDATES', 'true').lower() == 'true'
+    HYBRID_DRIFT_CHECK_INTERVAL = int(os.getenv('MCP_HYBRID_DRIFT_CHECK_INTERVAL', '3600'))  # 1 hour default
+    HYBRID_DRIFT_BATCH_SIZE = int(os.getenv('MCP_HYBRID_DRIFT_BATCH_SIZE', '100'))
+
     # Initial sync behavior tuning (v7.5.4+)
     HYBRID_MAX_EMPTY_BATCHES = safe_get_int_env('MCP_HYBRID_MAX_EMPTY_BATCHES', 20, min_value=1)  # Stop after N batches without new syncs
     HYBRID_MIN_CHECK_COUNT = safe_get_int_env('MCP_HYBRID_MIN_CHECK_COUNT', 1000, min_value=1)  # Minimum memories to check before early stop
@@ -469,6 +474,9 @@ else:
     HYBRID_ENABLE_HEALTH_CHECKS = None
     HYBRID_HEALTH_CHECK_INTERVAL = None
     HYBRID_SYNC_ON_STARTUP = None
+    HYBRID_SYNC_UPDATES = None
+    HYBRID_DRIFT_CHECK_INTERVAL = None
+    HYBRID_DRIFT_BATCH_SIZE = None
     HYBRID_MAX_EMPTY_BATCHES = None
     HYBRID_MIN_CHECK_COUNT = None
     HYBRID_FALLBACK_TO_PRIMARY = None
