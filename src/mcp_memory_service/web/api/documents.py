@@ -20,6 +20,7 @@ Supports single file upload, batch upload, progress tracking, and upload history
 """
 
 import os
+import re
 import uuid
 import asyncio
 import logging
@@ -84,7 +85,7 @@ def parse_and_validate_tags(tags: str) -> List[str]:
             clean_tag = Path(path_str).name
 
         # Remove common path separators to create clean tag names
-        clean_tag = clean_tag.replace('/', '_').replace('\\', '_')
+        clean_tag = re.sub(r'[/\\]', '_', clean_tag)
 
         # Validate tag length - raise error instead of silently dropping
         if len(clean_tag) > MAX_TAG_LENGTH:

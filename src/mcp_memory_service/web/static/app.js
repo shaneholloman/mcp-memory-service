@@ -547,14 +547,15 @@ class MemoryDashboard {
             });
         }
 
-        // Configuration controls
-        const chunkSizeInput = document.getElementById('chunkSize');
-        const chunkOverlapInput = document.getElementById('chunkOverlap');
+        // Configuration controls - cache for performance
+        this.chunkSizeInput = document.getElementById('chunkSize');
+        this.chunkOverlapInput = document.getElementById('chunkOverlap');
+        this.memoryTypeInput = document.getElementById('memoryType');
         const chunkSizeValue = document.getElementById('chunkSizeValue');
         const chunkOverlapValue = document.getElementById('chunkOverlapValue');
 
-        if (chunkSizeInput && chunkSizeValue) {
-            chunkSizeInput.addEventListener('input', (e) => {
+        if (this.chunkSizeInput && chunkSizeValue) {
+            this.chunkSizeInput.addEventListener('input', (e) => {
                 chunkSizeValue.textContent = e.target.value;
                 this.updateUploadButton();
             });
@@ -584,25 +585,26 @@ class MemoryDashboard {
             });
         }
 
-        if (chunkOverlapInput && chunkOverlapValue) {
-            chunkOverlapInput.addEventListener('input', (e) => {
+        if (this.chunkOverlapInput && chunkOverlapValue) {
+            this.chunkOverlapInput.addEventListener('input', (e) => {
                 chunkOverlapValue.textContent = e.target.value;
                 this.updateUploadButton();
             });
         }
 
-        // Processing mode toggle buttons
-        const batchModeBtn = document.getElementById('batchModeBtn');
-        const individualModeBtn = document.getElementById('individualModeBtn');
+        // Processing mode toggle buttons - cache for performance
+        this.batchModeBtn = document.getElementById('batchModeBtn');
+        this.individualModeBtn = document.getElementById('individualModeBtn');
+        this.modeDescription = document.getElementById('modeDescription');
 
-        if (batchModeBtn) {
-            batchModeBtn.addEventListener('click', () => {
+        if (this.batchModeBtn) {
+            this.batchModeBtn.addEventListener('click', () => {
                 this.setProcessingMode('batch');
             });
         }
 
-        if (individualModeBtn) {
-            individualModeBtn.addEventListener('click', () => {
+        if (this.individualModeBtn) {
+            this.individualModeBtn.addEventListener('click', () => {
                 this.setProcessingMode('individual');
             });
         }
@@ -747,19 +749,15 @@ class MemoryDashboard {
     setProcessingMode(mode) {
         this.processingMode = mode;
 
-        // Update button states
-        const batchBtn = document.getElementById('batchModeBtn');
-        const individualBtn = document.getElementById('individualModeBtn');
-        const modeDescription = document.getElementById('modeDescription');
-
-        if (batchBtn) {
-            batchBtn.classList.toggle('active', mode === 'batch');
+        // Update button states (using cached DOM elements)
+        if (this.batchModeBtn) {
+            this.batchModeBtn.classList.toggle('active', mode === 'batch');
         }
-        if (individualBtn) {
-            individualBtn.classList.toggle('active', mode === 'individual');
+        if (this.individualModeBtn) {
+            this.individualModeBtn.classList.toggle('active', mode === 'individual');
         }
-        if (modeDescription) {
-            modeDescription.innerHTML = mode === 'batch'
+        if (this.modeDescription) {
+            this.modeDescription.innerHTML = mode === 'batch'
                 ? '<small>All selected files will be processed together with the same tags.</small>'
                 : '<small>Each file will be processed individually with the same tags.</small>';
         }
@@ -777,9 +775,9 @@ class MemoryDashboard {
         }
 
         const tags = document.getElementById('docTags')?.value || '';
-        const chunkSize = document.getElementById('chunkSize')?.value || 1000;
-        const chunkOverlap = document.getElementById('chunkOverlap')?.value || 200;
-        const memoryType = document.getElementById('memoryType')?.value || 'document';
+        const chunkSize = this.chunkSizeInput?.value || 1000;
+        const chunkOverlap = this.chunkOverlapInput?.value || 200;
+        const memoryType = this.memoryTypeInput?.value || 'document';
 
         try {
             this.setLoading(true);
