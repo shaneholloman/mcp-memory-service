@@ -98,7 +98,7 @@ jobs:
           pip install .
 
           # Run detection script - should FAIL (exit 1)
-          python scripts/validation/check_dev_setup.py
+          python scripts/validation/check_dev_setup.py || true
           EXIT_CODE=$?
 
           # We expect failure (exit 1) because it's not editable
@@ -139,7 +139,7 @@ jobs:
           sed -i 's/__version__ = ".*"/__version__ = "99.99.99"/' src/mcp_memory_service/__init__.py
 
           # Run detection script - should FAIL because versions don't match
-          python scripts/validation/check_dev_setup.py
+          python scripts/validation/check_dev_setup.py || true
           EXIT_CODE=$?
 
           # Restore original version
