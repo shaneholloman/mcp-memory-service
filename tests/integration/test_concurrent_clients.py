@@ -12,6 +12,7 @@ from typing import List
 
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 from mcp_memory_service.models.memory import Memory
+from mcp_memory_service.utils.hashing import generate_content_hash
 
 
 class TestConcurrentClients:
@@ -43,8 +44,10 @@ class TestConcurrentClients:
         
         try:
             for i in range(num_memories):
+                content = f"Memory from {client_id} - {i}"
                 memory = Memory(
-                    content=f"Memory from {client_id} - {i}",
+                    content=content,
+                    content_hash=generate_content_hash(content),
                     tags=[client_id, "concurrent"],
                     memory_type="test",
                     metadata={"client_id": client_id, "index": i}
@@ -117,8 +120,10 @@ class TestConcurrentClients:
         # Start with some initial data
         initial_storage = await self.create_client(db_path, "initial")
         for i in range(5):
+            content = f"Initial memory {i}"
             memory = Memory(
-                content=f"Initial memory {i}",
+                content=content,
+                content_hash=generate_content_hash(content),
                 tags=["concurrent", "initial"],
                 memory_type="test"
             )
@@ -180,8 +185,10 @@ class TestConcurrentClients:
             storage = await self.create_client(db_path, client_id)
             try:
                 for i in range(20):
+                    content = f"Rapid {client_id}-{i}"
                     memory = Memory(
-                        content=f"Rapid {client_id}-{i}",
+                        content=content,
+                        content_hash=generate_content_hash(content),
                         tags=["rapid"],
                         memory_type="test"
                     )
@@ -222,8 +229,10 @@ class TestConcurrentClients:
             hashes = []
             try:
                 for i in range(10):
+                    content = f"Unique memory {start_idx + i}"
                     memory = Memory(
-                        content=f"Unique memory {start_idx + i}",
+                        content=content,
+                        content_hash=generate_content_hash(content),
                         tags=["consistency", client_id],
                         memory_type="test"
                     )

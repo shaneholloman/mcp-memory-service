@@ -7,11 +7,12 @@ Licensed under the MIT License. See LICENSE file in the project root for full li
 Test core memory operations of the MCP Memory Service.
 """
 import pytest
+import pytest_asyncio
 import asyncio
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def memory_server():
     """Create a test instance of the memory server."""
     server = Server("test-memory")

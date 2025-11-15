@@ -6,6 +6,7 @@ MemoryService for all memory operations and maintains consistent behavior.
 """
 
 import pytest
+import pytest_asyncio
 import tempfile
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -27,7 +28,7 @@ def temp_db():
         yield db_path
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def initialized_storage(temp_db):
     """Create and initialize a real SQLite storage backend."""
     storage = SqliteVecMemoryStorage(temp_db)

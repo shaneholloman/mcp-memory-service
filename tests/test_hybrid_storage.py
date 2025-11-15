@@ -12,6 +12,7 @@ Tests cover:
 
 import asyncio
 import pytest
+import pytest_asyncio
 import tempfile
 import os
 import sys
@@ -27,7 +28,8 @@ sys.path.insert(0, str(src_dir))
 
 from mcp_memory_service.storage.hybrid import HybridMemoryStorage, BackgroundSyncService, SyncOperation
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
-from mcp_memory_service.models.memory import Memory, MemoryMetadata
+from mcp_memory_service.models.memory import Memory, MemoryQueryResult
+from mcp_memory_service.utils.hashing import generate_content_hash
 
 # Configure test logging
 logging.basicConfig(level=logging.DEBUG)
@@ -81,7 +83,7 @@ class MockCloudflareStorage:
         pass
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def temp_sqlite_db():
     """Create a temporary SQLite database for testing."""
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
@@ -94,7 +96,7 @@ async def temp_sqlite_db():
         os.unlink(db_path)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mock_cloudflare_config():
     """Mock Cloudflare configuration for testing."""
     return {
@@ -105,7 +107,7 @@ async def mock_cloudflare_config():
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def hybrid_storage(temp_sqlite_db, mock_cloudflare_config):
     """Create a HybridMemoryStorage instance for testing."""
     with patch('mcp_memory_service.storage.hybrid.CloudflareStorage', MockCloudflareStorage):
@@ -124,14 +126,14 @@ async def hybrid_storage(temp_sqlite_db, mock_cloudflare_config):
 @pytest.fixture
 def sample_memory():
     """Create a sample memory for testing."""
-    metadata = MemoryMetadata(
-        memory_type="test",
-        tags=["test", "sample"],
-        created_at=1638360000.0
-    )
+    content = "This is a test memory for hybrid storage"
     return Memory(
-        content="This is a test memory for hybrid storage",
-        metadata=metadata
+        content=content,
+        content_hash=generate_content_hash(content),
+        tags=["test", "sample"],
+        memory_type="test",
+        metadata={},
+        created_at=1638360000.0
     )
 
 
@@ -282,7 +284,7 @@ class TestHybridMemoryStorage:
 class TestBackgroundSyncService:
     """Test cases for BackgroundSyncService functionality."""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def sync_service_components(self, temp_sqlite_db):
         """Create components needed for sync service testing."""
         primary = SqliteVecMemoryStorage(temp_sqlite_db)
@@ -349,8 +351,13 @@ class TestBackgroundSyncService:
         await sync_service.start()
 
         # Create a test memory
-        metadata = MemoryMetadata(memory_type="test", tags=["test"])
-        memory = Memory(content="test content", metadata=metadata)
+        content = "test content"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"],
+            memory_type="test"
+        )
 
         # Enqueue operation
         operation = SyncOperation(operation='store', memory=memory)
@@ -371,9 +378,20 @@ class TestBackgroundSyncService:
         primary, secondary, sync_service = sync_service_components
 
         # Store some test memories in primary
-        metadata = MemoryMetadata(memory_type="test", tags=["test"])
-        memory1 = Memory(content="test memory 1", metadata=metadata)
-        memory2 = Memory(content="test memory 2", metadata=metadata)
+        content1 = "test memory 1"
+        content2 = "test memory 2"
+        memory1 = Memory(
+            content=content1,
+            content_hash=generate_content_hash(content1),
+            tags=["test"],
+            memory_type="test"
+        )
+        memory2 = Memory(
+            content=content2,
+            content_hash=generate_content_hash(content2),
+            tags=["test"],
+            memory_type="test"
+        )
 
         await primary.store(memory1)
         await primary.store(memory2)
@@ -430,8 +448,13 @@ class TestPerformanceCharacteristics:
     @pytest.mark.asyncio
     async def test_write_performance(self, hybrid_storage):
         """Test that writes are fast (immediate SQLite-vec write)."""
-        metadata = MemoryMetadata(memory_type="performance_test", tags=["perf"])
-        memory = Memory(content="Performance test memory", metadata=metadata)
+        content = "Performance test memory"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["perf"],
+            memory_type="performance_test"
+        )
 
         import time
 
@@ -449,8 +472,13 @@ class TestPerformanceCharacteristics:
         # Create multiple memories
         memories = []
         for i in range(10):
-            metadata = MemoryMetadata(memory_type="concurrent_test", tags=["concurrent", f"test{i}"])
-            memory = Memory(content=f"Concurrent test memory {i}", metadata=metadata)
+            content = f"Concurrent test memory {i}"
+            memory = Memory(
+                content=content,
+                content_hash=generate_content_hash(content),
+                tags=["concurrent", f"test{i}"],
+                memory_type="concurrent_test"
+            )
             memories.append(memory)
 
         # Store all memories concurrently
@@ -475,8 +503,13 @@ class TestErrorHandlingAndFallback:
         await storage.initialize()
 
         # Should work normally without Cloudflare
-        metadata = MemoryMetadata(memory_type="sqlite_only", tags=["local"])
-        memory = Memory(content="SQLite-only test memory", metadata=metadata)
+        content = "SQLite-only test memory"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["local"],
+            memory_type="sqlite_only"
+        )
 
         success, message = await storage.store(memory)
         assert success
@@ -503,8 +536,13 @@ class TestErrorHandlingAndFallback:
             await storage.initialize()
 
             # Initially should work
-            metadata = MemoryMetadata(memory_type="degradation_test", tags=["test"])
-            memory = Memory(content="Degradation test memory", metadata=metadata)
+            content = "Degradation test memory"
+            memory = Memory(
+                content=content,
+                content_hash=generate_content_hash(content),
+                tags=["test"],
+                memory_type="degradation_test"
+            )
 
             success, message = await storage.store(memory)
             assert success
@@ -513,7 +551,13 @@ class TestErrorHandlingAndFallback:
             storage.secondary.fail_operations = True
 
             # Should still work (primary storage unaffected)
-            memory2 = Memory(content="Second test memory", metadata=metadata)
+            content2 = "Second test memory"
+            memory2 = Memory(
+                content=content2,
+                content_hash=generate_content_hash(content2),
+                tags=["test"],
+                memory_type="degradation_test"
+            )
             success, message = await storage.store(memory2)
             assert success
 

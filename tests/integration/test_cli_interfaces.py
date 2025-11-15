@@ -88,7 +88,7 @@ class TestCLIInterfaces:
             cwd=current_dir.parent.parent
         )
         assert result.returncode == 0
-        assert "6.3.0" in result.stdout
+        assert "8.24.0" in result.stdout
         assert "deprecated" in result.stderr.lower()
     
     def test_memory_server_vs_memory_server_subcommand(self):
@@ -190,7 +190,7 @@ class TestCLIFunctionality:
         
         if result.returncode == 0:
             assert "MCP Memory Service Status" in result.stdout
-            assert "Version: 6.3.0" in result.stdout
+            assert "Version: 8.24.0" in result.stdout
         else:
             # If it fails, should have a meaningful error message
             assert len(result.stderr) > 0 or len(result.stdout) > 0
@@ -406,7 +406,7 @@ class TestCLIPerformance:
             elapsed = time.time() - start_time
             
             assert result.returncode == 0
-            assert "6.3.0" in result.stdout
+            assert "8.24.0" in result.stdout
             # Version should be very fast
             assert elapsed < 15
             print(f"Version command {' '.join(cmd[2:])} took {elapsed:.2f} seconds")

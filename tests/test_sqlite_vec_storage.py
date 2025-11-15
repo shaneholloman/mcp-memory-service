@@ -3,6 +3,7 @@ Comprehensive tests for SQLite-vec storage backend.
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 import tempfile
 import os
@@ -31,7 +32,7 @@ pytestmark = pytest.mark.skipif(not SQLITE_VEC_AVAILABLE, reason="sqlite-vec not
 class TestSqliteVecStorage:
     """Test suite for SQLite-vec storage functionality."""
     
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def storage(self):
         """Create a test storage instance."""
         temp_dir = tempfile.mkdtemp()

@@ -7,7 +7,7 @@ responses to MCP TextContent format, particularly after the fix for issue #198.
 
 import pytest
 from mcp import types
-from mcp_memory_service.server import MCPMemoryServer
+from mcp_memory_service.server import MemoryServer
 
 
 class TestHandleStoreMemory:
@@ -16,7 +16,7 @@ class TestHandleStoreMemory:
     @pytest.mark.asyncio
     async def test_store_memory_success(self):
         """Test storing a valid memory returns success message with hash."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         result = await server.handle_store_memory({
             "content": "Test memory content for integration test",
@@ -40,7 +40,7 @@ class TestHandleStoreMemory:
     @pytest.mark.asyncio
     async def test_store_memory_chunked(self):
         """Test storing long content creates multiple chunks."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         # Create content that will be auto-split (> 1500 chars)
         long_content = "This is a very long memory content. " * 100
@@ -63,7 +63,7 @@ class TestHandleStoreMemory:
     @pytest.mark.asyncio
     async def test_store_memory_empty_content(self):
         """Test storing empty content returns error."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         result = await server.handle_store_memory({
             "content": "",
@@ -80,7 +80,7 @@ class TestHandleStoreMemory:
     @pytest.mark.asyncio
     async def test_store_memory_missing_content(self):
         """Test storing without content parameter returns error."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         result = await server.handle_store_memory({
             "metadata": {"tags": ["test"]}
@@ -95,7 +95,7 @@ class TestHandleStoreMemory:
     @pytest.mark.asyncio
     async def test_store_memory_with_tags_string(self):
         """Test storing memory with tags as string (not array)."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         result = await server.handle_store_memory({
             "content": "Test with string tags",
@@ -114,7 +114,7 @@ class TestHandleStoreMemory:
     @pytest.mark.asyncio
     async def test_store_memory_default_type(self):
         """Test storing memory without explicit type uses default."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         result = await server.handle_store_memory({
             "content": "Memory without explicit type",
@@ -134,7 +134,7 @@ class TestHandleRetrieveMemory:
     @pytest.mark.asyncio
     async def test_retrieve_memory_success(self):
         """Test retrieving memories with valid query."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         # First store a memory
         await server.handle_store_memory({
@@ -160,7 +160,7 @@ class TestHandleRetrieveMemory:
     @pytest.mark.asyncio
     async def test_retrieve_memory_missing_query(self):
         """Test retrieving without query parameter returns error."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         result = await server.handle_retrieve_memory({
             "n_results": 5
@@ -180,7 +180,7 @@ class TestHandleSearchByTag:
     @pytest.mark.asyncio
     async def test_search_by_tag_success(self):
         """Test searching by tag returns matching memories."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         # Store a memory with specific tag
         await server.handle_store_memory({
@@ -205,7 +205,7 @@ class TestHandleSearchByTag:
     @pytest.mark.asyncio
     async def test_search_by_tag_missing_tags(self):
         """Test searching without tags parameter returns error."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         result = await server.handle_search_by_tag({})
 
@@ -224,7 +224,7 @@ class TestIssue198Regression:
     @pytest.mark.asyncio
     async def test_no_keyerror_on_store_success(self):
         """Verify fix for issue #198: No KeyError on successful store."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         # This would previously raise KeyError: 'message'
         result = await server.handle_store_memory({
@@ -242,7 +242,7 @@ class TestIssue198Regression:
     @pytest.mark.asyncio
     async def test_error_handling_without_keyerror(self):
         """Verify fix for issue #198: Errors handled without KeyError."""
-        server = MCPMemoryServer()
+        server = MemoryServer()
 
         # Store with empty content (triggers error path)
         result = await server.handle_store_memory({
