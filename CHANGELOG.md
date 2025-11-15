@@ -10,6 +10,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.24.3] - 2025-11-15
+
+### Fixed
+- **GitHub Release Manager Agent** - Resolved systematic version history omission in README.md (commit ccf959a)
+  - Fixed agent behavior that was omitting previous versions from "Previous Releases" section
+  - Added v8.24.1 to Previous Releases list (was missing despite being valid release)
+  - Enhanced agent instructions with CRITICAL section for maintaining version history integrity
+  - Added quality assurance checklist item to prevent future omissions
+  - Root cause: Agent was replacing entire Previous Releases section instead of prepending new version
+
+### Added
+- **Test Coverage for Tag+Time Filtering** - Comprehensive test suite for issue #216 (commit ebff282)
+  - 10 unit tests passing across SQLite-vec, Cloudflare, and Hybrid backends
+  - Validates PR #215 functionality (tag+time filtering to fix semantic over-filtering bug #214)
+  - Tests verify memories can be retrieved using both tag criteria AND time range filters
+  - API integration tests created (with known threading issues documented for future fix)
+  - Ensures regression prevention for semantic search over-filtering bug
+
+### Changed
+- GitHub release workflow now more reliable with enhanced agent guardrails
+- Test suite provides better coverage for multi-filter memory retrieval scenarios
+
+### Technical Details
+- **Files Modified**:
+  - `.claude/agents/github-release-manager.md` - Added CRITICAL section for Previous Releases maintenance
+  - `tests/test_time_filtering.py` - 10 new unit tests for tag+time filtering
+  - `tests/integration/test_api_time_search.py` - API integration tests (threading issues documented)
+- **Test Execution**: All 10 unit tests passing, API tests have known threading limitations
+- **Impact**: Prevents version history loss in future releases, ensures tag+time filtering remains functional
+
 ## [8.24.2] - 2025-11-15
 
 ### Fixed

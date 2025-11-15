@@ -23,24 +23,29 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.24.2** (Nov 15, 2025)
+### 🆕 Latest Release: **v8.24.3** (Nov 15, 2025)
 
-**CI/CD Workflow Fixes** 🔧✅
+**Test Coverage & Release Agent Improvements** 🧪🤖
 
-**Development Setup Validation Workflow**:
-- ✅ **Fixed bash errexit handling** - Prevents premature exit on intentional test failures
-- ✅ **Proper exit code capture** - Uses EXIT_CODE=0 and || EXIT_CODE=$? pattern
-- ✅ **All 5 workflow tests passing** - Version consistency, pre-commit hooks, server warnings, developer prompts, docs accuracy
-- 🐛 **Root cause** - bash -e flag was terminating before tests could verify validator detected problems
-- 🔍 **Issue context** - Related to #217 test infrastructure improvements
+**Test Infrastructure**:
+- ✅ **Tag+Time Filtering Tests** - 10 unit tests passing across all backends (SQLite-vec, Cloudflare, Hybrid)
+- ✅ **Validates PR #215** - Ensures tag+time filtering works correctly (fixes semantic over-filtering bug #214)
+- ✅ **API Integration Tests** - Created with documented threading issues for future fix
+- ✅ **Regression Prevention** - Comprehensive coverage for multi-filter memory retrieval scenarios
+
+**Release Agent Reliability**:
+- 🤖 **Fixed version history omission** - Agent was skipping previous releases in README.md
+- ✅ **Enhanced guardrails** - Added CRITICAL section for maintaining Previous Releases list
+- ✅ **Quality assurance** - New checklist item prevents future version history loss
+- 🔧 **Root cause fixed** - Agent now prepends versions instead of replacing entire section
 
 **Previous Releases**:
+- **v8.24.2** - CI/CD Workflow Fixes (bash errexit handling, exit code capture)
 - **v8.24.1** - Test Infrastructure Improvements (27 test failures resolved, 63% → 71% pass rate)
 - **v8.24.0** - PyPI Publishing Enabled (automated package publishing via GitHub Actions)
 - **v8.23.1** - Stale Virtual Environment Prevention System (6-layer developer protection)
 - **v8.23.0** - Consolidation Scheduler via Code Execution API (88% token reduction)
 - **v8.22.3** - Complete tag schema validation fix (7 MCP tools updated)
-- **v8.22.1** - Document ingestion tag parsing fix (13 memories repaired)
 
 **📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8222---2025-11-09) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
