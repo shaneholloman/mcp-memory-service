@@ -164,6 +164,12 @@ When creating pull requests:
       - Update "What's New" bullet points with CHANGELOG highlights
       - Keep list concise (4-6 key items with emojis)
       - Match tone and format of existing entries
+      - **CRITICAL**: Add the PREVIOUS version to "Previous Releases" section
+        - Extract one-line summary from the old "Latest Release" content
+        - Insert at TOP of Previous Releases list (reverse chronological order)
+        - Format: `- **vX.Y.Z** - Brief description (key metric/feature)`
+        - Maintain 5-6 most recent releases, remove oldest if list gets long
+        - Example: `- **v8.24.1** - Test Infrastructure Improvements (27 test failures resolved, 63% → 71% pass rate)`
 
    c. **CLAUDE.md**:
       - **ALWAYS update** version reference in Overview section (line ~13): `> **vX.Y.Z**: Brief description...`
@@ -210,6 +216,7 @@ When creating pull requests:
 - [ ] **CHANGELOG.md**: `[Unreleased]` section collected and moved to version entry
 - [ ] **CHANGELOG.md**: Entry is detailed and well-formatted
 - [ ] **README.md**: "Latest Release" section updated with version and highlights
+- [ ] **README.md**: Previous version added to "Previous Releases" list (top position)
 - [ ] **CLAUDE.md**: New commands/utilities documented in appropriate sections
 - [ ] **CLAUDE.md**: Version callout added if significant changes
 - [ ] PR merged to develop, then develop merged to main

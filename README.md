@@ -35,6 +35,7 @@
 - 🔍 **Issue context** - Related to #217 test infrastructure improvements
 
 **Previous Releases**:
+- **v8.24.1** - Test Infrastructure Improvements (27 test failures resolved, 63% → 71% pass rate)
 - **v8.24.0** - PyPI Publishing Enabled (automated package publishing via GitHub Actions)
 - **v8.23.1** - Stale Virtual Environment Prevention System (6-layer developer protection)
 - **v8.23.0** - Consolidation Scheduler via Code Execution API (88% token reduction)
