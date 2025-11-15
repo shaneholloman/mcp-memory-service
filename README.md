@@ -23,18 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.24.4** (Nov 15, 2025)
+### 🆕 Latest Release: **v8.25.0** (Nov 15, 2025)
 
-**Code Quality Improvements from Gemini Code Assist** 🔧✨
+**Hybrid Backend Drift Detection** 🔄✨
 
-- ✅ **Regex-based sanitization** - Path separator handling more scalable (documents.py)
-- ✅ **DOM element caching** - Reduced query overhead in setProcessingMode (app.js)
-- ✅ **Upload options caching** - Optimized handleDocumentUpload performance (app.js)
-- ✅ **Indentation consistency** - Fixed HTML formatting for better maintainability (index.html)
-- 🎯 **Zero breaking changes** - Pure code quality improvements
-- 📊 **Performance impact** - Minor optimization through reduced DOM queries
+- ✅ **Automatic metadata synchronization** - Uses `updated_at` timestamps to detect changes (issue #202)
+- ✅ **Bidirectional awareness** - Detects metadata changes on either backend (SQLite-vec ↔ Cloudflare)
+- ✅ **Periodic drift checks** - Configurable interval via `MCP_HYBRID_DRIFT_CHECK_INTERVAL` (default: 1 hour)
+- ✅ **"Newer timestamp wins"** - Prevents data loss during metadata updates
+- ✅ **Dry-run support** - Preview changes via `python scripts/sync/check_drift.py`
+- 🔧 **New configuration** - 3 new environment variables for fine-tuned control
 
 **Previous Releases**:
+- **v8.24.4** - Code Quality Improvements from Gemini Code Assist (regex sanitization, DOM caching)
 - **v8.24.3** - Test Coverage & Release Agent Improvements (tag+time filtering tests, version history fix)
 - **v8.24.2** - CI/CD Workflow Fixes (bash errexit handling, exit code capture)
 - **v8.24.1** - Test Infrastructure Improvements (27 test failures resolved, 63% → 71% pass rate)

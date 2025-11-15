@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.24.4**: **Code Quality Improvements from Gemini Code Assist** - Applied 5 code quality enhancements (issue #180): regex-based path sanitization, DOM element caching, HTML indentation fixes. Zero breaking changes, minor performance optimization through reduced DOM query overhead. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.25.0**: **Hybrid Backend Drift Detection** - Automatic metadata synchronization using `updated_at` timestamps (issue #202). Features bidirectional drift detection (SQLite-vec ↔ Cloudflare), periodic checks (configurable interval, default 1 hour), "newer timestamp wins" conflict resolution, and dry-run support via `scripts/sync/check_drift.py`. Prevents silent data loss when memories updated on one backend but not synced. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -28,6 +28,7 @@ MCP Memory Service is a Model Context Protocol server providing semantic memory 
 | | `python scripts/validation/diagnose_backend_config.py` | Cloudflare diagnostics |
 | **Maintenance** | `python scripts/maintenance/consolidate_memory_types.py --dry-run` | Preview type consolidation |
 | | `python scripts/maintenance/find_all_duplicates.py` | Find duplicates |
+| | `python scripts/sync/check_drift.py` | Check hybrid backend drift (v8.25.0+) |
 | **Consolidation** | `curl -X POST http://127.0.0.1:8000/api/consolidation/trigger -H "Content-Type: application/json" -d '{"time_horizon":"weekly"}'` | Trigger memory consolidation |
 | | `curl http://127.0.0.1:8000/api/consolidation/status` | Check scheduler status |
 | | `curl http://127.0.0.1:8000/api/consolidation/recommendations` | Get consolidation recommendations |
@@ -343,6 +344,11 @@ export MCP_HYBRID_SYNC_INTERVAL=300    # Background sync every 5 minutes
 export MCP_HYBRID_BATCH_SIZE=50        # Sync 50 operations at a time
 export MCP_HYBRID_SYNC_ON_STARTUP=true # Initial sync on startup
 
+# Drift detection configuration (v8.25.0+)
+export MCP_HYBRID_SYNC_UPDATES=true              # Enable metadata sync (default: true)
+export MCP_HYBRID_DRIFT_CHECK_INTERVAL=3600      # Seconds between drift checks (default: 1 hour)
+export MCP_HYBRID_DRIFT_BATCH_SIZE=100           # Memories to check per scan (default: 100)
+
 # Requires Cloudflare credentials (same as cloudflare backend)
 export CLOUDFLARE_API_TOKEN="your-token"
 export CLOUDFLARE_ACCOUNT_ID="your-account"
@@ -356,6 +362,7 @@ export CLOUDFLARE_VECTORIZE_INDEX="mcp-memory-index"
 - ✅ **Multi-device synchronization** - Access memories everywhere
 - ✅ **Graceful offline operation** - Works without internet, syncs when available
 - ✅ **Automatic failover** - Falls back to SQLite-only if Cloudflare unavailable
+- ✅ **Drift detection (v8.25.0+)** - Automatic metadata sync prevents data loss across backends
 
 **Architecture:**
 - **Primary Storage**: SQLite-vec (all user operations)
