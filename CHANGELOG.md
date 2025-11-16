@@ -10,10 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-## [8.25.2] - TBD
+## [8.25.2] - 2025-11-16
 
-### Added
-- Placeholder for next release
+### Changed
+- **Drift Detection Script Refactoring** - Improved code maintainability in `check_drift.py` (PR #226)
+  - **Refactored**: Cloudflare config dictionary construction to use dictionary comprehension
+  - **Improvement**: Separated configuration keys list from transformation logic
+  - **Benefit**: Easier to maintain and modify configuration keys
+  - **Code Quality**: More Pythonic, cleaner, and more readable
+  - **Impact**: No functional changes, pure code quality improvement
+  - **File Modified**: `scripts/sync/check_drift.py`
+  - **Credit**: Implements Gemini code review suggestions from PR #224
 
 ## [8.25.1] - 2025-11-16
 
