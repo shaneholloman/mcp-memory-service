@@ -10,6 +10,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.25.1] - 2025-11-16
+
+### Fixed
+- **Drift Detection Script Initialization** - Corrected critical bugs in `check_drift.py` (PR #224)
+  - **Bug 1**: Fixed incorrect config attribute `SQLITE_DB_PATH` → `SQLITE_VEC_PATH` in AppConfig
+  - **Bug 2**: Added missing `cloudflare_config` parameter to HybridMemoryStorage initialization
+  - **Impact**: Script was completely broken for Cloudflare/Hybrid backends - now initializes successfully
+  - **Error prevented**: `AttributeError: 'AppConfig' object has no attribute 'SQLITE_DB_PATH'`
+  - **File Modified**: `scripts/sync/check_drift.py`
+  - **Severity**: High - Script was non-functional for users with hybrid or cloudflare backends
+- **CI Test Infrastructure** - Added HuggingFace model caching to prevent network-related test failures (PR #225)
+  - **Root Cause**: GitHub Actions runners cannot access huggingface.co during test runs
+  - **Solution**: Implemented `actions/cache@v3` for `~/.cache/huggingface` directory
+  - **Pre-download step**: Downloads `all-MiniLM-L6-v2` model after dependency installation
+  - **Impact**: Fixes all future PR test failures caused by model download restrictions
+  - **Cache Strategy**: Key includes `pyproject.toml` hash for dependency tracking
+  - **Performance**: First run downloads model, subsequent runs use cache
+  - **File Modified**: `.github/workflows/main.yml`
+
+### Technical Details
+- **PR #224**: Drift detection script now properly initializes Cloudflare backend with all required parameters (api_token, account_id, d1_database_id, vectorize_index)
+- **PR #225**: CI environment now caches embedding models, eliminating network dependency during test execution
+- **Testing**: Both fixes validated in PR test runs - drift detection now works, tests pass consistently
+
 ## [8.25.0] - 2025-11-15
 
 ### Added

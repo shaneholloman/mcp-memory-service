@@ -23,18 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.25.0** (Nov 15, 2025)
+### 🆕 Latest Release: **v8.25.1** (Nov 16, 2025)
 
-**Hybrid Backend Drift Detection** 🔄✨
+**Critical Bug Fixes** 🐛🔧
 
-- ✅ **Automatic metadata synchronization** - Uses `updated_at` timestamps to detect changes (issue #202)
-- ✅ **Bidirectional awareness** - Detects metadata changes on either backend (SQLite-vec ↔ Cloudflare)
-- ✅ **Periodic drift checks** - Configurable interval via `MCP_HYBRID_DRIFT_CHECK_INTERVAL` (default: 1 hour)
-- ✅ **"Newer timestamp wins"** - Prevents data loss during metadata updates
-- ✅ **Dry-run support** - Preview changes via `python scripts/sync/check_drift.py`
-- 🔧 **New configuration** - 3 new environment variables for fine-tuned control
+- 🔧 **Drift detection script fixed** - Corrected initialization errors in `check_drift.py` (PR #224)
+- ✅ **CI test infrastructure improved** - HuggingFace model caching prevents network failures (PR #225)
+- 🏗️ **Cloudflare backend initialization** - Fixed missing config parameters for hybrid storage
+- 🧪 **Test stability** - Eliminated CI failures from model download restrictions
 
 **Previous Releases**:
+- **v8.25.0** - Hybrid Backend Drift Detection (automatic metadata sync, bidirectional awareness)
 - **v8.24.4** - Code Quality Improvements from Gemini Code Assist (regex sanitization, DOM caching)
 - **v8.24.3** - Test Coverage & Release Agent Improvements (tag+time filtering tests, version history fix)
 - **v8.24.2** - CI/CD Workflow Fixes (bash errexit handling, exit code capture)
