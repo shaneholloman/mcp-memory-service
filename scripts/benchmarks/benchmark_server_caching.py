@@ -133,8 +133,9 @@ async def benchmark_server_caching():
     try:
         # Call with empty arguments dict (tool takes no parameters)
         result = await server.handle_get_cache_stats({})
-        # Extract the actual stats from MCP response format
-        stats_result = eval(result[0].text) if result else {}
+        # Extract the actual stats from MCP response format (safely parse JSON)
+        import json
+        stats_result = json.loads(result[0].text) if result else {}
         print("✅ get_cache_stats tool works!")
         print(f"   Hit Rate: {stats_result.get('hit_rate', 'N/A')}%")
         print(f"   Message: {stats_result.get('message', 'N/A')}")

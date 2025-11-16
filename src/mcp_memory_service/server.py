@@ -3504,52 +3504,36 @@ Memories Archived: {report.memories_archived}"""
         global _CACHE_STATS, _STORAGE_CACHE, _MEMORY_SERVICE_CACHE
 
         try:
-            # Calculate statistics
-            total_cache_checks = _CACHE_STATS["total_calls"] * 2  # 2 caches per call
-            total_hits = _CACHE_STATS["storage_hits"] + _CACHE_STATS["service_hits"]
-            total_misses = _CACHE_STATS["storage_misses"] + _CACHE_STATS["service_misses"]
+            # Import shared stats calculation utility
+            from .utils.cache_manager import CacheStats, calculate_cache_stats_dict
 
-            hit_rate = (total_hits / total_cache_checks * 100) if total_cache_checks > 0 else 0.0
+            # Convert global dict to CacheStats dataclass
+            stats = CacheStats(
+                total_calls=_CACHE_STATS["total_calls"],
+                storage_hits=_CACHE_STATS["storage_hits"],
+                storage_misses=_CACHE_STATS["storage_misses"],
+                service_hits=_CACHE_STATS["service_hits"],
+                service_misses=_CACHE_STATS["service_misses"],
+                initialization_times=_CACHE_STATS["initialization_times"]
+            )
 
-            # Calculate initialization time statistics
-            init_times = _CACHE_STATS["initialization_times"]
-            avg_init_time = sum(init_times) / len(init_times) if init_times else 0.0
-            min_init_time = min(init_times) if init_times else 0.0
-            max_init_time = max(init_times) if init_times else 0.0
+            # Calculate statistics using shared utility
+            cache_sizes = (len(_STORAGE_CACHE), len(_MEMORY_SERVICE_CACHE))
+            result = calculate_cache_stats_dict(stats, cache_sizes)
 
-            result = {
-                "total_calls": _CACHE_STATS["total_calls"],
-                "hit_rate": round(hit_rate, 2),
-                "storage_cache": {
-                    "hits": _CACHE_STATS["storage_hits"],
-                    "misses": _CACHE_STATS["storage_misses"],
-                    "size": len(_STORAGE_CACHE),
-                    "keys": list(_STORAGE_CACHE.keys())
-                },
-                "service_cache": {
-                    "hits": _CACHE_STATS["service_hits"],
-                    "misses": _CACHE_STATS["service_misses"],
-                    "size": len(_MEMORY_SERVICE_CACHE)
-                },
-                "performance": {
-                    "avg_init_time_ms": round(avg_init_time, 2),
-                    "min_init_time_ms": round(min_init_time, 2),
-                    "max_init_time_ms": round(max_init_time, 2),
-                    "total_initializations": len(init_times)
-                },
-                "backend_info": {
-                    "storage_backend": STORAGE_BACKEND,
-                    "sqlite_path": SQLITE_VEC_PATH
-                },
-                "message": f"Cache is {'performing well' if hit_rate > 50 else 'warming up'} "
-                           f"with {hit_rate:.1f}% hit rate across {_CACHE_STATS['total_calls']} calls"
+            # Add server-specific details
+            result["storage_cache"]["keys"] = list(_STORAGE_CACHE.keys())
+            result["backend_info"] = {
+                "storage_backend": STORAGE_BACKEND,
+                "sqlite_path": SQLITE_VEC_PATH
             }
 
             logger.info(f"Cache stats retrieved: {result['message']}")
 
+            # Return JSON string for easy parsing by clients
             return [types.TextContent(
                 type="text",
-                text=f"MCP Server Cache Statistics:\n{json.dumps(result, indent=2)}"
+                text=json.dumps(result, indent=2)
             )]
 
         except Exception as e:
