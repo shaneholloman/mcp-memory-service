@@ -10,6 +10,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.25.2] - TBD
+
+### Added
+- Placeholder for next release
+
 ## [8.25.1] - 2025-11-16
 
 ### Fixed
