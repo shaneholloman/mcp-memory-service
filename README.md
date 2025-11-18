@@ -23,18 +23,28 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.27.0** (Nov 18, 2025)
+### 🆕 Latest Release: **v8.27.1** (Nov 18, 2025)
 
-**Hybrid Storage Performance & Real-time Sync** 🔄⚡
+**🚨 CRITICAL HOTFIX: Timestamp Regression** 🔧
 
-- 🔄 **Bi-directional sync with live progress** - "Sync now" pulls from Cloudflare AND pushes to cloud (PR #229)
-- 📊 **Real-time SSE updates** - Live sync progress: "Syncing: 50/100 (50%)" with auto-refresh dashboard
-- ⚡ **3-5x faster initial sync** - Optimized batch processing (500 memories/batch) and parallel operations (15 concurrent) (PR #230)
-- 🚀 **Performance metrics** - Initial sync: 5.5→30 memories/sec (8 min→1.5 min for 2,619 memories)
-- 🎯 **MCP memory visibility** - MCP-created memories now instantly available locally after manual sync
-- 🛡️ **Zero breaking changes** - Enhanced hybrid storage with backward compatibility
+- 🐛 **Fixed timestamp corruption bug** - `created_at` timestamps no longer reset during metadata sync
+- 🔧 **Affected versions**: v8.25.0-v8.27.0 (hybrid backend users with drift detection)
+- 🛡️ **Data integrity restored** - All timestamp preservation tests passing
+- 🔄 **Recovery tools included** - Script to restore timestamps from Cloudflare backup
+- ✅ **Zero breaking changes** - Drop-in fix for affected installations
+
+**If you're on v8.25.0-v8.27.0 with hybrid backend:**
+```bash
+# Check for corrupted timestamps
+python scripts/validation/validate_timestamp_integrity.py
+
+# Recover from Cloudflare (if needed)
+python scripts/maintenance/recover_timestamps_from_cloudflare.py --dry-run
+python scripts/maintenance/recover_timestamps_from_cloudflare.py --apply
+```
 
 **Previous Releases**:
+- **v8.27.0** - Hybrid Storage Performance (3-5x faster sync, real-time progress, bidirectional sync)
 - **v8.26.0** - Revolutionary MCP Performance (534,628x faster tools, 90%+ cache hit rate)
 - **v8.25.0** - Hybrid Backend Drift Detection (automatic metadata sync, bidirectional awareness)
 - **v8.24.4** - Code Quality Improvements from Gemini Code Assist (regex sanitization, DOM caching)

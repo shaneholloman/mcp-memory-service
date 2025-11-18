@@ -628,6 +628,10 @@ class BackgroundSyncService:
                                         'tags': cf_memory.tags,
                                         'memory_type': cf_memory.memory_type,
                                         'metadata': cf_memory.metadata,
+                                        'created_at': cf_memory.created_at,
+                                        'created_at_iso': cf_memory.created_at_iso,
+                                        'updated_at': cf_memory.updated_at,
+                                        'updated_at_iso': cf_memory.updated_at_iso,
                                     },
                                     preserve_timestamps=False  # Use Cloudflare timestamps
                                 )
@@ -934,6 +938,10 @@ class HybridMemoryStorage(MemoryStorage):
                                                     'tags': cf_memory.tags,
                                                     'memory_type': cf_memory.memory_type,
                                                     'metadata': cf_memory.metadata,
+                                                    'created_at': cf_memory.created_at,
+                                                    'created_at_iso': cf_memory.created_at_iso,
+                                                    'updated_at': cf_memory.updated_at,
+                                                    'updated_at_iso': cf_memory.updated_at_iso,
                                                 },
                                                 preserve_timestamps=False
                                             )

@@ -829,13 +829,38 @@ class CloudflareStorage(MemoryStorage):
             if "tags" in updates:
                 # Handle tags separately - they require relational updates
                 pass
-            
-            # Always update updated_at timestamp
-            if not preserve_timestamps or "updated_at" not in updates:
+
+            # Handle timestamp updates based on preserve_timestamps flag
+            now = time.time()
+            now_iso = datetime.now().isoformat()
+
+            if not preserve_timestamps:
+                # When preserve_timestamps=False, use timestamps from updates dict if provided
+                # This allows syncing timestamps from source (e.g., SQLite → Cloudflare)
+                # Always preserve created_at (never reset to current time!)
+                if "created_at" in updates:
+                    update_fields.append("created_at = ?")
+                    params.append(updates["created_at"])
+                if "created_at_iso" in updates:
+                    update_fields.append("created_at_iso = ?")
+                    params.append(updates["created_at_iso"])
+                # Use updated_at from updates or current time
+                if "updated_at" in updates:
+                    update_fields.append("updated_at = ?")
+                    params.append(updates["updated_at"])
+                else:
+                    update_fields.append("updated_at = ?")
+                    params.append(now)
+                if "updated_at_iso" in updates:
+                    update_fields.append("updated_at_iso = ?")
+                    params.append(updates["updated_at_iso"])
+                else:
+                    update_fields.append("updated_at_iso = ?")
+                    params.append(now_iso)
+            else:
+                # preserve_timestamps=True: only update updated_at to current time
                 update_fields.append("updated_at = ?")
                 update_fields.append("updated_at_iso = ?")
-                now = time.time()
-                now_iso = datetime.now().isoformat()
                 params.extend([now, now_iso])
             
             if not update_fields:

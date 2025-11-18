@@ -1389,11 +1389,22 @@ SOLUTIONS:
             # Update timestamps
             now = time.time()
             now_iso = datetime.utcfromtimestamp(now).isoformat() + "Z"
-            
+
+            # Handle timestamp updates based on preserve_timestamps flag
             if not preserve_timestamps:
-                created_at = now
-                created_at_iso = now_iso
-            
+                # When preserve_timestamps=False, use timestamps from updates dict if provided
+                # This allows syncing timestamps from source (e.g., Cloudflare → SQLite)
+                # Always preserve created_at (never reset to current time!)
+                created_at = updates.get('created_at', created_at)
+                created_at_iso = updates.get('created_at_iso', created_at_iso)
+                # Use updated_at from updates or current time
+                updated_at = updates.get('updated_at', now)
+                updated_at_iso = updates.get('updated_at_iso', now_iso)
+            else:
+                # preserve_timestamps=True: only update updated_at to current time
+                updated_at = now
+                updated_at_iso = now_iso
+
             # Update the memory
             self.conn.execute('''
                 UPDATE memories SET
@@ -1403,7 +1414,7 @@ SOLUTIONS:
                 WHERE content_hash = ?
             ''', (
                 new_tags, new_type, json.dumps(new_metadata),
-                now, now_iso, created_at, created_at_iso, content_hash
+                updated_at, updated_at_iso, created_at, created_at_iso, content_hash
             ))
             
             self.conn.commit()

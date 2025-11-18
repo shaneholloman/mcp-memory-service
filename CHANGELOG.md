@@ -10,6 +10,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.27.1] - 2025-11-18
+
+### Fixed
+- **CRITICAL: Timestamp Regression Bug** - Fixed `created_at` timestamps being reset during metadata sync
+  - **Problem**: Bidirectional sync and drift detection (v8.25.0-v8.27.0) incorrectly reset `created_at` timestamps to current time during metadata updates
+  - **Impact**: All memories synced from Cloudflare → SQLite-vec appeared "just created", destroying historical timestamp data
+  - **Root Cause**: `preserve_timestamps=False` parameter reset **both** `created_at` and `updated_at`, when it should only update `updated_at`
+  - **Solution**:
+    - Modified `update_memory_metadata()` to preserve `created_at` from source memory during sync
+    - Hybrid storage now passes all 4 timestamp fields (`created_at`, `created_at_iso`, `updated_at`, `updated_at_iso`) during drift detection
+    - Cloudflare storage updated to handle timestamps consistently with SQLite-vec
+  - **Files Modified**:
+    - `src/mcp_memory_service/storage/sqlite_vec.py:1389-1406` - Fixed timestamp handling logic
+    - `src/mcp_memory_service/storage/hybrid.py:625-637, 935-947` - Pass source timestamps during sync
+    - `src/mcp_memory_service/storage/cloudflare.py:833-864` - Consistent timestamp handling
+  - **Tests Added**: `tests/test_timestamp_preservation.py` - Comprehensive test suite with 7 tests covering:
+    - Timestamp preservation with `preserve_timestamps=True`
+    - Regression test for `created_at` preservation without source timestamps
+    - Drift detection scenario
+    - Multiple sync operations
+    - Initial memory storage
+  - **Recovery Tools**:
+    - `scripts/validation/validate_timestamp_integrity.py` - Detect timestamp anomalies
+    - `scripts/maintenance/recover_timestamps_from_cloudflare.py` - Restore corrupted timestamps from Cloudflare
+  - **Affected Versions**: v8.25.0 (drift detection), v8.27.0 (bidirectional sync)
+  - **Affected Users**: Hybrid backend users who experienced automatic drift detection or initial sync
+  - **Data Recovery**: If using hybrid backend and Cloudflare has correct timestamps, run recovery script:
+    ```bash
+    # Preview recovery
+    python scripts/maintenance/recover_timestamps_from_cloudflare.py --dry-run
+
+    # Apply recovery
+    python scripts/maintenance/recover_timestamps_from_cloudflare.py --apply
+    ```
+
+### Changed
+- **Timestamp Handling Semantics** - Clarified `preserve_timestamps` parameter behavior:
+  - `preserve_timestamps=True` (default): Only updates `updated_at` to current time, preserves `created_at`
+  - `preserve_timestamps=False`: Uses timestamps from `updates` dict if provided, otherwise preserves existing `created_at`
+  - **Never** resets `created_at` to current time (this was the bug)
+
+### Added
+- **Timestamp Integrity Validation** - New script to detect timestamp anomalies:
+  ```bash
+  python scripts/validation/validate_timestamp_integrity.py
+  ```
+  - Checks for impossible timestamps (`created_at > updated_at`)
+  - Detects suspicious timestamp clusters (bulk reset indicators)
+  - Analyzes timestamp distribution for anomalies
+  - Provides detailed statistics and warnings
+
 ## [8.27.0] - 2025-11-17
 
 ### Added
