@@ -164,3 +164,4 @@ data/
 !.claude/amp/prompts/pending/.gitkeep
 !.claude/amp/responses/ready/.gitkeep
 !.claude/amp/responses/consumed/.gitkeep
+.local/
