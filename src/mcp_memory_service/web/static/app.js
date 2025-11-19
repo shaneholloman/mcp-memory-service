@@ -1099,7 +1099,6 @@ class MemoryDashboard {
             syncControl.style.display = 'block';
 
             // Update sync status UI elements
-            const statusIcon = document.getElementById('syncStatusIcon');
             const statusText = document.getElementById('syncStatusText');
             const syncProgress = document.getElementById('syncProgress');
             const pauseButton = document.getElementById('pauseSyncButton');
@@ -1108,37 +1107,32 @@ class MemoryDashboard {
 
             // Update pause/resume button visibility based on running state
             const isPaused = syncStatus.is_paused || !syncStatus.is_running;
-            if (pauseButton) pauseButton.style.display = isPaused ? 'none' : 'inline-block';
-            if (resumeButton) resumeButton.style.display = isPaused ? 'inline-block' : 'none';
+            if (pauseButton) pauseButton.style.display = isPaused ? 'none' : 'flex';
+            if (resumeButton) resumeButton.style.display = isPaused ? 'flex' : 'none';
 
-            // Determine status and update UI
+            // Determine status and update UI (dot color is handled by CSS classes)
             if (isPaused) {
-                statusIcon.textContent = '⏸️';
                 statusText.textContent = 'Paused';
                 syncProgress.textContent = '';
                 syncControl.className = 'sync-control-compact paused';
                 if (syncButton) syncButton.disabled = true;
             } else if (syncStatus.status === 'syncing') {
-                statusIcon.textContent = '🔄';
                 statusText.textContent = 'Syncing...';
                 syncProgress.textContent = syncStatus.operations_pending > 0 ? `${syncStatus.operations_pending} pending` : '';
                 syncControl.className = 'sync-control-compact syncing';
                 if (syncButton) syncButton.disabled = true;
             } else if (syncStatus.status === 'pending') {
-                statusIcon.textContent = '⏱️';
                 statusText.textContent = 'Pending';
                 syncProgress.textContent = `${syncStatus.operations_pending} ops`;
                 syncControl.className = 'sync-control-compact pending';
                 if (syncButton) syncButton.disabled = false;
             } else if (syncStatus.status === 'error') {
-                statusIcon.textContent = '⚠️';
                 statusText.textContent = 'Error';
                 syncProgress.textContent = `${syncStatus.operations_failed} failed`;
                 syncControl.className = 'sync-control-compact error';
                 if (syncButton) syncButton.disabled = false;
             } else {
                 // synced status
-                statusIcon.textContent = '✅';
                 statusText.textContent = 'Synced';
                 syncProgress.textContent = '';
                 syncControl.className = 'sync-control-compact synced';
