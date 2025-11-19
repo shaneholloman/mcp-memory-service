@@ -128,21 +128,6 @@
             </div>
         </nav>
 
-        <!-- Sync Status Bar (Hybrid Mode Only) -->
-        <div id="syncStatusBar" class="sync-status-bar">
-            <div class="sync-status-content">
-                <div class="sync-status-indicator">
-                    <span id="syncStatusIcon">🔄</span>
-                    <span id="syncStatusText">Checking sync status...</span>
-                    <span id="syncStatusDetails" class="sync-details"></span>
-                </div>
-                <button id="forceSyncButton" class="sync-button" title="Manually trigger sync to Cloudflare">
-                    <span class="sync-button-icon">⚡</span>
-                    <span class="sync-button-text">Sync Now</span>
-                </button>
-            </div>
-        </div>
-
         <!-- Main Content Area -->
         <main class="main-content">
             <!-- Dashboard View -->
@@ -204,6 +189,66 @@
                                 </svg>
                                 <span>Export Data</span>
                             </button>
+                        </div>
+
+                        <!-- Sync Widget (Hybrid Mode Only) -->
+                        <div id="syncWidget" class="sync-widget" style="display: none;">
+                            <h4>Sync Status</h4>
+                            <div class="sync-widget-content">
+                                <div class="sync-status-display">
+                                    <span id="syncStatusIcon" class="sync-icon">🔄</span>
+                                    <div class="sync-info">
+                                        <span id="syncStatusText" class="sync-status-text">Checking...</span>
+                                        <span id="syncStatusDetails" class="sync-details"></span>
+                                    </div>
+                                </div>
+                                <div class="sync-controls">
+                                    <button id="pauseSyncButton" class="btn btn-sm btn-secondary" title="Pause sync">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                                        </svg>
+                                    </button>
+                                    <button id="resumeSyncButton" class="btn btn-sm btn-secondary" title="Resume sync" style="display: none;">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z"/>
+                                        </svg>
+                                    </button>
+                                    <button id="forceSyncButton" class="btn btn-sm btn-primary" title="Sync now">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="sync-meta">
+                                <span id="lastSyncTime" class="sync-time"></span>
+                                <span id="pendingOpsCount" class="pending-ops"></span>
+                            </div>
+                        </div>
+
+                        <!-- Backup Widget -->
+                        <div id="backupWidget" class="backup-widget">
+                            <h4>Backups</h4>
+                            <div class="backup-widget-content">
+                                <div class="backup-status-display">
+                                    <span id="backupStatusIcon" class="backup-icon">💾</span>
+                                    <div class="backup-info">
+                                        <span id="backupStatusText" class="backup-status-text">Loading...</span>
+                                        <span id="lastBackupTime" class="backup-details"></span>
+                                    </div>
+                                </div>
+                                <div class="backup-controls">
+                                    <button id="backupNowButton" class="btn btn-sm btn-primary" title="Create backup now">
+                                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="backup-meta">
+                                <span id="backupCount" class="backup-count"></span>
+                                <span id="nextBackupTime" class="next-backup"></span>
+                            </div>
                         </div>
                     </section>
                 </div>

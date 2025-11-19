@@ -105,6 +105,9 @@ class MemoryDashboard {
         // Initialize sync status monitoring for hybrid mode
         await this.checkSyncStatus();
         this.startSyncStatusMonitoring();
+
+        // Initialize backup status
+        await this.checkBackupStatus();
     }
 
     /**
@@ -709,6 +712,30 @@ class MemoryDashboard {
             });
         }
 
+        // Pause sync button
+        const pauseSyncButton = document.getElementById('pauseSyncButton');
+        if (pauseSyncButton) {
+            pauseSyncButton.addEventListener('click', () => {
+                this.pauseSync();
+            });
+        }
+
+        // Resume sync button
+        const resumeSyncButton = document.getElementById('resumeSyncButton');
+        if (resumeSyncButton) {
+            resumeSyncButton.addEventListener('click', () => {
+                this.resumeSync();
+            });
+        }
+
+        // Backup now button
+        const backupNowButton = document.getElementById('backupNowButton');
+        if (backupNowButton) {
+            backupNowButton.addEventListener('click', () => {
+                this.createBackup();
+            });
+        }
+
         // Document search button
         const docSearchBtn = document.getElementById('docSearchBtn');
         const docSearchInput = document.getElementById('docSearchInput');
@@ -1055,66 +1082,216 @@ class MemoryDashboard {
         try {
             const syncStatus = await this.apiCall('/sync/status');
 
-            // Only show sync bar for hybrid mode
-            const syncBar = document.getElementById('syncStatusBar');
-            if (!syncBar) {
-                console.warn('Sync status bar element not found');
+            // Get sync widget element
+            const syncWidget = document.getElementById('syncWidget');
+            if (!syncWidget) {
+                console.warn('Sync widget element not found');
                 return;
             }
 
             console.log('Sync status:', syncStatus);
 
             if (!syncStatus.is_hybrid) {
-                console.log('Not hybrid mode, hiding sync bar');
-                syncBar.classList.remove('visible');
+                console.log('Not hybrid mode, hiding sync widget');
+                syncWidget.style.display = 'none';
                 return;
             }
 
-            // Show sync bar for hybrid mode
-            console.log('Hybrid mode detected, showing sync bar');
-            syncBar.classList.add('visible');
+            // Show sync widget for hybrid mode
+            console.log('Hybrid mode detected, showing sync widget');
+            syncWidget.style.display = 'block';
 
-            // Update sync status UI
+            // Update sync status UI elements in widget
             const statusIcon = document.getElementById('syncStatusIcon');
             const statusText = document.getElementById('syncStatusText');
             const statusDetails = document.getElementById('syncStatusDetails');
+            const lastSyncTime = document.getElementById('lastSyncTime');
+            const pendingOpsCount = document.getElementById('pendingOpsCount');
+            const pauseButton = document.getElementById('pauseSyncButton');
+            const resumeButton = document.getElementById('resumeSyncButton');
             const syncButton = document.getElementById('forceSyncButton');
 
+            // Update pause/resume button visibility based on running state
+            const isPaused = syncStatus.is_paused || !syncStatus.is_running;
+            if (pauseButton) pauseButton.style.display = isPaused ? 'none' : 'inline-flex';
+            if (resumeButton) resumeButton.style.display = isPaused ? 'inline-flex' : 'none';
+
             // Determine status and update UI
-            if (syncStatus.status === 'syncing') {
+            if (isPaused) {
+                statusIcon.textContent = '⏸️';
+                statusText.textContent = 'Paused';
+                statusDetails.textContent = 'Background sync is paused';
+                syncWidget.className = 'sync-widget paused';
+                if (syncButton) syncButton.disabled = true;
+            } else if (syncStatus.status === 'syncing') {
                 statusIcon.textContent = '🔄';
                 statusText.textContent = 'Syncing...';
                 statusDetails.textContent = `${syncStatus.operations_pending} operations pending`;
-                syncBar.className = 'sync-status-bar visible syncing';
-                syncButton.disabled = true;
+                syncWidget.className = 'sync-widget syncing';
+                if (syncButton) syncButton.disabled = true;
             } else if (syncStatus.status === 'pending') {
                 statusIcon.textContent = '⏱️';
-                statusText.textContent = 'Sync Pending';
+                statusText.textContent = 'Pending';
                 const nextSync = Math.ceil(syncStatus.next_sync_eta_seconds);
-                statusDetails.textContent = `${syncStatus.operations_pending} operations • Next sync in ${nextSync}s`;
-                syncBar.className = 'sync-status-bar visible pending';
-                syncButton.disabled = false;
+                statusDetails.textContent = `${syncStatus.operations_pending} ops pending`;
+                syncWidget.className = 'sync-widget pending';
+                if (syncButton) syncButton.disabled = false;
             } else if (syncStatus.status === 'error') {
                 statusIcon.textContent = '⚠️';
-                statusText.textContent = 'Sync Error';
-                statusDetails.textContent = `${syncStatus.operations_failed} failed operations`;
-                syncBar.className = 'sync-status-bar visible error';
-                syncButton.disabled = false;
+                statusText.textContent = 'Error';
+                statusDetails.textContent = `${syncStatus.operations_failed} failed`;
+                syncWidget.className = 'sync-widget error';
+                if (syncButton) syncButton.disabled = false;
             } else {
                 // synced status
                 statusIcon.textContent = '✅';
                 statusText.textContent = 'Synced';
-                const lastSync = Math.floor(syncStatus.time_since_last_sync_seconds);
-                statusDetails.textContent = lastSync > 0 ? `Last sync ${lastSync}s ago` : 'Just now';
-                syncBar.className = 'sync-status-bar visible synced';
-                syncButton.disabled = false;
+                statusDetails.textContent = '';
+                syncWidget.className = 'sync-widget synced';
+                if (syncButton) syncButton.disabled = false;
+            }
+
+            // Update meta info
+            if (lastSyncTime) {
+                const lastSync = Math.floor(syncStatus.time_since_last_sync_seconds || 0);
+                lastSyncTime.textContent = lastSync > 0 ? `Last: ${this.formatTimeDelta(lastSync)}` : 'Last: Just now';
+            }
+            if (pendingOpsCount && syncStatus.operations_pending > 0) {
+                pendingOpsCount.textContent = `Pending: ${syncStatus.operations_pending}`;
+            } else if (pendingOpsCount) {
+                pendingOpsCount.textContent = '';
             }
 
         } catch (error) {
             console.error('Error checking sync status:', error);
-            // Hide sync bar on error (likely not hybrid mode)
-            const syncBar = document.getElementById('syncStatusBar');
-            if (syncBar) syncBar.style.display = 'none';
+            // Hide sync widget on error (likely not hybrid mode)
+            const syncWidget = document.getElementById('syncWidget');
+            if (syncWidget) syncWidget.style.display = 'none';
+        }
+    }
+
+    /**
+     * Format time delta in human readable format
+     */
+    formatTimeDelta(seconds) {
+        if (seconds < 60) return `${seconds}s ago`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+        return `${Math.floor(seconds / 86400)}d ago`;
+    }
+
+    /**
+     * Pause background sync
+     */
+    async pauseSync() {
+        try {
+            const result = await this.apiCall('/sync/pause', 'POST');
+            if (result.success) {
+                this.showToast('Sync paused', 'success');
+            } else {
+                this.showToast('Failed to pause sync: ' + result.message, 'error');
+            }
+            await this.checkSyncStatus();
+        } catch (error) {
+            console.error('Error pausing sync:', error);
+            this.showToast('Failed to pause sync', 'error');
+        }
+    }
+
+    /**
+     * Resume background sync
+     */
+    async resumeSync() {
+        try {
+            const result = await this.apiCall('/sync/resume', 'POST');
+            if (result.success) {
+                this.showToast('Sync resumed', 'success');
+            } else {
+                this.showToast('Failed to resume sync: ' + result.message, 'error');
+            }
+            await this.checkSyncStatus();
+        } catch (error) {
+            console.error('Error resuming sync:', error);
+            this.showToast('Failed to resume sync', 'error');
+        }
+    }
+
+    /**
+     * Check backup status and update widget
+     */
+    async checkBackupStatus() {
+        try {
+            const backupStatus = await this.apiCall('/backup/status');
+
+            const backupWidget = document.getElementById('backupWidget');
+            if (!backupWidget) return;
+
+            // Update backup widget elements
+            const statusIcon = document.getElementById('backupStatusIcon');
+            const statusText = document.getElementById('backupStatusText');
+            const lastBackupTime = document.getElementById('lastBackupTime');
+            const backupCount = document.getElementById('backupCount');
+            const nextBackupTime = document.getElementById('nextBackupTime');
+
+            if (!backupStatus.enabled) {
+                statusIcon.textContent = '⏸️';
+                statusText.textContent = 'Disabled';
+                backupWidget.style.display = 'none';
+                return;
+            }
+
+            backupWidget.style.display = 'block';
+            statusIcon.textContent = '💾';
+            statusText.textContent = `${backupStatus.backup_count} backups`;
+
+            if (lastBackupTime && backupStatus.time_since_last_seconds) {
+                lastBackupTime.textContent = `Last: ${this.formatTimeDelta(Math.floor(backupStatus.time_since_last_seconds))}`;
+            } else if (lastBackupTime) {
+                lastBackupTime.textContent = 'No backups yet';
+            }
+
+            if (backupCount) {
+                const sizeMB = (backupStatus.total_size_bytes / 1024 / 1024).toFixed(1);
+                backupCount.textContent = `${backupStatus.backup_count} files (${sizeMB} MB)`;
+            }
+
+            if (nextBackupTime && backupStatus.next_backup_at) {
+                const nextDate = new Date(backupStatus.next_backup_at);
+                nextBackupTime.textContent = `Next: ${nextDate.toLocaleTimeString()}`;
+            } else if (nextBackupTime) {
+                nextBackupTime.textContent = '';
+            }
+
+        } catch (error) {
+            console.error('Error checking backup status:', error);
+        }
+    }
+
+    /**
+     * Create a backup manually
+     */
+    async createBackup() {
+        const backupButton = document.getElementById('backupNowButton');
+        if (backupButton) backupButton.disabled = true;
+
+        try {
+            this.showToast('Creating backup...', 'info');
+            const result = await this.apiCall('/backup/now', 'POST');
+
+            if (result.success) {
+                const sizeMB = (result.size_bytes / 1024 / 1024).toFixed(2);
+                this.showToast(`Backup created: ${result.filename} (${sizeMB} MB)`, 'success');
+            } else {
+                this.showToast('Backup failed: ' + result.error, 'error');
+            }
+
+            await this.checkBackupStatus();
+
+        } catch (error) {
+            console.error('Error creating backup:', error);
+            this.showToast('Failed to create backup', 'error');
+        } finally {
+            if (backupButton) backupButton.disabled = false;
         }
     }
 

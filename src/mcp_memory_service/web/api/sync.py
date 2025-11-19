@@ -206,3 +206,82 @@ async def force_sync(
             status_code=500,
             detail=f"Failed to force sync: {str(e)}"
         )
+
+
+class SyncPauseResponse(BaseModel):
+    """Pause/resume sync response model."""
+    success: bool
+    message: str
+    is_paused: bool
+    timestamp: str
+
+
+@router.post("/sync/pause", response_model=SyncPauseResponse)
+async def pause_sync(
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """
+    Pause background sync operations.
+
+    Pauses the background sync service to allow safe database operations.
+    Sync will resume when resume_sync is called.
+    Only available when using hybrid storage backend.
+    """
+    # Check if storage supports pause/resume (hybrid mode only)
+    if not hasattr(storage, 'pause_sync'):
+        raise HTTPException(
+            status_code=404,
+            detail="Pause sync only available in hybrid mode"
+        )
+
+    try:
+        result = await storage.pause_sync()
+
+        return SyncPauseResponse(
+            success=result.get('success', True),
+            message=result.get('message', 'Sync paused'),
+            is_paused=True,
+            timestamp=datetime.now(timezone.utc).isoformat()
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to pause sync: {str(e)}"
+        )
+
+
+@router.post("/sync/resume", response_model=SyncPauseResponse)
+async def resume_sync(
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """
+    Resume background sync operations.
+
+    Resumes the background sync service after it was paused.
+    Only available when using hybrid storage backend.
+    """
+    # Check if storage supports pause/resume (hybrid mode only)
+    if not hasattr(storage, 'resume_sync'):
+        raise HTTPException(
+            status_code=404,
+            detail="Resume sync only available in hybrid mode"
+        )
+
+    try:
+        result = await storage.resume_sync()
+
+        return SyncPauseResponse(
+            success=result.get('success', True),
+            message=result.get('message', 'Sync resumed'),
+            is_paused=False,
+            timestamp=datetime.now(timezone.utc).isoformat()
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to resume sync: {str(e)}"
+        )
