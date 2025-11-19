@@ -105,9 +105,6 @@ class MemoryDashboard {
         // Initialize sync status monitoring for hybrid mode
         await this.checkSyncStatus();
         this.startSyncStatusMonitoring();
-
-        // Initialize backup status
-        await this.checkBackupStatus();
     }
 
     /**
@@ -1082,90 +1079,77 @@ class MemoryDashboard {
         try {
             const syncStatus = await this.apiCall('/sync/status');
 
-            // Get sync widget element
-            const syncWidget = document.getElementById('syncWidget');
-            if (!syncWidget) {
-                console.warn('Sync widget element not found');
+            // Get compact sync control element
+            const syncControl = document.getElementById('syncControl');
+            if (!syncControl) {
+                console.warn('Sync control element not found');
                 return;
             }
 
             console.log('Sync status:', syncStatus);
 
             if (!syncStatus.is_hybrid) {
-                console.log('Not hybrid mode, hiding sync widget');
-                syncWidget.style.display = 'none';
+                console.log('Not hybrid mode, hiding sync control');
+                syncControl.style.display = 'none';
                 return;
             }
 
-            // Show sync widget for hybrid mode
-            console.log('Hybrid mode detected, showing sync widget');
-            syncWidget.style.display = 'block';
+            // Show sync control for hybrid mode
+            console.log('Hybrid mode detected, showing sync control');
+            syncControl.style.display = 'block';
 
-            // Update sync status UI elements in widget
+            // Update sync status UI elements
             const statusIcon = document.getElementById('syncStatusIcon');
             const statusText = document.getElementById('syncStatusText');
-            const statusDetails = document.getElementById('syncStatusDetails');
-            const lastSyncTime = document.getElementById('lastSyncTime');
-            const pendingOpsCount = document.getElementById('pendingOpsCount');
+            const syncProgress = document.getElementById('syncProgress');
             const pauseButton = document.getElementById('pauseSyncButton');
             const resumeButton = document.getElementById('resumeSyncButton');
             const syncButton = document.getElementById('forceSyncButton');
 
             // Update pause/resume button visibility based on running state
             const isPaused = syncStatus.is_paused || !syncStatus.is_running;
-            if (pauseButton) pauseButton.style.display = isPaused ? 'none' : 'inline-flex';
-            if (resumeButton) resumeButton.style.display = isPaused ? 'inline-flex' : 'none';
+            if (pauseButton) pauseButton.style.display = isPaused ? 'none' : 'inline-block';
+            if (resumeButton) resumeButton.style.display = isPaused ? 'inline-block' : 'none';
 
             // Determine status and update UI
             if (isPaused) {
                 statusIcon.textContent = '⏸️';
                 statusText.textContent = 'Paused';
-                statusDetails.textContent = 'Background sync is paused';
-                syncWidget.className = 'sync-widget paused';
+                syncProgress.textContent = '';
+                syncControl.className = 'sync-control-compact paused';
                 if (syncButton) syncButton.disabled = true;
             } else if (syncStatus.status === 'syncing') {
                 statusIcon.textContent = '🔄';
                 statusText.textContent = 'Syncing...';
-                statusDetails.textContent = `${syncStatus.operations_pending} operations pending`;
-                syncWidget.className = 'sync-widget syncing';
+                syncProgress.textContent = syncStatus.operations_pending > 0 ? `${syncStatus.operations_pending} pending` : '';
+                syncControl.className = 'sync-control-compact syncing';
                 if (syncButton) syncButton.disabled = true;
             } else if (syncStatus.status === 'pending') {
                 statusIcon.textContent = '⏱️';
                 statusText.textContent = 'Pending';
-                statusDetails.textContent = `${syncStatus.operations_pending} ops pending`;
-                syncWidget.className = 'sync-widget pending';
+                syncProgress.textContent = `${syncStatus.operations_pending} ops`;
+                syncControl.className = 'sync-control-compact pending';
                 if (syncButton) syncButton.disabled = false;
             } else if (syncStatus.status === 'error') {
                 statusIcon.textContent = '⚠️';
                 statusText.textContent = 'Error';
-                statusDetails.textContent = `${syncStatus.operations_failed} failed`;
-                syncWidget.className = 'sync-widget error';
+                syncProgress.textContent = `${syncStatus.operations_failed} failed`;
+                syncControl.className = 'sync-control-compact error';
                 if (syncButton) syncButton.disabled = false;
             } else {
                 // synced status
                 statusIcon.textContent = '✅';
                 statusText.textContent = 'Synced';
-                statusDetails.textContent = '';
-                syncWidget.className = 'sync-widget synced';
+                syncProgress.textContent = '';
+                syncControl.className = 'sync-control-compact synced';
                 if (syncButton) syncButton.disabled = false;
-            }
-
-            // Update meta info
-            if (lastSyncTime) {
-                const lastSync = Math.floor(syncStatus.time_since_last_sync_seconds || 0);
-                lastSyncTime.textContent = lastSync > 0 ? `Last: ${this.formatTimeDelta(lastSync)}` : 'Last: Just now';
-            }
-            if (pendingOpsCount && syncStatus.operations_pending > 0) {
-                pendingOpsCount.textContent = `Pending: ${syncStatus.operations_pending}`;
-            } else if (pendingOpsCount) {
-                pendingOpsCount.textContent = '';
             }
 
         } catch (error) {
             console.error('Error checking sync status:', error);
-            // Hide sync widget on error (likely not hybrid mode)
-            const syncWidget = document.getElementById('syncWidget');
-            if (syncWidget) syncWidget.style.display = 'none';
+            // Hide sync control on error (likely not hybrid mode)
+            const syncControl = document.getElementById('syncControl');
+            if (syncControl) syncControl.style.display = 'none';
         }
     }
 
@@ -1216,49 +1200,45 @@ class MemoryDashboard {
     }
 
     /**
-     * Check backup status and update widget
+     * Check backup status and update Settings modal
      */
     async checkBackupStatus() {
         try {
             const backupStatus = await this.apiCall('/backup/status');
 
-            const backupWidget = document.getElementById('backupWidget');
-            if (!backupWidget) return;
-
-            // Update backup widget elements
-            const statusIcon = document.getElementById('backupStatusIcon');
-            const statusText = document.getElementById('backupStatusText');
-            const lastBackupTime = document.getElementById('lastBackupTime');
-            const backupCount = document.getElementById('backupCount');
-            const nextBackupTime = document.getElementById('nextBackupTime');
+            // Update backup elements in Settings modal
+            const lastBackup = document.getElementById('settingsLastBackup');
+            const backupCount = document.getElementById('settingsBackupCount');
+            const nextBackup = document.getElementById('settingsNextBackup');
 
             if (!backupStatus.enabled) {
-                statusIcon.textContent = '⏸️';
-                statusText.textContent = 'Disabled';
-                backupWidget.style.display = 'none';
+                if (lastBackup) lastBackup.textContent = 'Backups disabled';
+                if (backupCount) backupCount.textContent = '-';
+                if (nextBackup) nextBackup.textContent = '-';
                 return;
             }
 
-            backupWidget.style.display = 'block';
-            statusIcon.textContent = '💾';
-            statusText.textContent = `${backupStatus.backup_count} backups`;
-
-            if (lastBackupTime && backupStatus.time_since_last_seconds) {
-                lastBackupTime.textContent = `Last: ${this.formatTimeDelta(Math.floor(backupStatus.time_since_last_seconds))}`;
-            } else if (lastBackupTime) {
-                lastBackupTime.textContent = 'No backups yet';
+            // Update last backup time
+            if (lastBackup) {
+                if (backupStatus.time_since_last_seconds) {
+                    lastBackup.textContent = this.formatTimeDelta(Math.floor(backupStatus.time_since_last_seconds)) + ' ago';
+                } else {
+                    lastBackup.textContent = 'Never';
+                }
             }
 
+            // Update backup count with size
             if (backupCount) {
                 const sizeMB = (backupStatus.total_size_bytes / 1024 / 1024).toFixed(1);
-                backupCount.textContent = `${backupStatus.backup_count} files (${sizeMB} MB)`;
+                backupCount.textContent = `${backupStatus.backup_count} (${sizeMB} MB)`;
             }
 
-            if (nextBackupTime && backupStatus.next_backup_at) {
+            // Update next scheduled backup
+            if (nextBackup && backupStatus.next_backup_at) {
                 const nextDate = new Date(backupStatus.next_backup_at);
-                nextBackupTime.textContent = `Next: ${nextDate.toLocaleTimeString()}`;
-            } else if (nextBackupTime) {
-                nextBackupTime.textContent = '';
+                nextBackup.textContent = nextDate.toLocaleString();
+            } else if (nextBackup) {
+                nextBackup.textContent = backupStatus.scheduler_running ? 'Scheduled' : 'Not scheduled';
             }
 
         } catch (error) {
@@ -3148,8 +3128,11 @@ class MemoryDashboard {
         // Reset system info to loading state
         this.resetSystemInfoLoadingState();
 
-        // Load system information
-        await this.loadSystemInfo();
+        // Load system information and backup status
+        await Promise.all([
+            this.loadSystemInfo(),
+            this.checkBackupStatus()
+        ]);
 
         this.openModal(modal);
     }
