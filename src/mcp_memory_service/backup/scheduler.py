@@ -21,6 +21,7 @@ Provides scheduled database backups with configurable intervals and retention po
 import asyncio
 import os
 import shutil
+import sqlite3
 import logging
 import time
 from datetime import datetime, timezone, timedelta
@@ -100,9 +101,18 @@ class BackupService:
             backup_filename = self._generate_backup_filename()
             backup_path = self.backups_dir / backup_filename
 
-            # Copy database file
-            # Use SQLite's backup mechanism if possible for consistency
-            shutil.copy2(str(self.db_path), str(backup_path))
+            # Use SQLite's native backup API for safe, consistent backups
+            # This handles active database connections properly
+            def _do_backup():
+                source = sqlite3.connect(str(self.db_path))
+                dest = sqlite3.connect(str(backup_path))
+                try:
+                    source.backup(dest)
+                finally:
+                    source.close()
+                    dest.close()
+
+            await asyncio.to_thread(_do_backup)
 
             # Get backup size
             backup_size = backup_path.stat().st_size
@@ -210,7 +220,8 @@ class BackupService:
 
                 if should_remove:
                     try:
-                        Path(backup['path']).unlink()
+                        # Use asyncio.to_thread to avoid blocking the event loop
+                        await asyncio.to_thread(Path(backup['path']).unlink)
                         removed.append({
                             'filename': backup['filename'],
                             'reason': reason
@@ -263,11 +274,13 @@ class BackupService:
             # Create a backup of current database first
             if self.db_path.exists():
                 current_backup = self.db_path.with_suffix('.db.pre_restore')
-                shutil.copy2(str(self.db_path), str(current_backup))
+                # Use asyncio.to_thread to avoid blocking the event loop
+                await asyncio.to_thread(shutil.copy2, str(self.db_path), str(current_backup))
                 logger.info(f"Created pre-restore backup: {current_backup}")
 
             # Restore from backup
-            shutil.copy2(str(backup_path), str(self.db_path))
+            # Use asyncio.to_thread to avoid blocking the event loop
+            await asyncio.to_thread(shutil.copy2, str(backup_path), str(self.db_path))
 
             logger.info(f"Restored database from backup: {filename}")
 
