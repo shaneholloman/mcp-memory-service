@@ -171,7 +171,7 @@ class BackupService:
                     'path': str(backup_file),
                     'size_bytes': stat.st_size,
                     'created_at': created_dt.isoformat(),
-                    'created_timestamp': stat.st_mtime,
+                    'created_timestamp': created_dt.timestamp(),
                     'age_days': (datetime.now(timezone.utc) - created_dt).days
                 })
 
@@ -234,8 +234,8 @@ class BackupService:
                         })
                         logger.error(f"Failed to remove backup {backup['filename']}: {e}")
 
-            # Update count
-            self.backup_count = len(self.list_backups())
+            # Update count more efficiently by subtracting removed count
+            self.backup_count = max(0, self.backup_count - len(removed))
 
         except Exception as e:
             logger.error(f"Error during backup cleanup: {e}")
