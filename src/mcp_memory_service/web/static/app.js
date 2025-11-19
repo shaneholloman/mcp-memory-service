@@ -1132,7 +1132,6 @@ class MemoryDashboard {
             } else if (syncStatus.status === 'pending') {
                 statusIcon.textContent = '⏱️';
                 statusText.textContent = 'Pending';
-                const nextSync = Math.ceil(syncStatus.next_sync_eta_seconds);
                 statusDetails.textContent = `${syncStatus.operations_pending} ops pending`;
                 syncWidget.className = 'sync-widget pending';
                 if (syncButton) syncButton.disabled = false;

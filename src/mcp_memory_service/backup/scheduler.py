@@ -52,7 +52,9 @@ class BackupService:
             db_path: Path to database file (defaults to SQLITE_VEC_PATH)
         """
         self.backups_dir = Path(backups_dir or BACKUPS_PATH)
-        self.db_path = Path(db_path) if db_path else (Path(SQLITE_VEC_PATH) if SQLITE_VEC_PATH else None)
+        # Determine database path with clear fallback logic
+        db_path_str = db_path or SQLITE_VEC_PATH
+        self.db_path = Path(db_path_str) if db_path_str else None
         self.last_backup_time: Optional[float] = None
         self.backup_count: int = 0
         self._lock = asyncio.Lock()  # Ensure thread-safe operations
