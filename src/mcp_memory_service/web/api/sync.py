@@ -44,6 +44,7 @@ class SyncStatusResponse(BaseModel):
     """Sync status response model."""
     is_hybrid: bool
     is_running: bool
+    is_paused: bool
     last_sync_time: float
     operations_pending: int
     operations_processed: int
@@ -80,6 +81,7 @@ async def get_sync_status(
         return SyncStatusResponse(
             is_hybrid=False,
             is_running=False,
+            is_paused=False,
             last_sync_time=0,
             operations_pending=0,
             operations_processed=0,
@@ -121,6 +123,7 @@ async def get_sync_status(
         return SyncStatusResponse(
             is_hybrid=True,
             is_running=is_running,
+            is_paused=sync_status.get('is_paused', not is_running),
             last_sync_time=last_sync,
             operations_pending=pending_ops,
             operations_processed=sync_status.get('operations_processed', 0),

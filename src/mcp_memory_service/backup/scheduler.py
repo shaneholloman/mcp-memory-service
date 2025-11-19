@@ -55,6 +55,7 @@ class BackupService:
         self.db_path = Path(db_path) if db_path else (Path(SQLITE_VEC_PATH) if SQLITE_VEC_PATH else None)
         self.last_backup_time: Optional[float] = None
         self.backup_count: int = 0
+        self._lock = asyncio.Lock()  # Ensure thread-safe operations
 
         # Ensure backup directory exists
         self.backups_dir.mkdir(parents=True, exist_ok=True)
@@ -94,57 +95,60 @@ class BackupService:
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }
 
-        try:
-            start_time = time.time()
+        async with self._lock:  # Ensure atomic operations
+            try:
+                start_time = time.time()
+                created_at = datetime.now(timezone.utc)
 
-            # Generate backup filename
-            backup_filename = self._generate_backup_filename()
-            backup_path = self.backups_dir / backup_filename
+                # Generate backup filename
+                backup_filename = self._generate_backup_filename()
+                backup_path = self.backups_dir / backup_filename
 
-            # Use SQLite's native backup API for safe, consistent backups
-            # This handles active database connections properly
-            def _do_backup():
-                source = sqlite3.connect(str(self.db_path))
-                dest = sqlite3.connect(str(backup_path))
-                try:
-                    source.backup(dest)
-                finally:
-                    source.close()
-                    dest.close()
+                # Use SQLite's native backup API for safe, consistent backups
+                # This handles active database connections properly
+                def _do_backup():
+                    source = sqlite3.connect(str(self.db_path))
+                    dest = sqlite3.connect(str(backup_path))
+                    try:
+                        source.backup(dest)
+                    finally:
+                        source.close()
+                        dest.close()
 
-            await asyncio.to_thread(_do_backup)
+                await asyncio.to_thread(_do_backup)
 
-            # Get backup size
-            backup_size = backup_path.stat().st_size
+                # Calculate backup duration (just the backup operation)
+                backup_duration = time.time() - start_time
 
-            # Update metadata
-            self.last_backup_time = time.time()
-            self.backup_count += 1
+                # Get backup size
+                backup_size = backup_path.stat().st_size
 
-            duration = time.time() - start_time
+                # Update metadata
+                self.last_backup_time = created_at.timestamp()
+                self.backup_count += 1
 
-            logger.info(f"Created backup: {backup_filename} ({backup_size} bytes) in {duration:.2f}s")
+                logger.info(f"Created backup: {backup_filename} ({backup_size} bytes) in {backup_duration:.2f}s")
 
-            # Cleanup old backups
-            await self.cleanup_old_backups()
+                # Cleanup old backups (outside of duration calculation)
+                await self.cleanup_old_backups()
 
-            return {
-                'success': True,
-                'filename': backup_filename,
-                'path': str(backup_path),
-                'size_bytes': backup_size,
-                'description': description,
-                'created_at': datetime.now(timezone.utc).isoformat(),
-                'duration_seconds': round(duration, 3)
-            }
+                return {
+                    'success': True,
+                    'filename': backup_filename,
+                    'path': str(backup_path),
+                    'size_bytes': backup_size,
+                    'description': description,
+                    'created_at': created_at.isoformat(),
+                    'duration_seconds': round(backup_duration, 3)
+                }
 
-        except Exception as e:
-            logger.error(f"Failed to create backup: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'timestamp': datetime.now(timezone.utc).isoformat()
-            }
+            except Exception as e:
+                logger.error(f"Failed to create backup: {e}")
+                return {
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                }
 
     def list_backups(self) -> List[Dict[str, Any]]:
         """List all available backups.
