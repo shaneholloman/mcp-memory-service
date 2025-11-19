@@ -221,8 +221,8 @@ class BackupService:
                     if created_dt < retention_cutoff:
                         should_remove = True
                         reason = f"older than {BACKUP_RETENTION} days"
-                except (ValueError, KeyError):
-                    pass
+                except (ValueError, KeyError) as e:
+                    logger.warning(f"Could not parse timestamp for backup {backup.get('filename', 'unknown')}: {e}")
 
                 if should_remove:
                     try:

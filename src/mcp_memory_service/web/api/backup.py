@@ -57,7 +57,6 @@ class BackupCreateResponse(BaseModel):
     """Backup creation response model."""
     success: bool
     filename: Optional[str] = None
-    path: Optional[str] = None
     size_bytes: Optional[int] = None
     created_at: Optional[str] = None
     duration_seconds: Optional[float] = None
@@ -67,7 +66,6 @@ class BackupCreateResponse(BaseModel):
 class BackupInfo(BaseModel):
     """Backup information model."""
     filename: str
-    path: str
     size_bytes: int
     created_at: str
     age_days: int
@@ -127,7 +125,6 @@ async def trigger_backup(
             return BackupCreateResponse(
                 success=True,
                 filename=result.get('filename'),
-                path=result.get('path'),
                 size_bytes=result.get('size_bytes'),
                 created_at=result.get('created_at'),
                 duration_seconds=result.get('duration_seconds')
@@ -158,7 +155,6 @@ async def list_backups(
         backup_infos = [
             BackupInfo(
                 filename=b['filename'],
-                path=b['path'],
                 size_bytes=b['size_bytes'],
                 created_at=b['created_at'],
                 age_days=b['age_days']
