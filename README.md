@@ -23,16 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.27.2** (Nov 18, 2025)
+### 🆕 Latest Release: **v8.28.0** (Nov 21, 2025)
 
-**Bug Fix: Memory Type Preservation in Sync Script**
+**New Feature: Cloudflare AND/OR Tag Filtering**
 
-- 🐛 **Fixed memory_type loss** - Sync script now preserves `memory_type` during cf-to-sqlite sync
-- 📊 **Dashboard analytics restored** - No more 100% "untyped" memories after sync
-- 🔄 **Recovery**: Re-run sync from Cloudflare to restore memory types
-- ✅ **Zero breaking changes** - Drop-in fix for sync script users
+- 🏷️ **Unified tag search API** - `search_by_tags(tags, operation, time_start, time_end)` across all backends
+- 🔍 **AND/OR operations** - Flexible tag filtering with semantic operators (find memories with ALL or ANY tags)
+- ⚡ **3-5x faster hybrid sync** - Parallel processing + bulk existence checks (15-30 memories/sec vs 5.5)
+- ☁️ **Cloudflare optimization** - `GROUP BY` + `HAVING COUNT(DISTINCT)` for AND semantics with time ranges
+- 🎯 **Dashboard analytics** - `get_all_tags_with_counts()` powers tag analytics without extra queries
 
 **Previous Releases**:
+- **v8.27.2** - Bug Fix: Memory Type Preservation in Sync Script (cf-to-sqlite recovery)
 - **v8.27.1** - Critical Hotfix: Timestamp Regression (created_at preservation during metadata sync)
 - **v8.26.0** - Revolutionary MCP Performance (534,628x faster tools, 90%+ cache hit rate)
 - **v8.25.0** - Hybrid Backend Drift Detection (automatic metadata sync, bidirectional awareness)

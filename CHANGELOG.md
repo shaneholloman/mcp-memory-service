@@ -76,7 +76,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Analyzes timestamp distribution for anomalies
   - Provides detailed statistics and warnings
 
-## [8.27.0] - 2025-11-17
+## [8.28.0] - 2025-11-21
 
 ### Added
 - **Cloudflare Tag Filtering** - AND/OR operations for tag searches with unified API contracts (#228)
