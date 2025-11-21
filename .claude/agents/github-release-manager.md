@@ -143,22 +143,37 @@ When creating pull requests:
    - Determine appropriate version bump
    - Check for open issues that will be resolved
 
-2. **Version Bump**:
-   - Update `src/mcp_memory_service/__init__.py`
-   - Update `pyproject.toml`
-   - Run `uv lock` to update lock file
-   - Commit with message: "chore: bump version to v{version}"
+2. **Four-File Version Bump Procedure**:
+   - Update `src/mcp_memory_service/__init__.py` (line 50: `__version__ = "X.Y.Z"`)
+   - Update `pyproject.toml` (line 7: `version = "X.Y.Z"`)
+   - Update `README.md` "Latest Release" section (documented in step 3b below)
+   - Run `uv lock` to update dependency lock file
+   - Commit ALL FOUR files together: `git commit -m "chore: release vX.Y.Z"`
+
+   **CRITICAL**: All four files must be updated in single commit for version consistency
 
 3. **Documentation Updates** (CRITICAL - Must be done in correct order):
 
-   a. **CHANGELOG.md**:
+   a. **CHANGELOG.md Validation** (FIRST - Before any edits):
+      - Run: `grep -n "^## \[" CHANGELOG.md | head -10`
+      - Verify no duplicate version sections
+      - Confirm newest version will be at top (after [Unreleased])
+      - If PR merged with incorrect CHANGELOG:
+        - FIX IMMEDIATELY before proceeding
+        - Create separate commit: "docs: fix CHANGELOG structure"
+        - DO NOT include fixes in release commit
+      - See "CHANGELOG Validation Protocol" section for full validation commands
+
+   b. **CHANGELOG.md Content**:
       - **FIRST**: Check for `## [Unreleased]` section
       - If found, move ALL unreleased entries into the new version section
       - Add new version entry following project format: `## [x.y.z] - YYYY-MM-DD`
       - Ensure empty `## [Unreleased]` section remains at top
       - Verify all changes from commits are documented
+      - **VERIFY**: New version positioned immediately after [Unreleased]
+      - **VERIFY**: No duplicate content from previous versions
 
-   b. **README.md**:
+   c. **README.md**:
       - **ALWAYS update** the "Latest Release" section near top of file
       - Update version number: `### 🆕 Latest Release: **vX.Y.Z** (Mon DD, YYYY)`
       - Update "What's New" bullet points with CHANGELOG highlights
@@ -171,14 +186,14 @@ When creating pull requests:
         - Maintain 5-6 most recent releases, remove oldest if list gets long
         - Example: `- **v8.24.1** - Test Infrastructure Improvements (27 test failures resolved, 63% → 71% pass rate)`
 
-   c. **CLAUDE.md**:
+   d. **CLAUDE.md**:
       - **ALWAYS update** version reference in Overview section (line ~13): `> **vX.Y.Z**: Brief description...`
       - Add version callout in Overview section if significant changes
       - Update "Essential Commands" if new scripts/commands added
       - Update "Database Maintenance" section for new maintenance utilities
       - Update any workflow documentation affected by changes
 
-   d. **Commit**:
+   e. **Commit**:
       - Commit message: "docs: update CHANGELOG, README, and CLAUDE.md for v{version}"
 
 4. **Branch and PR Management**:
@@ -202,19 +217,88 @@ When creating pull requests:
 
    **WARNING**: Do NOT create the tag before merging to main. Tags must point to main branch commits, not develop branch commits. Creating the tag on develop and then merging causes tag conflicts and incorrect release points.
 
-6. **Post-Release Actions**:
+6. **Post-Merge Validation** (CRITICAL - Before creating tag):
+   - **Validate CHANGELOG Structure**:
+     - Run: `grep -n "^## \[" CHANGELOG.md | head -10`
+     - Verify each version appears exactly once
+     - Confirm newest version at top (after [Unreleased])
+     - Check no duplicate content between versions
+   - **If CHANGELOG Issues Found**:
+     - Create hotfix commit: `git commit -m "docs: fix CHANGELOG structure"`
+     - Push fix: `git push origin main`
+     - DO NOT proceed with tag creation until CHANGELOG is correct
+   - **Verify Version Consistency**:
+     - Check all four files have matching version (init.py, pyproject.toml, README.md, uv.lock)
+     - Confirm git history shows clean merge to main
+   - **Only After Validation**: Proceed to create tag in step 5 above
+
+7. **Post-Release Actions**:
    - Verify GitHub Actions workflows (Docker Publish, Publish and Test, HTTP-MCP Bridge)
    - Retrieve related issues using memory service
    - Close resolved issues with grateful comments
    - Update project board/milestones
 
+## CHANGELOG Validation Protocol (CRITICAL)
+
+Before ANY release or documentation commit, ALWAYS validate CHANGELOG.md structure:
+
+**Validation Commands**:
+```bash
+# 1. Check for duplicate version headers
+grep -n "^## \[8\." CHANGELOG.md | sort
+# Should show each version EXACTLY ONCE
+
+# 2. Verify chronological order (newest first)
+grep "^## \[" CHANGELOG.md | head -10
+# First should be [Unreleased], second should be highest version number
+
+# 3. Detect content duplication across versions
+grep -c "Hybrid Storage Sync" CHANGELOG.md
+# Count should match number of versions that include this feature
+```
+
+**Validation Rules**:
+- [ ] Each version appears EXACTLY ONCE
+- [ ] Newest version immediately after `## [Unreleased]`
+- [ ] Versions in reverse chronological order (8.28.0 > 8.27.2 > 8.27.1...)
+- [ ] No content duplicated from other versions
+- [ ] New PR entries contain ONLY their own changes
+
+**Common Mistakes to Detect** (learned from PR #228 / v8.28.0):
+1. **Content Duplication**: PR copies entire previous version section
+   - Example: PR #228 copied all v8.27.0 content instead of just adding Cloudflare Tag Filtering
+   - Detection: grep for feature names, should not appear in multiple versions
+2. **Incorrect Position**: New version positioned in middle instead of top
+   - Example: v8.28.0 appeared after v8.27.1 instead of at top
+   - Detection: Second line after [Unreleased] must be newest version
+3. **Duplicate Sections**: Same version appears multiple times
+   - Detection: `grep "^## \[X.Y.Z\]" CHANGELOG.md` should return 1 line
+4. **Date Format**: Inconsistent date format
+   - Must be YYYY-MM-DD
+
+**If Issues Found**:
+1. Remove duplicate sections completely
+2. Move new version to correct position (immediately after [Unreleased])
+3. Strip content that belongs to other versions
+4. Verify chronological order with grep
+5. Commit fix separately: `git commit -m "docs: fix CHANGELOG structure"`
+
+**Post-Merge Validation** (Before creating tag):
+- Run all validation commands above
+- If CHANGELOG issues found, create hotfix commit before tagging
+- DO NOT proceed with tag/release until CHANGELOG is structurally correct
+
 ## Quality Assurance
 
 **Self-Verification Checklist**:
 - [ ] Version follows semantic versioning strictly
-- [ ] All three version files updated (init, pyproject, lock)
+- [ ] All four version files updated (init, pyproject, README, lock)
 - [ ] **CHANGELOG.md**: `[Unreleased]` section collected and moved to version entry
 - [ ] **CHANGELOG.md**: Entry is detailed and well-formatted
+- [ ] **CHANGELOG.md**: No duplicate version sections (verified with grep)
+- [ ] **CHANGELOG.md**: Versions in reverse chronological order (newest first)
+- [ ] **CHANGELOG.md**: New version positioned immediately after [Unreleased]
+- [ ] **CHANGELOG.md**: No content duplicated from previous versions
 - [ ] **README.md**: "Latest Release" section updated with version and highlights
 - [ ] **README.md**: Previous version added to "Previous Releases" list (top position)
 - [ ] **CLAUDE.md**: New commands/utilities documented in appropriate sections
