@@ -556,37 +556,83 @@ class CloudflareStorage(MemoryStorage):
         
         return []
     
+    async def search_by_tags(
+        self,
+        tags: List[str],
+        operation: str = "AND",
+        time_start: Optional[float] = None,
+        time_end: Optional[float] = None
+    ) -> List[Memory]:
+        """Search memories by tags with AND/OR semantics and optional time filtering."""
+        return await self._search_by_tags_internal(
+            tags=tags,
+            operation=operation,
+            time_start=time_start,
+            time_end=time_end
+        )
+
     async def search_by_tag(self, tags: List[str], time_start: Optional[float] = None) -> List[Memory]:
-        """Search memories by tags with optional time filtering.
+        """Search memories by tags with optional time filtering (legacy OR behavior)."""
+        return await self._search_by_tags_internal(
+            tags=tags,
+            operation="OR",
+            time_start=time_start,
+            time_end=None
+        )
 
-        Args:
-            tags: List of tags to search for
-            time_start: Optional Unix timestamp (in seconds) to filter memories created after this time
-
-        Returns:
-            List of Memory objects matching the tag criteria and time filter
-        """
+    async def _search_by_tags_internal(
+        self,
+        tags: List[str],
+        operation: Optional[str] = None,
+        time_start: Optional[float] = None,
+        time_end: Optional[float] = None
+    ) -> List[Memory]:
+        """Shared implementation for tag-based queries with optional time filtering."""
         try:
             if not tags:
                 return []
 
-            # Build SQL query for tag search
-            placeholders = ",".join(["?"] * len(tags))
-            params = list(tags)
-            where_conditions = [f"t.name IN ({placeholders})"]
+            # Normalize tags (deduplicate, drop empty strings)
+            deduped_tags = list(dict.fromkeys([tag for tag in tags if tag]))
+            if not deduped_tags:
+                return []
 
-            # Add time filter if provided
-            if time_start is not None:
-                where_conditions.append("m.created_at >= ?")
-                params.append(time_start)
+            if isinstance(operation, str):
+                normalized_operation = operation.strip().upper() or "AND"
+            else:
+                normalized_operation = "AND"
+
+            if normalized_operation not in {"AND", "OR"}:
+                logger.warning(
+                    "Unsupported tag search operation '%s'; defaulting to AND",
+                    operation
+                )
+                normalized_operation = "AND"
+
+            placeholders = ",".join(["?"] * len(deduped_tags))
+            params: List[Any] = list(deduped_tags)
 
             sql = (
-                "SELECT DISTINCT m.* FROM memories m "
+                "SELECT m.* FROM memories m "
                 "JOIN memory_tags mt ON m.id = mt.memory_id "
                 "JOIN tags t ON mt.tag_id = t.id "
-                f"WHERE {' AND '.join(where_conditions)} "
-                "ORDER BY m.created_at DESC"
+                f"WHERE t.name IN ({placeholders})"
             )
+
+            if time_start is not None:
+                sql += " AND m.created_at >= ?"
+                params.append(time_start)
+            if time_end is not None:
+                sql += " AND m.created_at <= ?"
+                params.append(time_end)
+
+            sql += " GROUP BY m.id"
+
+            if normalized_operation == "AND":
+                sql += " HAVING COUNT(DISTINCT t.name) = ?"
+                params.append(len(deduped_tags))
+
+            sql += " ORDER BY m.created_at DESC"
 
             payload = {"sql": sql, "params": params}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
@@ -595,18 +641,29 @@ class CloudflareStorage(MemoryStorage):
             if not result.get("success"):
                 raise ValueError(f"D1 tag search failed: {result}")
 
-            memories = []
-            if result.get("result", [{}])[0].get("results"):
-                for row in result["result"][0]["results"]:
-                    memory = await self._load_memory_from_row(row)
-                    if memory:
-                        memories.append(memory)
+            rows = result.get("result", [{}])[0].get("results") or []
+            memories: List[Memory] = []
 
-            logger.info(f"Found {len(memories)} memories with tags: {tags}")
+            for row in rows:
+                memory = await self._load_memory_from_row(row)
+                if memory:
+                    memories.append(memory)
+
+            logger.info(
+                "Found %d memories with tags: %s (operation: %s)",
+                len(memories),
+                deduped_tags,
+                normalized_operation
+            )
             return memories
 
         except Exception as e:
-            logger.error(f"Failed to search by tags: {e}")
+            logger.error(
+                "Failed to search memories by tags %s with operation %s: %s",
+                tags,
+                operation,
+                e
+            )
             return []
     
     async def _load_memory_from_row(self, row: Dict[str, Any]) -> Optional[Memory]:
@@ -975,14 +1032,37 @@ class CloudflareStorage(MemoryStorage):
             payload = {"sql": sql}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
             result = response.json()
-            
+
             if result.get("success") and result.get("result", [{}])[0].get("results"):
                 return [row["name"] for row in result["result"][0]["results"]]
-            
+
             return []
-            
+
         except Exception as e:
             logger.error(f"Failed to get all tags: {e}")
+            return []
+
+    async def get_all_tags_with_counts(self) -> List[Dict[str, Any]]:
+        """Get all tags with their usage counts."""
+        try:
+            sql = """
+                SELECT t.name as tag, COUNT(mt.memory_id) as count
+                FROM tags t
+                LEFT JOIN memory_tags mt ON t.id = mt.tag_id
+                GROUP BY t.id
+                ORDER BY count DESC, t.name ASC
+            """
+            payload = {"sql": sql}
+            response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+            result = response.json()
+
+            if result.get("success") and result.get("result", [{}])[0].get("results"):
+                return [row for row in result["result"][0]["results"]]
+
+            return []
+
+        except Exception as e:
+            logger.error(f"Failed to get tags with counts: {e}")
             return []
     
     async def get_recent_memories(self, n: int = 10) -> List[Memory]:
@@ -1229,36 +1309,50 @@ class CloudflareStorage(MemoryStorage):
         """
         try:
             # Build SQL query with optional memory_type and tags filters
-            sql = "SELECT * FROM memories"
-            params = []
+            sql = "SELECT m.* FROM memories m"
+            joins = ""
             where_conditions = []
+            params: List[Any] = []
 
-            # Add memory_type filter if specified
             if memory_type is not None:
-                where_conditions.append("memory_type = ?")
+                where_conditions.append("m.memory_type = ?")
                 params.append(memory_type)
 
-            # Add tags filter if specified (using LIKE for tag matching)
-            if tags and len(tags) > 0:
-                tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
-                where_conditions.append(f"({tag_conditions})")
-                params.extend([f"%{tag}%" for tag in tags])
+            tag_count = 0
+            if tags:
+                tag_count = len(tags)
+                placeholders = ",".join(["?"] * tag_count)
+                joins += " " + """
+                    INNER JOIN memory_tags mt ON m.id = mt.memory_id
+                    INNER JOIN tags t ON mt.tag_id = t.id
+                """.strip().replace("\n", " ")
+                where_conditions.append(f"t.name IN ({placeholders})")
+                params.extend(tags)
 
-            # Apply WHERE clause if we have any conditions
+            if joins:
+                sql += joins
+
             if where_conditions:
                 sql += " WHERE " + " AND ".join(where_conditions)
 
-            sql += " ORDER BY created_at DESC"
+            if tags:
+                sql += " GROUP BY m.id HAVING COUNT(DISTINCT t.name) = ?"
+
+            sql += " ORDER BY m.created_at DESC"
+
+            query_params = params.copy()
+            if tags:
+                query_params.append(tag_count)
 
             if limit is not None:
                 sql += " LIMIT ?"
-                params.append(limit)
+                query_params.append(limit)
 
             if offset > 0:
                 sql += " OFFSET ?"
-                params.append(offset)
+                query_params.append(offset)
 
-            payload = {"sql": sql, "params": params}
+            payload = {"sql": sql, "params": query_params}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
             result = response.json()
 
@@ -1470,28 +1564,40 @@ class CloudflareStorage(MemoryStorage):
         """
         try:
             # Build query with filters
+            base_sql = "SELECT m.id FROM memories m"
+            joins = ""
             conditions = []
-            params = []
+            params: List[Any] = []
 
             if memory_type is not None:
-                conditions.append('memory_type = ?')
+                conditions.append('m.memory_type = ?')
                 params.append(memory_type)
 
+            tag_count = 0
             if tags:
-                # Filter by tags - match ANY tag (OR logic)
-                tag_conditions = ' OR '.join(['tags LIKE ?' for _ in tags])
-                conditions.append(f'({tag_conditions})')
-                # Add each tag with wildcards for LIKE matching
-                for tag in tags:
-                    params.append(f'%{tag}%')
+                tag_count = len(tags)
+                placeholders = ','.join(['?'] * tag_count)
+                joins += " " + """
+                    INNER JOIN memory_tags mt ON m.id = mt.memory_id
+                    INNER JOIN tags t ON mt.tag_id = t.id
+                """.strip().replace("\n", " ")
+                conditions.append(f't.name IN ({placeholders})')
+                params.extend(tags)
 
-            # Build final query
+            sql = base_sql + joins
             if conditions:
-                sql = 'SELECT COUNT(*) as count FROM memories WHERE ' + ' AND '.join(conditions)
-            else:
-                sql = 'SELECT COUNT(*) as count FROM memories'
+                sql += ' WHERE ' + ' AND '.join(conditions)
 
-            payload = {"sql": sql, "params": params}
+            if tags:
+                sql += ' GROUP BY m.id HAVING COUNT(DISTINCT t.name) = ?'
+
+            count_sql = f'SELECT COUNT(*) as count FROM ({sql}) AS subquery'
+
+            count_params = params.copy()
+            if tags:
+                count_params.append(tag_count)
+
+            payload = {"sql": count_sql, "params": count_params}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
             result = response.json()
 
