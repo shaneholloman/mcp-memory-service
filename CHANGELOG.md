@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.28.0] - 2025-11-21
+
+### Added
+- **Cloudflare Tag Filtering** - AND/OR operations for tag searches with unified API contracts (#228)
+  - Added `search_by_tags(tags, operation, time_start, time_end)` to the storage base class and implemented it across SQLite, Cloudflare, Hybrid, and HTTP client backends
+  - Normalized Cloudflare SQL to use `GROUP BY` + `HAVING COUNT(DISTINCT ...)` for AND semantics while supporting optional time ranges
+  - Introduced `get_all_tags_with_counts()` for Cloudflare to power analytics dashboards without extra queries
+
+### Changed
+- **Tag Filtering Behavior** - `get_all_memories(tags=...)` now performs exact tag comparisons with AND logic instead of substring OR matching, and hybrid storage exposes the same `operation` parameter for parity across backends.
+
 ## [8.27.2] - 2025-11-18
 
 ### Fixed
@@ -75,17 +86,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Detects suspicious timestamp clusters (bulk reset indicators)
   - Analyzes timestamp distribution for anomalies
   - Provides detailed statistics and warnings
-
-## [8.28.0] - 2025-11-21
-
-### Added
-- **Cloudflare Tag Filtering** - AND/OR operations for tag searches with unified API contracts (#228)
-  - Added `search_by_tags(tags, operation, time_start, time_end)` to the storage base class and implemented it across SQLite, Cloudflare, Hybrid, and HTTP client backends
-  - Normalized Cloudflare SQL to use `GROUP BY` + `HAVING COUNT(DISTINCT ...)` for AND semantics while supporting optional time ranges
-  - Introduced `get_all_tags_with_counts()` for Cloudflare to power analytics dashboards without extra queries
-
-### Changed
-- **Tag Filtering Behavior** - `get_all_memories(tags=...)` now performs exact tag comparisons with AND logic instead of substring OR matching, and hybrid storage exposes the same `operation` parameter for parity across backends.
 
 ## [8.27.0] - 2025-11-17
 
