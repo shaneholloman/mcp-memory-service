@@ -1058,6 +1058,12 @@ class MemoryDashboard {
      * Check hybrid backend sync status
      */
     async checkSyncStatus() {
+        // Skip UI updates during force sync to prevent periodic polling from overwriting the syncing state
+        if (this._isForceSyncing) {
+            console.log('⏸️  Skipping checkSyncStatus UI update during force sync');
+            return;
+        }
+
         try {
             const syncStatus = await this.apiCall('/sync/status');
 
@@ -1343,9 +1349,12 @@ class MemoryDashboard {
             const statusBefore = await this.apiCall('/sync/status');
             const wasPaused = statusBefore.is_paused;
 
-            // Disable button and show loading state
+            // Set flag to prevent periodic polling from overwriting UI during force sync
+            this._isForceSyncing = true;
+
+            // Disable button and show loading state (just egg timer, no text - widget shows "Syncing")
             syncButton.disabled = true;
-            syncButton.innerHTML = '<span class="sync-button-icon">⏳</span><span class="sync-button-text">Syncing</span>';
+            syncButton.innerHTML = '<span class="sync-button-icon">⏳</span>';
 
             // IMMEDIATELY update sync control widget to show syncing state
             const statusText = document.getElementById('syncStatusText');
@@ -1355,6 +1364,9 @@ class MemoryDashboard {
             if (statusText) statusText.textContent = 'Syncing';
             if (syncProgress) syncProgress.textContent = statusBefore.operations_pending > 0 ? `${statusBefore.operations_pending} pending` : '';
             if (syncControl) syncControl.className = 'sync-control-compact syncing';
+
+            // Show toast when sync starts
+            this.showToast('Starting sync...', 'info');
 
             const result = await this.apiCall('/sync/force', 'POST');
 
@@ -1378,6 +1390,9 @@ class MemoryDashboard {
             console.error('Error forcing sync:', error);
             this.showToast('Failed to force sync: ' + error.message, 'error');
         } finally {
+            // Clear flag to allow periodic polling to resume
+            this._isForceSyncing = false;
+
             // Re-enable button
             syncButton.disabled = false;
             syncButton.innerHTML = originalText;
