@@ -87,6 +87,11 @@ claude_config/claude_desktop_config.json
 # Remove these if mistakenly included
 =1.0.0,
 =11.0.3
+=*.*.*
+**vX.Y.Z**
+**vX.Y.Z**:
+timestamp
+updated_at
 
 # Logs and debugging
 *.log
