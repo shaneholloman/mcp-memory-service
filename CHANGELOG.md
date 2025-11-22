@@ -10,6 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.28.1] - 2025-11-22
+
+### Fixed
+- **CRITICAL: HTTP MCP Transport JSON-RPC 2.0 Compliance** - Fixed protocol violation causing Claude Code rejection (#236)
+  - **Problem**: HTTP MCP server returned `"error": null` in successful responses, violating JSON-RPC 2.0 spec which requires successful responses to OMIT the error field entirely (not include it as null)
+  - **Impact**: Claude Code's strict schema validation rejected all HTTP MCP responses with "Unrecognized key(s) in object: 'error'" errors, making HTTP transport completely unusable
+  - **Root Cause**: MCPResponse Pydantic model included both `result` and `error` fields in all responses, serializing null values
+  - **Solution**:
+    - Added `ConfigDict(exclude_none=True)` to MCPResponse model to exclude null fields from serialization
+    - Updated docstring to document JSON-RPC 2.0 compliance requirements
+    - Replaced deprecated `.dict()` with `.model_dump()` for Pydantic V2 compatibility
+    - Moved json import to top of file per PEP 8 style guidelines
+  - **Files Modified**:
+    - `src/mcp_memory_service/web/api/mcp.py` - Added ConfigDict, updated serialization
+  - **Affected Users**: All users attempting to use HTTP MCP transport with Claude Code or other strict JSON-RPC 2.0 clients
+  - **Testing**: Verified successful responses exclude `error` field and error responses exclude `result` field
+  - **Credits**: Thanks to @timkjr for identifying the issue and providing the fix
+
 ## [8.28.0] - 2025-11-21
 
 ### Added

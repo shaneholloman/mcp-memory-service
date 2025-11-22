@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.28.0** (Nov 21, 2025)
+### 🆕 Latest Release: **v8.28.1** (Nov 22, 2025)
 
-**New Feature: Cloudflare AND/OR Tag Filtering**
+**Critical Bug Fix: HTTP MCP Transport JSON-RPC 2.0 Compliance**
 
-- 🏷️ **Unified tag search API** - `search_by_tags(tags, operation, time_start, time_end)` across all backends
-- 🔍 **AND/OR operations** - Flexible tag filtering with semantic operators (find memories with ALL or ANY tags)
-- ⚡ **3-5x faster hybrid sync** - Parallel processing + bulk existence checks (15-30 memories/sec vs 5.5)
-- ☁️ **Cloudflare optimization** - `GROUP BY` + `HAVING COUNT(DISTINCT)` for AND semantics with time ranges
-- 🎯 **Dashboard analytics** - `get_all_tags_with_counts()` powers tag analytics without extra queries
+- 🔧 **Fixed HTTP transport** - Resolved "Unrecognized key(s) in object: 'error'" errors in Claude Code
+- ✅ **JSON-RPC 2.0 compliance** - Successful responses now correctly omit `error` field (not null)
+- 🚀 **Pydantic V2 migration** - Replaced deprecated `.dict()` with `.model_dump()` methods
+- 📝 **Enhanced documentation** - Added JSON-RPC spec compliance notes to MCPResponse model
+- 🙏 **Community contribution** - Thanks to @timkjr for identifying and fixing this critical issue
 
 **Previous Releases**:
+- **v8.28.0** - Cloudflare AND/OR Tag Filtering (unified search API, 3-5x faster hybrid sync)
 - **v8.27.2** - Bug Fix: Memory Type Preservation in Sync Script (cf-to-sqlite recovery)
 - **v8.27.1** - Critical Hotfix: Timestamp Regression (created_at preservation during metadata sync)
 - **v8.26.0** - Revolutionary MCP Performance (534,628x faster tools, 90%+ cache hit rate)
