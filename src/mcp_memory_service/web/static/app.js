@@ -3,6 +3,8 @@
  * Interactive frontend for memory management with real-time updates
  */
 
+console.log('⚡ app.js loading - TOP OF FILE');
+
 class MemoryDashboard {
     // Delay between individual file uploads to avoid overwhelming the server (ms)
     static INDIVIDUAL_UPLOAD_DELAY = 500;
@@ -111,6 +113,7 @@ class MemoryDashboard {
      * Set up event listeners for UI interactions
      */
     setupEventListeners() {
+        console.log('⚡ setupEventListeners() called');
         // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', this.handleNavigation);
@@ -701,29 +704,8 @@ class MemoryDashboard {
             });
         });
 
-        // Force sync button
-        const forceSyncButton = document.getElementById('forceSyncButton');
-        if (forceSyncButton) {
-            forceSyncButton.addEventListener('click', () => {
-                this.forceSync();
-            });
-        }
-
-        // Pause sync button
-        const pauseSyncButton = document.getElementById('pauseSyncButton');
-        if (pauseSyncButton) {
-            pauseSyncButton.addEventListener('click', () => {
-                this.pauseSync();
-            });
-        }
-
-        // Resume sync button
-        const resumeSyncButton = document.getElementById('resumeSyncButton');
-        if (resumeSyncButton) {
-            resumeSyncButton.addEventListener('click', () => {
-                this.resumeSync();
-            });
-        }
+        // Sync buttons event listeners are attached in checkSyncStatus()
+        // after buttons are confirmed to be accessible in the DOM
 
         // Backup now button
         const backupNowButton = document.getElementById('backupNowButton');
@@ -1107,17 +1089,56 @@ class MemoryDashboard {
 
             // Update pause/resume button visibility based on running state
             const isPaused = syncStatus.is_paused || !syncStatus.is_running;
-            if (pauseButton) pauseButton.style.display = isPaused ? 'none' : 'flex';
-            if (resumeButton) resumeButton.style.display = isPaused ? 'flex' : 'none';
+            console.log('🔍 DEBUG: isPaused =', isPaused, '(is_paused:', syncStatus.is_paused, 'is_running:', syncStatus.is_running, ')');
+            console.log('🔍 DEBUG: pauseButton found:', !!pauseButton, 'resumeButton found:', !!resumeButton);
+
+            // Attach event listeners if not already attached
+            if (pauseButton && !pauseButton._listenerAttached) {
+                console.log('📌 Attaching click listener to pauseSyncButton (from checkSyncStatus)');
+                pauseButton.addEventListener('click', () => {
+                    console.log('📌 Pause button clicked!');
+                    this.pauseSync();
+                });
+                pauseButton._listenerAttached = true;
+            }
+            if (resumeButton && !resumeButton._listenerAttached) {
+                console.log('📌 Attaching click listener to resumeSyncButton (from checkSyncStatus)');
+                resumeButton.addEventListener('click', () => {
+                    console.log('📌 Resume button clicked!');
+                    this.resumeSync();
+                });
+                resumeButton._listenerAttached = true;
+            }
+            if (syncButton && !syncButton._listenerAttached) {
+                console.log('📌 Attaching click listener to forceSyncButton (from checkSyncStatus)');
+                syncButton.addEventListener('click', () => {
+                    console.log('📌 Force sync button clicked!');
+                    this.forceSync();
+                });
+                syncButton._listenerAttached = true;
+            }
+
+            if (pauseButton) {
+                const newDisplay = isPaused ? 'none' : 'flex';
+                console.log('🔍 DEBUG: Setting pauseButton.style.display =', newDisplay);
+                pauseButton.style.display = newDisplay;
+            }
+            if (resumeButton) {
+                const newDisplay = isPaused ? 'flex' : 'none';
+                console.log('🔍 DEBUG: Setting resumeButton.style.display =', newDisplay);
+                resumeButton.style.display = newDisplay;
+            }
 
             // Determine status and update UI (dot color is handled by CSS classes)
             if (isPaused) {
+                console.log('🔍 DEBUG: Applying PAUSED state - setting className to "sync-control-compact paused"');
                 statusText.textContent = 'Paused';
                 syncProgress.textContent = '';
                 syncControl.className = 'sync-control-compact paused';
+                console.log('🔍 DEBUG: syncControl.className is now:', syncControl.className);
                 if (syncButton) syncButton.disabled = true;
             } else if (syncStatus.status === 'syncing') {
-                statusText.textContent = 'Syncing...';
+                statusText.textContent = 'Syncing';
                 syncProgress.textContent = syncStatus.operations_pending > 0 ? `${syncStatus.operations_pending} pending` : '';
                 syncControl.className = 'sync-control-compact syncing';
                 if (syncButton) syncButton.disabled = true;
@@ -1161,10 +1182,28 @@ class MemoryDashboard {
      * Pause background sync
      */
     async pauseSync() {
+        console.log('🚀 pauseSync() called');
         try {
+            console.log('🚀 Calling /sync/pause API...');
             const result = await this.apiCall('/sync/pause', 'POST');
+            console.log('🚀 API result:', result);
             if (result.success) {
+                console.log('🚀 Pause successful, updating UI immediately');
                 this.showToast('Sync paused', 'success');
+
+                // Update UI immediately using API response data
+                const pauseButton = document.getElementById('pauseSyncButton');
+                const resumeButton = document.getElementById('resumeSyncButton');
+                const statusText = document.getElementById('syncStatusText');
+                const syncControl = document.getElementById('syncControl');
+
+                if (pauseButton) pauseButton.style.display = 'none';
+                if (resumeButton) resumeButton.style.display = 'flex';
+                if (statusText) statusText.textContent = 'Paused';
+                if (syncControl) syncControl.className = 'sync-control-compact paused';
+
+                // Small delay to allow backend state to propagate before checking status
+                await new Promise(resolve => setTimeout(resolve, 200));
             } else {
                 this.showToast('Failed to pause sync: ' + result.message, 'error');
             }
@@ -1183,6 +1222,20 @@ class MemoryDashboard {
             const result = await this.apiCall('/sync/resume', 'POST');
             if (result.success) {
                 this.showToast('Sync resumed', 'success');
+
+                // Update UI immediately using API response data
+                const pauseButton = document.getElementById('pauseSyncButton');
+                const resumeButton = document.getElementById('resumeSyncButton');
+                const statusText = document.getElementById('syncStatusText');
+                const syncControl = document.getElementById('syncControl');
+
+                if (pauseButton) pauseButton.style.display = 'flex';
+                if (resumeButton) resumeButton.style.display = 'none';
+                if (statusText) statusText.textContent = 'Synced';
+                if (syncControl) syncControl.className = 'sync-control-compact synced';
+
+                // Small delay to allow backend state to propagate before checking status
+                await new Promise(resolve => setTimeout(resolve, 200));
             } else {
                 this.showToast('Failed to resume sync: ' + result.message, 'error');
             }
@@ -1286,9 +1339,22 @@ class MemoryDashboard {
         const originalText = syncButton.innerHTML;
 
         try {
+            // Check if sync was paused before force sync
+            const statusBefore = await this.apiCall('/sync/status');
+            const wasPaused = statusBefore.is_paused;
+
             // Disable button and show loading state
             syncButton.disabled = true;
-            syncButton.innerHTML = '<span class="sync-button-icon">⏳</span><span class="sync-button-text">Syncing...</span>';
+            syncButton.innerHTML = '<span class="sync-button-icon">⏳</span><span class="sync-button-text">Syncing</span>';
+
+            // IMMEDIATELY update sync control widget to show syncing state
+            const statusText = document.getElementById('syncStatusText');
+            const syncProgress = document.getElementById('syncProgress');
+            const syncControl = document.getElementById('syncControl');
+
+            if (statusText) statusText.textContent = 'Syncing';
+            if (syncProgress) syncProgress.textContent = statusBefore.operations_pending > 0 ? `${statusBefore.operations_pending} pending` : '';
+            if (syncControl) syncControl.className = 'sync-control-compact syncing';
 
             const result = await this.apiCall('/sync/force', 'POST');
 
@@ -1298,6 +1364,11 @@ class MemoryDashboard {
                 // Refresh dashboard data to show newly synced memories
                 if (this.currentView === 'dashboard') {
                     await this.loadDashboardData();
+                }
+
+                // If sync was paused before, pause it again after force sync
+                if (wasPaused) {
+                    await this.apiCall('/sync/pause', 'POST');
                 }
             } else {
                 this.showToast('Sync failed: ' + result.message, 'error');
@@ -4042,8 +4113,11 @@ This action cannot be undone. Are you sure?`);
 }
 
 // Initialize the application when DOM is ready
+console.log('⚡ Registering DOMContentLoaded listener');
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('⚡ DOMContentLoaded fired - Creating MemoryDashboard instance');
     window.app = new MemoryDashboard();
+    console.log('⚡ MemoryDashboard created, window.app =', window.app);
 });
 
 // Cleanup on page unload

@@ -626,7 +626,7 @@ h3 { font-size: var(--text-xl); }
 
 .sync-control-compact.syncing .sync-dot {
     background: var(--primary);
-    animation: pulse 1.5s ease-in-out infinite;
+    animation: spinner 1s linear infinite;
 }
 
 .sync-control-compact.pending {
@@ -656,6 +656,11 @@ h3 { font-size: var(--text-xl); }
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+}
+
+@keyframes spinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Backup Settings in Modal */
