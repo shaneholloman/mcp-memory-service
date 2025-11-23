@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.29.0**: **Dashboard Quick Actions: Sync Controls & Automatic Backups** - Real-time sync controls widget (pause/resume/force sync) in Quick Actions sidebar for hybrid backend users. Enterprise-grade automatic scheduled backup system with SQLite native API, retention policies (days + max count), and OAuth-protected endpoints. Clean dashboard layout with sync status moved from top bar to sidebar. Prevents data loss with safe backup operations using `asyncio.to_thread` and `sqlite3.backup()`. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.30.0**: **Analytics Intelligence: Adaptive Charts & Critical Data Fixes** - Analytics charts now use semantically appropriate time intervals (weekly for month view, monthly for year view) with human-readable labels ("Week of Nov 15", "November 2024"). Fixed critical interval aggregation bug where multi-day intervals only counted first day instead of entire period (caused wildly inaccurate data). Fixed data sampling bug where API only fetched 1,000 recent memories, missing historical data. Analytics now provide accurate historical data with proper trend visualization for better decision-making. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
