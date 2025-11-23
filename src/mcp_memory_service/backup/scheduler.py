@@ -19,7 +19,6 @@ Provides scheduled database backups with configurable intervals and retention po
 """
 
 import asyncio
-import os
 import shutil
 import sqlite3
 import logging
@@ -34,8 +33,7 @@ from ..config import (
     BACKUP_INTERVAL,
     BACKUP_RETENTION,
     BACKUP_MAX_COUNT,
-    SQLITE_VEC_PATH,
-    STORAGE_BACKEND
+    SQLITE_VEC_PATH
 )
 
 logger = logging.getLogger(__name__)

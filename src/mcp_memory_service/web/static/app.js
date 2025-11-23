@@ -1060,7 +1060,6 @@ class MemoryDashboard {
     async checkSyncStatus() {
         // Skip UI updates during force sync to prevent periodic polling from overwriting the syncing state
         if (this._isForceSyncing) {
-            console.log('⏸️  Skipping checkSyncStatus UI update during force sync');
             return;
         }
 
@@ -1074,16 +1073,12 @@ class MemoryDashboard {
                 return;
             }
 
-            console.log('Sync status:', syncStatus);
-
             if (!syncStatus.is_hybrid) {
-                console.log('Not hybrid mode, hiding sync control');
                 syncControl.style.display = 'none';
                 return;
             }
 
             // Show sync control for hybrid mode
-            console.log('Hybrid mode detected, showing sync control');
             syncControl.style.display = 'block';
 
             // Update sync status UI elements
@@ -1095,53 +1090,39 @@ class MemoryDashboard {
 
             // Update pause/resume button visibility based on running state
             const isPaused = syncStatus.is_paused || !syncStatus.is_running;
-            console.log('🔍 DEBUG: isPaused =', isPaused, '(is_paused:', syncStatus.is_paused, 'is_running:', syncStatus.is_running, ')');
-            console.log('🔍 DEBUG: pauseButton found:', !!pauseButton, 'resumeButton found:', !!resumeButton);
 
             // Attach event listeners if not already attached
             if (pauseButton && !pauseButton._listenerAttached) {
-                console.log('📌 Attaching click listener to pauseSyncButton (from checkSyncStatus)');
                 pauseButton.addEventListener('click', () => {
-                    console.log('📌 Pause button clicked!');
                     this.pauseSync();
                 });
                 pauseButton._listenerAttached = true;
             }
             if (resumeButton && !resumeButton._listenerAttached) {
-                console.log('📌 Attaching click listener to resumeSyncButton (from checkSyncStatus)');
                 resumeButton.addEventListener('click', () => {
-                    console.log('📌 Resume button clicked!');
                     this.resumeSync();
                 });
                 resumeButton._listenerAttached = true;
             }
             if (syncButton && !syncButton._listenerAttached) {
-                console.log('📌 Attaching click listener to forceSyncButton (from checkSyncStatus)');
                 syncButton.addEventListener('click', () => {
-                    console.log('📌 Force sync button clicked!');
                     this.forceSync();
                 });
                 syncButton._listenerAttached = true;
             }
 
             if (pauseButton) {
-                const newDisplay = isPaused ? 'none' : 'flex';
-                console.log('🔍 DEBUG: Setting pauseButton.style.display =', newDisplay);
-                pauseButton.style.display = newDisplay;
+                pauseButton.style.display = isPaused ? 'none' : 'flex';
             }
             if (resumeButton) {
-                const newDisplay = isPaused ? 'flex' : 'none';
-                console.log('🔍 DEBUG: Setting resumeButton.style.display =', newDisplay);
-                resumeButton.style.display = newDisplay;
+                resumeButton.style.display = isPaused ? 'flex' : 'none';
             }
 
             // Determine status and update UI (dot color is handled by CSS classes)
             if (isPaused) {
-                console.log('🔍 DEBUG: Applying PAUSED state - setting className to "sync-control-compact paused"');
                 statusText.textContent = 'Paused';
                 syncProgress.textContent = '';
                 syncControl.className = 'sync-control-compact paused';
-                console.log('🔍 DEBUG: syncControl.className is now:', syncControl.className);
                 if (syncButton) syncButton.disabled = true;
             } else if (syncStatus.status === 'syncing') {
                 statusText.textContent = 'Syncing';
@@ -1188,13 +1169,9 @@ class MemoryDashboard {
      * Pause background sync
      */
     async pauseSync() {
-        console.log('🚀 pauseSync() called');
         try {
-            console.log('🚀 Calling /sync/pause API...');
             const result = await this.apiCall('/sync/pause', 'POST');
-            console.log('🚀 API result:', result);
             if (result.success) {
-                console.log('🚀 Pause successful, updating UI immediately');
                 this.showToast('Sync paused', 'success');
 
                 // Update UI immediately using API response data
