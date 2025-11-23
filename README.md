@@ -23,19 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.28.1** (Nov 22, 2025)
+### 🆕 Latest Release: **v8.29.0** (Nov 23, 2025)
 
-**Critical Bug Fix: HTTP MCP Transport JSON-RPC 2.0 Compliance**
+**Dashboard Quick Actions: Sync Controls & Automatic Backups**
 
-- 🔧 **Fixed HTTP transport** - Resolved "Unrecognized key(s) in object: 'error'" errors in Claude Code
-- ✅ **JSON-RPC 2.0 compliance** - Successful responses now correctly omit `error` field (not null)
-- 🚀 **Pydantic V2 migration** - Replaced deprecated `.dict()` with `.model_dump()` methods
-- 📝 **Enhanced documentation** - Added JSON-RPC spec compliance notes to MCPResponse model
-- 🙏 **Community contribution** - Thanks to @timkjr for identifying and fixing this critical issue
+- 🎛️ **Sync Controls Widget** - Real-time pause/resume/force sync with status indicators for hybrid backend
+- 💾 **Automatic Scheduled Backups** - Enterprise-grade backup system with SQLite native API and retention policies
+- ⚡ **Clean Dashboard Layout** - Moved sync controls to Quick Actions sidebar for better UX
+- 🔐 **Security Enhancements** - OAuth-protected backup endpoints, no file path exposure
+- 🌐 **Safari Compatibility** - Improved event listener handling for reliable button interactions
 
 **Previous Releases**:
+- **v8.28.1** - Critical HTTP MCP Transport JSON-RPC 2.0 Compliance Fix (Claude Code compatibility)
 - **v8.28.0** - Cloudflare AND/OR Tag Filtering (unified search API, 3-5x faster hybrid sync)
-- **v8.27.2** - Bug Fix: Memory Type Preservation in Sync Script (cf-to-sqlite recovery)
 - **v8.27.1** - Critical Hotfix: Timestamp Regression (created_at preservation during metadata sync)
 - **v8.26.0** - Revolutionary MCP Performance (534,628x faster tools, 90%+ cache hit rate)
 - **v8.25.0** - Hybrid Backend Drift Detection (automatic metadata sync, bidirectional awareness)

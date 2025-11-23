@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.25.0**: **Hybrid Backend Drift Detection** - Automatic metadata synchronization using `updated_at` timestamps (issue #202). Features bidirectional drift detection (SQLite-vec ↔ Cloudflare), periodic checks (configurable interval, default 1 hour), "newer timestamp wins" conflict resolution, and dry-run support via `scripts/sync/check_drift.py`. Prevents silent data loss when memories updated on one backend but not synced. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.29.0**: **Dashboard Quick Actions: Sync Controls & Automatic Backups** - Real-time sync controls widget (pause/resume/force sync) in Quick Actions sidebar for hybrid backend users. Enterprise-grade automatic scheduled backup system with SQLite native API, retention policies (days + max count), and OAuth-protected endpoints. Clean dashboard layout with sync status moved from top bar to sidebar. Prevents data loss with safe backup operations using `asyncio.to_thread` and `sqlite3.backup()`. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -32,6 +32,11 @@ MCP Memory Service is a Model Context Protocol server providing semantic memory 
 | **Consolidation** | `curl -X POST http://127.0.0.1:8000/api/consolidation/trigger -H "Content-Type: application/json" -d '{"time_horizon":"weekly"}'` | Trigger memory consolidation |
 | | `curl http://127.0.0.1:8000/api/consolidation/status` | Check scheduler status |
 | | `curl http://127.0.0.1:8000/api/consolidation/recommendations` | Get consolidation recommendations |
+| **Backup** | `curl -X POST http://127.0.0.1:8000/api/backup/now` | Trigger manual backup (v8.29.0+) |
+| | `curl http://127.0.0.1:8000/api/backup/status` | Check backup status and schedule |
+| | `curl http://127.0.0.1:8000/api/backup/list` | List available backups |
+| **Sync Controls** | `curl -X POST http://127.0.0.1:8000/api/sync/pause` | Pause hybrid backend sync (v8.29.0+) |
+| | `curl -X POST http://127.0.0.1:8000/api/sync/resume` | Resume hybrid backend sync |
 | **Service** | `systemctl --user status mcp-memory-http.service` | Check HTTP service status (Linux) |
 | | `scripts/service/memory_service_manager.sh status` | Check service status |
 | **Debug** | `curl http://127.0.0.1:8000/api/health` | Health check |

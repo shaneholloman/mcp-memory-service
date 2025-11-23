@@ -10,6 +10,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.29.0] - 2025-11-23
+
+### Added
+- **Dashboard Quick Actions: Sync Controls Widget** - Compact, real-time sync management for hybrid backend users (#234, fixes #233)
+  - **Real-time sync status indicator**: Visual states for synced/syncing/pending/error/paused with color-coded icons
+  - **Pause/Resume controls**: Safely pause background sync for database maintenance or offline work
+  - **Force sync button**: Manual trigger for immediate synchronization
+  - **Sync metrics**: Display last sync time and pending operations count
+  - **Clean layout**: Removed redundant sync status bar between header and body, moved to sidebar widget
+  - **Backend-aware**: Widget automatically hides for sqlite-vec only users (hybrid-specific feature)
+  - **API endpoints**:
+    - `POST /api/sync/pause` - Pause background sync
+    - `POST /api/sync/resume` - Resume background sync
+  - **Hybrid backend methods**: Added `pause_sync()` and `resume_sync()` for sync control
+
+- **Automatic Scheduled Backup System** - Enterprise-grade backup with retention policies and scheduling (#234, fixes #233)
+  - **New backup module**: `src/mcp_memory_service/backup/` with `BackupService` and `BackupScheduler`
+  - **SQLite native backup API**: Uses safe `sqlite3.backup()` to prevent corruption (no file copying)
+  - **Async I/O**: Non-blocking backup operations with `asyncio.to_thread`
+  - **Flexible scheduling**: Hourly, daily, or weekly automatic backups
+  - **Retention policies**: Configurable by days and max backup count
+  - **Dashboard widget**: Backup status, last backup time, manual trigger, backup count, next scheduled time
+  - **Configuration via environment variables**:
+    - `MCP_BACKUP_ENABLED=true` (default: true)
+    - `MCP_BACKUP_INTERVAL=daily` (hourly/daily/weekly, default: daily)
+    - `MCP_BACKUP_RETENTION=7` (days, default: 7)
+    - `MCP_BACKUP_MAX_COUNT=10` (max backups, default: 10)
+  - **API endpoints**:
+    - `GET /api/backup/status` - Get backup status and scheduler info
+    - `POST /api/backup/now` - Trigger manual backup
+    - `GET /api/backup/list` - List available backups with metadata
+  - **Security**: OAuth protection on backup endpoints, no file path exposure in responses
+  - **Safari compatibility**: Improved event listener handling with lazy initialization
+
+### Changed
+- **Quick Actions Layout**: Moved sync controls from top status bar to sidebar widget for cleaner, more accessible UI
+- **Sync State Persistence**: Pause state is now preserved during force sync operations
+- **Dashboard Feedback**: Added toast notifications for sync and backup operations
+
+### Fixed
+- **Sync Button Click Events**: Resolved DOM timing issues with lazy event listeners for reliable button interactions
+- **Spinner Animation**: Fixed syncing state visual feedback with proper CSS animations
+- **Security**: Removed file path exposure from backup API responses (used backup IDs instead)
+
 ## [8.28.1] - 2025-11-22
 
 ### Fixed
