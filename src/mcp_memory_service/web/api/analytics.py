@@ -59,6 +59,7 @@ class MemoryGrowthPoint(BaseModel):
     date: str  # YYYY-MM-DD format
     count: int
     cumulative: int
+    label: Optional[str] = None  # Human-readable label (e.g., "Week of Nov 1", "November 2024")
 
 
 class MemoryGrowthData(BaseModel):
@@ -238,6 +239,34 @@ async def get_analytics_overview(
         raise HTTPException(status_code=500, detail=f"Failed to get analytics overview: {str(e)}")
 
 
+def _generate_interval_label(date: datetime, period: str) -> str:
+    """
+    Generate a human-readable label for a date interval based on the period type.
+
+    Args:
+        date: The date for the interval
+        period: The period type ("week", "month", "quarter", "year")
+
+    Returns:
+        A formatted label string
+    """
+    if period == "week":
+        # For weekly view (daily intervals): "Nov 15"
+        return date.strftime("%b %d")
+    elif period == "month":
+        # For monthly view (weekly intervals): "Week of Nov 15"
+        return f"Week of {date.strftime('%b %d')}"
+    elif period == "quarter":
+        # For quarterly view (weekly intervals): "Week of Nov 15"
+        return f"Week of {date.strftime('%b %d')}"
+    elif period == "year":
+        # For yearly view (monthly intervals): "November 2024"
+        return date.strftime("%B %Y")
+    else:
+        # Fallback to ISO format
+        return date.strftime("%Y-%m-%d")
+
+
 @router.get("/memory-growth", response_model=MemoryGrowthData, tags=["analytics"])
 async def get_memory_growth(
     period: str = Query("month", description="Time period: week, month, quarter, year"),
@@ -256,7 +285,7 @@ async def get_memory_growth(
             interval_days = 1
         elif period == "month":
             days = 30
-            interval_days = 3
+            interval_days = 7  # Weekly aggregation for monthly view
         elif period == "quarter":
             days = 90
             interval_days = 7
@@ -276,27 +305,46 @@ async def get_memory_growth(
         cumulative = 0
 
         try:
-            # Get a sample of recent memories to estimate growth
-            # This is not accurate but demonstrates the concept
-            recent_memories = await storage.get_recent_memories(n=1000)
+            # Get all memories and filter by date range
+            # Use get_all_memories to get sufficient coverage for the time period
+            all_memories = await storage.get_all_memories(limit=10000)  # Get enough to cover any time period
 
-            # Group by date (simplified)
+            # Group by date, filtering to only include memories within the date range
             date_counts = defaultdict(int)
-            for memory in recent_memories:
+            start_timestamp = start_date.timestamp()
+            end_timestamp = end_date.timestamp()
+
+            for memory in all_memories:
                 if memory.created_at:
-                    mem_date = datetime.fromtimestamp(memory.created_at, tz=timezone.utc).date()
-                    date_counts[mem_date] += 1
+                    # Only include memories within our date range
+                    if start_timestamp <= memory.created_at <= end_timestamp:
+                        mem_date = datetime.fromtimestamp(memory.created_at, tz=timezone.utc).date()
+                        date_counts[mem_date] += 1
 
             # Create data points
             current_date = start_date.date()
             while current_date <= end_date.date():
-                count = date_counts.get(current_date, 0)
+                # For intervals > 1 day, sum counts across the entire interval
+                interval_end = current_date + timedelta(days=interval_days)
+                count = 0
+
+                # Sum all memories within this interval
+                check_date = current_date
+                while check_date < interval_end and check_date <= end_date.date():
+                    count += date_counts.get(check_date, 0)
+                    check_date += timedelta(days=1)
+
                 cumulative += count
+
+                # Convert date to datetime for label generation
+                current_datetime = datetime.combine(current_date, datetime.min.time())
+                label = _generate_interval_label(current_datetime, period)
 
                 data_points.append(MemoryGrowthPoint(
                     date=current_date.isoformat(),
                     count=count,
-                    cumulative=cumulative
+                    cumulative=cumulative,
+                    label=label
                 ))
 
                 current_date += timedelta(days=interval_days)

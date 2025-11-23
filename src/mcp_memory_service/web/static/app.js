@@ -3657,11 +3657,13 @@ class MemoryDashboard {
             const barWidthPx = (point.count / maxCount) * 200;
             const displayCount = point.count || 0;
             const displayCumulative = point.cumulative || 0;
+            // Use label if available, otherwise fall back to date for backward compatibility
+            const displayLabel = point.label || point.date;
 
             html += `<div class="chart-row">
                 <div class="chart-bar" style="width: ${barWidthPx}px"></div>
                 <span class="chart-value">+${displayCount} <small>(${displayCumulative} total)</small></span>
-                <span class="chart-label">${point.date}</span>
+                <span class="chart-label">${displayLabel}</span>
             </div>`;
         });
 
