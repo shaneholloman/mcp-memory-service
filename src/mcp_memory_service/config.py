@@ -627,7 +627,11 @@ CONSOLIDATION_CONFIG = {
     'forgetting_enabled': os.getenv('MCP_FORGETTING_ENABLED', 'true').lower() == 'true',
     'relevance_threshold': float(os.getenv('MCP_FORGETTING_RELEVANCE_THRESHOLD', '0.1')),
     'access_threshold_days': int(os.getenv('MCP_FORGETTING_ACCESS_THRESHOLD', '90')),
-    'archive_location': CONSOLIDATION_ARCHIVE_PATH
+    'archive_location': CONSOLIDATION_ARCHIVE_PATH,
+
+    # Incremental consolidation settings
+    'batch_size': int(os.getenv('MCP_CONSOLIDATION_BATCH_SIZE', '500')),
+    'incremental_mode': os.getenv('MCP_CONSOLIDATION_INCREMENTAL', 'true').lower() == 'true'
 }
 
 # Consolidation scheduling settings (for APScheduler integration)

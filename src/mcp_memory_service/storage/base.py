@@ -260,6 +260,37 @@ class MemoryStorage(ABC):
             preserve_timestamps=True
         )
         return success
+
+    async def update_memories_batch(self, memories: List[Memory]) -> List[bool]:
+        """
+        Update multiple memories in a batch operation.
+
+        Default implementation calls update_memory() for each memory concurrently using asyncio.gather.
+        Override this method in concrete storage backends to provide true batch operations
+        for improved performance (e.g., single database transaction with multiple UPDATEs).
+
+        Args:
+            memories: List of Memory objects with updated fields
+
+        Returns:
+            List of success booleans, one for each memory in the batch
+        """
+        if not memories:
+            return []
+
+        results = await asyncio.gather(
+            *(self.update_memory(memory) for memory in memories),
+            return_exceptions=True
+        )
+
+        # Process results to handle potential exceptions from gather
+        final_results = []
+        for res in results:
+            if isinstance(res, Exception):
+                final_results.append(False)
+            else:
+                final_results.append(res)
+        return final_results
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics. Override for specific implementations."""

@@ -59,6 +59,10 @@ class ConsolidationConfig:
     access_threshold_days: int = 90
     archive_location: Optional[str] = None
 
+    # Incremental consolidation settings
+    batch_size: int = 500  # Memories to process per consolidation run
+    incremental_mode: bool = True  # Enable oldest-first batch processing
+
 @dataclass
 class ConsolidationReport:
     """Report of consolidation operations performed."""

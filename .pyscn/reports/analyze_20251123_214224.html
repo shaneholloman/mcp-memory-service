@@ -1,0 +1,3267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pyscn Analysis Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .score-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .grade-a { background: #4caf50; color: white; }
+        .grade-b { background: #8bc34a; color: white; }
+        .grade-c { background: #ff9800; color: white; }
+        .grade-d { background: #ff5722; color: white; }
+        .grade-f { background: #f44336; color: white; }
+        
+        .tabs {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .tab-buttons {
+            display: flex;
+            background: #f5f5f5;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .metric-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .risk-low { color: #4caf50; }
+        .risk-medium { color: #ff9800; }
+        .risk-high { color: #f44336; }
+        
+        .severity-critical { color: #f44336; }
+        .severity-warning { color: #ff9800; }
+        .severity-info { color: #2196f3; }
+
+         
+        .score-bars {
+            margin: 20px 0;
+        }
+        .score-bar-item {
+            margin-bottom: 24px;
+        }
+        .score-bar-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .score-label {
+            font-weight: 600;
+            color: #333;
+        }
+        .score-value {
+            font-weight: 700;
+            color: #667eea;
+        }
+        .score-bar-container {
+            width: 100%;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .score-bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 6px;
+        }
+        .score-excellent { background: linear-gradient(90deg, #4caf50, #66bb6a); }
+        .score-good { background: linear-gradient(90deg, #8bc34a, #9ccc65); }
+        .score-fair { background: linear-gradient(90deg, #ff9800, #ffa726); }
+        .score-poor { background: linear-gradient(90deg, #f44336, #ef5350); }
+        .score-detail {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+
+         
+        .tab-header-with-score {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .score-badge-compact {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+            white-space: nowrap;
+        }
+        .score-badge-compact.score-excellent {
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            box-shadow: 0 2px 6px rgba(76, 175, 80, 0.4);
+        }
+        .score-badge-compact.score-good {
+            background: linear-gradient(135deg, #8bc34a, #9ccc65);
+            box-shadow: 0 2px 6px rgba(139, 195, 74, 0.4);
+        }
+        .score-badge-compact.score-fair {
+            background: linear-gradient(135deg, #ff9800, #ffa726);
+            box-shadow: 0 2px 6px rgba(255, 152, 0, 0.4);
+        }
+        .score-badge-compact.score-poor {
+            background: linear-gradient(135deg, #f44336, #ef5350);
+            box-shadow: 0 2px 6px rgba(244, 67, 54, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>pyscn Analysis Report</h1>
+            <p>Generated: 2025-11-23 21:42:24</p>
+            <div class="score-badge grade-c">
+                Health Score: 63/100 (Grade: C)
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="showTab('summary', this)">Summary</button>
+                
+                <button class="tab-button" onclick="showTab('complexity', this)">Complexity</button>
+                
+                
+                <button class="tab-button" onclick="showTab('deadcode', this)">Dead Code</button>
+                
+                
+                <button class="tab-button" onclick="showTab('clone', this)">Clone Detection</button>
+                
+                
+                <button class="tab-button" onclick="showTab('cbo', this)">Class Coupling</button>
+                
+                
+                
+                <button class="tab-button" onclick="showTab('sys-deps', this)">Dependencies</button>
+                
+                
+                <button class="tab-button" onclick="showTab('sys-arch', this)">Architecture</button>
+                
+                
+            </div>
+
+            <div id="summary" class="tab-content active">
+                <h2>Analysis Summary</h2>
+
+                <h3 style="margin-top: 20px; margin-bottom: 16px; color: #2c3e50;">Quality Scores</h3>
+                <div class="score-bars">
+                    
+                    <div class="score-bar-item">
+                        <div class="score-bar-header">
+                            <span class="score-label">Complexity</span>
+                            <span class="score-value">40/100</span>
+                        </div>
+                        <div class="score-bar-container">
+                            <div class="score-bar-fill score-poor" style="width: 40%"></div>
+                        </div>
+                        <div class="score-detail">Avg: 9.5, High-risk: 28</div>
+                    </div>
+                    
+
+                    
+                    <div class="score-bar-item">
+                        <div class="score-bar-header">
+                            <span class="score-label">Dead Code</span>
+                            <span class="score-value">70/100</span>
+                        </div>
+                        <div class="score-bar-container">
+                            <div class="score-bar-fill score-fair" style="width: 70%"></div>
+                        </div>
+                        <div class="score-detail">27 issues, 2 critical</div>
+                    </div>
+                    
+
+                    
+                    <div class="score-bar-item">
+                        <div class="score-bar-header">
+                            <span class="score-label">Duplication</span>
+                            <span class="score-value">30/100</span>
+                        </div>
+                        <div class="score-bar-container">
+                            <div class="score-bar-fill score-poor" style="width: 30%"></div>
+                        </div>
+                        <div class="score-detail">6.0% duplication, 18 groups</div>
+                    </div>
+                    
+
+                    
+                    <div class="score-bar-item">
+                        <div class="score-bar-header">
+                            <span class="score-label">Coupling (CBO)</span>
+                            <span class="score-value">100/100</span>
+                        </div>
+                        <div class="score-bar-container">
+                            <div class="score-bar-fill score-excellent" style="width: 100%"></div>
+                        </div>
+                        <div class="score-detail">Avg: 1.5, High-coupling: 0/145</div>
+                    </div>
+                    
+
+                    
+                    <div class="score-bar-item">
+                        <div class="score-bar-header">
+                            <span class="score-label">Dependencies</span>
+                            <span class="score-value">85/100</span>
+                        </div>
+                        <div class="score-bar-container">
+                            <div class="score-bar-fill score-good" style="width: 85%"></div>
+                        </div>
+                        <div class="score-detail">No cycles, Depth: 7</div>
+                    </div>
+                    
+
+                    
+                    <div class="score-bar-item">
+                        <div class="score-bar-header">
+                            <span class="score-label">Architecture</span>
+                            <span class="score-value">75/100</span>
+                        </div>
+                        <div class="score-bar-container">
+                            <div class="score-bar-fill score-good" style="width: 75%"></div>
+                        </div>
+                        <div class="score-detail">76% compliant</div>
+                    </div>
+                    
+                </div>
+
+                <h3 style="margin-top: 24px; margin-bottom: 16px; color: #2c3e50;">File Statistics</h3>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">252</div>
+                        <div class="metric-label">Total Files</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">252</div>
+                        <div class="metric-label">Analyzed Files</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">9.52</div>
+                        <div class="metric-label">Avg Complexity</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">27</div>
+                        <div class="metric-label">Dead Code Issues</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">2360</div>
+                        <div class="metric-label">Unique Fragments</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">6.0%</div>
+                        <div class="metric-label">Code Duplication</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-value">145</div>
+                        <div class="metric-label">Total Classes</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">0</div>
+                        <div class="metric-label">High Coupling (CBO)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">1.50</div>
+                        <div class="metric-label">Avg CBO</div>
+                    </div>
+                    
+                </div>
+
+                
+                
+                
+                <h3 style="margin-top: 16px; color: #2c3e50;">Dependencies</h3>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">252</div>
+                        <div class="metric-label">Total Modules</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">237</div>
+                        <div class="metric-label">Total Dependencies</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">7</div>
+                        <div class="metric-label">Max Depth</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-value">✅ 0</div>
+                        <div class="metric-label">Circular Dependencies</div>
+                    </div>
+                    
+                </div>
+                
+
+                
+                <h3 style="margin-top: 8px; color: #2c3e50;">Architecture</h3>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">58</div>
+                        <div class="metric-label">Violations</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">75.5%</div>
+                        <div class="metric-label">Compliance</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">4</div>
+                        <div class="metric-label">Layers Analyzed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">237</div>
+                        <div class="metric-label">Total Rules</div>
+                    </div>
+                </div>
+                
+                
+            </div>
+
+            
+            <div id="complexity" class="tab-content">
+                <div class="tab-header-with-score">
+                    <h2 style="margin: 0;">Complexity Analysis</h2>
+                    <div class="score-badge-compact score-poor">
+                        40/100
+                    </div>
+                </div>
+                
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">567</div>
+                        <div class="metric-label">Total Functions</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">9.52</div>
+                        <div class="metric-label">Average</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">62</div>
+                        <div class="metric-label">Maximum</div>
+                    </div>
+                </div>
+                
+                <h3>Top Complex Functions</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>File</th>
+                            <th>Complexity</th>
+                            <th>Nesting Depth</th>
+                            <th>Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        
+                        <tr>
+                            <td>main</td>
+                            <td>install.py</td>
+                            <td>62</td>
+                            <td>6</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>__main__</td>
+                            <td>src/mcp_memory_service/config.py</td>
+                            <td>42</td>
+                            <td>0</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>SqliteVecMemoryStorage.initialize</td>
+                            <td>src/mcp_memory_service/storage/sqlite_vec.py</td>
+                            <td>38</td>
+                            <td>10</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>token</td>
+                            <td>src/mcp_memory_service/web/oauth/authorization.py</td>
+                            <td>35</td>
+                            <td>4</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>install_package</td>
+                            <td>scripts/installation/install.py</td>
+                            <td>33</td>
+                            <td>4</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>SqliteVecMemoryStorage._initialize_embedding_model</td>
+                            <td>src/mcp_memory_service/storage/sqlite_vec.py</td>
+                            <td>33</td>
+                            <td>6</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>detect_gpu</td>
+                            <td>scripts/installation/install.py</td>
+                            <td>30</td>
+                            <td>8</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>detect_gpu</td>
+                            <td>install.py</td>
+                            <td>30</td>
+                            <td>8</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>verify_installation</td>
+                            <td>install.py</td>
+                            <td>30</td>
+                            <td>5</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>test_memory_crud</td>
+                            <td>scripts/testing/test_memory_api.py</td>
+                            <td>30</td>
+                            <td>6</td>
+                            <td class="risk-high">high</td>
+                        </tr>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                    </tbody>
+                </table>
+                
+                <p style="color: #666; margin-top: 10px;">Showing top 10 of 567 functions</p>
+                
+                
+            </div>
+            
+
+            
+            <div id="deadcode" class="tab-content">
+                <div class="tab-header-with-score">
+                    <h2 style="margin: 0;">Dead Code Detection</h2>
+                    <div class="score-badge-compact score-fair">
+                        70/100
+                    </div>
+                </div>
+                
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">27</div>
+                        <div class="metric-label">Total Issues</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">2</div>
+                        <div class="metric-label">Critical</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">25</div>
+                        <div class="metric-label">Warnings</div>
+                    </div>
+                </div>
+                
+                
+                <h3>Top Dead Code Issues</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Function</th>
+                            <th>Lines</th>
+                            <th>Severity</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1361-1365</td>
+                            <td class="severity-critical">critical</td>
+                            <td>unreachable_after_return</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1367-1436</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1368-1436</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1369-1369</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1371-1371</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1372-1373</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1373-1373</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1376-1377</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1377-1377</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>scripts/installation/install.py</td>
+                            <td>configure_paths</td>
+                            <td>1380-1388</td>
+                            <td class="severity-warning">warning</td>
+                            <td>unreachable_branch</td>
+                        </tr>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                    </tbody>
+                </table>
+                
+                <p style="color: #666; margin-top: 10px;">Showing top 10 of 27 dead code issues</p>
+                
+                
+                
+            </div>
+            
+
+            
+            <div id="clone" class="tab-content">
+                <div class="tab-header-with-score">
+                    <h2 style="margin: 0;">Clone Detection</h2>
+                    <div class="score-badge-compact score-poor">
+                        30/100
+                    </div>
+                </div>
+                
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">2360</div>
+                        <div class="metric-label">Unique Fragments</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">18</div>
+                        <div class="metric-label">Clone Groups</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">1.00</div>
+                        <div class="metric-label">Avg Similarity</div>
+                    </div>
+                </div>
+                
+                
+                <h3>Clone Groups</h3>
+                <p style="color: #666; margin-bottom: 15px;">Code fragments grouped by similarity</p>
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 17 - 5 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_csv_loader.py</td>
+                                <td>135-146</td>
+                                <td>12 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_csv_loader.py</td>
+                                <td>155-168</td>
+                                <td>14 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_csv_loader.py</td>
+                                <td>177-189</td>
+                                <td>13 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_csv_loader.py</td>
+                                <td>269-282</td>
+                                <td>14 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_json_loader.py</td>
+                                <td>125-147</td>
+                                <td>23 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 5 - 4 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>1509-1522</td>
+                                <td>14 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/database/db_health_check.py</td>
+                                <td>233-249</td>
+                                <td>17 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>1314-1327</td>
+                                <td>14 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>1334-1347</td>
+                                <td>14 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 7 - 4 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>2862-2873</td>
+                                <td>12 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>2892-2903</td>
+                                <td>12 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>1785-1796</td>
+                                <td>12 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>1817-1828</td>
+                                <td>12 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 16 - 4 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_csv_loader.py</td>
+                                <td>88-103</td>
+                                <td>16 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_csv_loader.py</td>
+                                <td>112-126</td>
+                                <td>15 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_csv_loader.py</td>
+                                <td>244-260</td>
+                                <td>17 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>tests/unit/test_json_loader.py</td>
+                                <td>215-234</td>
+                                <td>20 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 0 - 3 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>claude-hooks/install_hooks.py</td>
+                                <td>180-203</td>
+                                <td>24 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/testing/test_memory_simple.py</td>
+                                <td>91-102</td>
+                                <td>12 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/testing/test_search_api.py</td>
+                                <td>79-96</td>
+                                <td>18 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 1 - 3 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>327-358</td>
+                                <td>32 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>274-305</td>
+                                <td>32 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/validation/verify_environment.py</td>
+                                <td>126-159</td>
+                                <td>34 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 2 - 3 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>344-358</td>
+                                <td>15 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>291-305</td>
+                                <td>15 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/validation/verify_environment.py</td>
+                                <td>144-159</td>
+                                <td>16 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 3 - 3 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>363-383</td>
+                                <td>21 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>310-330</td>
+                                <td>21 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/validation/verify_environment.py</td>
+                                <td>162-183</td>
+                                <td>22 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 6 - 3 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>2313-2356</td>
+                                <td>44 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>2383-2421</td>
+                                <td>39 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>2425-2463</td>
+                                <td>39 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <h4 style="margin-top: 0; color: #333;">Group 8 - 3 clones (Type Type-1, similarity: 1.00)</h4>
+                    <table class="table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Lines</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>3124-3151</td>
+                                <td>28 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>install.py</td>
+                                <td>3127-3145</td>
+                                <td>19 lines</td>
+                            </tr>
+                            
+                            
+                            
+                            <tr>
+                                <td>scripts/installation/install.py</td>
+                                <td>1927-1945</td>
+                                <td>19 lines</td>
+                            </tr>
+                            
+                            
+                            
+                        </tbody>
+                    </table>
+                </div>
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                <p style="color: #666; margin-top: 10px;">Showing top 10 of 18 clone groups</p>
+                
+                
+                
+            </div>
+            
+
+            
+            <div id="cbo" class="tab-content">
+                <div class="tab-header-with-score">
+                    <h2 style="margin: 0;">Class Coupling</h2>
+                    <div class="score-badge-compact score-excellent">
+                        100/100
+                    </div>
+                </div>
+                <p style="margin-bottom: 20px; color: #666;">Coupling Between Objects (CBO) metrics</p>
+                
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">145</div>
+                        <div class="metric-label">Total Classes</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">0</div>
+                        <div class="metric-label">High Risk Classes</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">1.50</div>
+                        <div class="metric-label">Average CBO</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">4</div>
+                        <div class="metric-label">Max CBO</div>
+                    </div>
+                </div>
+                
+                <h3>Most Dependent Classes</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Class</th>
+                            <th>File</th>
+                            <th>CBO</th>
+                            <th>Risk Level</th>
+                            <th>Dependent Classes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        
+                        <tr>
+                            <td>ConsolidationHealthMonitor</td>
+                            <td>src/mcp_memory_service/consolidation/health.py</td>
+                            <td>4</td>
+                            <td class="risk-low">low</td>
+                            <td>HealthMetric, HealthAlert, Any, HealthStatus</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>ControlledForgettingEngine</td>
+                            <td>src/mcp_memory_service/consolidation/forgetting.py</td>
+                            <td>3</td>
+                            <td class="risk-low">low</td>
+                            <td>ConsolidationBase, ForgettingCandidate, ForgettingResult</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>StorageStats</td>
+                            <td>src/mcp_memory_service/web/api/analytics.py</td>
+                            <td>3</td>
+                            <td class="risk-low">low</td>
+                            <td>BaseModel, LargestMemory, GrowthTrendPoint</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>HybridMemoryStorage</td>
+                            <td>src/mcp_memory_service/storage/hybrid.py</td>
+                            <td>3</td>
+                            <td class="risk-low">low</td>
+                            <td>MemoryStorage, BackgroundSyncService, SyncOperation</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>HTTPClientStorage</td>
+                            <td>src/mcp_memory_service/storage/http_client.py</td>
+                            <td>3</td>
+                            <td class="risk-low">low</td>
+                            <td>MemoryStorage, Any, Memory</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>CloudflareStorage</td>
+                            <td>src/mcp_memory_service/storage/cloudflare.py</td>
+                            <td>3</td>
+                            <td class="risk-low">low</td>
+                            <td>Any, Memory, MemoryStorage</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>ServiceDiscovery</td>
+                            <td>src/mcp_memory_service/discovery/mdns_service.py</td>
+                            <td>3</td>
+                            <td class="risk-low">low</td>
+                            <td>AsyncZeroconf, AsyncServiceBrowser, DiscoveryListener</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>CacheManager</td>
+                            <td>src/mcp_memory_service/utils/cache_manager.py</td>
+                            <td>2</td>
+                            <td class="risk-low">low</td>
+                            <td>Any, CacheStats</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>MemoryResult</td>
+                            <td>src/mcp_memory_service/services/memory_service.py</td>
+                            <td>2</td>
+                            <td class="risk-low">low</td>
+                            <td>TypedDict, Any</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>SSEManager</td>
+                            <td>src/mcp_memory_service/web/sse.py</td>
+                            <td>2</td>
+                            <td class="risk-low">low</td>
+                            <td>Any, SSEEvent</td>
+                        </tr>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                    </tbody>
+                </table>
+                
+                <p style="color: #666; margin-top: 10px;">Showing top 10 of 145 classes</p>
+                
+                
+            </div>
+            
+
+            
+            
+            <div id="sys-deps" class="tab-content">
+                <div class="tab-header-with-score">
+                    <h2 style="margin: 0;">Module Dependencies</h2>
+                    <div class="score-badge-compact score-good">
+                        85/100
+                    </div>
+                </div>
+                <p style="margin-bottom: 20px; color: #666;">Project-wide module dependency graph metrics</p>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">252</div>
+                        <div class="metric-label">Total Modules</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">237</div>
+                        <div class="metric-label">Total Dependencies</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">7</div>
+                        <div class="metric-label">Max Depth</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-value">✅ 0</div>
+                        <div class="metric-label">Circular Dependencies</div>
+                    </div>
+                    
+                </div>
+
+                
+                
+                <h3 style="margin-top: 30px;">Circular Dependencies</h3>
+                
+                <div style="padding: 20px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 4px; margin: 20px 0;">
+                    <strong style="color: #155724;">✅ No circular dependencies detected</strong>
+                    <p style="color: #155724; margin: 10px 0 0 0;">All modules have acyclic dependency relationships.</p>
+                </div>
+                
+                
+
+                
+                <h3>Longest Dependency Chains</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Depth</th>
+                            <th>Path</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        
+                        <tr>
+                            <td>1</td>
+                            <td>6</td>
+                            <td>src.mcp_memory_service.web.app → src.mcp_memory_service.web.api.mcp → src.mcp_memory_service.web.dependencies → src.mcp_memory_service.services.memory_service → src.mcp_memory_service.storage.base → src.mcp_memory_service.models.memory</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>2</td>
+                            <td>6</td>
+                            <td>src.mcp_memory_service.discovery → src.mcp_memory_service.api.client → src.mcp_memory_service.storage.factory → src.mcp_memory_service.storage.sqlite_vec → src.mcp_memory_service.consolidation.base → src.mcp_memory_service.models.memory</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>3</td>
+                            <td>6</td>
+                            <td>src.mcp_memory_service.web.api.events → src.mcp_memory_service.web.dependencies → src.mcp_memory_service.storage.factory → src.mcp_memory_service.storage.sqlite_vec → src.mcp_memory_service.consolidation.base → src.mcp_memory_service.models.memory</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>4</td>
+                            <td>5</td>
+                            <td>src.mcp_memory_service.api.operations → src.mcp_memory_service.api.client → src.mcp_memory_service.storage.factory → src.mcp_memory_service.storage.sqlite_vec → src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>5</td>
+                            <td>5</td>
+                            <td>src.mcp_memory_service.discovery → src.mcp_memory_service.api.client → src.mcp_memory_service.storage.factory → src.mcp_memory_service.consolidation.base → src.mcp_memory_service.models.memory</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>6</td>
+                            <td>5</td>
+                            <td>src.mcp_memory_service.web.app → src.mcp_memory_service.web.api.mcp → src.mcp_memory_service.web.dependencies → src.mcp_memory_service.services.memory_service → src.mcp_memory_service.storage.base</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>7</td>
+                            <td>5</td>
+                            <td>src.mcp_memory_service.web.app → src.mcp_memory_service.web.api.mcp → src.mcp_memory_service.web.dependencies → src.mcp_memory_service.services.memory_service → src.mcp_memory_service.utils.hashing</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>8</td>
+                            <td>5</td>
+                            <td>src.mcp_memory_service.web.app → src.mcp_memory_service.web.api.mcp → src.mcp_memory_service.web.dependencies → src.mcp_memory_service.services.memory_service → src.mcp_memory_service.models.memory</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>9</td>
+                            <td>5</td>
+                            <td>src.mcp_memory_service.web.app → src.mcp_memory_service.web.api.mcp → src.mcp_memory_service.web.dependencies → src.mcp_memory_service.services.memory_service → src.mcp_memory_service.utils.content_splitter</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>10</td>
+                            <td>5</td>
+                            <td>src.mcp_memory_service.web.api.mcp → src.mcp_memory_service.web.dependencies → src.mcp_memory_service.services.memory_service → src.mcp_memory_service.storage.base → src.mcp_memory_service.models.memory</td>
+                        </tr>
+                        
+                        
+                    </tbody>
+                </table>
+                
+            </div>
+            
+
+            
+            <div id="sys-arch" class="tab-content">
+                <div class="tab-header-with-score">
+                    <h2 style="margin: 0;">Architecture Validation</h2>
+                    <div class="score-badge-compact score-good">
+                        75/100
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">4</div>
+                        <div class="metric-label">Layers Analyzed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">237</div>
+                        <div class="metric-label">Total Rules</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">58</div>
+                        <div class="metric-label">Violations</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">75.5%</div>
+                        <div class="metric-label">Compliance</div>
+                    </div>
+                </div>
+
+                
+                <h3>Top Rule Violations</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Severity</th>
+                            <th>Rule</th>
+                            <th>From</th>
+                            <th>To</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>application -&gt; {application,domain,infrastructure}</td>
+                            <td>scripts.backup.backup_memories</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>infrastructure -&gt; {infrastructure,domain,application}</td>
+                            <td>scripts.backup.restore_memories</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>scripts.maintenance.cleanup_memories</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>application -&gt; {application,domain,infrastructure}</td>
+                            <td>scripts.maintenance.regenerate_embeddings</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>infrastructure -&gt; {infrastructure,domain,application}</td>
+                            <td>scripts.maintenance.repair_malformed_tags</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.api.client</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.api.operations</td>
+                            <td>src.mcp_memory_service.api.sync_wrapper</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.backup.scheduler</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.cli.main</td>
+                            <td>src.mcp_memory_service.server</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.cli.utils</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; application</td>
+                            <td>src.mcp_memory_service.consolidation.associations</td>
+                            <td>src.mcp_memory_service.consolidation.base</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; application</td>
+                            <td>src.mcp_memory_service.consolidation.clustering</td>
+                            <td>src.mcp_memory_service.consolidation.base</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; application</td>
+                            <td>src.mcp_memory_service.consolidation.compression</td>
+                            <td>src.mcp_memory_service.consolidation.base</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; application</td>
+                            <td>src.mcp_memory_service.consolidation.consolidator</td>
+                            <td>src.mcp_memory_service.consolidation.base</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.consolidation.consolidator</td>
+                            <td>src.mcp_memory_service.consolidation.decay</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; application</td>
+                            <td>src.mcp_memory_service.consolidation.consolidator</td>
+                            <td>src.mcp_memory_service.consolidation.forgetting</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.consolidation.consolidator</td>
+                            <td>src.mcp_memory_service.consolidation.health</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>application -&gt; {application,domain,infrastructure}</td>
+                            <td>src.mcp_memory_service.consolidation.forgetting</td>
+                            <td>src.mcp_memory_service.consolidation.decay</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; application</td>
+                            <td>src.mcp_memory_service.consolidation.scheduler</td>
+                            <td>src.mcp_memory_service.consolidation.base</td>
+                        </tr>
+                        
+                        
+                        
+                        <tr>
+                            <td>error</td>
+                            <td>domain !&gt; presentation</td>
+                            <td>src.mcp_memory_service.discovery.client</td>
+                            <td>src.mcp_memory_service.config</td>
+                        </tr>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                    </tbody>
+                </table>
+                
+            </div>
+            
+            
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName, el) {
+            
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            
+            document.getElementById(tabName).classList.add('active');
+            
+            
+            if (el) { el.classList.add('active'); }
+        }
+    </script>
+</body>
+</html>

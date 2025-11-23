@@ -1449,17 +1449,107 @@ SOLUTIONS:
                     updated_fields.append(key)
             
             updated_fields.append("updated_at")
-            
+
             summary = f"Updated fields: {', '.join(updated_fields)}"
             logger.info(f"Successfully updated metadata for memory {content_hash}")
             return True, summary
-            
+
         except Exception as e:
             error_msg = f"Error updating memory metadata: {str(e)}"
             logger.error(error_msg)
             logger.error(traceback.format_exc())
             return False, error_msg
-    
+
+    async def update_memories_batch(self, memories: List[Memory]) -> List[bool]:
+        """
+        Update multiple memories in a single database transaction for optimal performance.
+
+        This method processes all updates in a single transaction, significantly improving
+        performance compared to individual update_memory() calls.
+
+        Args:
+            memories: List of Memory objects with updated fields
+
+        Returns:
+            List of success booleans, one for each memory in the batch
+        """
+        if not memories:
+            return []
+
+        try:
+            if not self.conn:
+                return [False] * len(memories)
+
+            results = [False] * len(memories)
+            now = time.time()
+            now_iso = datetime.utcfromtimestamp(now).isoformat() + "Z"
+
+            # Start transaction (will be committed at the end)
+            # SQLite doesn't have explicit BEGIN for Python DB-API, but we can use savepoint
+            cursor = self.conn.cursor()
+
+            for idx, memory in enumerate(memories):
+                try:
+                    # Get current memory data
+                    cursor.execute('''
+                        SELECT content, tags, memory_type, metadata, created_at, created_at_iso
+                        FROM memories WHERE content_hash = ?
+                    ''', (memory.content_hash,))
+
+                    row = cursor.fetchone()
+                    if not row:
+                        logger.warning(f"Memory {memory.content_hash} not found during batch update")
+                        continue
+
+                    content, current_tags, current_type, current_metadata_str, created_at, created_at_iso = row
+
+                    # Parse current metadata
+                    current_metadata = self._safe_json_loads(current_metadata_str, "update_memories_batch")
+
+                    # Merge metadata (new metadata takes precedence)
+                    if memory.metadata:
+                        merged_metadata = current_metadata.copy()
+                        merged_metadata.update(memory.metadata)
+                    else:
+                        merged_metadata = current_metadata
+
+                    # Prepare new values
+                    new_tags = ",".join(memory.tags) if memory.tags else current_tags
+                    new_type = memory.memory_type if memory.memory_type else current_type
+
+                    # Execute update
+                    cursor.execute('''
+                        UPDATE memories SET
+                            tags = ?, memory_type = ?, metadata = ?,
+                            updated_at = ?, updated_at_iso = ?
+                        WHERE content_hash = ?
+                    ''', (
+                        new_tags, new_type, json.dumps(merged_metadata),
+                        now, now_iso, memory.content_hash
+                    ))
+
+                    results[idx] = True
+
+                except Exception as e:
+                    logger.warning(f"Failed to update memory {memory.content_hash} in batch: {e}")
+                    continue
+
+            # Commit all updates in a single transaction
+            self.conn.commit()
+
+            success_count = sum(results)
+            logger.info(f"Batch update completed: {success_count}/{len(memories)} memories updated successfully")
+
+            return results
+
+        except Exception as e:
+            # Rollback on error
+            if self.conn:
+                self.conn.rollback()
+            logger.error(f"Batch update failed: {e}")
+            logger.error(traceback.format_exc())
+            return [False] * len(memories)
+
     async def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics."""
         try:

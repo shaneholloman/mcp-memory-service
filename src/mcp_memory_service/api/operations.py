@@ -300,15 +300,14 @@ async def _consolidate_async(time_horizon: str) -> CompactConsolidationResult:
         # Calculate duration
         duration = time.time() - start_time
 
-        # Extract metrics from result
-        processed = result.get('memories_processed', 0)
-        compressed = result.get('memories_compressed', 0)
-        forgotten = result.get('memories_forgotten', 0)
-        status = result.get('status', 'completed')
+        # Extract metrics from result (ConsolidationReport object)
+        processed = result.memories_processed
+        compressed = result.memories_compressed
+        forgotten = result.memories_archived
+        status = 'completed' if not result.errors else 'completed_with_errors'
 
         logger.info(
-            f"Consolidation completed: {processed} processed, "
-            f"{compressed} compressed, {forgotten} forgotten ({duration:.1f}s)"
+        f"🎉 Consolidation completed successfully! Processed: {processed}, Compressed: {compressed}, Forgotten: {forgotten} (Total time: {duration:.1f}s)"
         )
 
         return CompactConsolidationResult(

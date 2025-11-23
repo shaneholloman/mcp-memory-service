@@ -1229,6 +1229,43 @@ class HybridMemoryStorage(MemoryStorage):
 
         return success, message
 
+    async def update_memories_batch(self, memories: List[Memory]) -> List[bool]:
+        """
+        Update multiple memories in a batch operation with optimal performance.
+
+        Delegates directly to primary storage's optimized batch update method,
+        then queues secondary sync operations in background.
+
+        Args:
+            memories: List of Memory objects with updated fields
+
+        Returns:
+            List of success booleans, one for each memory in the batch
+        """
+        # Use primary storage's optimized batch update (single transaction)
+        results = await self.primary.update_memories_batch(memories)
+
+        # Queue successful updates for background sync to secondary
+        if self.sync_service:
+            for idx, (memory, success) in enumerate(zip(memories, results)):
+                if success:
+                    operation = SyncOperation(
+                        operation='update',
+                        content_hash=memory.content_hash,
+                        updates={
+                            'tags': memory.tags,
+                            'metadata': memory.metadata,
+                            'memory_type': memory.memory_type
+                        }
+                    )
+                    # Don't await - queue asynchronously for background processing
+                    try:
+                        await self.sync_service.enqueue_operation(operation)
+                    except Exception as e:
+                        logger.warning(f"Failed to queue sync for {memory.content_hash}: {e}")
+
+        return results
+
     async def get_stats(self) -> Dict[str, Any]:
         """Get comprehensive statistics from both storage backends."""
         # SQLite-vec get_stats is now async
