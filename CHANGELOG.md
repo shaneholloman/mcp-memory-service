@@ -10,6 +10,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.30.0] - 2025-11-23
+
+### Added
+- **Adaptive Chart Granularity** - Analytics charts now use semantically appropriate time intervals for better trend visualization
+  - **Last Month view**: Changed from 3-day intervals to weekly aggregation for clearer monthly trends
+  - **Last Year view**: Uses monthly aggregation for annual overview
+  - **Human-readable labels**: Charts display clear interval formatting:
+    - Daily view: "Nov 15" format
+    - Weekly aggregation: "Week of Nov 15" format
+    - Monthly aggregation: "November 2024" format
+  - **Improved UX**: Better semantic alignment between time period and chart granularity
+  - **Files Modified**: `src/mcp_memory_service/web/api/analytics.py` (lines 307-345), `src/mcp_memory_service/web/static/app.js` (line 3661)
+
+### Fixed
+- **CRITICAL: Interval Aggregation Bug** - Multi-day intervals (weekly, monthly) now correctly aggregate across entire period
+  - **Problem**: Intervals were only counting memories from the first day of the interval, not the entire period
+  - **Impact**: Analytics showed wildly inaccurate data (e.g., 0 memories instead of 427 for Oct 24-30 week)
+  - **Root Cause**: `strftime` format in date grouping only used the first timestamp, not the interval's date range
+  - **Solution**: Updated aggregation logic to properly filter and count all memories within each interval
+  - **Files Modified**: `src/mcp_memory_service/web/api/analytics.py` (lines 242-267)
+
+- **CRITICAL: Data Sampling Bug** - Analytics now fetch complete historical data with proper date range filtering
+  - **Problem**: API only fetched 1,000 most recent memories, missing historical data for longer time periods
+  - **Impact**: Charts showed incomplete or missing data for older time ranges
+  - **Solution**: Increased fetch limit to 10,000 memories with proper `created_at >= start_date` filtering
+  - **Files Modified**: `src/mcp_memory_service/web/api/analytics.py` (lines 56-62)
+  - **Performance**: Maintains fast response times (<200ms) even with larger dataset
+
+### Changed
+- **Analytics API**: Improved data fetching with larger limits and proper date filtering for accurate historical analysis
+
 ## [8.29.0] - 2025-11-23
 
 ### Added
