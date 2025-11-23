@@ -253,11 +253,8 @@ def _generate_interval_label(date: datetime, period: str) -> str:
     if period == "week":
         # For weekly view (daily intervals): "Nov 15"
         return date.strftime("%b %d")
-    elif period == "month":
-        # For monthly view (weekly intervals): "Week of Nov 15"
-        return f"Week of {date.strftime('%b %d')}"
-    elif period == "quarter":
-        # For quarterly view (weekly intervals): "Week of Nov 15"
+    elif period in ("month", "quarter"):
+        # For monthly/quarterly view (weekly intervals): "Week of Nov 15"
         return f"Week of {date.strftime('%b %d')}"
     elif period == "year":
         # For yearly view (monthly intervals): "November 2024"
