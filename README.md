@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.29.0** (Nov 23, 2025)
+### 🆕 Latest Release: **v8.30.0** (Nov 23, 2025)
 
-**Dashboard Quick Actions: Sync Controls & Automatic Backups**
+**Analytics Intelligence: Adaptive Charts & Critical Data Fixes**
 
-- 🎛️ **Sync Controls Widget** - Real-time pause/resume/force sync with status indicators for hybrid backend
-- 💾 **Automatic Scheduled Backups** - Enterprise-grade backup system with SQLite native API and retention policies
-- ⚡ **Clean Dashboard Layout** - Moved sync controls to Quick Actions sidebar for better UX
-- 🔐 **Security Enhancements** - OAuth-protected backup endpoints, no file path exposure
-- 🌐 **Safari Compatibility** - Improved event listener handling for reliable button interactions
+- 📊 **Adaptive Chart Granularity** - Semantically appropriate time intervals (weekly for month view, monthly for year view)
+- 🏷️ **Human-Readable Labels** - Clear interval formatting ("Week of Nov 15", "November 2024")
+- 🐛 **Fixed Interval Aggregation Bug** - Multi-day intervals now correctly aggregate across entire period (was only counting first day)
+- 📈 **Fixed Data Sampling Bug** - Increased fetch limit to 10,000 memories with proper date filtering (was missing historical data)
+- 🎯 **Improved Decision-Making** - Accurate analytics with proper trend visualization for memory management
 
 **Previous Releases**:
+- **v8.29.0** - Dashboard Quick Actions: Sync Controls & Automatic Backups (enterprise-grade backup system)
 - **v8.28.1** - Critical HTTP MCP Transport JSON-RPC 2.0 Compliance Fix (Claude Code compatibility)
 - **v8.28.0** - Cloudflare AND/OR Tag Filtering (unified search API, 3-5x faster hybrid sync)
 - **v8.27.1** - Critical Hotfix: Timestamp Regression (created_at preservation during metadata sync)
