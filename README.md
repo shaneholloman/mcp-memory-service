@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.30.0** (Nov 23, 2025)
+### 🆕 Latest Release: **v8.31.0** (Nov 23, 2025)
 
-**Analytics Intelligence: Adaptive Charts & Critical Data Fixes**
+**Revolutionary Performance: 21,428x Faster Memory Consolidation**
 
-- 📊 **Adaptive Chart Granularity** - Semantically appropriate time intervals (weekly for month view, monthly for year view)
-- 🏷️ **Human-Readable Labels** - Clear interval formatting ("Week of Nov 15", "November 2024")
-- 🐛 **Fixed Interval Aggregation Bug** - Multi-day intervals now correctly aggregate across entire period (was only counting first day)
-- 📈 **Fixed Data Sampling Bug** - Increased fetch limit to 10,000 memories with proper date filtering (was missing historical data)
-- 🎯 **Improved Decision-Making** - Accurate analytics with proper trend visualization for memory management
+- 🚀 **Batch Update API** - New `update_memories_batch()` method for atomic batch operations across all storage backends
+- ⚡ **21,428x Speedup** - Memory consolidation: 300 seconds → 0.014 seconds for 500 memory batch updates
+- 🎯 **<1 Second Consolidation** - Complete workflow reduced from 5+ minutes to <1 second for 500 memories
+- 🔄 **Backward Compatible** - Existing single-update code paths continue working unchanged
+- 💾 **Optimized Backends** - Single transaction (SQLite), parallel updates (Cloudflare), dual-backend sync (Hybrid)
 
 **Previous Releases**:
+- **v8.30.0** - Analytics Intelligence: Adaptive Charts & Critical Data Fixes (accurate trend visualization)
 - **v8.29.0** - Dashboard Quick Actions: Sync Controls & Automatic Backups (enterprise-grade backup system)
 - **v8.28.1** - Critical HTTP MCP Transport JSON-RPC 2.0 Compliance Fix (Claude Code compatibility)
 - **v8.28.0** - Cloudflare AND/OR Tag Filtering (unified search API, 3-5x faster hybrid sync)

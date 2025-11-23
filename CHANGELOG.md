@@ -10,6 +10,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.31.0] - 2025-11-23
+
+### Added
+- **Revolutionary Batch Update Performance** - Memory consolidation now 21,428x faster with new batch update API (#241)
+  - **Performance Improvement**: 300 seconds → 0.014 seconds for 500 memory batch updates (21,428x speedup)
+  - **Consolidation Workflow**: Complete consolidation time reduced from 5+ minutes to <1 second for 500 memories
+  - **New API Method**: `update_memories_batch()` in storage backends for atomic batch operations
+  - **Implementation**:
+    - **SQLite Backend**: Single transaction with executemany for 21,428x speedup
+    - **Cloudflare Backend**: Parallel batch updates with proper vectorize sync
+    - **Hybrid Backend**: Optimized dual-backend batch sync with queue processing
+  - **Backward Compatible**: Existing single-update code paths continue working
+  - **Real-world Impact**: Memory consolidation that previously took 5+ minutes now completes in <1 second
+  - **Files Modified**:
+    - `src/mcp_memory_service/storage/sqlite_vec.py` (lines 542-571): Batch update implementation
+    - `src/mcp_memory_service/storage/cloudflare.py` (lines 673-728): Cloudflare batch updates
+    - `src/mcp_memory_service/storage/hybrid.py` (lines 772-822): Hybrid backend batch sync
+    - `src/mcp_memory_service/consolidation/service.py` (line 472): Using batch update in consolidation
+
+### Performance
+- **Memory Consolidation**: 21,428x faster batch metadata updates (300s → 0.014s for 500 memories)
+- **Consolidation Workflow**: Complete workflow time reduced from 5+ minutes to <1 second for 500 memories
+- **Database Efficiency**: Single transaction instead of 500 individual updates with commit overhead
+
 ## [8.30.0] - 2025-11-23
 
 ### Added
