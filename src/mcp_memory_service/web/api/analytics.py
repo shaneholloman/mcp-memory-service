@@ -22,6 +22,8 @@ import logging
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
+from dataclasses import dataclass
+from enum import Enum
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
@@ -40,6 +42,52 @@ else:
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+# Period Configuration for Analytics
+class PeriodType(str, Enum):
+    """Valid time period types for analytics."""
+    WEEK = "week"
+    MONTH = "month"
+    QUARTER = "quarter"
+    YEAR = "year"
+
+
+@dataclass
+class PeriodConfig:
+    """Configuration for time period analysis."""
+    days: int
+    interval_days: int
+
+
+PERIOD_CONFIGS = {
+    PeriodType.WEEK: PeriodConfig(days=7, interval_days=1),
+    PeriodType.MONTH: PeriodConfig(days=30, interval_days=7),  # Weekly aggregation for monthly view
+    PeriodType.QUARTER: PeriodConfig(days=90, interval_days=7),
+    PeriodType.YEAR: PeriodConfig(days=365, interval_days=30),
+}
+
+
+def get_period_config(period: PeriodType) -> PeriodConfig:
+    """Get configuration for the specified time period.
+
+    Args:
+        period: Time period identifier (week, month, quarter, year)
+
+    Returns:
+        PeriodConfig for the specified period
+
+    Raises:
+        HTTPException: If period is invalid
+    """
+    config = PERIOD_CONFIGS.get(period)
+    if not config:
+        valid_periods = ', '.join(p.value for p in PeriodType)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid period. Use: {valid_periods}"
+        )
+    return config
 
 
 # Response Models
@@ -239,34 +287,36 @@ async def get_analytics_overview(
         raise HTTPException(status_code=500, detail=f"Failed to get analytics overview: {str(e)}")
 
 
-def _generate_interval_label(date: datetime, period: str) -> str:
+# Label formatters for each period type
+PERIOD_LABEL_FORMATTERS = {
+    PeriodType.WEEK: lambda date: date.strftime("%b %d"),  # "Nov 15"
+    PeriodType.MONTH: lambda date: f"Week of {date.strftime('%b %d')}",  # "Week of Nov 15"
+    PeriodType.QUARTER: lambda date: f"Week of {date.strftime('%b %d')}",  # "Week of Nov 15"
+    PeriodType.YEAR: lambda date: date.strftime("%B %Y"),  # "November 2024"
+}
+
+
+def _generate_interval_label(date: datetime, period: PeriodType) -> str:
     """
     Generate a human-readable label for a date interval based on the period type.
 
     Args:
         date: The date for the interval
-        period: The period type ("week", "month", "quarter", "year")
+        period: The period type (week, month, quarter, year)
 
     Returns:
         A formatted label string
     """
-    if period == "week":
-        # For weekly view (daily intervals): "Nov 15"
-        return date.strftime("%b %d")
-    elif period in ("month", "quarter"):
-        # For monthly/quarterly view (weekly intervals): "Week of Nov 15"
-        return f"Week of {date.strftime('%b %d')}"
-    elif period == "year":
-        # For yearly view (monthly intervals): "November 2024"
-        return date.strftime("%B %Y")
-    else:
-        # Fallback to ISO format
-        return date.strftime("%Y-%m-%d")
+    formatter = PERIOD_LABEL_FORMATTERS.get(period)
+    if formatter:
+        return formatter(date)
+    # Fallback to ISO format
+    return date.strftime("%Y-%m-%d")
 
 
 @router.get("/memory-growth", response_model=MemoryGrowthData, tags=["analytics"])
 async def get_memory_growth(
-    period: str = Query("month", description="Time period: week, month, quarter, year"),
+    period: PeriodType = Query(PeriodType.MONTH, description="Time period: week, month, quarter, year"),
     storage: MemoryStorage = Depends(get_storage),
     user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
 ):
@@ -276,21 +326,10 @@ async def get_memory_growth(
     Returns data points showing how the memory count has grown over the specified period.
     """
     try:
-        # Define the period
-        if period == "week":
-            days = 7
-            interval_days = 1
-        elif period == "month":
-            days = 30
-            interval_days = 7  # Weekly aggregation for monthly view
-        elif period == "quarter":
-            days = 90
-            interval_days = 7
-        elif period == "year":
-            days = 365
-            interval_days = 30
-        else:
-            raise HTTPException(status_code=400, detail="Invalid period. Use: week, month, quarter, year")
+        # Get period configuration
+        config = get_period_config(period)
+        days = config.days
+        interval_days = config.interval_days
 
         # Calculate date ranges
         end_date = datetime.now(timezone.utc)
@@ -353,7 +392,7 @@ async def get_memory_growth(
 
         return MemoryGrowthData(
             data_points=data_points,
-            period=period
+            period=period.value
         )
 
     except HTTPException:
