@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.36.1] - 2025-11-24
+
+### Fixed
+- **CRITICAL**: HTTP server crash on v8.36.0 startup - forward reference error in analytics.py (issue #247)
+  - Added `from __future__ import annotations` to enable forward references in type hints
+  - Added `Tuple` to typing imports for Python 3.9 compatibility
+  - Impact: Unblocks all v8.36.0 users experiencing startup failures
+  - Root cause: PR #244 refactoring introduced forward references without future annotations import
+  - Fix verified: HTTP server starts successfully, all 10 analytics routes registered
+
 ## [8.36.0] - 2025-11-24
 
 ### Improved

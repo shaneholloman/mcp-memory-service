@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.36.0** (Nov 24, 2025)
+### 🆕 Latest Release: **v8.36.1** (Nov 24, 2025)
 
-**Code Quality: Phase 2 COMPLETE - 100% Target Achieved!**
+**CRITICAL HOTFIX - HTTP Server Startup**
 
-- 🎉 **Phase 2 Milestone** - All 10 functions refactored with -39 complexity points (100% of target)
-- 🏆 **Health Score** - 63 → 68-72 projected (Grade B achieved, +11 complexity points)
-- 🔧 **Final Batch** - 7 functions refactored: consolidator.py (-8), analytics.py (-8), install.py (-2), cloudflare.py (-1)
-- 🐛 **Critical Fixes** - Timezone bug, analytics double-counting, CUDA/ROCm robustness (Gemini review)
-- 🚀 **API Modernization** - Deprecated pkg_resources/universal_newlines replaced with modern alternatives
+- 🚨 **Production Blocker Fixed** - HTTP server crash on v8.36.0 startup (issue #247)
+- 🔧 **Root Cause** - Forward reference error in analytics.py from PR #244 refactoring
+- ✅ **Fix** - Added `from __future__ import annotations` + Tuple import for Python 3.9 compatibility
+- ⚡ **Impact** - Unblocks all v8.36.0 users experiencing startup failures
+- 🎯 **Verification** - HTTP server starts successfully, all 10 analytics routes registered
 
 **Previous Releases**:
+- **v8.36.0** - Code Quality: Phase 2 COMPLETE (100% of target achieved, -39 complexity points)
 - **v8.35.0** - Code Quality: Phase 2 Batch 1 (install.py, cloudflare.py, -15 complexity points)
 - **v8.34.0** - Code Quality: Phase 2 Complexity Reduction (analytics.py refactored, 11 → 6-7 complexity)
 - **v8.33.0** - Critical Installation Bug Fix + Code Quality Improvements (dead code cleanup, automatic MCP setup)

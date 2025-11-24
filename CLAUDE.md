@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.36.0**: **Code Quality: Phase 2 COMPLETE - 100% Target Achieved** - All 10 functions refactored with -39 complexity points achieved (consolidator.py, analytics.py, install.py, cloudflare.py). Health score improved from 63 → 68-72 (Grade B). Critical fixes via Gemini review: timezone bug, analytics double-counting, CUDA/ROCm robustness. API modernization: deprecated pkg_resources/universal_newlines replaced. Phase 1 (v8.33.0) + Phase 2 (v8.34.0-8.36.0) = comprehensive code quality overhaul. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.36.1**: **CRITICAL HOTFIX - HTTP Server Startup** - Fixed production blocker: HTTP server crash on v8.36.0 startup due to forward reference error in analytics.py (issue #247). Added `from __future__ import annotations` + Tuple import for Python 3.9 compatibility. Root cause: PR #244 refactoring introduced forward references without future annotations import. Fix verified: HTTP server starts successfully, all 10 analytics routes registered. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
