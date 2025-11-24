@@ -1289,195 +1289,17 @@ class MemoryServer:
             """Handle prompt execution with provided arguments."""
             await self._ensure_storage_initialized()
             
-            messages = []
-            
+            # Dispatch to specific prompt handler
             if name == "memory_review":
-                time_period = arguments.get("time_period", "last week")
-                focus_area = arguments.get("focus_area", "")
-                
-                # Retrieve memories from the specified time period
-                memories = await self.storage.recall_memory(time_period, n_results=20)
-                
-                prompt_text = f"Review of memories from {time_period}"
-                if focus_area:
-                    prompt_text += f" (focusing on {focus_area})"
-                prompt_text += ":\n\n"
-                
-                if memories:
-                    for mem in memories:
-                        prompt_text += f"- {mem.content}\n"
-                        if mem.metadata.tags:
-                            prompt_text += f"  Tags: {', '.join(mem.metadata.tags)}\n"
-                else:
-                    prompt_text += "No memories found for this time period."
-                
-                messages = [
-                    types.PromptMessage(
-                        role="user",
-                        content=types.TextContent(
-                            type="text",
-                            text=prompt_text
-                        )
-                    )
-                ]
-                
+                messages = await self._prompt_memory_review(arguments)
             elif name == "memory_analysis":
-                tags = arguments.get("tags", "").split(",") if arguments.get("tags") else []
-                time_range = arguments.get("time_range", "all time")
-                
-                analysis_text = f"Memory Analysis"
-                if tags:
-                    analysis_text += f" for tags: {', '.join(tags)}"
-                if time_range != "all time":
-                    analysis_text += f" from {time_range}"
-                analysis_text += "\n\n"
-                
-                # Get relevant memories
-                if tags:
-                    memories = await self.storage.search_by_tag(tags)
-                else:
-                    memories = await self.storage.get_recent_memories(100)
-                
-                # Analyze patterns
-                tag_counts = {}
-                type_counts = {}
-                for mem in memories:
-                    for tag in mem.metadata.tags:
-                        tag_counts[tag] = tag_counts.get(tag, 0) + 1
-                    mem_type = mem.metadata.memory_type
-                    type_counts[mem_type] = type_counts.get(mem_type, 0) + 1
-                
-                analysis_text += f"Total memories analyzed: {len(memories)}\n\n"
-                analysis_text += "Top tags:\n"
-                for tag, count in sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
-                    analysis_text += f"  - {tag}: {count} occurrences\n"
-                analysis_text += "\nMemory types:\n"
-                for mem_type, count in type_counts.items():
-                    analysis_text += f"  - {mem_type}: {count} memories\n"
-                
-                messages = [
-                    types.PromptMessage(
-                        role="user",
-                        content=types.TextContent(
-                            type="text",
-                            text=analysis_text
-                        )
-                    )
-                ]
-                
+                messages = await self._prompt_memory_analysis(arguments)
             elif name == "knowledge_export":
-                format_type = arguments.get("format", "json")
-                filter_criteria = arguments.get("filter", "")
-                
-                # Get memories based on filter
-                if filter_criteria:
-                    if "," in filter_criteria:
-                        # Assume tags
-                        memories = await self.storage.search_by_tag(filter_criteria.split(","))
-                    else:
-                        # Assume search query
-                        memories = await self.storage.search(filter_criteria, n_results=100)
-                else:
-                    memories = await self.storage.get_recent_memories(100)
-                
-                export_text = f"Exported {len(memories)} memories in {format_type} format:\n\n"
-                
-                if format_type == "markdown":
-                    for mem in memories:
-                        export_text += f"## {mem.metadata.created_at_iso}\n"
-                        export_text += f"{mem.content}\n"
-                        if mem.metadata.tags:
-                            export_text += f"*Tags: {', '.join(mem.metadata.tags)}*\n"
-                        export_text += "\n"
-                elif format_type == "text":
-                    for mem in memories:
-                        export_text += f"[{mem.metadata.created_at_iso}] {mem.content}\n"
-                else:  # json
-                    import json
-                    export_data = [m.to_dict() for m in memories]
-                    export_text += json.dumps(export_data, indent=2, default=str)
-                
-                messages = [
-                    types.PromptMessage(
-                        role="user",
-                        content=types.TextContent(
-                            type="text",
-                            text=export_text
-                        )
-                    )
-                ]
-                
+                messages = await self._prompt_knowledge_export(arguments)
             elif name == "memory_cleanup":
-                older_than = arguments.get("older_than", "")
-                similarity_threshold = float(arguments.get("similarity_threshold", "0.95"))
-                
-                cleanup_text = "Memory Cleanup Report:\n\n"
-                
-                # Find duplicates
-                all_memories = await self.storage.get_recent_memories(1000)
-                duplicates = []
-                
-                for i, mem1 in enumerate(all_memories):
-                    for mem2 in all_memories[i+1:]:
-                        # Simple similarity check based on content length
-                        if abs(len(mem1.content) - len(mem2.content)) < 10:
-                            if mem1.content[:50] == mem2.content[:50]:
-                                duplicates.append((mem1, mem2))
-                
-                cleanup_text += f"Found {len(duplicates)} potential duplicate pairs\n"
-                
-                if older_than:
-                    cleanup_text += f"\nMemories older than {older_than} can be archived\n"
-                
-                messages = [
-                    types.PromptMessage(
-                        role="user",
-                        content=types.TextContent(
-                            type="text",
-                            text=cleanup_text
-                        )
-                    )
-                ]
-                
+                messages = await self._prompt_memory_cleanup(arguments)
             elif name == "learning_session":
-                topic = arguments.get("topic", "General")
-                key_points = arguments.get("key_points", "").split(",")
-                questions = arguments.get("questions", "").split(",") if arguments.get("questions") else []
-                
-                # Create structured learning note
-                learning_note = f"# Learning Session: {topic}\n\n"
-                learning_note += f"Date: {datetime.now().isoformat()}\n\n"
-                learning_note += "## Key Points:\n"
-                for point in key_points:
-                    learning_note += f"- {point.strip()}\n"
-                
-                if questions:
-                    learning_note += "\n## Questions for Further Study:\n"
-                    for question in questions:
-                        learning_note += f"- {question.strip()}\n"
-                
-                # Store the learning note
-                memory = Memory(
-                    content=learning_note,
-                    tags=["learning", topic.lower().replace(" ", "_")],
-                    memory_type="learning_note"
-                )
-                success, message = await self.storage.store(memory)
-                
-                response_text = f"Learning session stored successfully!\n\n{learning_note}"
-                if not success:
-                    response_text = f"Failed to store learning session: {message}"
-                
-                messages = [
-                    types.PromptMessage(
-                        role="user",
-                        content=types.TextContent(
-                            type="text",
-                            text=response_text
-                        )
-                    )
-                ]
-            
+                messages = await self._prompt_learning_session(arguments)
             else:
                 messages = [
                     types.PromptMessage(
@@ -1493,6 +1315,184 @@ class MemoryServer:
                 description=f"Result of {name} prompt",
                 messages=messages
             )
+        
+        # Helper methods for specific prompts
+        async def _prompt_memory_review(self, arguments: dict) -> list:
+            """Generate memory review prompt."""
+            time_period = arguments.get("time_period", "last week")
+            focus_area = arguments.get("focus_area", "")
+            
+            # Retrieve memories from the specified time period
+            memories = await self.storage.recall_memory(time_period, n_results=20)
+            
+            prompt_text = f"Review of memories from {time_period}"
+            if focus_area:
+                prompt_text += f" (focusing on {focus_area})"
+            prompt_text += ":\n\n"
+            
+            if memories:
+                for mem in memories:
+                    prompt_text += f"- {mem.content}\n"
+                    if mem.metadata.tags:
+                        prompt_text += f"  Tags: {', '.join(mem.metadata.tags)}\n"
+            else:
+                prompt_text += "No memories found for this time period."
+            
+            return [
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(type="text", text=prompt_text)
+                )
+            ]
+        
+        async def _prompt_memory_analysis(self, arguments: dict) -> list:
+            """Generate memory analysis prompt."""
+            tags = arguments.get("tags", "").split(",") if arguments.get("tags") else []
+            time_range = arguments.get("time_range", "all time")
+            
+            analysis_text = "Memory Analysis"
+            if tags:
+                analysis_text += f" for tags: {', '.join(tags)}"
+            if time_range != "all time":
+                analysis_text += f" from {time_range}"
+            analysis_text += "\n\n"
+            
+            # Get relevant memories
+            if tags:
+                memories = await self.storage.search_by_tag(tags)
+            else:
+                memories = await self.storage.get_recent_memories(100)
+            
+            # Analyze patterns
+            tag_counts = {}
+            type_counts = {}
+            for mem in memories:
+                for tag in mem.metadata.tags:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+                mem_type = mem.metadata.memory_type
+                type_counts[mem_type] = type_counts.get(mem_type, 0) + 1
+            
+            analysis_text += f"Total memories analyzed: {len(memories)}\n\n"
+            analysis_text += "Top tags:\n"
+            for tag, count in sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
+                analysis_text += f"  - {tag}: {count} occurrences\n"
+            analysis_text += "\nMemory types:\n"
+            for mem_type, count in type_counts.items():
+                analysis_text += f"  - {mem_type}: {count} memories\n"
+            
+            return [
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(type="text", text=analysis_text)
+                )
+            ]
+        
+        async def _prompt_knowledge_export(self, arguments: dict) -> list:
+            """Generate knowledge export prompt."""
+            format_type = arguments.get("format", "json")
+            filter_criteria = arguments.get("filter", "")
+            
+            # Get memories based on filter
+            if filter_criteria:
+                if "," in filter_criteria:
+                    # Assume tags
+                    memories = await self.storage.search_by_tag(filter_criteria.split(","))
+                else:
+                    # Assume search query
+                    memories = await self.storage.search(filter_criteria, n_results=100)
+            else:
+                memories = await self.storage.get_recent_memories(100)
+            
+            export_text = f"Exported {len(memories)} memories in {format_type} format:\n\n"
+            
+            if format_type == "markdown":
+                for mem in memories:
+                    export_text += f"## {mem.metadata.created_at_iso}\n"
+                    export_text += f"{mem.content}\n"
+                    if mem.metadata.tags:
+                        export_text += f"*Tags: {', '.join(mem.metadata.tags)}*\n"
+                    export_text += "\n"
+            elif format_type == "text":
+                for mem in memories:
+                    export_text += f"[{mem.metadata.created_at_iso}] {mem.content}\n"
+            else:  # json
+                import json
+                export_data = [m.to_dict() for m in memories]
+                export_text += json.dumps(export_data, indent=2, default=str)
+            
+            return [
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(type="text", text=export_text)
+                )
+            ]
+        
+        async def _prompt_memory_cleanup(self, arguments: dict) -> list:
+            """Generate memory cleanup prompt."""
+            older_than = arguments.get("older_than", "")
+            similarity_threshold = float(arguments.get("similarity_threshold", "0.95"))
+            
+            cleanup_text = "Memory Cleanup Report:\n\n"
+            
+            # Find duplicates
+            all_memories = await self.storage.get_recent_memories(1000)
+            duplicates = []
+            
+            for i, mem1 in enumerate(all_memories):
+                for mem2 in all_memories[i+1:]:
+                    # Simple similarity check based on content length
+                    if abs(len(mem1.content) - len(mem2.content)) < 10:
+                        if mem1.content[:50] == mem2.content[:50]:
+                            duplicates.append((mem1, mem2))
+            
+            cleanup_text += f"Found {len(duplicates)} potential duplicate pairs\n"
+            
+            if older_than:
+                cleanup_text += f"\nMemories older than {older_than} can be archived\n"
+            
+            return [
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(type="text", text=cleanup_text)
+                )
+            ]
+        
+        async def _prompt_learning_session(self, arguments: dict) -> list:
+            """Generate learning session prompt."""
+            topic = arguments.get("topic", "General")
+            key_points = arguments.get("key_points", "").split(",")
+            questions = arguments.get("questions", "").split(",") if arguments.get("questions") else []
+            
+            # Create structured learning note
+            learning_note = f"# Learning Session: {topic}\n\n"
+            learning_note += f"Date: {datetime.now().isoformat()}\n\n"
+            learning_note += "## Key Points:\n"
+            for point in key_points:
+                learning_note += f"- {point.strip()}\n"
+            
+            if questions:
+                learning_note += "\n## Questions for Further Study:\n"
+                for question in questions:
+                    learning_note += f"- {question.strip()}\n"
+            
+            # Store the learning note
+            memory = Memory(
+                content=learning_note,
+                tags=["learning", topic.lower().replace(" ", "_")],
+                memory_type="learning_note"
+            )
+            success, message = await self.storage.store(memory)
+            
+            response_text = f"Learning session stored successfully!\n\n{learning_note}"
+            if not success:
+                response_text = f"Failed to store learning session: {message}"
+            
+            return [
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(type="text", text=response_text)
+                )
+            ]
         
         # Add a custom error handler for unsupported methods
         self.server.on_method_not_found = self.handle_method_not_found
