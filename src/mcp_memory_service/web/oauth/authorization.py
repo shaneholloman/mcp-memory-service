@@ -218,6 +218,134 @@ async def authorize(
 
 
 @router.post("/token", response_model=TokenResponse)
+async def _handle_authorization_code_grant(
+    final_client_id: str,
+    final_client_secret: str,
+    code: Optional[str],
+    redirect_uri: Optional[str]
+) -> TokenResponse:
+    """Handle OAuth authorization_code grant type."""
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_request",
+                "error_description": "Missing required parameter: code"
+            }
+        )
+
+    if not final_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_request",
+                "error_description": "Missing required parameter: client_id"
+            }
+        )
+
+    # Authenticate client
+    if not await oauth_storage.authenticate_client(final_client_id, final_client_secret or ""):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "invalid_client",
+                "error_description": "Client authentication failed"
+            }
+        )
+
+    # Get and consume authorization code
+    code_data = await oauth_storage.get_authorization_code(code)
+    if not code_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_grant",
+                "error_description": "Invalid or expired authorization code"
+            }
+        )
+
+    # Validate client_id matches
+    if code_data["client_id"] != final_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_grant",
+                "error_description": "Authorization code was issued to a different client"
+            }
+        )
+
+    # Validate redirect_uri if provided
+    if redirect_uri and code_data["redirect_uri"] != redirect_uri:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_grant",
+                "error_description": "redirect_uri does not match the one used in authorization request"
+            }
+        )
+
+    # Create access token
+    access_token, expires_in = create_access_token(final_client_id, code_data["scope"])
+
+    # Store access token for validation
+    await oauth_storage.store_access_token(
+        token=access_token,
+        client_id=final_client_id,
+        scope=code_data["scope"],
+        expires_in=expires_in
+    )
+
+    logger.info(f"Access token issued for client_id={final_client_id}")
+    return TokenResponse(
+        access_token=access_token,
+        token_type="Bearer",
+        expires_in=expires_in,
+        scope=code_data["scope"]
+    )
+
+async def _handle_client_credentials_grant(
+    final_client_id: str,
+    final_client_secret: str
+) -> TokenResponse:
+    """Handle OAuth client_credentials grant type."""
+    if not final_client_id or not final_client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_request",
+                "error_description": "Missing required parameters: client_id and client_secret"
+            }
+        )
+
+    # Authenticate client
+    if not await oauth_storage.authenticate_client(final_client_id, final_client_secret):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "invalid_client",
+                "error_description": "Client authentication failed"
+            }
+        )
+
+    # Create access token
+    access_token, expires_in = create_access_token(final_client_id, "read write")
+
+    # Store access token
+    await oauth_storage.store_access_token(
+        token=access_token,
+        client_id=final_client_id,
+        scope="read write",
+        expires_in=expires_in
+    )
+
+    logger.info(f"Client credentials token issued for client_id={final_client_id}")
+    return TokenResponse(
+        access_token=access_token,
+        token_type="Bearer",
+        expires_in=expires_in,
+        scope="read write"
+    )
+
 async def token(
     request: Request,
     grant_type: str = Form(..., description="OAuth grant type"),
@@ -246,123 +374,12 @@ async def token(
 
     try:
         if grant_type == "authorization_code":
-            # Validate required parameters
-            if not code:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "error": "invalid_request",
-                        "error_description": "Missing required parameter: code"
-                    }
-                )
-
-            if not final_client_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "error": "invalid_request",
-                        "error_description": "Missing required parameter: client_id"
-                    }
-                )
-
-            # Authenticate client
-            if not await oauth_storage.authenticate_client(final_client_id, final_client_secret or ""):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail={
-                        "error": "invalid_client",
-                        "error_description": "Client authentication failed"
-                    }
-                )
-
-            # Get and consume authorization code
-            code_data = await oauth_storage.get_authorization_code(code)
-            if not code_data:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "error": "invalid_grant",
-                        "error_description": "Invalid or expired authorization code"
-                    }
-                )
-
-            # Validate client_id matches
-            if code_data["client_id"] != final_client_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "error": "invalid_grant",
-                        "error_description": "Authorization code was issued to a different client"
-                    }
-                )
-
-            # Validate redirect_uri if provided
-            if redirect_uri and code_data["redirect_uri"] != redirect_uri:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "error": "invalid_grant",
-                        "error_description": "redirect_uri does not match the one used in authorization request"
-                    }
-                )
-
-            # Create access token
-            access_token, expires_in = create_access_token(final_client_id, code_data["scope"])
-
-            # Store access token for validation
-            await oauth_storage.store_access_token(
-                token=access_token,
-                client_id=final_client_id,
-                scope=code_data["scope"],
-                expires_in=expires_in
+            return await _handle_authorization_code_grant(
+                final_client_id, final_client_secret, code, redirect_uri
             )
-
-            logger.info(f"Access token issued for client_id={final_client_id}")
-            return TokenResponse(
-                access_token=access_token,
-                token_type="Bearer",
-                expires_in=expires_in,
-                scope=code_data["scope"]
-            )
-
         elif grant_type == "client_credentials":
-            # Client credentials flow for server-to-server authentication
-            if not final_client_id or not final_client_secret:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={
-                        "error": "invalid_request",
-                        "error_description": "Missing required parameters: client_id and client_secret"
-                    }
-                )
-
-            # Authenticate client
-            if not await oauth_storage.authenticate_client(final_client_id, final_client_secret):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail={
-                        "error": "invalid_client",
-                        "error_description": "Client authentication failed"
-                    }
-                )
-
-            # Create access token
-            access_token, expires_in = create_access_token(final_client_id, "read write")
-
-            # Store access token
-            await oauth_storage.store_access_token(
-                token=access_token,
-                client_id=final_client_id,
-                scope="read write",
-                expires_in=expires_in
-            )
-
-            logger.info(f"Client credentials token issued for client_id={final_client_id}")
-            return TokenResponse(
-                access_token=access_token,
-                token_type="Bearer",
-                expires_in=expires_in,
-                scope="read write"
+            return await _handle_client_credentials_grant(
+                final_client_id, final_client_secret
             )
 
         else:
