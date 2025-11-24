@@ -2695,8 +2695,8 @@ def setup_universal_multi_client_access(system_info, args, storage_backend="sqli
     
     return True
 
-def main():
-    """Main installation function."""
+def _parse_arguments():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Install MCP Memory Service")
     parser.add_argument('--dev', action='store_true', help='Install in development mode')
     parser.add_argument('--chroma-path', type=str, help='Path to ChromaDB storage')
@@ -2740,9 +2740,10 @@ def main():
     parser.add_argument('--non-interactive', action='store_true',
                         help='Run in non-interactive mode using default values for all prompts')
     
-    args = parser.parse_args()
-    
-    # Handle special help modes
+    return parser.parse_args()
+
+def _handle_special_modes(args):
+    """Handle special help and documentation modes that exit early."""
     if args.help_detailed:
         show_detailed_help()
         sys.exit(0)
@@ -2751,32 +2752,29 @@ def main():
         generate_personalized_docs()
         sys.exit(0)
     
-    # Set up logging system to capture installation output
-    try:
-        log_file_path = setup_installer_logging()
-    except Exception as e:
-        print(f"Warning: Could not set up logging: {e}")
-        log_file_path = None
-    
+def _detect_system_and_environment(args):
+    """Detect system configuration and return system info dict."""
     print_header("MCP Memory Service Installation")
     
-    # Step 1: Detect system
     print_step("1", "Detecting system")
     system_info = detect_system()
     gpu_info = detect_gpu()
     memory_gb = detect_memory_gb()
     
-    # Show memory info if detected
     if memory_gb > 0:
         print_info(f"System memory: {memory_gb:.1f}GB")
     
-    # Intelligent backend recommendation
+    return system_info, gpu_info, memory_gb
+
+def _recommend_backend(args, system_info, gpu_info, memory_gb):
+    """Recommend and set storage backend based on system configuration."""
     if not args.storage_backend:
         recommended_backend = recommend_backend_intelligent(system_info, gpu_info, memory_gb, args)
         args.storage_backend = recommended_backend
         print_info(f"Recommended backend: {recommended_backend}")
-    
-    # Handle legacy hardware special case
+
+def _configure_legacy_hardware(args, system_info):
+    """Configure installation for legacy hardware."""
     if args.legacy_hardware or is_legacy_hardware(system_info):
         print_step("1a", "Legacy Hardware Optimization")
         args.storage_backend = "sqlite_vec"
@@ -2785,16 +2783,18 @@ def main():
         print_info("• SQLite-vec backend selected")
         print_info("• Homebrew PyTorch integration enabled")
         print_info("• ONNX runtime will be configured")
-    
-    # Handle server mode
+
+def _configure_server_mode(args):
+    """Configure installation for server mode."""
     if args.server_mode:
         print_step("1b", "Server Mode Configuration")
         args.storage_backend = "sqlite_vec"
         print_success("Configuring for server deployment")
         print_info("• Lightweight SQLite-vec backend")
         print_info("• Minimal UI dependencies")
-    
-    # Handle HTTP API
+
+def _configure_http_api(args):
+    """Configure HTTP/SSE API settings."""
     if args.enable_http_api:
         print_step("1c", "HTTP/SSE API Configuration")
         if args.storage_backend == "chromadb":
@@ -2810,109 +2810,106 @@ def main():
                 print("=" * 60 + "\n")
                 if response.lower().startswith('y'):
                     args.storage_backend = "sqlite_vec"
+
+def _setup_chromadb_migration(args):
+    """Set up ChromaDB migration if requested."""
+    if not args.migrate_from_chromadb:
+        return
     
-    # Handle migration
-    if args.migrate_from_chromadb:
-        print_step("1d", "Migration Setup")
-        print_info("Preparing to migrate from existing ChromaDB installation")
-        
-        # Check if ChromaDB data exists
-        chromadb_paths = [
-            os.path.expanduser("~/.mcp_memory_chroma"),
-            os.path.expanduser("~/Library/Application Support/mcp-memory/chroma_db"),
-            os.path.expanduser("~/.local/share/mcp-memory/chroma_db")
-        ]
-        
-        chromadb_found = None
-        for path in chromadb_paths:
-            if os.path.exists(path):
-                chromadb_found = path
-                break
-        
-        if chromadb_found:
-            print_success(f"Found ChromaDB data at: {chromadb_found}")
-            args.storage_backend = "sqlite_vec"  # Migration target
-            args.chromadb_found = chromadb_found  # Store for later use
-            print_info("Migration will run after installation completes")
+    print_step("1d", "Migration Setup")
+    print_info("Preparing to migrate from existing ChromaDB installation")
+    
+    chromadb_paths = [
+        os.path.expanduser("~/.mcp_memory_chroma"),
+        os.path.expanduser("~/Library/Application Support/mcp-memory/chroma_db"),
+        os.path.expanduser("~/.local/share/mcp-memory/chroma_db")
+    ]
+    
+    chromadb_found = None
+    for path in chromadb_paths:
+        if os.path.exists(path):
+            chromadb_found = path
+            break
+    
+    if chromadb_found:
+        print_success(f"Found ChromaDB data at: {chromadb_found}")
+        args.storage_backend = "sqlite_vec"
+        args.chromadb_found = chromadb_found
+        print_info("Migration will run after installation completes")
+    else:
+        print_warning("No ChromaDB data found at standard locations")
+        if args.non_interactive:
+            print_info("Non-interactive mode: skipping ChromaDB migration")
+            args.migrate_from_chromadb = False
         else:
-            print_warning("No ChromaDB data found at standard locations")
-            if args.non_interactive:
-                print_info("Non-interactive mode: skipping ChromaDB migration")
+            print("\n" + "=" * 60)
+            print("⚠️  USER INPUT REQUIRED")
+            print("=" * 60)
+            manual_path = input("Enter ChromaDB path manually (or press Enter to skip): ").strip()
+            print("=" * 60 + "\n")
+            if manual_path and os.path.exists(manual_path):
+                args.storage_backend = "sqlite_vec"
+                args.chromadb_found = manual_path
+            else:
+                print_info("Skipping migration - no valid ChromaDB path provided")
                 args.migrate_from_chromadb = False
-            else:
-                print("\n" + "=" * 60)
-                print("⚠️  USER INPUT REQUIRED")
-                print("=" * 60)
-                manual_path = input("Enter ChromaDB path manually (or press Enter to skip): ").strip()
-                print("=" * 60 + "\n")
-                if manual_path and os.path.exists(manual_path):
-                    chromadb_found = manual_path
-                    args.storage_backend = "sqlite_vec"
-                    args.chromadb_found = chromadb_found
-                else:
-                    print_info("Skipping migration - no valid ChromaDB path provided")
-                    args.migrate_from_chromadb = False
+
+def _install_compatible_dependencies(args, system_info):
+    """Install compatible PyTorch/transformers versions for macOS Intel."""
+    if not args.force_compatible_deps:
+        return
     
-    # Check if user requested force-compatible dependencies for macOS Intel
-    if args.force_compatible_deps:
-        if system_info["is_macos"] and system_info["is_x86"]:
-            print_info("Installing compatible dependencies as requested...")
-            # Select versions based on Python version
-            python_version = sys.version_info
-            if python_version >= (3, 13):
-                # Python 3.13+ compatible versions
-                torch_version = "2.3.0"
-                torch_vision_version = "0.18.0"
-                torch_audio_version = "2.3.0"
-                st_version = "3.0.0"
-            else:
-                # Older Python versions
-                torch_version = "2.0.1"
-                torch_vision_version = "2.0.1"
-                torch_audio_version = "2.0.1"
-                st_version = "2.2.2"
-                
-            try:
-                subprocess.check_call([
-                    sys.executable, '-m', 'pip', 'install',
-                    f"torch=={torch_version}", f"torchvision=={torch_vision_version}", f"torchaudio=={torch_audio_version}",
-                    f"sentence-transformers=={st_version}"
-                ])
-                print_success("Compatible dependencies installed successfully")
-            except subprocess.SubprocessError as e:
-                print_error(f"Failed to install compatible dependencies: {e}")
-        else:
-            print_warning("--force-compatible-deps is only applicable for macOS with Intel CPUs")
+    if not (system_info["is_macos"] and system_info["is_x86"]):
+        print_warning("--force-compatible-deps is only applicable for macOS with Intel CPUs")
+        return
     
-    # Check if user requested fallback dependencies for troubleshooting
-    if args.fallback_deps:
-        print_info("Installing fallback dependencies as requested...")
-        # Select versions based on Python version
-        python_version = sys.version_info
-        if python_version >= (3, 13):
-            # Python 3.13+ compatible fallback versions
-            torch_version = "2.3.0"
-            torch_vision_version = "0.18.0"
-            torch_audio_version = "2.3.0"
-            st_version = "3.0.0"
-        else:
-            # Older Python fallback versions
-            torch_version = "1.13.1"
-            torch_vision_version = "0.14.1"
-            torch_audio_version = "0.13.1"
-            st_version = "2.2.2"
-            
-        try:
-            subprocess.check_call([
-                sys.executable, '-m', 'pip', 'install',
-                f"torch=={torch_version}", f"torchvision=={torch_vision_version}", f"torchaudio=={torch_audio_version}",
-                f"sentence-transformers=={st_version}"
-            ])
-            print_success("Fallback dependencies installed successfully")
-        except subprocess.SubprocessError as e:
-            print_error(f"Failed to install fallback dependencies: {e}")
+    print_info("Installing compatible dependencies as requested...")
+    python_version = sys.version_info
     
-    # Apply intelligent PyTorch skipping for sqlite_vec (default behavior)
+    if python_version >= (3, 13):
+        torch_version, torch_vision_version = "2.3.0", "0.18.0"
+        torch_audio_version, st_version = "2.3.0", "3.0.0"
+    else:
+        torch_version, torch_vision_version = "2.0.1", "2.0.1"
+        torch_audio_version, st_version = "2.0.1", "2.2.2"
+    
+    try:
+        subprocess.check_call([
+            sys.executable, '-m', 'pip', 'install',
+            f"torch=={torch_version}", f"torchvision=={torch_vision_version}", 
+            f"torchaudio=={torch_audio_version}", f"sentence-transformers=={st_version}"
+        ])
+        print_success("Compatible dependencies installed successfully")
+    except subprocess.SubprocessError as e:
+        print_error(f"Failed to install compatible dependencies: {e}")
+
+def _install_fallback_dependencies(args):
+    """Install fallback PyTorch/transformers versions for troubleshooting."""
+    if not args.fallback_deps:
+        return
+    
+    print_info("Installing fallback dependencies as requested...")
+    python_version = sys.version_info
+    
+    if python_version >= (3, 13):
+        torch_version, torch_vision_version = "2.3.0", "0.18.0"
+        torch_audio_version, st_version = "2.3.0", "3.0.0"
+    else:
+        torch_version, torch_vision_version = "1.13.1", "0.14.1"
+        torch_audio_version, st_version = "0.13.1", "2.2.2"
+    
+    try:
+        subprocess.check_call([
+            sys.executable, '-m', 'pip', 'install',
+            f"torch=={torch_version}", f"torchvision=={torch_vision_version}",
+            f"torchaudio=={torch_audio_version}", f"sentence-transformers=={st_version}"
+        ])
+        print_success("Fallback dependencies installed successfully")
+    except subprocess.SubprocessError as e:
+        print_error(f"Failed to install fallback dependencies: {e}")
+
+def _optimize_pytorch_for_backend(args):
+    """Auto-skip PyTorch for sqlite_vec backend."""
     if (args.storage_backend == "sqlite_vec" and 
         not args.skip_pytorch and 
         not args.force_pytorch):
@@ -2923,28 +2920,48 @@ def main():
         print_info("• Note: Embedding models still require PyTorch/SentenceTransformers")
         print_info("• Add --force-pytorch if you want PyTorch installed here")
         print_warning("• You'll need PyTorch available for embedding functionality")
+
+def _setup_logging_and_detect_system(args):
+    """Initialize logging and detect system configuration."""
+    try:
+        log_file_path = setup_installer_logging()
+    except Exception as e:
+        print(f"Warning: Could not set up logging: {e}")
+        log_file_path = None
     
-    # Step 2: Check dependencies
+    system_info, gpu_info, memory_gb = _detect_system_and_environment(args)
+    _recommend_backend(args, system_info, gpu_info, memory_gb)
+    _configure_legacy_hardware(args, system_info)
+    _configure_server_mode(args)
+    _configure_http_api(args)
+    _setup_chromadb_migration(args)
+    _install_compatible_dependencies(args, system_info)
+    _install_fallback_dependencies(args)
+    _optimize_pytorch_for_backend(args)
+    
+    return log_file_path, system_info
+    
+def _execute_core_installation(args, system_info):
+    """Execute the core installation steps (dependencies, package, paths, verification)."""
     if not check_dependencies():
         sys.exit(1)
     
-    # Step 3: Install package
     if not install_package(args):
-        # If installation fails and we're on macOS Intel, suggest using the force-compatible-deps option
         if system_info["is_macos"] and system_info["is_x86"]:
             print_warning("Installation failed on macOS Intel.")
             print_info("Try running the script with '--force-compatible-deps' to force compatible versions:")
             print_info("python install.py --force-compatible-deps")
         sys.exit(1)
     
-    # Step 4: Configure paths
     if not configure_paths(args):
         print_warning("Path configuration failed, but installation may still work")
     
-    # Step 5: Verify installation
+    _verify_installation_with_suggestions(system_info)
+
+def _verify_installation_with_suggestions(system_info):
+    """Verify installation and provide platform-specific troubleshooting suggestions."""
     if not verify_installation():
         print_warning("Installation verification failed, but installation may still work")
-        # If verification fails and we're on macOS Intel, suggest using the force-compatible-deps option
         if system_info["is_macos"] and system_info["is_x86"]:
             python_version = sys.version_info
             print_info("For macOS Intel compatibility issues, try these steps:")
@@ -2955,74 +2972,82 @@ def main():
                 print_info("For Python 3.13+, you may need to manually install the following:")
                 print_info("pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0")
                 print_info("pip install sentence-transformers==3.0.0")
+
+def _execute_chromadb_migration(args):
+    """Execute ChromaDB migration if requested."""
+    if not (args.migrate_from_chromadb and hasattr(args, 'chromadb_found') and args.chromadb_found):
+        return
     
-    # Execute migration if requested
-    if args.migrate_from_chromadb and hasattr(args, 'chromadb_found') and args.chromadb_found:
-        print_step("6", "Migrating from ChromaDB")
-        try:
-            migration_script = "scripts/migrate_chroma_to_sqlite.py"
-            if os.path.exists(migration_script):
-                print_info("Running migration script...")
-                subprocess.check_call([sys.executable, migration_script, "--auto-confirm"])
-                print_success("Migration completed successfully!")
-            else:
-                print_warning("Migration script not found - manual migration required")
-                print_info("Run: python scripts/migrate_chroma_to_sqlite.py")
-        except subprocess.SubprocessError as e:
-            print_error(f"Migration failed: {e}")
-            print_info("You can run migration manually later with:")
-            print_info("python scripts/migrate_chroma_to_sqlite.py")
-    
-    # Step 6: Configure Claude Code integration if requested
+    print_step("6", "Migrating from ChromaDB")
+    try:
+        migration_script = "scripts/migrate_chroma_to_sqlite.py"
+        if os.path.exists(migration_script):
+            print_info("Running migration script...")
+            subprocess.check_call([sys.executable, migration_script, "--auto-confirm"])
+            print_success("Migration completed successfully!")
+        else:
+            print_warning("Migration script not found - manual migration required")
+            print_info("Run: python scripts/migrate_chroma_to_sqlite.py")
+    except subprocess.SubprocessError as e:
+        print_error(f"Migration failed: {e}")
+        print_info("You can run migration manually later with:")
+        print_info("python scripts/migrate_chroma_to_sqlite.py")
+
+def _configure_claude_code_if_requested(args, system_info):
+    """Configure Claude Code integration if requested."""
     if args.configure_claude_code:
         if not configure_claude_code_integration(system_info):
             print_warning("Claude Code integration configuration failed")
             print_info("You can configure it manually later using the documentation")
-    
-    # Step 7: Install Claude Code commands if requested or available
+
+def _handle_claude_code_commands(args):
+    """Handle Claude Code commands installation."""
     should_install_commands = args.install_claude_commands
     
-    # If not explicitly requested, check if we should prompt the user
     if not should_install_commands and not args.skip_claude_commands_prompt:
         if install_claude_commands is not None and check_claude_code_cli is not None:
             claude_available, _ = check_claude_code_cli()
             if claude_available:
-                print_step("7", "Optional Claude Code Commands")
-                print_info("Claude Code CLI detected! You can install memory operation commands.")
-                print_info("Commands would include: /memory-store, /memory-recall, /memory-search, /memory-health")
-                
-                if args.non_interactive:
-                    print_info("Non-interactive mode: skipping Claude Code commands installation")
-                    should_install_commands = False
-                else:
-                    print("\n" + "=" * 60)
-                    print("⚠️  USER INPUT REQUIRED")
-                    print("=" * 60)
-                    response = input("Install Claude Code memory commands? (y/N, press Enter for N): ")
-                    print("=" * 60 + "\n")
-                    should_install_commands = response.lower().startswith('y')
+                should_install_commands = _prompt_for_claude_commands(args)
     
-    if should_install_commands:
-        if install_claude_commands is not None:
-            print_step("7", "Installing Claude Code Commands")
-            try:
-                if install_claude_commands(verbose=True):
-                    print_success("Claude Code commands installed successfully!")
-                else:
-                    print_warning("Claude Code commands installation had issues")
-                    print_info("You can install them manually later with:")
-                    print_info("python scripts/claude_commands_utils.py")
-            except Exception as e:
-                print_error(f"Failed to install Claude Code commands: {str(e)}")
-                print_info("You can install them manually later with:")
-                print_info("python scripts/claude_commands_utils.py")
+    if should_install_commands and install_claude_commands is not None:
+        _install_claude_commands_internal()
+
+def _prompt_for_claude_commands(args):
+    """Prompt user for Claude Code commands installation."""
+    print_step("7", "Optional Claude Code Commands")
+    print_info("Claude Code CLI detected! You can install memory operation commands.")
+    print_info("Commands would include: /memory-store, /memory-recall, /memory-search, /memory-health")
+    
+    if args.non_interactive:
+        print_info("Non-interactive mode: skipping Claude Code commands installation")
+        return False
+    
+    print("\n" + "=" * 60)
+    print("⚠️  USER INPUT REQUIRED")
+    print("=" * 60)
+    response = input("Install Claude Code memory commands? (y/N, press Enter for N): ")
+    print("=" * 60 + "\n")
+    return response.lower().startswith('y')
+
+def _install_claude_commands_internal():
+    """Install Claude Code commands."""
+    print_step("7", "Installing Claude Code Commands")
+    try:
+        if install_claude_commands(verbose=True):
+            print_success("Claude Code commands installed successfully!")
         else:
-            print_warning("Claude commands utilities not available")
-            print_info("Commands installation skipped")
+            print_warning("Claude Code commands installation had issues")
+            print_info("You can install them manually later with:")
+            print_info("python scripts/claude_commands_utils.py")
+    except Exception as e:
+        print_error(f"Failed to install Claude Code commands: {str(e)}")
+        print_info("You can install them manually later with:")
+        print_info("python scripts/claude_commands_utils.py")
     
+def _print_final_setup_notices():
+    """Print first-time setup expectations."""
     print_header("Installation Complete")
-    
-    # First-time setup notice
     print_info("")
     print_info("⚠️  FIRST-TIME SETUP EXPECTATIONS:")
     print_info("On first run, you may see these NORMAL warnings:")
@@ -3033,68 +3058,69 @@ def main():
     print_info("These warnings disappear after the first successful run.")
     print_info("See docs/first-time-setup.md for details.")
     print_info("")
-    
-    # Get final storage backend info for multi-client setup determination
+
+def _determine_final_backend(system_info):
+    """Determine final storage backend based on system configuration."""
     if system_info["is_macos"] and system_info["is_x86"] and system_info.get("has_homebrew_pytorch"):
-        final_backend = 'sqlite_vec'
-        # Ensure environment variable is set for future use
         os.environ['MCP_MEMORY_STORAGE_BACKEND'] = 'sqlite_vec'
-    else:
-        final_backend = os.environ.get('MCP_MEMORY_STORAGE_BACKEND', 'chromadb')
+        return 'sqlite_vec'
+    return os.environ.get('MCP_MEMORY_STORAGE_BACKEND', 'chromadb')
+
+def _setup_multi_client_access(args, system_info, final_backend):
+    """Set up multi-client access if requested or offered."""
+    if args.setup_multi_client:
+        _execute_explicit_multi_client_setup(system_info, args, final_backend)
+    elif should_offer_multi_client_setup(args, final_backend):
+        _handle_interactive_multi_client_setup(args, system_info, final_backend)
+
+def _execute_explicit_multi_client_setup(system_info, args, final_backend):
+    """Execute multi-client setup when explicitly requested."""
+    try:
+        setup_universal_multi_client_access(system_info, args, final_backend)
+    except Exception as e:
+        print_error(f"Multi-client setup failed: {e}")
+        print_info("You can set up multi-client access manually using:")
+        print_info("python setup_multi_client_complete.py")
+
+def _handle_interactive_multi_client_setup(args, system_info, final_backend):
+    """Handle interactive multi-client setup prompt."""
+    print_info("")
+    print_info("Multi-Client Access Available!")
+    print_info("")
+    print_info("The MCP Memory Service can be configured for multi-client access, allowing")
+    print_info("multiple applications and IDEs to share the same memory database.")
+    print_info("")
+    print_info("Benefits:")
+    print_info("  • Share memories between Claude Desktop, VS Code, Continue, and other MCP clients")
+    print_info("  • Seamless context sharing across development environments")
+    print_info("  • Single source of truth for all your project memories")
+    print_info("")
     
-    # Multi-client setup integration
-    if args.setup_multi_client or (should_offer_multi_client_setup(args, final_backend) and not args.setup_multi_client):
-        if args.setup_multi_client:
-            # User explicitly requested multi-client setup
-            try:
-                setup_universal_multi_client_access(system_info, args, final_backend)
-            except Exception as e:
-                print_error(f"Multi-client setup failed: {e}")
-                print_info("You can set up multi-client access manually using:")
-                print_info("python setup_multi_client_complete.py")
+    try:
+        if args.non_interactive:
+            print_info("Non-interactive mode: skipping multi-client configuration")
+            response = 'n'
         else:
-            # Interactive prompt for multi-client setup
+            print("\n" + "=" * 60)
+            print("⚠️  USER INPUT REQUIRED")
+            print("=" * 60)
+            response = input("Would you like to configure multi-client access? (y/N, press Enter for N): ").strip().lower()
+            print("=" * 60 + "\n")
+        
+        if response in ['y', 'yes']:
             print_info("")
-            print_info("Multi-Client Access Available!")
-            print_info("")
-            print_info("The MCP Memory Service can be configured for multi-client access, allowing")
-            print_info("multiple applications and IDEs to share the same memory database.")
-            print_info("")
-            print_info("Benefits:")
-            print_info("  • Share memories between Claude Desktop, VS Code, Continue, and other MCP clients")
-            print_info("  • Seamless context sharing across development environments")
-            print_info("  • Single source of truth for all your project memories")
-            print_info("")
-            
-            try:
-                if args.non_interactive:
-                    print_info("Non-interactive mode: skipping multi-client configuration")
-                    response = 'n'
-                else:
-                    print("\n" + "=" * 60)
-                    print("⚠️  USER INPUT REQUIRED")
-                    print("=" * 60)
-                    response = input("Would you like to configure multi-client access? (y/N, press Enter for N): ").strip().lower()
-                    print("=" * 60 + "\n")
-                if response in ['y', 'yes']:
-                    print_info("")
-                    try:
-                        setup_universal_multi_client_access(system_info, args, final_backend)
-                    except Exception as e:
-                        print_error(f"Multi-client setup failed: {e}")
-                        print_info("You can set up multi-client access manually using:")
-                        print_info("python setup_multi_client_complete.py")
-                else:
-                    print_info("Skipping multi-client setup. You can configure it later using:")
-                    print_info("python setup_multi_client_complete.py")
-            except (EOFError, KeyboardInterrupt):
-                print_info("\nSkipping multi-client setup. You can configure it later using:")
-                print_info("python setup_multi_client_complete.py")
-            
-            print_info("")
+            _execute_explicit_multi_client_setup(system_info, args, final_backend)
+        else:
+            print_info("Skipping multi-client setup. You can configure it later using:")
+            print_info("python setup_multi_client_complete.py")
+    except (EOFError, KeyboardInterrupt):
+        print_info("\nSkipping multi-client setup. You can configure it later using:")
+        print_info("python setup_multi_client_complete.py")
     
-    # Final storage backend info (already determined above for multi-client setup)
-    
+    print_info("")
+
+def _print_backend_configuration(final_backend, system_info):
+    """Print final backend configuration and recommendations."""
     use_onnx = os.environ.get('MCP_MEMORY_USE_ONNX', '').lower() in ('1', 'true', 'yes')
     
     print_info("You can now run the MCP Memory Service using the 'memory' command")
@@ -3119,44 +3145,65 @@ def main():
     if system_info["is_macos"] and system_info["is_x86"] and is_legacy_hardware(system_info):
         print_info("  • Legacy Mac Guide: docs/platforms/macos-intel-legacy.md")
     print_info("  • Main README: README.md")
+
+def _print_macos_intel_notes(system_info):
+    """Print macOS Intel-specific notes and troubleshooting tips."""
+    if not (system_info["is_macos"] and system_info["is_x86"]):
+        return
     
-    # Print macOS Intel specific information if applicable
-    if system_info["is_macos"] and system_info["is_x86"]:
-        print_info("\nMacOS Intel Notes:")
-        
-        if system_info.get("has_homebrew_pytorch"):
-            print_info("- Using Homebrew PyTorch installation: " + system_info.get("homebrew_pytorch_version", "Unknown"))
-            print_info("- The MCP Memory Service is configured to use SQLite-vec + ONNX runtime")
-            print_info("- To start the memory service, use:")
-            print_info("  export MCP_MEMORY_USE_ONNX=1")
-            print_info("  export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec")
-            print_info("  memory")
+    print_info("\nMacOS Intel Notes:")
+    
+    if system_info.get("has_homebrew_pytorch"):
+        print_info("- Using Homebrew PyTorch installation: " + system_info.get("homebrew_pytorch_version", "Unknown"))
+        print_info("- The MCP Memory Service is configured to use SQLite-vec + ONNX runtime")
+        print_info("- To start the memory service, use:")
+        print_info("  export MCP_MEMORY_USE_ONNX=1")
+        print_info("  export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec")
+        print_info("  memory")
+    else:
+        print_info("- If you encounter issues, try the --force-compatible-deps option")
+        python_version = sys.version_info
+        if python_version >= (3, 13):
+            print_info("- For optimal performance on Intel Macs with Python 3.13+, torch==2.3.0 and sentence-transformers==3.0.0 are recommended")
+            print_info("- You can manually install these versions with:")
+            print_info("  pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 sentence-transformers==3.0.0")
         else:
-            print_info("- If you encounter issues, try the --force-compatible-deps option")
-            
-            python_version = sys.version_info
-            if python_version >= (3, 13):
-                print_info("- For optimal performance on Intel Macs with Python 3.13+, torch==2.3.0 and sentence-transformers==3.0.0 are recommended")
-                print_info("- You can manually install these versions with:")
-                print_info("  pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 sentence-transformers==3.0.0")
-            else:
-                print_info("- For optimal performance on Intel Macs, torch==2.0.1 and sentence-transformers==2.2.2 are recommended")
-                print_info("- You can manually install these versions with:")
-                print_info("  pip install torch==2.0.1 torchvision==2.0.1 torchaudio==2.0.1 sentence-transformers==2.2.2")
-                
-        print_info("\nTroubleshooting Tips:")
-        print_info("- If you have a Homebrew PyTorch installation, use: --use-homebrew-pytorch")
-        print_info("- To completely skip PyTorch installation, use: --skip-pytorch")
-        print_info("- To force the SQLite-vec backend, use: --storage-backend sqlite_vec")
-        print_info("- For a quick test, try running: python test_memory.py")
+            print_info("- For optimal performance on Intel Macs, torch==2.0.1 and sentence-transformers==2.2.2 are recommended")
+            print_info("- You can manually install these versions with:")
+            print_info("  pip install torch==2.0.1 torchvision==2.0.1 torchaudio==2.0.1 sentence-transformers==2.2.2")
     
-    # Clean up logging system
+    print_info("\nTroubleshooting Tips:")
+    print_info("- If you have a Homebrew PyTorch installation, use: --use-homebrew-pytorch")
+    print_info("- To completely skip PyTorch installation, use: --skip-pytorch")
+    print_info("- To force the SQLite-vec backend, use: --storage-backend sqlite_vec")
+    print_info("- For a quick test, try running: python test_memory.py")
+
+def _cleanup_and_exit(log_file_path):
+    """Clean up logging system and exit."""
     try:
         cleanup_installer_logging()
         if log_file_path:
             print(f"\nInstallation log saved to: {log_file_path}")
     except Exception:
         pass  # Silently ignore cleanup errors
+
+def main():
+    """Main installation function."""
+    args = _parse_arguments()
+    _handle_special_modes(args)
+    
+    log_file_path, system_info = _setup_logging_and_detect_system(args)
+    _execute_core_installation(args, system_info)
+    _execute_chromadb_migration(args)
+    _configure_claude_code_if_requested(args, system_info)
+    _handle_claude_code_commands(args)
+    
+    _print_final_setup_notices()
+    final_backend = _determine_final_backend(system_info)
+    _setup_multi_client_access(args, system_info, final_backend)
+    _print_backend_configuration(final_backend, system_info)
+    _print_macos_intel_notes(system_info)
+    _cleanup_and_exit(log_file_path)
 
 if __name__ == "__main__":
     try:
