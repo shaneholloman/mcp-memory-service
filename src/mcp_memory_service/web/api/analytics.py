@@ -22,6 +22,7 @@ import logging
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
+from dataclasses import dataclass
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
@@ -40,6 +41,43 @@ else:
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+# Period Configuration for Analytics
+@dataclass
+class PeriodConfig:
+    """Configuration for time period analysis."""
+    days: int
+    interval_days: int
+
+
+PERIOD_CONFIGS = {
+    "week": PeriodConfig(days=7, interval_days=1),
+    "month": PeriodConfig(days=30, interval_days=7),
+    "quarter": PeriodConfig(days=90, interval_days=7),
+    "year": PeriodConfig(days=365, interval_days=30),
+}
+
+
+def get_period_config(period: str) -> PeriodConfig:
+    """Get configuration for the specified time period.
+
+    Args:
+        period: Time period identifier (week, month, quarter, year)
+
+    Returns:
+        PeriodConfig for the specified period
+
+    Raises:
+        HTTPException: If period is invalid
+    """
+    config = PERIOD_CONFIGS.get(period)
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid period. Use: {', '.join(PERIOD_CONFIGS.keys())}"
+        )
+    return config
 
 
 # Response Models
@@ -276,21 +314,10 @@ async def get_memory_growth(
     Returns data points showing how the memory count has grown over the specified period.
     """
     try:
-        # Define the period
-        if period == "week":
-            days = 7
-            interval_days = 1
-        elif period == "month":
-            days = 30
-            interval_days = 7  # Weekly aggregation for monthly view
-        elif period == "quarter":
-            days = 90
-            interval_days = 7
-        elif period == "year":
-            days = 365
-            interval_days = 30
-        else:
-            raise HTTPException(status_code=400, detail="Invalid period. Use: week, month, quarter, year")
+        # Get period configuration
+        config = get_period_config(period)
+        days = config.days
+        interval_days = config.interval_days
 
         # Calculate date ranges
         end_date = datetime.now(timezone.utc)
