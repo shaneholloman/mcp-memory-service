@@ -1584,10 +1584,17 @@ def verify_installation():
         print_success(f"ONNX Runtime is installed: {onnxruntime.__version__}")
         use_onnx = os.environ.get('MCP_MEMORY_USE_ONNX', '').lower() in ('1', 'true', 'yes')
         if use_onnx:
-            print_info("Environment configured to use ONNX runtime for inference")
+            print_info("Environment configured to use ONNX runtime for embeddings")
+            # Check for tokenizers (required for ONNX)
+            try:
+                import tokenizers
+                print_success(f"Tokenizers is installed: {tokenizers.__version__}")
+            except ImportError:
+                print_warning("Tokenizers not installed but required for ONNX embeddings")
+                print_info("Install with: pip install tokenizers>=0.20.0")
     except ImportError:
-        print_warning("ONNX Runtime is not installed. This is recommended for CPU-only operation.")
-        print_info("Install with: pip install onnxruntime>=1.14.1")
+        print_warning("ONNX Runtime is not installed. This is recommended for PyTorch-free operation.")
+        print_info("Install with: pip install onnxruntime>=1.14.1 tokenizers>=0.20.0")
     
     # Check for Homebrew PyTorch
     homebrew_pytorch = False
@@ -1614,7 +1621,8 @@ def verify_installation():
         else:
             try:
                 import torch_directml
-                print_success(f"DirectML is available: {torch_directml.__version__}")
+                version = getattr(torch_directml, '__version__', 'Unknown version')
+                print_success(f"DirectML is available: {version}")
             except ImportError:
                 print_info("Using CPU-only PyTorch")
         
