@@ -35,7 +35,25 @@ current_dir = Path(__file__).parent
 src_dir = current_dir.parent.parent
 sys.path.insert(0, str(src_dir))
 
-from mcp.server.fastmcp import FastMCP, Context
+# FastMCP is not available in current MCP library version
+# This module is kept for future compatibility
+try:
+    from mcp.server.fastmcp import FastMCP, Context
+except ImportError:
+    logger_temp = logging.getLogger(__name__)
+    logger_temp.warning("FastMCP not available in mcp library - mcp_server module cannot be used")
+    
+    # Create dummy objects for graceful degradation
+    class _DummyFastMCP:
+        def tool(self):
+            """Dummy decorator that does nothing."""
+            def decorator(func):
+                return func
+            return decorator
+    
+    FastMCP = _DummyFastMCP  # type: ignore
+    Context = None  # type: ignore
+
 from mcp.types import TextContent
 
 # Import existing memory service components
@@ -193,13 +211,17 @@ async def mcp_server_lifespan(server: FastMCP) -> AsyncIterator[MCPServerContext
         logger.info(f"✅ MCP Server Call #{_CACHE_STATS['total_calls']} complete - Cached instances preserved")
 
 # Create FastMCP server instance
-mcp = FastMCP(
-    name="MCP Memory Service", 
-    host="0.0.0.0",  # Listen on all interfaces for remote access
-    port=8000,       # Default port
-    lifespan=mcp_server_lifespan,
-    stateless_http=True  # Enable stateless HTTP for Claude Code compatibility
-)
+try:
+    mcp = FastMCP(
+        name="MCP Memory Service", 
+        host="0.0.0.0",  # Listen on all interfaces for remote access
+        port=8000,       # Default port
+        lifespan=mcp_server_lifespan,
+        stateless_http=True  # Enable stateless HTTP for Claude Code compatibility
+    )
+except TypeError:
+    # FastMCP not available - create dummy instance
+    mcp = _DummyFastMCP()  # type: ignore
 
 # =============================================================================
 # TYPE DEFINITIONS
