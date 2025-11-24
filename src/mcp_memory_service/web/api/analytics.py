@@ -287,6 +287,15 @@ async def get_analytics_overview(
         raise HTTPException(status_code=500, detail=f"Failed to get analytics overview: {str(e)}")
 
 
+# Label formatters for each period type
+PERIOD_LABEL_FORMATTERS = {
+    PeriodType.WEEK: lambda date: date.strftime("%b %d"),  # "Nov 15"
+    PeriodType.MONTH: lambda date: f"Week of {date.strftime('%b %d')}",  # "Week of Nov 15"
+    PeriodType.QUARTER: lambda date: f"Week of {date.strftime('%b %d')}",  # "Week of Nov 15"
+    PeriodType.YEAR: lambda date: date.strftime("%B %Y"),  # "November 2024"
+}
+
+
 def _generate_interval_label(date: datetime, period: PeriodType) -> str:
     """
     Generate a human-readable label for a date interval based on the period type.
@@ -298,18 +307,11 @@ def _generate_interval_label(date: datetime, period: PeriodType) -> str:
     Returns:
         A formatted label string
     """
-    if period == PeriodType.WEEK:
-        # For weekly view (daily intervals): "Nov 15"
-        return date.strftime("%b %d")
-    elif period in (PeriodType.MONTH, PeriodType.QUARTER):
-        # For monthly/quarterly view (weekly intervals): "Week of Nov 15"
-        return f"Week of {date.strftime('%b %d')}"
-    elif period == PeriodType.YEAR:
-        # For yearly view (monthly intervals): "November 2024"
-        return date.strftime("%B %Y")
-    else:
-        # Fallback to ISO format
-        return date.strftime("%Y-%m-%d")
+    formatter = PERIOD_LABEL_FORMATTERS.get(period)
+    if formatter:
+        return formatter(date)
+    # Fallback to ISO format
+    return date.strftime("%Y-%m-%d")
 
 
 @router.get("/memory-growth", response_model=MemoryGrowthData, tags=["analytics"])
