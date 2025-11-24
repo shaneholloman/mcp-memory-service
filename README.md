@@ -23,18 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.33.0** (Nov 24, 2025)
+### 🆕 Latest Release: **v8.34.0** (Nov 24, 2025)
 
-**Critical Installation Bug Fix + Code Quality Improvements**
+**Code Quality: Phase 2 Complexity Reduction**
 
-- 🐛 **Fixed Critical Installation Bug** - Removed early return in `install.py` that prevented 77 lines of Claude Desktop configuration code from executing
-- ✅ **Automatic MCP Setup** - Users now get proper Claude Desktop MCP server configuration during installation
-- 📊 **Code Quality Jump** - Dead Code Score improved from 70 → 85-90 (+15-20 points), Overall Health Score 63 → 68-72 (+5-9 points)
-- 🔧 **10+ Modernization Updates** - Pathlib throughout, specific exception handling, Windows path fix, config validation
-- 🤖 **Automated Review** - All improvements from Gemini Code Assist automated PR review iterations
-- 🎯 **Issue #240 Phase 1** - Resolved all 27 pyscn dead code violations in single bug fix
+- 🎯 **Analytics Complexity Reduction** - Refactored `analytics.py::get_memory_growth()` (11 → 6-7 complexity, exceeding -3 target)
+- 🔧 **Type-Safe Period Validation** - Introduced PeriodType Enum for robust period handling
+- 📊 **Data-Driven Architecture** - PERIOD_CONFIGS dict and PERIOD_LABEL_FORMATTERS for maintainability
+- 🚀 **Improved Extensibility** - Easier to add new analytics periods and formats
+- ✅ **Issue #240 Phase 2** - Progress: 1 of 10 functions refactored
 
 **Previous Releases**:
+- **v8.33.0** - Critical Installation Bug Fix + Code Quality Improvements (dead code cleanup, automatic MCP setup)
 - **v8.32.0** - Code Quality Excellence: pyscn Static Analysis Integration (multi-layer QA workflow)
 - **v8.31.0** - Revolutionary Batch Update Performance (21,428x faster memory consolidation)
 - **v8.30.0** - Analytics Intelligence: Adaptive Charts & Critical Data Fixes (accurate trend visualization)

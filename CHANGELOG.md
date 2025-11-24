@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.34.0] - 2025-11-24
+
+### Improved
+- **Code Quality: Phase 2 Complexity Reduction** - Refactored `analytics.py::get_memory_growth()` function (issue #240 Phase 2)
+  - Complexity reduced from 11 → 6-7 (-4 to -5 points, exceeding -3 point target)
+  - Introduced PeriodType Enum for type-safe period validation
+  - Data-driven period configuration with PERIOD_CONFIGS dict
+  - Data-driven label formatting with PERIOD_LABEL_FORMATTERS dict
+  - Improved maintainability and extensibility for analytics endpoints
+
+### Code Quality
+- Phase 2 Progress: 1 of 10 functions refactored
+- Complexity Score: Estimated +1 point improvement (partial Phase 2)
+- Overall Health: On track for 70+ target
+
 ## [8.33.0] - 2025-11-24
 
 ### Fixed
