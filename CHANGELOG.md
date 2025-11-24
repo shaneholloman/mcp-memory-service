@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.33.0] - 2025-11-24
+
+### Fixed
+- **Critical Installation Bug**: Fixed early return in `install.py` that prevented Claude Desktop MCP configuration from executing (issue #240 Phase 1)
+  - 77 lines of Claude Desktop setup code now properly runs during installation
+  - Users will now get automatic MCP server configuration when running `install.py`
+  - Bug was at line 1358 - early `return False` in exception handler made lines 1360-1436 unreachable
+  - Resolves all 27 pyscn dead code violations identified in issue #240 Phase 1
+
+### Improved
+- Modernized `install.py` with pathlib throughout (via Gemini Code Assist automated review)
+- Specific exception handling (OSError, PermissionError, JSONDecodeError) instead of bare `except`
+- Fixed Windows `memory_wrapper.py` path resolution bug (now uses `resolve()` for absolute paths)
+- Added config structure validation to prevent TypeError on malformed JSON
+- Import optimization and better error messages
+- Code structure improvements from 10+ Gemini Code Assist review iterations
+
+### Code Quality
+- **Dead Code Score**: 70 → 85-90 (projected +15-20 points from removing 27 violations)
+- **Overall Health Score**: 63 → 68-72 (projected +5-9 points)
+- All improvements applied via automated Gemini PR review workflow
+
 ## [8.32.0] - 2025-11-24
 
 ### Added

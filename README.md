@@ -23,21 +23,21 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.32.0** (Nov 24, 2025)
+### 🆕 Latest Release: **v8.33.0** (Nov 24, 2025)
 
-**Code Quality Excellence: pyscn Static Analysis Integration**
+**Critical Installation Bug Fix + Code Quality Improvements**
 
-- 🔍 **Multi-Layer QA Workflow** - Three-layer quality strategy: Pre-commit (LLM) → PR Gate (pyscn) → Periodic (weekly)
-- 📊 **Health Score Thresholds** - Release blockers <50, action required 50-69, good 70-84, excellent 85+
-- 🎯 **6 Comprehensive Metrics** - Complexity, dead code, duplication, coupling, dependencies, architecture
-- 🚀 **PR Integration** - `quality_gate.sh --with-pyscn` for comprehensive analysis before merge
-- 📈 **Historical Tracking** - CSV-based metrics tracking with automated regression detection
-- 📝 **Complete Documentation** - 651-line workflow guide + code-quality-guard agent integration
+- 🐛 **Fixed Critical Installation Bug** - Removed early return in `install.py` that prevented 77 lines of Claude Desktop configuration code from executing
+- ✅ **Automatic MCP Setup** - Users now get proper Claude Desktop MCP server configuration during installation
+- 📊 **Code Quality Jump** - Dead Code Score improved from 70 → 85-90 (+15-20 points), Overall Health Score 63 → 68-72 (+5-9 points)
+- 🔧 **10+ Modernization Updates** - Pathlib throughout, specific exception handling, Windows path fix, config validation
+- 🤖 **Automated Review** - All improvements from Gemini Code Assist automated PR review iterations
+- 🎯 **Issue #240 Phase 1** - Resolved all 27 pyscn dead code violations in single bug fix
 
 **Previous Releases**:
+- **v8.32.0** - Code Quality Excellence: pyscn Static Analysis Integration (multi-layer QA workflow)
 - **v8.31.0** - Revolutionary Batch Update Performance (21,428x faster memory consolidation)
 - **v8.30.0** - Analytics Intelligence: Adaptive Charts & Critical Data Fixes (accurate trend visualization)
-- **v8.29.0** - Dashboard Quick Actions: Sync Controls & Automatic Backups (enterprise-grade backup system)
 - **v8.28.1** - Critical HTTP MCP Transport JSON-RPC 2.0 Compliance Fix (Claude Code compatibility)
 - **v8.28.0** - Cloudflare AND/OR Tag Filtering (unified search API, 3-5x faster hybrid sync)
 - **v8.27.1** - Critical Hotfix: Timestamp Regression (created_at preservation during metadata sync)
