@@ -219,59 +219,50 @@ class SqliteVecMemoryStorage(MemoryStorage):
             if test_conn:
                 test_conn.close()
 
-    async def initialize(self):
-        """Initialize the SQLite database with vec0 extension."""
-        # Return early if already initialized to prevent multiple initialization attempts
-        if self._initialized:
+    def _check_dependencies(self):
+        """Check and validate all required dependencies for initialization."""
+        if not SQLITE_VEC_AVAILABLE:
+            raise ImportError("sqlite-vec is not available. Install with: pip install sqlite-vec")
+        
+        # Check if ONNX embeddings are enabled (preferred for Docker)
+        from ..config import USE_ONNX
+        if USE_ONNX:
+            logger.info("ONNX embeddings enabled - skipping sentence-transformers installation")
             return
+                
+        # Check sentence-transformers availability (only if ONNX disabled)
+        global SENTENCE_TRANSFORMERS_AVAILABLE
+        if not SENTENCE_TRANSFORMERS_AVAILABLE:
+            raise ImportError("sentence-transformers is not available. Install with: pip install sentence-transformers torch")
 
-        try:
-            if not SQLITE_VEC_AVAILABLE:
-                raise ImportError("sqlite-vec is not available. Install with: pip install sqlite-vec")
-            
-            # Check if ONNX embeddings are enabled (preferred for Docker)
-            from ..config import USE_ONNX
-            if USE_ONNX:
-                logger.info("ONNX embeddings enabled - skipping sentence-transformers installation")
-                # ONNX embeddings don't require sentence-transformers, but we still need to initialize the database
-                # Continue with database initialization below
-                
-            # Check sentence-transformers availability (only if ONNX disabled)
-            if not USE_ONNX:
-                global SENTENCE_TRANSFORMERS_AVAILABLE
-                if not SENTENCE_TRANSFORMERS_AVAILABLE:
-                    raise ImportError("sentence-transformers is not available. Install with: pip install sentence-transformers torch")
-            
-            # Check if extension loading is supported
-            extension_supported, support_message = self._check_extension_support()
-            if not extension_supported:
-                error_msg = f"SQLite extension loading not supported: {support_message}"
-                logger.error(error_msg)
-                
-                # Provide detailed error message with solutions
-                platform_info = f"{platform.system()} {platform.release()}"
-                solutions = []
-                
-                if platform.system().lower() == "darwin":  # macOS
-                    solutions.extend([
-                        "Install Python via Homebrew: brew install python",
-                        "Use pyenv with extension support: PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' pyenv install 3.12.0",
-                        "Consider using Cloudflare backend: export MCP_MEMORY_STORAGE_BACKEND=cloudflare"
-                    ])
-                elif platform.system().lower() == "linux":
-                    solutions.extend([
-                        "Install Python with extension support: apt install python3-dev sqlite3",
-                        "Rebuild Python with: ./configure --enable-loadable-sqlite-extensions",
-                        "Consider using Cloudflare backend: export MCP_MEMORY_STORAGE_BACKEND=cloudflare"
-                    ])
-                else:  # Windows and others
-                    solutions.extend([
-                        "Use official Python installer from python.org",
-                        "Install Python with conda: conda install python",
-                        "Consider using Cloudflare backend: export MCP_MEMORY_STORAGE_BACKEND=cloudflare"
-                    ])
-                
-                detailed_error = f"""
+    def _handle_extension_loading_failure(self):
+        """Provide detailed error guidance when extension loading is not supported."""
+        error_msg = "SQLite extension loading not supported"
+        logger.error(error_msg)
+        
+        platform_info = f"{platform.system()} {platform.release()}"
+        solutions = []
+        
+        if platform.system().lower() == "darwin":  # macOS
+            solutions.extend([
+                "Install Python via Homebrew: brew install python",
+                "Use pyenv with extension support: PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' pyenv install 3.12.0",
+                "Consider using Cloudflare backend: export MCP_MEMORY_STORAGE_BACKEND=cloudflare"
+            ])
+        elif platform.system().lower() == "linux":
+            solutions.extend([
+                "Install Python with extension support: apt install python3-dev sqlite3",
+                "Rebuild Python with: ./configure --enable-loadable-sqlite-extensions",
+                "Consider using Cloudflare backend: export MCP_MEMORY_STORAGE_BACKEND=cloudflare"
+            ])
+        else:  # Windows and others
+            solutions.extend([
+                "Use official Python installer from python.org",
+                "Install Python with conda: conda install python",
+                "Consider using Cloudflare backend: export MCP_MEMORY_STORAGE_BACKEND=cloudflare"
+            ])
+        
+        detailed_error = f"""
 {error_msg}
 
 Platform: {platform_info}
@@ -286,44 +277,47 @@ search without requiring local SQLite extensions.
 
 To switch backends permanently, set: MCP_MEMORY_STORAGE_BACKEND=cloudflare
 """
-                raise RuntimeError(detailed_error.strip())
+        raise RuntimeError(detailed_error.strip())
 
-            # Calculate timeout from custom pragmas BEFORE opening connection
-            # This ensures busy_timeout is set from the start, not after connection
-            timeout_seconds = 15.0  # Default: 15 seconds
-            custom_pragmas_env = os.environ.get("MCP_MEMORY_SQLITE_PRAGMAS", "")
-            if "busy_timeout" in custom_pragmas_env:
-                # Parse busy_timeout value (in milliseconds, convert to seconds)
-                for pragma_pair in custom_pragmas_env.split(","):
-                    if "busy_timeout" in pragma_pair and "=" in pragma_pair:
-                        try:
-                            timeout_ms = int(pragma_pair.split("=")[1].strip())
-                            timeout_seconds = timeout_ms / 1000.0
-                            logger.info(f"Using custom timeout: {timeout_seconds}s from MCP_MEMORY_SQLITE_PRAGMAS")
-                            break
-                        except (ValueError, IndexError) as e:
-                            logger.warning(f"Failed to parse busy_timeout from env: {e}, using default {timeout_seconds}s")
+    def _get_connection_timeout(self) -> float:
+        """Calculate database connection timeout from environment or use default."""
+        timeout_seconds = 15.0  # Default: 15 seconds
+        custom_pragmas_env = os.environ.get("MCP_MEMORY_SQLITE_PRAGMAS", "")
+        
+        if "busy_timeout" not in custom_pragmas_env:
+            return timeout_seconds
+        
+        # Parse busy_timeout value (in milliseconds, convert to seconds)
+        for pragma_pair in custom_pragmas_env.split(","):
+            if "busy_timeout" in pragma_pair and "=" in pragma_pair:
+                try:
+                    timeout_ms = int(pragma_pair.split("=")[1].strip())
+                    timeout_seconds = timeout_ms / 1000.0
+                    logger.info(f"Using custom timeout: {timeout_seconds}s from MCP_MEMORY_SQLITE_PRAGMAS")
+                    return timeout_seconds
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Failed to parse busy_timeout from env: {e}, using default {timeout_seconds}s")
+                    return timeout_seconds
+        
+        return timeout_seconds
 
-            # Connect to database with timeout set from the start
-            # This prevents "database is locked" errors when multiple servers initialize concurrently
-            self.conn = sqlite3.connect(self.db_path, timeout=timeout_seconds)
-
-            # Load sqlite-vec extension with proper error handling
-            try:
-                self.conn.enable_load_extension(True)
-                sqlite_vec.load(self.conn)
-                self.conn.enable_load_extension(False)
-                logger.info("sqlite-vec extension loaded successfully")
-            except Exception as e:
-                error_msg = f"Failed to load sqlite-vec extension: {e}"
-                logger.error(error_msg)
-                if self.conn:
-                    self.conn.close()
-                    self.conn = None
-                
-                # Provide specific guidance based on the error
-                if "enable_load_extension" in str(e):
-                    detailed_error = f"""
+    def _load_sqlite_vec_extension(self):
+        """Load the sqlite-vec extension with proper error handling."""
+        try:
+            self.conn.enable_load_extension(True)
+            sqlite_vec.load(self.conn)
+            self.conn.enable_load_extension(False)
+            logger.info("sqlite-vec extension loaded successfully")
+        except Exception as e:
+            error_msg = f"Failed to load sqlite-vec extension: {e}"
+            logger.error(error_msg)
+            if self.conn:
+                self.conn.close()
+                self.conn = None
+            
+            # Provide specific guidance based on the error
+            if "enable_load_extension" in str(e):
+                detailed_error = f"""
 {error_msg}
 
 This error occurs when Python's sqlite3 module is not compiled with extension support.
@@ -336,8 +330,8 @@ RECOMMENDED SOLUTIONS:
 
 The Cloudflare backend provides cloud-based vector search without requiring local SQLite extensions.
 """
-                else:
-                    detailed_error = f"""
+            else:
+                detailed_error = f"""
 {error_msg}
 
 Failed to load the sqlite-vec extension. This could be due to:
@@ -350,7 +344,33 @@ SOLUTIONS:
   • Switch to Cloudflare backend: export MCP_MEMORY_STORAGE_BACKEND=cloudflare
   • Check SQLite version: python -c "import sqlite3; print(sqlite3.sqlite_version)"
 """
-                raise RuntimeError(detailed_error.strip())
+            raise RuntimeError(detailed_error.strip())
+
+    def _connect_and_load_extension(self):
+        """Connect to database and load the sqlite-vec extension."""
+        # Calculate timeout and connect
+        timeout_seconds = self._get_connection_timeout()
+        self.conn = sqlite3.connect(self.db_path, timeout=timeout_seconds)
+        
+        # Load extension
+        self._load_sqlite_vec_extension()
+
+    async def initialize(self):
+        """Initialize the SQLite database with vec0 extension."""
+        # Return early if already initialized to prevent multiple initialization attempts
+        if self._initialized:
+            return
+
+        try:
+            self._check_dependencies()
+            
+            # Check if extension loading is supported
+            extension_supported, support_message = self._check_extension_support()
+            if not extension_supported:
+                self._handle_extension_loading_failure()
+
+            # Connect to database and load extension
+            self._connect_and_load_extension()
 
             # Check if database is already initialized by another process
             # This prevents DDL lock conflicts when multiple servers start concurrently
