@@ -26,6 +26,14 @@ import argparse
 import shutil
 from pathlib import Path
 
+# Import shared GPU detection utilities
+try:
+    from src.mcp_memory_service.utils.gpu_detection import detect_gpu as shared_detect_gpu
+except ImportError:
+    # Fallback for development/testing scenarios
+    sys.path.insert(0, str(Path(__file__).parent))
+    from src.mcp_memory_service.utils.gpu_detection import detect_gpu as shared_detect_gpu
+
 # Fix Windows console encoding issues
 if platform.system() == "Windows":
     # Ensure stdout uses UTF-8 on Windows to prevent character encoding issues in logs
@@ -317,192 +325,37 @@ def check_sqlite_extension_support():
         if test_conn:
             test_conn.close()
 
-# GPU platform detection configurations
-CUDA_VERSION_PARSER = lambda output: next(
-    (line.split('release')[-1].strip().split(',')[0].strip()
-     for line in output.split('\n') if 'release' in line),
-    None
-)
-
-GPU_PLATFORM_CHECKS = {
-    'cuda': {
-        'windows': {
-            'env_var': 'CUDA_PATH',
-            'version_cmd': lambda path: [os.path.join(path, 'bin', 'nvcc'), '--version'],
-            'version_parser': CUDA_VERSION_PARSER
-        },
-        'linux': {
-            'paths': ['/usr/local/cuda', lambda: os.environ.get('CUDA_HOME')],
-            'version_cmd': lambda path: [os.path.join(path, 'bin', 'nvcc'), '--version'],
-            'version_parser': CUDA_VERSION_PARSER
-        }
-    },
-    'rocm': {
-        'linux': {
-            'paths': ['/opt/rocm', lambda: os.environ.get('ROCM_HOME')],
-            'version_file': lambda path: os.path.join(path, 'bin', '.rocmversion'),
-            'version_cmd': ['rocminfo'],
-            'version_parser': lambda output: next(
-                (line.split(':')[-1].strip()
-                 for line in output.split('\n') if 'Version' in line),
-                None
-            )
-        }
-    },
-    'mps': {
-        'macos': {
-            'check_cmd': ['system_profiler', 'SPDisplaysDataType'],
-            'check_string': 'Metal'
-        }
-    },
-    'directml': {
-        'windows': {
-            'package': 'torch-directml',
-            'dll': 'DirectML.dll'
-        }
-    }
-}
-
-
-def test_gpu_platform(platform: str, system_info: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
-    """Test for a specific GPU platform and return detection status.
-
-    Args:
-        platform: One of 'cuda', 'rocm', 'mps', 'directml'
-        system_info: System information dict from detect_system()
-
-    Returns:
-        Tuple of (detected: bool, version: Optional[str])
-    """
-    if platform not in GPU_PLATFORM_CHECKS:
-        return False, None
-
-    config = GPU_PLATFORM_CHECKS[platform]
-
-    # CUDA detection
-    if platform == 'cuda':
-        os_config = None
-        paths_to_check = []
-        if system_info["is_windows"] and 'windows' in config:
-            os_config = config['windows']
-            paths_to_check = [os.environ.get(os_config['env_var'])]
-        elif system_info["is_linux"] and 'linux' in config:
-            os_config = config['linux']
-            paths_to_check = [p() if callable(p) else p for p in os_config['paths']]
-
-        if os_config:
-            path_found = False
-            for path in paths_to_check:
-                if path and os.path.exists(path):
-                    path_found = True
-                    try:
-                        output = subprocess.check_output(
-                            os_config['version_cmd'](path),
-                            stderr=subprocess.STDOUT,
-                            text=True
-                        )
-                        version = os_config['version_parser'](output)
-                        if version:
-                            return True, version
-                    except (subprocess.SubprocessError, FileNotFoundError):
-                        continue  # Try next path
-            if path_found:
-                return True, None  # Detected but no version found
-
-    # ROCm detection
-    elif platform == 'rocm':
-        if system_info["is_linux"] and 'linux' in config:
-            cfg = config['linux']
-            rocm_path_found = False
-            for path_or_func in cfg['paths']:
-                path = path_or_func() if callable(path_or_func) else path_or_func
-                if path and os.path.exists(path):
-                    rocm_path_found = True
-                    # Try version file first
-                    try:
-                        with open(cfg['version_file'](path), 'r') as f:
-                            version = f.read().strip()
-                            if version:
-                                return True, version
-                    except (FileNotFoundError, IOError):
-                        pass  # Fallback to rocminfo command
-
-                    # Fallback to rocminfo command
-                    try:
-                        output = subprocess.check_output(
-                            cfg['version_cmd'],
-                            stderr=subprocess.STDOUT,
-                            text=True
-                        )
-                        version = cfg['version_parser'](output)
-                        if version:
-                            return True, version
-                    except (subprocess.SubprocessError, FileNotFoundError):
-                        continue  # Try next path
-            if rocm_path_found:
-                return True, None
-
-    # MPS detection
-    elif platform == 'mps':
-        if system_info["is_macos"] and system_info["is_arm"] and 'macos' in config:
-            cfg = config['macos']
-            try:
-                result = subprocess.run(cfg['check_cmd'], capture_output=True, text=True)
-                if cfg['check_string'] in result.stdout:
-                    return True, None
-            except (subprocess.SubprocessError, FileNotFoundError):
-                pass
-
-    # DirectML detection
-    elif platform == 'directml':
-        if system_info["is_windows"] and 'windows' in config:
-            cfg = config['windows']
-            try:
-                from importlib.metadata import distribution, PackageNotFoundError
-                distribution(cfg['package'])
-                return True, None
-            except (ImportError, PackageNotFoundError):
-                try:
-                    import ctypes
-                    ctypes.WinDLL(cfg['dll'])
-                    return True, None
-                except (ImportError, OSError):
-                    pass
-
-    return False, None
-
-
 def detect_gpu():
-    """Detect GPU and acceleration capabilities."""
+    """Detect GPU and acceleration capabilities.
+
+    Wrapper function that uses the shared GPU detection module.
+    """
     system_info = detect_system()
 
-    # Test all platforms
-    has_cuda, cuda_version = test_gpu_platform('cuda', system_info)
-    has_rocm, rocm_version = test_gpu_platform('rocm', system_info)
-    has_mps, _ = test_gpu_platform('mps', system_info)
-    has_directml, _ = test_gpu_platform('directml', system_info)
+    # Use shared GPU detection module
+    gpu_info = shared_detect_gpu(system_info)
 
-    # Print GPU information
-    if has_cuda:
+    # Print GPU information (maintain installer output format)
+    if gpu_info.get("has_cuda"):
+        cuda_version = gpu_info.get("cuda_version")
         print_info(f"CUDA detected: {cuda_version or 'Unknown version'}")
-    if has_rocm:
+    if gpu_info.get("has_rocm"):
+        rocm_version = gpu_info.get("rocm_version")
         print_info(f"ROCm detected: {rocm_version or 'Unknown version'}")
-    if has_mps:
+    if gpu_info.get("has_mps"):
         print_info("Apple Metal Performance Shaders (MPS) detected")
-    if has_directml:
-        print_info("DirectML detected")
+    if gpu_info.get("has_directml"):
+        directml_version = gpu_info.get("directml_version")
+        if directml_version:
+            print_info(f"DirectML detected: {directml_version}")
+        else:
+            print_info("DirectML detected")
 
-    if not (has_cuda or has_rocm or has_mps or has_directml):
+    if not (gpu_info.get("has_cuda") or gpu_info.get("has_rocm") or
+            gpu_info.get("has_mps") or gpu_info.get("has_directml")):
         print_info("No GPU acceleration detected, will use CPU-only mode")
 
-    return {
-        "has_cuda": has_cuda,
-        "cuda_version": cuda_version,
-        "has_rocm": has_rocm,
-        "rocm_version": rocm_version,
-        "has_mps": has_mps,
-        "has_directml": has_directml
-    }
+    return gpu_info
 
 
 def check_dependencies():
