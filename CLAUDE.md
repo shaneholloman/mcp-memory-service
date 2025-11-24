@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.32.0**: **Code Quality Excellence: pyscn Static Analysis Integration** - Multi-layer QA workflow with comprehensive static analysis: Pre-commit (LLM) → PR Gate (pyscn) → Periodic (weekly). Features health score thresholds (<50 blocks release, 50-69 action required), 6 metrics (complexity, dead code, duplication, coupling, dependencies, architecture), historical tracking with regression detection, and complete 651-line workflow guide in `docs/development/code-quality-workflow.md`. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.35.0**: **Code Quality: Phase 2 Batch 1 Complete** - Refactored 2 high-priority functions with -15 complexity reduction (install.py::configure_paths() 15→5, cloudflare.py::_search_by_tags_internal() 13→8). Phase 2 progress: 3 of 10 functions (30%), -20 of -39 points target (51%). Enhanced with Gemini review improvements: dynamic PROJECT_ROOT detection, specific exception handling. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

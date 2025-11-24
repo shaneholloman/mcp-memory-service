@@ -10,6 +10,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.35.0] - 2025-11-24
+
+### Improved
+- **Code Quality: Phase 2 Batch 1 Complete** - Refactored 2 high-priority functions (issue #240 PR #243)
+  - **install.py::configure_paths()**: Complexity reduced from 15 → 5 (-10 points)
+    - Extracted 4 helper functions for better separation of concerns
+    - Main function reduced from 80 → ~30 lines
+    - Improved testability and maintainability
+  - **cloudflare.py::_search_by_tags_internal()**: Complexity reduced from 13 → 8 (-5 points)
+    - Extracted 3 helper functions for tag normalization and query building
+    - Method reduced from 75 → ~45 lines
+    - Better code organization
+  - **Gemini Review Improvements**:
+    - Dynamic PROJECT_ROOT detection in scripts
+    - Specific exception handling (OSError, IOError, PermissionError)
+    - Portable documentation paths
+
+### Code Quality
+- **Phase 2 Progress**: 3 of 10 functions refactored (30% complete)
+- **Complexity Reduction**: -20 points achieved of -39 point target (51% of target)
+- **Remaining Work**: 7 functions with implementation plans ready
+- **Overall Health**: On track for 75+ target score
+
 ## [8.34.0] - 2025-11-24
 
 ### Improved

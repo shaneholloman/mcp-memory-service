@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.34.0** (Nov 24, 2025)
+### 🆕 Latest Release: **v8.35.0** (Nov 24, 2025)
 
-**Code Quality: Phase 2 Complexity Reduction**
+**Code Quality: Phase 2 Batch 1 Complete**
 
-- 🎯 **Analytics Complexity Reduction** - Refactored `analytics.py::get_memory_growth()` (11 → 6-7 complexity, exceeding -3 target)
-- 🔧 **Type-Safe Period Validation** - Introduced PeriodType Enum for robust period handling
-- 📊 **Data-Driven Architecture** - PERIOD_CONFIGS dict and PERIOD_LABEL_FORMATTERS for maintainability
-- 🚀 **Improved Extensibility** - Easier to add new analytics periods and formats
-- ✅ **Issue #240 Phase 2** - Progress: 1 of 10 functions refactored
+- 🎯 **High-Priority Functions Refactored** - 2 functions with -15 complexity reduction (install.py, cloudflare.py)
+- 📦 **install.py::configure_paths()** - 15 → 5 complexity (-10 points, 4 helper functions extracted)
+- 🔍 **cloudflare.py::_search_by_tags_internal()** - 13 → 8 complexity (-5 points, 3 helper functions)
+- 🚀 **Phase 2 Progress** - 3 of 10 functions refactored (30% complete, 51% of -39 target achieved)
+- ✅ **Gemini Review Improvements** - Dynamic PROJECT_ROOT detection, specific exception handling
 
 **Previous Releases**:
+- **v8.34.0** - Code Quality: Phase 2 Complexity Reduction (analytics.py refactored, 11 → 6-7 complexity)
 - **v8.33.0** - Critical Installation Bug Fix + Code Quality Improvements (dead code cleanup, automatic MCP setup)
 - **v8.32.0** - Code Quality Excellence: pyscn Static Analysis Integration (multi-layer QA workflow)
 - **v8.31.0** - Revolutionary Batch Update Performance (21,428x faster memory consolidation)
