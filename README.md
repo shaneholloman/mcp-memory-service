@@ -23,17 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.31.0** (Nov 23, 2025)
+### 🆕 Latest Release: **v8.32.0** (Nov 24, 2025)
 
-**Revolutionary Performance: 21,428x Faster Memory Consolidation**
+**Code Quality Excellence: pyscn Static Analysis Integration**
 
-- 🚀 **Batch Update API** - New `update_memories_batch()` method for atomic batch operations across all storage backends
-- ⚡ **21,428x Speedup** - Memory consolidation: 300 seconds → 0.014 seconds for 500 memory batch updates
-- 🎯 **<1 Second Consolidation** - Complete workflow reduced from 5+ minutes to <1 second for 500 memories
-- 🔄 **Backward Compatible** - Existing single-update code paths continue working unchanged
-- 💾 **Optimized Backends** - Single transaction (SQLite), parallel updates (Cloudflare), dual-backend sync (Hybrid)
+- 🔍 **Multi-Layer QA Workflow** - Three-layer quality strategy: Pre-commit (LLM) → PR Gate (pyscn) → Periodic (weekly)
+- 📊 **Health Score Thresholds** - Release blockers <50, action required 50-69, good 70-84, excellent 85+
+- 🎯 **6 Comprehensive Metrics** - Complexity, dead code, duplication, coupling, dependencies, architecture
+- 🚀 **PR Integration** - `quality_gate.sh --with-pyscn` for comprehensive analysis before merge
+- 📈 **Historical Tracking** - CSV-based metrics tracking with automated regression detection
+- 📝 **Complete Documentation** - 651-line workflow guide + code-quality-guard agent integration
 
 **Previous Releases**:
+- **v8.31.0** - Revolutionary Batch Update Performance (21,428x faster memory consolidation)
 - **v8.30.0** - Analytics Intelligence: Adaptive Charts & Critical Data Fixes (accurate trend visualization)
 - **v8.29.0** - Dashboard Quick Actions: Sync Controls & Automatic Backups (enterprise-grade backup system)
 - **v8.28.1** - Critical HTTP MCP Transport JSON-RPC 2.0 Compliance Fix (Claude Code compatibility)

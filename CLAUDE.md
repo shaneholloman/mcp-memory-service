@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.31.0**: **Revolutionary Performance: 21,428x Faster Memory Consolidation** - New `update_memories_batch()` API method enables atomic batch operations across all storage backends. Memory consolidation now completes in <1 second (previously 5+ minutes) for 500 memories with 21,428x speedup (300s → 0.014s for batch updates). Backward compatible - existing single-update code paths continue working. Optimized implementations: single transaction (SQLite), parallel updates (Cloudflare), dual-backend sync (Hybrid). See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.32.0**: **Code Quality Excellence: pyscn Static Analysis Integration** - Multi-layer QA workflow with comprehensive static analysis: Pre-commit (LLM) → PR Gate (pyscn) → Periodic (weekly). Features health score thresholds (<50 blocks release, 50-69 action required), 6 metrics (complexity, dead code, duplication, coupling, dependencies, architecture), historical tracking with regression detection, and complete 651-line workflow guide in `docs/development/code-quality-workflow.md`. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -29,6 +29,11 @@ MCP Memory Service is a Model Context Protocol server providing semantic memory 
 | **Maintenance** | `python scripts/maintenance/consolidate_memory_types.py --dry-run` | Preview type consolidation |
 | | `python scripts/maintenance/find_all_duplicates.py` | Find duplicates |
 | | `python scripts/sync/check_drift.py` | Check hybrid backend drift (v8.25.0+) |
+| **Quality** | `bash scripts/pr/quality_gate.sh 123` | Run PR quality checks |
+| | `bash scripts/pr/quality_gate.sh 123 --with-pyscn` | Comprehensive quality analysis (includes pyscn) |
+| | `bash scripts/quality/track_pyscn_metrics.sh` | Track quality metrics over time |
+| | `bash scripts/quality/weekly_quality_review.sh` | Generate weekly quality review |
+| | `pyscn analyze .` | Run pyscn static analysis |
 | **Consolidation** | `curl -X POST http://127.0.0.1:8000/api/consolidation/trigger -H "Content-Type: application/json" -d '{"time_horizon":"weekly"}'` | Trigger memory consolidation |
 | | `curl http://127.0.0.1:8000/api/consolidation/status` | Check scheduler status |
 | | `curl http://127.0.0.1:8000/api/consolidation/recommendations` | Get consolidation recommendations |
@@ -496,6 +501,98 @@ Use 24 core types: `note`, `reference`, `document`, `guide`, `session`, `impleme
 - Test both OAuth enabled/disabled modes for web interface
 - Validate search endpoints: semantic (`/api/search`), tag (`/api/search/by-tag`), time (`/api/search/by-time`)
 
+## Code Quality Monitoring
+
+### Multi-Layer Quality Strategy
+
+The QA workflow uses three complementary layers for comprehensive code quality assurance:
+
+**Layer 1: Pre-commit (Fast - <5s)**
+- Groq/Gemini LLM complexity checks
+- Security scanning (SQL injection, XSS, command injection)
+- Dev environment validation
+- **Blocking**: Complexity >8, any security issues
+
+**Layer 2: PR Quality Gate (Moderate - 10-60s)**
+- Standard checks: complexity, security, test coverage, breaking changes
+- Comprehensive checks (`--with-pyscn`): + duplication, dead code, architecture
+- **Blocking**: Security issues, health score <50
+
+**Layer 3: Periodic Review (Weekly)**
+- pyscn codebase-wide analysis
+- Trend tracking and regression detection
+- Refactoring sprint planning
+
+### pyscn Integration
+
+[pyscn](https://github.com/ludo-technologies/pyscn) provides comprehensive static analysis:
+
+**Capabilities:**
+- Cyclomatic complexity scoring
+- Dead code detection
+- Clone detection (duplication)
+- Coupling metrics (CBO)
+- Dependency graph analysis
+- Architecture violation detection
+
+**Usage:**
+
+```bash
+# PR creation (automated)
+bash scripts/pr/quality_gate.sh 123 --with-pyscn
+
+# Local pre-PR check
+pyscn analyze .
+open .pyscn/reports/analyze_*.html
+
+# Track metrics over time
+bash scripts/quality/track_pyscn_metrics.sh
+
+# Weekly review
+bash scripts/quality/weekly_quality_review.sh
+```
+
+### Health Score Thresholds
+
+| Score | Status | Action Required |
+|-------|--------|----------------|
+| **<50** | 🔴 **Release Blocker** | Cannot merge - immediate refactoring required |
+| **50-69** | 🟡 **Action Required** | Plan refactoring sprint within 2 weeks |
+| **70-84** | ✅ **Good** | Monitor trends, continue development |
+| **85+** | 🎯 **Excellent** | Maintain current standards |
+
+### Quality Standards
+
+**Release Blockers** (Health Score <50):
+- ❌ Cannot merge to main
+- ❌ Cannot create release
+- 🔧 Required: Immediate refactoring
+
+**Action Required** (Health Score 50-69):
+- ⚠️ Plan refactoring sprint within 2 weeks
+- 📊 Track on project board
+- 🎯 Focus on top 5 complexity offenders
+
+**Acceptable** (Health Score ≥70):
+- ✅ Continue normal development
+- 📈 Monitor trends monthly
+- 🎯 Address new issues proactively
+
+### Tool Complementarity
+
+| Tool | Speed | Scope | Use Case | Blocking |
+|------|-------|-------|----------|----------|
+| **Groq/Gemini (pre-commit)** | <5s | Changed files | Every commit | Yes (complexity >8) |
+| **quality_gate.sh** | 10-30s | PR files | PR creation | Yes (security) |
+| **pyscn (PR)** | 30-60s | Full codebase | PR + periodic | Yes (health <50) |
+| **code-quality-guard** | Manual | Targeted | Refactoring | No (advisory) |
+
+**Integration Points:**
+- Pre-commit: Fast LLM checks (Groq primary, Gemini fallback)
+- PR Quality Gate: `--with-pyscn` flag for comprehensive analysis
+- Periodic: Weekly pyscn analysis with trend tracking
+
+See [`.claude/agents/code-quality-guard.md`](.claude/agents/code-quality-guard.md) for detailed workflows and [docs/development/code-quality-workflow.md](docs/development/code-quality-workflow.md) for complete documentation.
 
 ## Configuration Management
 

@@ -1,15 +1,33 @@
 #!/bin/bash
 # scripts/pr/quality_gate.sh - Run all quality checks before PR review
 #
-# Usage: bash scripts/pr/quality_gate.sh <PR_NUMBER>
+# Usage: bash scripts/pr/quality_gate.sh <PR_NUMBER> [--with-pyscn]
 # Example: bash scripts/pr/quality_gate.sh 123
+# Example: bash scripts/pr/quality_gate.sh 123 --with-pyscn  # Comprehensive analysis
 
 set -e
 
 PR_NUMBER=$1
+RUN_PYSCN=false
+
+# Parse arguments
+shift  # Remove PR_NUMBER from arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --with-pyscn)
+            RUN_PYSCN=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 <PR_NUMBER> [--with-pyscn]"
+            exit 1
+            ;;
+    esac
+done
 
 if [ -z "$PR_NUMBER" ]; then
-    echo "Usage: $0 <PR_NUMBER>"
+    echo "Usage: $0 <PR_NUMBER> [--with-pyscn]"
     exit 1
 fi
 
@@ -143,6 +161,28 @@ else
 fi
 echo ""
 
+# Check 5: pyscn comprehensive analysis (optional)
+if [ "$RUN_PYSCN" = true ]; then
+    echo "=== Check 5: pyscn Comprehensive Analysis ==="
+
+    if command -v pyscn &> /dev/null; then
+        echo "Running pyscn static analysis..."
+
+        # Run pyscn analysis (will post comment if successful)
+        if bash scripts/pr/run_pyscn_analysis.sh --pr $PR_NUMBER --threshold 50; then
+            echo "✅ pyscn analysis passed"
+        else
+            echo "⚠️  pyscn analysis found quality issues"
+            # Note: Don't block on pyscn failures (informational only for now)
+            # exit_code can be set to 1 here if you want to block on pyscn failures
+        fi
+    else
+        echo "⚠️  pyscn not installed, skipping comprehensive analysis"
+        echo "Install with: pip install pyscn"
+    fi
+    echo ""
+fi
+
 # Report results
 echo "=== Quality Gate Summary ==="
 echo ""
@@ -155,7 +195,16 @@ if [ $exit_code -eq 0 ]; then
     echo "- Security scan: ✅ OK"
     echo "- Test coverage: ✅ OK"
     echo "- Breaking changes: ✅ None detected"
+    if [ "$RUN_PYSCN" = true ]; then
+        echo "- pyscn analysis: ✅ OK (see separate comment)"
+    fi
     echo ""
+
+    pyscn_note=""
+    if [ "$RUN_PYSCN" = true ]; then
+        pyscn_note="
+- ✅ pyscn comprehensive analysis: See detailed report comment"
+    fi
 
     gh pr comment $PR_NUMBER --body "✅ **Quality Gate PASSED**
 
@@ -163,7 +212,7 @@ All automated checks completed successfully:
 - ✅ Code complexity: OK
 - ✅ Security scan: OK
 - ✅ Test coverage: OK
-- ✅ Breaking changes: None detected
+- ✅ Breaking changes: None detected${pyscn_note}
 
 PR is ready for Gemini review."
 

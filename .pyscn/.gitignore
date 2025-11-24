@@ -1,0 +1,14 @@
+# pyscn generated files
+
+# Analysis reports (HTML, JSON)
+reports/
+
+# Historical metrics tracking
+history/
+
+# Temporary analysis files
+*.tmp
+*.log
+
+# Keep directory structure
+!.gitignore

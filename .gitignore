@@ -76,6 +76,10 @@ tests/test_db/chroma.sqlite3
 .mcp_memory_sqlite/
 .mcp_memory_chroma/
 
+# pyscn analysis artifacts (reports and history tracked in .pyscn/.gitignore)
+.pyscn/reports/
+.pyscn/history/
+
 # Project-specific artifacts
 backups/
 test_output.txt

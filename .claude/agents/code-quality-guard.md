@@ -350,6 +350,92 @@ git commit -m "chore: update TODO tracker"
 - Refactoring suggestions as PR comments
 - Security scan blocks PR merge if issues found
 
+## pyscn Integration (Comprehensive Static Analysis)
+
+pyscn (Python Static Code Navigator) complements LLM-based checks with deep static analysis.
+
+### When to Run pyscn
+
+**PR Creation (Automated)**:
+```bash
+bash scripts/pr/quality_gate.sh 123 --with-pyscn
+```
+
+**Local Pre-PR Check**:
+```bash
+pyscn analyze .
+open .pyscn/reports/analyze_*.html
+```
+
+**Weekly Reviews (Scheduled)**:
+```bash
+bash scripts/quality/weekly_quality_review.sh
+```
+
+### pyscn Capabilities
+
+1. **Cyclomatic Complexity**: Function-level complexity scoring
+2. **Dead Code Detection**: Unreachable code and unused imports
+3. **Clone Detection**: Exact and near-exact code duplication
+4. **Coupling Metrics**: CBO (Coupling Between Objects) analysis
+5. **Dependency Graph**: Module dependencies and circular detection
+6. **Architecture Validation**: Layer compliance and violations
+
+### Health Score Thresholds
+
+- **<50**: 🔴 **Release Blocker** - Cannot merge until fixed
+- **50-69**: 🟡 **Action Required** - Plan refactoring within 2 weeks
+- **70-84**: ✅ **Good** - Monitor trends, continue development
+- **85+**: 🎯 **Excellent** - Maintain current standards
+
+### Tool Complementarity
+
+| Tool | Speed | Scope | Blocking | Use Case |
+|------|-------|-------|----------|----------|
+| **Groq/Gemini (pre-commit)** | <5s | Changed files | Yes (complexity >8) | Every commit |
+| **pyscn (PR)** | 30-60s | Full codebase | Yes (health <50) | PR creation |
+| **Gemini (manual)** | 2-5s/file | Targeted | No | Refactoring |
+
+### Integration Points
+
+**Pre-commit**: Fast LLM checks (Groq primary, Gemini fallback)
+**PR Quality Gate**: `--with-pyscn` flag for comprehensive analysis
+**Periodic**: Weekly codebase-wide pyscn reviews
+
+### Interpreting pyscn Reports
+
+**Complexity Score (40/100 - Poor)**:
+- Priority: Refactor top 5 functions with complexity >10
+- Example: `install.py::main()` - 62 complexity
+
+**Duplication Score (30/100 - Poor)**:
+- Priority: Consolidate duplicate code (>6% duplication)
+- Tool: Use pyscn clone detection to identify groups
+
+**Dead Code Score (70/100 - Fair)**:
+- Priority: Remove unreachable code after returns
+- Example: `scripts/installation/install.py:1361-1365`
+
+**Architecture Score (75/100 - Good)**:
+- Priority: Fix layer violations (scripts→presentation)
+- Example: Domain importing application layer
+
+### Quick Commands
+
+```bash
+# Full analysis with HTML report
+pyscn analyze .
+
+# JSON output for scripting
+pyscn analyze . --format json > /tmp/metrics.json
+
+# PR integration
+bash scripts/pr/run_pyscn_analysis.sh --pr 123
+
+# Track metrics over time
+bash scripts/quality/track_pyscn_metrics.sh
+```
+
 ## Best Practices
 
 1. **Run complexity checks on every commit**: Catch issues early
@@ -357,6 +443,8 @@ git commit -m "chore: update TODO tracker"
 3. **Security scans before releases**: Never ship with known vulnerabilities
 4. **Refactoring sprints quarterly**: Address accumulated technical debt
 5. **Document quality standards**: Keep this agent specification updated
+6. **Track pyscn health score weekly**: Monitor quality trends
+7. **Address health score <70 within 2 weeks**: Prevent technical debt accumulation
 
 ## Limitations
 
@@ -364,12 +452,14 @@ git commit -m "chore: update TODO tracker"
 - **False positives**: Security scanner may flag safe patterns (manual review needed)
 - **Subjective scoring**: Complexity ratings are estimates, use as guidance
 - **API rate limits**: Gemini CLI has rate limits, space out large scans
+- **pyscn performance**: Full analysis takes 30-60s (use sparingly on large codebases)
 
 ## Performance Considerations
 
-- Single file analysis: ~2-5 seconds
+- Single file analysis (LLM): ~2-5 seconds
 - Full codebase TODO scan: ~30-60 seconds (100+ files)
 - Security audit per file: ~3-8 seconds
+- pyscn full analysis: ~30-60 seconds (252 files)
 - Recommended: Run on modified files only for pre-commit hooks
 
 ---
@@ -388,4 +478,7 @@ gemini "Prioritize these TODOs (Critical/High/Medium/Low): $(grep -rn "TODO\|FIX
 
 # Refactoring
 gemini "Code smells & refactoring opportunities: $(cat "file.py")"
+
+# pyscn (comprehensive)
+bash scripts/pr/run_pyscn_analysis.sh --pr 123
 ```

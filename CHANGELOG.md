@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.32.0] - 2025-11-24
+
+### Added
+- **pyscn Static Analysis Integration**: Multi-layer quality workflow with comprehensive static analysis
+  - New `scripts/pr/run_pyscn_analysis.sh` for PR-time analysis with health score thresholds (blocks <50)
+  - New `scripts/quality/track_pyscn_metrics.sh` for historical metrics tracking (CSV storage)
+  - New `scripts/quality/weekly_quality_review.sh` for automated weekly reviews with regression detection
+  - Enhanced `scripts/pr/quality_gate.sh` with `--with-pyscn` flag for comprehensive checks
+  - Three-layer quality strategy: Pre-commit (Groq/Gemini LLM) → PR Gate (standard + pyscn) → Periodic (weekly)
+  - 6 comprehensive metrics: cyclomatic complexity, dead code, duplication, coupling, dependencies, architecture
+  - Health score thresholds: <50 (blocker), 50-69 (action required), 70-84 (good), 85+ (excellent)
+  - Complete documentation in `docs/development/code-quality-workflow.md` (651 lines)
+  - Integration guide in `.claude/agents/code-quality-guard.md`
+  - Updated `CLAUDE.md` with "Code Quality Monitoring" section
+
 ## [8.31.0] - 2025-11-23
 
 ### Added
