@@ -1123,20 +1123,8 @@ def install_storage_backend(backend, system_info):
     
     return False
 
-def install_package(args):
-    """Install the package with the appropriate dependencies, supporting pip or uv."""
-    print_step("3", "Installing MCP Memory Service")
-
-    # Determine installation mode
-    install_mode = []
-    if args.dev:
-        install_mode = ['-e']
-        print_info("Installing in development mode")
-
-    # Set environment variables for installation
-    env = os.environ.copy()
-
-    # Detect if pip is available
+def _detect_installer_command():
+    """Detect available package installer (pip or uv)."""
     # Check if pip is available
     pip_available, _ = run_command_safe(
         [sys.executable, '-m', 'pip', '--version'],
@@ -1149,18 +1137,16 @@ def install_package(args):
 
     # Decide installer command prefix
     if pip_available:
-        installer_cmd = [sys.executable, '-m', 'pip']
+        return [sys.executable, '-m', 'pip']
     elif uv_available:
-        installer_cmd = ['uv', 'pip']
         print_warning("pip not found, but uv detected. Using 'uv pip' for installation.")
+        return ['uv', 'pip']
     else:
         print_error("Neither pip nor uv detected. Cannot install packages.")
-        return False
+        return None
 
-    # Get system and GPU info
-    system_info = detect_system()
-    gpu_info = detect_gpu()
-
+def _setup_storage_and_gpu_environment(args, system_info, gpu_info, env):
+    """Set up storage backend and GPU environment variables."""
     # Choose and install storage backend
     chosen_backend = choose_storage_backend(system_info, gpu_info, args)
 

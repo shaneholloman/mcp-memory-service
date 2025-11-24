@@ -1254,19 +1254,12 @@ def install_uv():
         print_error(f"Unexpected error installing uv: {e}")
         return None
 
-def install_package(args):
-    """Install the package with the appropriate dependencies, supporting pip or uv."""
-    print_step("3", "Installing MCP Memory Service")
-
-    # Determine installation mode
-    install_mode = []
-    if args.dev:
-        install_mode = ['-e']
-        print_info("Installing in development mode")
-
-    # Set environment variables for installation
-    env = os.environ.copy()
-
+def _setup_installer_command():
+    """Set up the installer command prefix (pip or uv).
+    
+    Returns:
+        tuple: (installer_cmd: list, uv_path: str or None)
+    """
     # Detect if pip is available
     pip_available = False
     try:
@@ -1301,8 +1294,22 @@ def install_package(args):
         print_info(f"Using uv for installation: {uv_path}")
     else:
         print_error("Neither pip nor uv could be found or installed. Cannot install packages.")
-        return False
+        return None, None
 
+    return installer_cmd, uv_path
+
+
+def _configure_storage_and_gpu(args):
+    """Configure storage backend and GPU environment variables.
+    
+    Args:
+        args: Parsed command line arguments
+        
+    Returns:
+        tuple: (env: dict, system_info: dict, gpu_info: dict, chosen_backend: str)
+    """
+    env = os.environ.copy()
+    
     # Get system and GPU info
     system_info = detect_system()
     gpu_info = detect_gpu()
@@ -1314,13 +1321,13 @@ def install_package(args):
         actual_backend = install_storage_backend(chosen_backend, system_info)
         if not actual_backend:
             print_error("Failed to install any storage backend")
-            return False
+            return None, None, None, None
         chosen_backend = actual_backend
     else:
         # Install the chosen backend
         if not install_storage_backend(chosen_backend, system_info):
             print_error(f"Failed to install {chosen_backend} storage backend")
-            return False
+            return None, None, None, None
 
     # Set environment variable for chosen backend
     if chosen_backend == "sqlite_vec":
@@ -1348,6 +1355,21 @@ def install_package(args):
         print_info("Configuring for CPU-only installation")
         env['MCP_MEMORY_USE_ONNX'] = '1'
 
+    return env, system_info, gpu_info, chosen_backend
+
+
+def _handle_pytorch_setup(args, system_info, gpu_info, env):
+    """Handle PyTorch installation logic.
+    
+    Args:
+        args: Parsed command line arguments
+        system_info: System information dict
+        gpu_info: GPU information dict
+        env: Environment variables dict
+        
+    Returns:
+        tuple: (using_homebrew_pytorch: bool, pytorch_installed: bool, env: dict)
+    """
     # Check for Homebrew PyTorch installation
     using_homebrew_pytorch = False
     if system_info.get("has_homebrew_pytorch"):
@@ -1355,7 +1377,6 @@ def install_package(args):
         using_homebrew_pytorch = True
         # Set the environment variable to use ONNX for embeddings
         env['MCP_MEMORY_USE_ONNX'] = '1'
-        # Skip the PyTorch installation step
         pytorch_installed = True
     else:
         # Handle platform-specific PyTorch installation
@@ -1363,74 +1384,112 @@ def install_package(args):
         if not pytorch_installed:
             print_warning("Platform-specific PyTorch installation failed, but will continue with package installation")
 
-    try:
-        # SQLite-vec with ONNX for macOS with homebrew PyTorch or compatibility issues
-        if (system_info["is_macos"] and system_info["is_x86"] and 
-            (sys.version_info >= (3, 13) or using_homebrew_pytorch or args.skip_pytorch)):
-            
-            if using_homebrew_pytorch:
-                print_info("Using Homebrew PyTorch - installing with SQLite-vec + ONNX configuration")
-            elif args.skip_pytorch:
-                print_info("Skipping PyTorch installation - using SQLite-vec + ONNX configuration")
-            else:
-                print_info("Using Python 3.13+ on macOS Intel - using SQLite-vec + ONNX configuration")
-            
-            # First try to install without ML dependencies
-            try:
-                cmd = installer_cmd + ['install', '--no-deps'] + install_mode + ['.']
-                print_info(f"Running: {' '.join(cmd)}")
-                subprocess.check_call(cmd, env=env)
-                
-                # Install core dependencies except torch/sentence-transformers
-                print_info("Installing core dependencies (without ML libraries for compatibility)...")
-                print_info("Note: First run will download embedding models automatically (~25MB)")
-                
-                # Create a list of dependencies to install
-                dependencies = [
-                    "mcp>=1.0.0,<2.0.0",
-                    "onnxruntime>=1.14.1",  # ONNX runtime for embeddings
-                    "tokenizers>=0.20.0",  # Required for ONNX tokenization
-                    "httpx>=0.24.0",  # For downloading ONNX models
-                    "aiohttp>=3.8.0"  # Required for MCP server functionality
-                ]
-                
-                # Add backend-specific dependencies
-                if chosen_backend == "sqlite_vec":
-                    dependencies.append("sqlite-vec>=0.1.0")
-                else:
-                    dependencies.append("chromadb==0.5.23")
-                    dependencies.append("tokenizers==0.20.3")
-                
-                # Install dependencies
-                subprocess.check_call(
-                    [sys.executable, '-m', 'pip', 'install'] + dependencies
-                )
-                
-                # Set environment variables for ONNX
-                print_info("Configuring to use ONNX runtime for inference without PyTorch...")
-                env['MCP_MEMORY_USE_ONNX'] = '1'
-                os.environ['MCP_MEMORY_USE_ONNX'] = '1'  # Also set in the main process
-                if chosen_backend != "sqlite_vec":
-                    print_info("Switching to SQLite-vec backend for better compatibility")
-                    env['MCP_MEMORY_STORAGE_BACKEND'] = 'sqlite_vec'
-                    os.environ['MCP_MEMORY_STORAGE_BACKEND'] = 'sqlite_vec'  # Also set in the main process
-                    chosen_backend = 'sqlite_vec'  # Update the chosen_backend for consistency
-                
-                print_success("MCP Memory Service installed successfully (SQLite-vec + ONNX)")
-                
-                if using_homebrew_pytorch:
-                    print_info("Using Homebrew PyTorch installation for embedding generation")
-                    print_info("Environment configured to use SQLite-vec backend and ONNX runtime")
-                else:
-                    print_warning("ML libraries (PyTorch/sentence-transformers) were not installed due to compatibility issues")
-                    print_info("The service will use ONNX runtime for inference instead")
-                
-                return True
-            except subprocess.SubprocessError as e:
-                print_error(f"Failed to install with ONNX approach: {e}")
-                # Fall through to try standard installation
+    return using_homebrew_pytorch, pytorch_installed, env
+
+
+def _should_use_onnx_installation(system_info, args, using_homebrew_pytorch):
+    """Determine if ONNX installation path should be used.
+    
+    Args:
+        system_info: System information dict
+        args: Parsed command line arguments
+        using_homebrew_pytorch: Whether Homebrew PyTorch is being used
         
-        # Standard installation
+    Returns:
+        bool: True if ONNX installation path should be used
+    """
+    return (system_info["is_macos"] and system_info["is_x86"] and 
+            (sys.version_info >= (3, 13) or using_homebrew_pytorch or args.skip_pytorch))
+
+
+def _install_with_onnx(installer_cmd, install_mode, chosen_backend, env, using_homebrew_pytorch):
+    """Install using SQLite-vec + ONNX configuration.
+    
+    Args:
+        installer_cmd: Command prefix for installer
+        install_mode: Installation mode flags (-e for dev mode)
+        chosen_backend: Storage backend name
+        env: Environment variables
+        using_homebrew_pytorch: Whether using Homebrew PyTorch
+        
+    Returns:
+        bool: True if installation succeeded, False otherwise
+    """
+    try:
+        # Print installation context
+        if using_homebrew_pytorch:
+            print_info("Using Homebrew PyTorch - installing with SQLite-vec + ONNX configuration")
+        elif install_mode:
+            print_info("Skipping PyTorch installation - using SQLite-vec + ONNX configuration")
+        else:
+            print_info("Using Python 3.13+ on macOS Intel - using SQLite-vec + ONNX configuration")
+        
+        # Install without ML dependencies
+        cmd = installer_cmd + ['install', '--no-deps'] + install_mode + ['.']
+        print_info(f"Running: {' '.join(cmd)}")
+        subprocess.check_call(cmd, env=env)
+        
+        # Install core dependencies except torch/sentence-transformers
+        print_info("Installing core dependencies (without ML libraries for compatibility)...")
+        print_info("Note: First run will download embedding models automatically (~25MB)")
+        
+        # Build dependency list
+        dependencies = [
+            "mcp>=1.0.0,<2.0.0",
+            "onnxruntime>=1.14.1",  # ONNX runtime for embeddings
+            "tokenizers>=0.20.0",  # Required for ONNX tokenization
+            "httpx>=0.24.0",  # For downloading ONNX models
+            "aiohttp>=3.8.0"  # Required for MCP server functionality
+        ]
+        
+        # Add backend-specific dependencies
+        if chosen_backend == "sqlite_vec":
+            dependencies.append("sqlite-vec>=0.1.0")
+        else:
+            dependencies.append("chromadb==0.5.23")
+            dependencies.append("tokenizers==0.20.3")
+        
+        # Install dependencies
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install'] + dependencies)
+        
+        # Configure ONNX runtime
+        print_info("Configuring to use ONNX runtime for inference without PyTorch...")
+        env['MCP_MEMORY_USE_ONNX'] = '1'
+        os.environ['MCP_MEMORY_USE_ONNX'] = '1'
+        
+        # Switch to SQLite-vec if needed
+        if chosen_backend != "sqlite_vec":
+            print_info("Switching to SQLite-vec backend for better compatibility")
+            env['MCP_MEMORY_STORAGE_BACKEND'] = 'sqlite_vec'
+            os.environ['MCP_MEMORY_STORAGE_BACKEND'] = 'sqlite_vec'
+        
+        print_success("MCP Memory Service installed successfully (SQLite-vec + ONNX)")
+        
+        if using_homebrew_pytorch:
+            print_info("Using Homebrew PyTorch installation for embedding generation")
+            print_info("Environment configured to use SQLite-vec backend and ONNX runtime")
+        else:
+            print_warning("ML libraries (PyTorch/sentence-transformers) were not installed due to compatibility issues")
+            print_info("The service will use ONNX runtime for inference instead")
+        
+        return True
+    except subprocess.SubprocessError as e:
+        print_error(f"Failed to install with ONNX approach: {e}")
+        return False
+
+
+def _install_standard(installer_cmd, install_mode, env):
+    """Perform standard pip/uv installation.
+    
+    Args:
+        installer_cmd: Command prefix for installer
+        install_mode: Installation mode flags (-e for dev mode)
+        env: Environment variables
+        
+    Returns:
+        bool: True if installation succeeded, False otherwise
+    """
+    try:
         cmd = installer_cmd + ['install'] + install_mode + ['.']
         print_info(f"Running: {' '.join(cmd)}")
         subprocess.check_call(cmd, env=env)
@@ -1438,21 +1497,68 @@ def install_package(args):
         return True
     except subprocess.SubprocessError as e:
         print_error(f"Failed to install MCP Memory Service: {e}")
-        
-        # Special handling for macOS with compatibility issues
-        if system_info["is_macos"] and system_info["is_x86"]:
-            print_warning("Installation on macOS Intel is challenging")
-            print_info("Try manually installing with:")
-            print_info("1. pip install --no-deps .")
-            print_info("2. pip install sqlite-vec>=0.1.0 mcp>=1.0.0,<2.0.0 onnxruntime>=1.14.1 aiohttp>=3.8.0")
-            print_info("3. export MCP_MEMORY_USE_ONNX=1")
-            print_info("4. export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec")
-            
-            if system_info.get("has_homebrew_pytorch"):
-                print_info("Homebrew PyTorch was detected but installation still failed.")
-                print_info("Try running: python install.py --storage-backend sqlite_vec --skip-pytorch")
-            
         return False
+
+
+def _handle_installation_failure(system_info):
+    """Provide helpful guidance when installation fails.
+    
+    Args:
+        system_info: System information dict
+    """
+    # Special handling for macOS with compatibility issues
+    if system_info["is_macos"] and system_info["is_x86"]:
+        print_warning("Installation on macOS Intel is challenging")
+        print_info("Try manually installing with:")
+        print_info("1. pip install --no-deps .")
+        print_info("2. pip install sqlite-vec>=0.1.0 mcp>=1.0.0,<2.0.0 onnxruntime>=1.14.1 aiohttp>=3.8.0")
+        print_info("3. export MCP_MEMORY_USE_ONNX=1")
+        print_info("4. export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec")
+        
+        if system_info.get("has_homebrew_pytorch"):
+            print_info("Homebrew PyTorch was detected but installation still failed.")
+            print_info("Try running: python install.py --storage-backend sqlite_vec --skip-pytorch")
+
+
+def install_package(args):
+    """Install the package with the appropriate dependencies, supporting pip or uv."""
+    print_step("3", "Installing MCP Memory Service")
+
+    # Determine installation mode
+    install_mode = []
+    if args.dev:
+        install_mode = ['-e']
+        print_info("Installing in development mode")
+
+    # Setup installer command (pip or uv)
+    installer_cmd, uv_path = _setup_installer_command()
+    if installer_cmd is None:
+        return False
+
+    # Configure storage backend and GPU
+    env, system_info, gpu_info, chosen_backend = _configure_storage_and_gpu(args)
+    if env is None:
+        return False
+
+    # Handle PyTorch setup
+    using_homebrew_pytorch, pytorch_installed, env = _handle_pytorch_setup(
+        args, system_info, gpu_info, env
+    )
+
+    # Determine installation path
+    if _should_use_onnx_installation(system_info, args, using_homebrew_pytorch):
+        # Use ONNX-based installation for macOS Intel with Python 3.13+ or Homebrew PyTorch
+        success = _install_with_onnx(installer_cmd, install_mode, chosen_backend, env, using_homebrew_pytorch)
+        if success:
+            return True
+        # Fall through to standard installation if ONNX approach fails
+    
+    # Standard installation path
+    success = _install_standard(installer_cmd, install_mode, env)
+    if not success:
+        _handle_installation_failure(system_info)
+    
+    return success
 
 def configure_paths(args):
     """Configure paths for the MCP Memory Service."""
