@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.36.1** (Nov 24, 2025)
+### 🆕 Latest Release: **v8.37.0** (Nov 24, 2025)
 
-**CRITICAL HOTFIX - HTTP Server Startup**
+**Code Quality Milestone - Duplicate Consolidation Complete**
 
-- 🚨 **Production Blocker Fixed** - HTTP server crash on v8.36.0 startup (issue #247)
-- 🔧 **Root Cause** - Forward reference error in analytics.py from PR #244 refactoring
-- ✅ **Fix** - Added `from __future__ import annotations` + Tuple import for Python 3.9 compatibility
-- ⚡ **Impact** - Unblocks all v8.36.0 users experiencing startup failures
-- 🎯 **Verification** - HTTP server starts successfully, all 10 analytics routes registered
+- ✨ **Phase 2a COMPLETE** - Eliminated 5 duplicate high-complexity functions (issue #246)
+- 🎯 **detect_gpu() consolidation** - 3 implementations → 1 canonical (configuration-driven)
+- 🔧 **verify_installation() consolidation** - 2 implementations → 1 canonical (robust checks)
+- 📊 **Impact** - High-complexity functions: 27 → 24 (-11%), improved maintainability
+- 🏆 **Quality Improvement** - Configuration-driven patterns replace monolithic if/elif chains
 
 **Previous Releases**:
+- **v8.36.1** - Critical Hotfix: HTTP server startup crash fix (forward reference error in analytics.py)
 - **v8.36.0** - Code Quality: Phase 2 COMPLETE (100% of target achieved, -39 complexity points)
 - **v8.35.0** - Code Quality: Phase 2 Batch 1 (install.py, cloudflare.py, -15 complexity points)
 - **v8.34.0** - Code Quality: Phase 2 Complexity Reduction (analytics.py refactored, 11 → 6-7 complexity)
