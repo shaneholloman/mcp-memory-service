@@ -213,6 +213,24 @@ def print_warning(text):
     """Print formatted warning text."""
     print(f"  [WARNING]  {text}")
 
+def prompt_user_input(prompt_text, default_value=""):
+    """
+    Prompt user for input with formatted banner.
+
+    Args:
+        prompt_text: The input prompt to display
+        default_value: Optional default value if user presses Enter
+
+    Returns:
+        User's input (or default if empty)
+    """
+    print("\n" + "=" * 60)
+    print("⚠️  USER INPUT REQUIRED")
+    print("=" * 60)
+    response = input(prompt_text).strip()
+    print("=" * 60 + "\n")
+    return response if response else default_value
+
 # Cache for system detection to avoid duplicate calls
 _system_info_cache = None
 
@@ -865,13 +883,7 @@ def choose_storage_backend(system_info, gpu_info, args):
                     print_info("Non-interactive mode: using default storage backend (SQLite-vec)")
                     choice = "1"
                 else:
-                    print("\n" + "=" * 60)
-                    print("⚠️  USER INPUT REQUIRED")
-                    print("=" * 60)
-                    choice = input("Choose storage backend [1-3] (default: 1, press Enter for default): ").strip()
-                    print("=" * 60 + "\n")
-                    if not choice:
-                        choice = "1"
+                    choice = prompt_user_input("Choose storage backend [1-3] (default: 1, press Enter for default): ", "1")
                 
                 if choice == "1":
                     return "sqlite_vec"
@@ -2830,11 +2842,7 @@ def _configure_http_api(args):
                 print_info("Non-interactive mode: switching to SQLite-vec for HTTP API compatibility")
                 args.storage_backend = "sqlite_vec"
             else:
-                print("\n" + "=" * 60)
-                print("⚠️  USER INPUT REQUIRED")
-                print("=" * 60)
-                response = input("Switch to SQLite-vec for optimal HTTP API experience? (y/N, press Enter for N): ")
-                print("=" * 60 + "\n")
+                response = prompt_user_input("Switch to SQLite-vec for optimal HTTP API experience? (y/N, press Enter for N): ", "")
                 if response.lower().startswith('y'):
                     args.storage_backend = "sqlite_vec"
 
@@ -2869,11 +2877,7 @@ def _setup_chromadb_migration(args):
             print_info("Non-interactive mode: skipping ChromaDB migration")
             args.migrate_from_chromadb = False
         else:
-            print("\n" + "=" * 60)
-            print("⚠️  USER INPUT REQUIRED")
-            print("=" * 60)
-            manual_path = input("Enter ChromaDB path manually (or press Enter to skip): ").strip()
-            print("=" * 60 + "\n")
+            manual_path = prompt_user_input("Enter ChromaDB path manually (or press Enter to skip): ", "")
             if manual_path and os.path.exists(manual_path):
                 args.storage_backend = "sqlite_vec"
                 args.chromadb_found = manual_path
