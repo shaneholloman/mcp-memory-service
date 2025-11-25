@@ -70,6 +70,45 @@ PATTERNS = {
     "quarter": re.compile(r'(first|second|third|fourth|1st|2nd|3rd|4th)\s+quarter(?:\s+of\s+(\d{4}))?'),
 }
 
+def _calculate_season_date_range(
+    period: str,
+    season_info: Dict[str, int],
+    base_year: int,
+    current_month: Optional[int] = None
+) -> Tuple[datetime, datetime]:
+    """
+    Calculate start and end dates for a season, handling winter's year boundary.
+
+    Args:
+        period: Season name ("winter", "spring", "summer", "fall"/"autumn")
+        season_info: Dictionary with start_month, start_day, end_month, end_day
+        base_year: The year to use as reference for calculation
+        current_month: Current month (1-12) for context-aware winter calculation (optional)
+
+    Returns:
+        Tuple of (start_datetime, end_datetime) for the season
+    """
+    if period == "winter":
+        # Winter spans year boundary (Dec -> Mar)
+        # Determine start year based on current month context
+        if current_month is not None and current_month <= 3:
+            # We're in Jan-Mar, so winter started the previous year
+            start_year = base_year - 1
+            end_year = base_year
+        else:
+            # We're in any other month, winter starts this year
+            start_year = base_year
+            end_year = base_year + 1
+
+        start_dt = datetime(start_year, season_info["start_month"], season_info["start_day"])
+        end_dt = datetime(end_year, season_info["end_month"], season_info["end_day"], 23, 59, 59)
+    else:
+        # All other seasons fall within a single calendar year
+        start_dt = datetime(base_year, season_info["start_month"], season_info["start_day"])
+        end_dt = datetime(base_year, season_info["end_month"], season_info["end_day"], 23, 59, 59)
+
+    return start_dt, end_dt
+
 def parse_time_expression(query: str) -> Tuple[Optional[float], Optional[float]]:
     """
     Parse a natural language time expression and return timestamp range.
@@ -370,19 +409,9 @@ def get_last_period_range(period: str) -> Tuple[float, float]:
         else:
             year = current_year
             
-        # Handle winter which spans year boundary
-        if period == "winter":
-            if is_current_season and current_month >= 1 and current_month <= 3:
-                # We're in winter that started last year
-                start_dt = datetime(year, season_info["start_month"], season_info["start_day"])
-                end_dt = datetime(year + 1, season_info["end_month"], season_info["end_day"], 23, 59, 59)
-            else:
-                # Either we're not in winter, or we're in winter that started this year
-                start_dt = datetime(year, season_info["start_month"], season_info["start_day"])
-                end_dt = datetime(year + 1, season_info["end_month"], season_info["end_day"], 23, 59, 59)
-        else:
-            start_dt = datetime(year, season_info["start_month"], season_info["start_day"])
-            end_dt = datetime(year, season_info["end_month"], season_info["end_day"], 23, 59, 59)
+        # Calculate season date range (handles winter's year boundary)
+        context_month = current_month if is_current_season else None
+        start_dt, end_dt = _calculate_season_date_range(period, season_info, year, context_month)
     else:
         # Fallback - last 24 hours
         end_dt = now
@@ -427,18 +456,8 @@ def get_this_period_range(period: str) -> Tuple[float, float]:
         season_info = NAMED_PERIODS[period]
         current_year = today.year
         
-        # Handle winter which spans year boundary
-        if period == "winter":
-            # If we're in Jan-Mar, the winter started the previous year
-            if today.month <= 3:
-                start_dt = datetime(current_year - 1, season_info["start_month"], season_info["start_day"])
-                end_dt = datetime(current_year, season_info["end_month"], season_info["end_day"], 23, 59, 59)
-            else:
-                start_dt = datetime(current_year, season_info["start_month"], season_info["start_day"])
-                end_dt = datetime(current_year + 1, season_info["end_month"], season_info["end_day"], 23, 59, 59)
-        else:
-            start_dt = datetime(current_year, season_info["start_month"], season_info["start_day"])
-            end_dt = datetime(current_year, season_info["end_month"], season_info["end_day"], 23, 59, 59)
+        # Calculate season date range (handles winter's year boundary)
+        start_dt, end_dt = _calculate_season_date_range(period, season_info, current_year, today.month)
     else:
         # Fallback - current 24 hours
         end_dt = now
