@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .hashing import generate_content_hash
+from .document_processing import create_memory_from_chunk
 
-__all__ = ['generate_content_hash']
+__all__ = ['generate_content_hash', 'create_memory_from_chunk']

@@ -3662,7 +3662,7 @@ Memories Archived: {report.memories_archived}"""
             from pathlib import Path
             from .ingestion import get_loader_for_file
             from .models.memory import Memory
-            from .utils import generate_content_hash
+            from .utils import create_memory_from_chunk
             import time
             
             # Initialize storage lazily when needed
@@ -3856,26 +3856,14 @@ Memories Archived: {report.memories_archived}"""
                         total_chunks_processed += 1
                         
                         try:
-                            # Add directory-level tags and file-specific tags
-                            all_tags = tags.copy()
-                            all_tags.append(f"source_dir:{directory_path.name}")
-                            all_tags.append(f"file_type:{file_path.suffix.lstrip('.')}")
-
-                            if chunk.metadata.get('tags'):
-                                # Handle tags from chunk metadata (can be string or list)
-                                chunk_tags = chunk.metadata['tags']
-                                if isinstance(chunk_tags, str):
-                                    # Split comma-separated string into list
-                                    chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
-                                all_tags.extend(chunk_tags)
-                            
-                            # Create memory object
-                            memory = Memory(
-                                content=chunk.content,
-                                content_hash=generate_content_hash(chunk.content, chunk.metadata),
-                                tags=list(set(all_tags)),  # Remove duplicates
-                                memory_type="document",
-                                metadata=chunk.metadata
+                            # Create memory from chunk with directory and file context
+                            memory = create_memory_from_chunk(
+                                chunk,
+                                base_tags=tags.copy(),
+                                context_tags={
+                                    "source_dir": directory_path.name,
+                                    "file_type": file_path.suffix.lstrip('.')
+                                }
                             )
                             
                             # Store the memory

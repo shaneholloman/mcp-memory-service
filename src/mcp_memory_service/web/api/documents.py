@@ -36,7 +36,7 @@ from pydantic import BaseModel
 
 from ...ingestion import get_loader_for_file, SUPPORTED_FORMATS
 from ...models.memory import Memory
-from ...utils.hashing import generate_content_hash
+from ...utils import create_memory_from_chunk
 from ..dependencies import get_storage
 
 logger = logging.getLogger(__name__)
@@ -528,32 +528,20 @@ async def process_batch_upload(
                     total_chunks_processed += 1
 
                     try:
-                        # Add file-specific tags
-                        all_tags = tags.copy()
-                        all_tags.append(f"source_file:{filename}")
-                        all_tags.append(f"file_type:{file_path_obj.suffix.lstrip('.')}")
-                        all_tags.append(f"upload_id:{batch_id}")
-
-                        if chunk.metadata.get('tags'):
-                            # Handle tags from chunk metadata (can be string or list)
-                            chunk_tags = chunk.metadata['tags']
-                            if isinstance(chunk_tags, str):
-                                # Split comma-separated string into list
-                                chunk_tags = [tag.strip() for tag in chunk_tags.split(',') if tag.strip()]
-                            all_tags.extend(chunk_tags)
-
-                        # Add upload_id to metadata
-                        chunk_metadata = chunk.metadata.copy() if chunk.metadata else {}
-                        chunk_metadata['upload_id'] = batch_id
-                        chunk_metadata['source_file'] = filename
-
-                        # Create memory object
-                        memory = Memory(
-                            content=chunk.content,
-                            content_hash=generate_content_hash(chunk.content, chunk_metadata),
-                            tags=list(set(all_tags)),  # Remove duplicates
+                        # Create memory from chunk with upload context
+                        memory = create_memory_from_chunk(
+                            chunk,
+                            base_tags=tags.copy(),
                             memory_type=memory_type,
-                            metadata=chunk_metadata
+                            context_tags={
+                                "source_file": filename,
+                                "file_type": file_path_obj.suffix.lstrip('.'),
+                                "upload_id": batch_id
+                            },
+                            extra_metadata={
+                                "upload_id": batch_id,
+                                "source_file": filename
+                            }
                         )
 
                         # Store the memory
