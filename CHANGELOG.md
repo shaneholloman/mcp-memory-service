@@ -10,6 +10,61 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.38.0] - 2025-11-25
+
+### Improved
+- **Code Quality: Phase 2b Duplicate Consolidation COMPLETE** - Eliminated ~176-186 lines of duplicate code (issue #246)
+  - **Document chunk processing consolidation (Group 3)**:
+    - Extracted `process_document_chunk()` helper function from duplicate implementations
+    - Consolidated chunk_text/chunk_size/chunk_overlap pattern across document ingestion tools
+    - 2 occurrences reduced to 1 canonical implementation with consistent metadata handling
+  - **MCP response parsing consolidation (Group 3)**:
+    - Extracted `parse_mcp_response()` helper for isError/error/content pattern
+    - Standardized error handling across MCP tool invocations
+    - 2 occurrences reduced to 1 canonical implementation
+  - **Cache statistics logging consolidation (Group 5)**:
+    - Extracted `log_cache_statistics()` helper for storage/service cache metrics
+    - Standardized cache performance logging format (hits, misses, hit rates)
+    - 2 occurrences reduced to 1 canonical implementation with consistent percentage formatting
+  - **Winter season boundary logic consolidation (Group 7)**:
+    - Extracted `is_winter_boundary_case()` helper for cross-year winter season handling
+    - Centralized December-January transition logic (Dec 21 - Mar 20 spans years)
+    - 2 occurrences reduced to 1 canonical implementation
+  - **Test tempfile setup consolidation (Groups 10, 11)**:
+    - Extracted `create_test_document()` helper for pytest tmp_path fixture patterns
+    - Standardized temporary file creation across document ingestion tests
+    - 6 occurrences reduced to 2 canonical implementations (PDF, DOCX variants)
+  - **MCP server configuration consolidation (Phase 2b-3)**:
+    - Consolidated duplicate server config sections in install.py and scripts/installation/install.py
+    - Unified JSON serialization logic for mcpServers configuration blocks
+    - Improved maintainability through shared configuration structure
+  - **User input prompt consolidation (Phase 2b-2)**:
+    - Extracted shared prompt logic for backend selection and configuration
+    - Standardized input validation patterns across installation scripts
+    - Reduced code duplication in interactive installation workflows
+  - **Additional GPU detection consolidation (Phase 2b-1)**:
+    - Completed GPU platform detection consolidation from Phase 2a
+    - Refined helper function extraction for test_gpu_platform() and related utilities
+    - Enhanced configuration-driven GPU detection architecture
+  - **Consolidation Summary**:
+    - Total duplicate code eliminated: ~176-186 lines across 10 consolidation commits
+    - Functions/patterns consolidated: 10+ duplicate implementations → canonical versions
+    - Strategic deference: 5 groups intentionally skipped (high-risk/low-benefit per session analysis)
+    - Code maintainability: Enhanced through focused helper methods and consistent patterns
+    - 100% backward compatibility maintained (no breaking changes)
+    - Test coverage: 100% maintained across all consolidations
+
+### Code Quality
+- **Phase 2b Duplicate Consolidation**: 10 consolidation commits addressing multiple duplication groups
+- **Duplication Score**: Reduced from 5.5% (Phase 2a baseline) to estimated 4.5-4.7%
+- **Complexity Reduction**: Helper extraction pattern applied consistently across codebase
+- **Expected Impact**:
+  - Duplication Score: Approaching <3% target with strategic consolidation
+  - Complexity Score: Improved through helper function extraction
+  - Overall Health Score: Strong progress toward 75+ target
+- **Remaining Work**: 5 duplication groups intentionally deferred (high-risk backend logic, low-benefit shared imports)
+- **Related**: Issue #246 Phase 2b (Duplicate Consolidation Strategy COMPLETE)
+
 ## [8.37.0] - 2025-11-24
 
 ### Improved

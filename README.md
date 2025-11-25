@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.37.0** (Nov 24, 2025)
+### 🆕 Latest Release: **v8.38.0** (Nov 25, 2025)
 
-**Code Quality Milestone - Duplicate Consolidation Complete**
+**Code Quality Milestone - Phase 2b Duplicate Consolidation Complete**
 
-- ✨ **Phase 2a COMPLETE** - Eliminated 5 duplicate high-complexity functions (issue #246)
-- 🎯 **detect_gpu() consolidation** - 3 implementations → 1 canonical (configuration-driven)
-- 🔧 **verify_installation() consolidation** - 2 implementations → 1 canonical (robust checks)
-- 📊 **Impact** - High-complexity functions: 27 → 24 (-11%), improved maintainability
-- 🏆 **Quality Improvement** - Configuration-driven patterns replace monolithic if/elif chains
+- ✨ **Phase 2b COMPLETE** - Eliminated ~176-186 lines of duplicate code (issue #246)
+- 🎯 **10 consolidation commits** - Document processing, MCP parsing, cache logging, test utilities
+- 🔧 **Helper extraction pattern** - Consistent approach across codebase (chunk processing, response parsing, statistics logging)
+- 📊 **Impact** - Duplication: 5.5% → 4.5-4.7% (approaching <3% target), 100% test coverage maintained
+- 🏆 **Strategic approach** - 5 groups deferred (high-risk/low-benefit), focus on high-value consolidations
 
 **Previous Releases**:
+- **v8.37.0** - Code Quality: Phase 2a COMPLETE (5 duplicate high-complexity functions eliminated)
 - **v8.36.1** - Critical Hotfix: HTTP server startup crash fix (forward reference error in analytics.py)
 - **v8.36.0** - Code Quality: Phase 2 COMPLETE (100% of target achieved, -39 complexity points)
 - **v8.35.0** - Code Quality: Phase 2 Batch 1 (install.py, cloudflare.py, -15 complexity points)
