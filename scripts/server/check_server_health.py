@@ -109,6 +109,64 @@ async def read_json(reader):
         return None
     return json.loads(line.decode())
 
+def parse_mcp_response(
+    response: dict | None,
+    operation_name: str,
+    success_patterns: list[str] | None = None,
+    failure_patterns: list[str] | None = None,
+    log_response: bool = True
+) -> bool:
+    """
+    Parse MCP protocol response and check for success/failure patterns.
+
+    Args:
+        response: MCP response dictionary
+        operation_name: Name of operation for logging
+        success_patterns: Keywords indicating success (empty list means no explicit success check)
+        failure_patterns: Keywords indicating known failures (warnings, not errors)
+        log_response: Whether to log the full response text
+
+    Returns:
+        True if operation succeeded, False otherwise
+    """
+    if not response or 'result' not in response:
+        logger.error(f"❌ Invalid response: {response}")
+        return False
+
+    try:
+        text = response['result']['content'][0]['text']
+
+        if log_response:
+            logger.info(f"{operation_name.capitalize()} response: {text}")
+        else:
+            logger.info(f"{operation_name.capitalize()} response received")
+
+        # Check for failure patterns first (warnings, not errors)
+        if failure_patterns:
+            for pattern in failure_patterns:
+                if pattern in text.lower():
+                    logger.warning(f"⚠️ No results found via {operation_name}")
+                    return False
+
+        # Check for success patterns
+        if success_patterns:
+            for pattern in success_patterns:
+                if pattern in text.lower():
+                    logger.info(f"✅ {operation_name.capitalize()} successful")
+                    return True
+            # If we have success patterns but none matched, it's a failure
+            logger.error(f"❌ {operation_name.capitalize()} failed: {text}")
+            return False
+
+        # No explicit patterns - assume success if we got here
+        logger.info(f"✅ {operation_name.capitalize()} successful")
+        logger.info(f"Response: {text}")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Error parsing {operation_name} response: {e}")
+        return False
+
 async def check_health(reader, writer):
     """Check database health."""
     logger.info("=== Check 1: Database Health ===")
@@ -178,71 +236,31 @@ async def store_memory(reader, writer):
     logger.info("=== Check 3: Memory Storage ===")
     await write_json(writer, STORE_MEMORY_REQUEST)
     response = await read_json(reader)
-    
-    if response and 'result' in response:
-        try:
-            text = response['result']['content'][0]['text']
-            logger.info(f"Store memory response: {text}")
-            
-            if "successfully" in text.lower():
-                logger.info("✅ Memory stored successfully")
-                return True
-            else:
-                logger.error(f"❌ Memory storage failed: {text}")
-                return False
-        except Exception as e:
-            logger.error(f"❌ Error parsing store memory response: {e}")
-    else:
-        logger.error(f"❌ Invalid response: {response}")
-    return False
+    return parse_mcp_response(response, "memory storage", success_patterns=["successfully"])
 
 async def retrieve_memory(reader, writer):
     """Retrieve memories using semantic search."""
     logger.info("=== Check 4: Semantic Search ===")
     await write_json(writer, RETRIEVE_MEMORY_REQUEST)
     response = await read_json(reader)
-    
-    if response and 'result' in response:
-        try:
-            text = response['result']['content'][0]['text']
-            logger.info(f"Retrieve memory response received")
-            
-            if "no matching memories" in text.lower():
-                logger.warning("⚠️ No memories found via semantic search")
-                return False
-            else:
-                logger.info("✅ Semantic search successful")
-                logger.info(f"Response: {text}")
-                return True
-        except Exception as e:
-            logger.error(f"❌ Error parsing retrieve memory response: {e}")
-    else:
-        logger.error(f"❌ Invalid response: {response}")
-    return False
+    return parse_mcp_response(
+        response,
+        "semantic search",
+        failure_patterns=["no matching memories"],
+        log_response=False
+    )
 
 async def search_by_tag(reader, writer):
     """Search memories by tag."""
     logger.info("=== Check 5: Tag Search ===")
     await write_json(writer, SEARCH_TAG_REQUEST)
     response = await read_json(reader)
-    
-    if response and 'result' in response:
-        try:
-            text = response['result']['content'][0]['text']
-            logger.info(f"Tag search response received")
-            
-            if "no memories found" in text.lower():
-                logger.warning("⚠️ No memories found via tag search")
-                return False
-            else:
-                logger.info("✅ Tag search successful")
-                logger.info(f"Response: {text}")
-                return True
-        except Exception as e:
-            logger.error(f"❌ Error parsing tag search response: {e}")
-    else:
-        logger.error(f"❌ Invalid response: {response}")
-    return False
+    return parse_mcp_response(
+        response,
+        "tag search",
+        failure_patterns=["no memories found"],
+        log_response=False
+    )
 
 async def run_health_check():
     """Run all health checks."""
