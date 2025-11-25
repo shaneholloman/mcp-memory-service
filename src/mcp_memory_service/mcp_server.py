@@ -112,6 +112,56 @@ def _get_cache_lock() -> asyncio.Lock:
         _CACHE_LOCK = asyncio.Lock()
     return _CACHE_LOCK
 
+def _get_or_create_memory_service(storage: MemoryStorage) -> MemoryService:
+    """
+    Get cached MemoryService or create new one.
+
+    Args:
+        storage: Storage instance to use as cache key
+
+    Returns:
+        MemoryService instance (cached or newly created)
+    """
+    storage_id = id(storage)
+    if storage_id in _MEMORY_SERVICE_CACHE:
+        memory_service = _MEMORY_SERVICE_CACHE[storage_id]
+        _CACHE_STATS["service_hits"] += 1
+        logger.info(f"✅ MemoryService Cache HIT - Reusing service instance (storage_id: {storage_id})")
+    else:
+        _CACHE_STATS["service_misses"] += 1
+        logger.info(f"❌ MemoryService Cache MISS - Creating new service instance...")
+
+        # Initialize memory service with shared business logic
+        memory_service = MemoryService(storage)
+
+        # Cache the memory service instance
+        _MEMORY_SERVICE_CACHE[storage_id] = memory_service
+        logger.info(f"💾 Cached MemoryService instance (storage_id: {storage_id})")
+
+    return memory_service
+
+def _log_cache_performance(start_time: float) -> None:
+    """
+    Log comprehensive cache performance statistics.
+
+    Args:
+        start_time: Timer start time to calculate total elapsed time
+    """
+    total_time = (time.time() - start_time) * 1000
+    cache_hit_rate = (
+        (_CACHE_STATS["storage_hits"] + _CACHE_STATS["service_hits"]) /
+        (_CACHE_STATS["total_calls"] * 2)  # 2 caches per call
+    ) * 100
+
+    logger.info(
+        f"📊 Cache Stats - "
+        f"Hit Rate: {cache_hit_rate:.1f}% | "
+        f"Storage: {_CACHE_STATS['storage_hits']}H/{_CACHE_STATS['storage_misses']}M | "
+        f"Service: {_CACHE_STATS['service_hits']}H/{_CACHE_STATS['service_misses']}M | "
+        f"Total Time: {total_time:.1f}ms | "
+        f"Cache Size: {len(_STORAGE_CACHE)} storage + {len(_MEMORY_SERVICE_CACHE)} services"
+    )
+
 @dataclass
 class MCPServerContext:
     """Application context for the MCP server with all required components."""
@@ -166,38 +216,9 @@ async def mcp_server_lifespan(server: FastMCP) -> AsyncIterator[MCPServerContext
             _CACHE_STATS["initialization_times"].append(init_time)
             logger.info(f"💾 Cached storage instance (key: {cache_key}, init_time: {init_time:.1f}ms)")
 
-        # Check memory service cache
-        storage_id = id(storage)
-        if storage_id in _MEMORY_SERVICE_CACHE:
-            memory_service = _MEMORY_SERVICE_CACHE[storage_id]
-            _CACHE_STATS["service_hits"] += 1
-            logger.info(f"✅ MemoryService Cache HIT - Reusing service instance (storage_id: {storage_id})")
-        else:
-            _CACHE_STATS["service_misses"] += 1
-            logger.info(f"❌ MemoryService Cache MISS - Creating new service instance...")
-
-            # Initialize memory service with shared business logic
-            memory_service = MemoryService(storage)
-
-            # Cache the memory service instance
-            _MEMORY_SERVICE_CACHE[storage_id] = memory_service
-            logger.info(f"💾 Cached MemoryService instance (storage_id: {storage_id})")
-
-        # Log overall cache performance
-        total_time = (time.time() - start_time) * 1000
-        cache_hit_rate = (
-            (_CACHE_STATS["storage_hits"] + _CACHE_STATS["service_hits"]) /
-            (_CACHE_STATS["total_calls"] * 2)  # 2 caches per call
-        ) * 100
-
-        logger.info(
-            f"📊 Cache Stats - "
-            f"Hit Rate: {cache_hit_rate:.1f}% | "
-            f"Storage: {_CACHE_STATS['storage_hits']}H/{_CACHE_STATS['storage_misses']}M | "
-            f"Service: {_CACHE_STATS['service_hits']}H/{_CACHE_STATS['service_misses']}M | "
-            f"Total Time: {total_time:.1f}ms | "
-            f"Cache Size: {len(_STORAGE_CACHE)} storage + {len(_MEMORY_SERVICE_CACHE)} services"
-        )
+        # Check memory service cache and log performance
+        memory_service = _get_or_create_memory_service(storage)
+        _log_cache_performance(start_time)
 
     try:
         yield MCPServerContext(
