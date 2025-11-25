@@ -11,6 +11,7 @@ from pathlib import Path
 
 from mcp_memory_service.ingestion.csv_loader import CSVLoader
 from mcp_memory_service.ingestion.base import DocumentChunk
+from conftest import extract_chunks_from_temp_file
 
 
 class TestCSVLoader:
@@ -131,19 +132,17 @@ Jane,30,San Francisco"""
         loader = CSVLoader(chunk_size=1000, chunk_overlap=200)
 
         # Test semicolon delimiter
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_file = Path(tmpdir) / "test.csv"
-            csv_content = "name;age;city\nJohn;25;New York\nJane;30;San Francisco"
-            csv_file.write_text(csv_content)
+        csv_content = "name;age;city\nJohn;25;New York\nJane;30;San Francisco"
+        chunks = await extract_chunks_from_temp_file(
+            loader,
+            "test.csv",
+            csv_content,
+            delimiter=';'
+        )
 
-            chunks = []
-            async for chunk in loader.extract_chunks(csv_file, delimiter=';'):
-                chunks.append(chunk)
-
-            content = chunks[0].content
-            assert "name: John" in content
-            assert "age: 25" in content
+        content = chunks[0].content
+        assert "name: John" in content
+        assert "age: 25" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_row_numbers(self):
@@ -151,21 +150,19 @@ Jane,30,San Francisco"""
         loader = CSVLoader(chunk_size=1000, chunk_overlap=200)
 
         # Create test CSV file
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_file = Path(tmpdir) / "test.csv"
-            csv_content = """name,age
+        csv_content = """name,age
 John,25
 Jane,30"""
-            csv_file.write_text(csv_content)
+        chunks = await extract_chunks_from_temp_file(
+            loader,
+            "test.csv",
+            csv_content,
+            include_row_numbers=True
+        )
 
-            chunks = []
-            async for chunk in loader.extract_chunks(csv_file, include_row_numbers=True):
-                chunks.append(chunk)
-
-            content = chunks[0].content
-            assert "Row 1:" in content
-            assert "Row 2:" in content
+        content = chunks[0].content
+        assert "Row 1:" in content
+        assert "Row 2:" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_no_row_numbers(self):
@@ -173,20 +170,18 @@ Jane,30"""
         loader = CSVLoader(chunk_size=1000, chunk_overlap=200)
 
         # Create test CSV file
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_file = Path(tmpdir) / "test.csv"
-            csv_content = """name,age
+        csv_content = """name,age
 John,25"""
-            csv_file.write_text(csv_content)
+        chunks = await extract_chunks_from_temp_file(
+            loader,
+            "test.csv",
+            csv_content,
+            include_row_numbers=False
+        )
 
-            chunks = []
-            async for chunk in loader.extract_chunks(csv_file, include_row_numbers=False):
-                chunks.append(chunk)
-
-            content = chunks[0].content
-            assert "Row:" in content
-            assert "Row 1:" not in content
+        content = chunks[0].content
+        assert "Row:" in content
+        assert "Row 1:" not in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_large_file_chunking(self):
@@ -265,21 +260,19 @@ Jane,30,San Francisco,Extra"""
         loader = CSVLoader()
 
         # Create CSV file with UTF-8 content
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_file = Path(tmpdir) / "utf8.csv"
-            csv_content = """name,city
+        csv_content = """name,city
 José,São Paulo
 François,Montréal"""
-            csv_file.write_text(csv_content, encoding='utf-8')
+        chunks = await extract_chunks_from_temp_file(
+            loader,
+            "utf8.csv",
+            csv_content,
+            encoding='utf-8'
+        )
 
-            chunks = []
-            async for chunk in loader.extract_chunks(csv_file):
-                chunks.append(chunk)
-
-            content = chunks[0].content
-            assert "José" in content
-            assert "São Paulo" in content
+        content = chunks[0].content
+        assert "José" in content
+        assert "São Paulo" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_metadata(self):

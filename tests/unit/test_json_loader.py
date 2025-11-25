@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from mcp_memory_service.ingestion.json_loader import JSONLoader
 from mcp_memory_service.ingestion.base import DocumentChunk
+from conftest import extract_chunks_from_temp_file
 
 
 class TestJSONLoader:
@@ -121,30 +122,27 @@ class TestJSONLoader:
         loader = JSONLoader(chunk_size=1000, chunk_overlap=200)
 
         # Create test JSON file
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            json_file = Path(tmpdir) / "test.json"
-            test_data = {
-                "user": {
-                    "name": "John",
-                    "details": {
-                        "age": 25
-                    }
+        test_data = {
+            "user": {
+                "name": "John",
+                "details": {
+                    "age": 25
                 }
             }
-            json_file.write_text(json.dumps(test_data, indent=2))
+        }
+        json_content = json.dumps(test_data, indent=2)
 
-            # Test with bracket notation
-            chunks = []
-            async for chunk in loader.extract_chunks(
-                json_file,
-                flatten_strategy='bracket_notation'
-            ):
-                chunks.append(chunk)
+        # Test with bracket notation
+        chunks = await extract_chunks_from_temp_file(
+            loader,
+            "test.json",
+            json_content,
+            flatten_strategy='bracket_notation'
+        )
 
-            content = chunks[0].content
-            assert "user[name]: John" in content
-            assert "user[details][age]: 25" in content
+        content = chunks[0].content
+        assert "user[name]: John" in content
+        assert "user[details][age]: 25" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_invalid_json(self):
