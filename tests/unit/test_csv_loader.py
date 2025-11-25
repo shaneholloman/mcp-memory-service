@@ -85,23 +85,16 @@ Jane,30,San Francisco"""
         loader = CSVLoader(chunk_size=1000, chunk_overlap=200)
 
         # Create test CSV file with headers
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_file = Path(tmpdir) / "test.csv"
-            csv_content = """product,price,category
+        csv_content = """product,price,category
 Widget,19.99,Electronics
 Gadget,29.99,Electronics
 Book,12.99,Media"""
-            csv_file.write_text(csv_content)
+        chunks = await extract_chunks_from_temp_file(loader, "test.csv", csv_content)
 
-            chunks = []
-            async for chunk in loader.extract_chunks(csv_file):
-                chunks.append(chunk)
-
-            content = chunks[0].content
-            assert "product: Widget" in content
-            assert "price: 19.99" in content
-            assert "category: Electronics" in content
+        content = chunks[0].content
+        assert "product: Widget" in content
+        assert "price: 19.99" in content
+        assert "category: Electronics" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_csv_no_headers(self):
@@ -109,22 +102,20 @@ Book,12.99,Media"""
         loader = CSVLoader(chunk_size=1000, chunk_overlap=200)
 
         # Create test CSV file without headers
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_file = Path(tmpdir) / "test.csv"
-            csv_content = """John,25,New York
+        csv_content = """John,25,New York
 Jane,30,San Francisco"""
-            csv_file.write_text(csv_content)
+        chunks = await extract_chunks_from_temp_file(
+            loader,
+            "test.csv",
+            csv_content,
+            has_header=False
+        )
 
-            chunks = []
-            async for chunk in loader.extract_chunks(csv_file, has_header=False):
-                chunks.append(chunk)
-
-            content = chunks[0].content
-            # Should use col_1, col_2, col_3 as headers
-            assert "col_1: John" in content
-            assert "col_2: 25" in content
-            assert "col_3: New York" in content
+        content = chunks[0].content
+        # Should use col_1, col_2, col_3 as headers
+        assert "col_1: John" in content
+        assert "col_2: 25" in content
+        assert "col_3: New York" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_different_delimiters(self):
@@ -235,24 +226,17 @@ John,25"""
         loader = CSVLoader()
 
         # Create malformed CSV file
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_file = Path(tmpdir) / "malformed.csv"
-            # CSV with inconsistent columns - should still work
-            csv_content = """name,age,city
+        # CSV with inconsistent columns - should still work
+        csv_content = """name,age,city
 John,25
 Jane,30,San Francisco,Extra"""
-            csv_file.write_text(csv_content)
+        chunks = await extract_chunks_from_temp_file(loader, "malformed.csv", csv_content)
 
-            chunks = []
-            async for chunk in loader.extract_chunks(csv_file):
-                chunks.append(chunk)
-
-            # Should handle gracefully
-            assert len(chunks) > 0
-            content = chunks[0].content
-            assert "name: John" in content
-            assert "name: Jane" in content
+        # Should handle gracefully
+        assert len(chunks) > 0
+        content = chunks[0].content
+        assert "name: John" in content
+        assert "name: Jane" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_encoding_detection(self):

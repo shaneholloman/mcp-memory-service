@@ -209,27 +209,24 @@ class TestJSONLoader:
         loader = JSONLoader(chunk_size=1000, chunk_overlap=200)
 
         # Create JSON with arrays
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            json_file = Path(tmpdir) / "arrays.json"
-            test_data = {
-                "items": ["apple", "banana", "cherry"],
-                "numbers": [1, 2, 3]
-            }
-            json_file.write_text(json.dumps(test_data, indent=2))
+        test_data = {
+            "items": ["apple", "banana", "cherry"],
+            "numbers": [1, 2, 3]
+        }
+        json_content = json.dumps(test_data, indent=2)
 
-            # Test expand strategy (default)
-            chunks = []
-            async for chunk in loader.extract_chunks(
-                json_file,
-                array_handling='expand'
-            ):
-                chunks.append(chunk)
+        # Test expand strategy (default)
+        chunks = await extract_chunks_from_temp_file(
+            loader,
+            "arrays.json",
+            json_content,
+            array_handling='expand'
+        )
 
-            content = chunks[0].content
-            assert "items[0]: apple" in content
-            assert "items[1]: banana" in content
-            assert "numbers[0]: 1" in content
+        content = chunks[0].content
+        assert "items[0]: apple" in content
+        assert "items[1]: banana" in content
+        assert "numbers[0]: 1" in content
 
     @pytest.mark.asyncio
     async def test_extract_chunks_metadata(self):
