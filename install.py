@@ -231,6 +231,36 @@ def prompt_user_input(prompt_text, default_value=""):
     print("=" * 60 + "\n")
     return response if response else default_value
 
+def build_mcp_server_config(storage_backend="sqlite_vec", repo_path=None):
+    """
+    Build MCP server configuration dict for multi-client access.
+
+    Args:
+        storage_backend: Storage backend to use (sqlite_vec or chromadb)
+        repo_path: Repository path (defaults to current directory)
+
+    Returns:
+        Dict containing MCP server configuration with command, args, and env
+    """
+    if repo_path is None:
+        repo_path = str(Path.cwd())
+
+    # Build environment configuration based on storage backend
+    env_config = {
+        "MCP_MEMORY_STORAGE_BACKEND": storage_backend,
+        "LOG_LEVEL": "INFO"
+    }
+
+    # Add backend-specific configuration
+    if storage_backend == "sqlite_vec":
+        env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
+
+    return {
+        "command": UV_EXECUTABLE_PATH or "uv",
+        "args": ["--directory", repo_path, "run", "memory"],
+        "env": env_config
+    }
+
 # Cache for system detection to avoid duplicate calls
 _system_info_cache = None
 
@@ -2362,26 +2392,7 @@ def configure_claude_desktop_multi_client(config_path, system_info, storage_back
         
         # Update memory server configuration with multi-client settings
         repo_path = str(Path.cwd()).replace('\\', '\\\\')  # Escape backslashes for JSON
-        
-        # Build environment configuration based on storage backend
-        env_config = {
-            "MCP_MEMORY_STORAGE_BACKEND": storage_backend,
-            "LOG_LEVEL": "INFO"
-        }
-        
-        # Add backend-specific configuration
-        if storage_backend == "sqlite_vec":
-            env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
-            # SQLite path will be auto-determined by the service
-        else:  # chromadb
-            # ChromaDB path will be auto-determined by the service
-            pass
-        
-        config['mcpServers']['memory'] = {
-            "command": UV_EXECUTABLE_PATH or "uv",
-            "args": ["--directory", repo_path, "run", "memory"],
-            "env": env_config
-        }
+        config['mcpServers']['memory'] = build_mcp_server_config(storage_backend, repo_path)
         
         # Write updated configuration
         with open(config_path, 'w') as f:
@@ -2430,23 +2441,7 @@ def configure_continue_multi_client(config_path, storage_backend="sqlite_vec"):
         if 'mcpServers' not in config:
             config['mcpServers'] = {}
         
-        repo_path = str(Path.cwd())
-        
-        # Build environment configuration based on storage backend
-        env_config = {
-            "MCP_MEMORY_STORAGE_BACKEND": storage_backend,
-            "LOG_LEVEL": "INFO"
-        }
-        
-        # Add backend-specific configuration
-        if storage_backend == "sqlite_vec":
-            env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
-        
-        config['mcpServers']['memory'] = {
-            "command": UV_EXECUTABLE_PATH or "uv",
-            "args": ["--directory", repo_path, "run", "memory"],
-            "env": env_config
-        }
+        config['mcpServers']['memory'] = build_mcp_server_config(storage_backend)
         
         # Write updated configuration
         with open(config_path, 'w') as f:
@@ -2472,23 +2467,7 @@ def configure_generic_mcp_multi_client(config_path, storage_backend="sqlite_vec"
         if 'mcpServers' not in config:
             config['mcpServers'] = {}
         
-        repo_path = str(Path.cwd())
-        
-        # Build environment configuration based on storage backend
-        env_config = {
-            "MCP_MEMORY_STORAGE_BACKEND": storage_backend,
-            "LOG_LEVEL": "INFO"
-        }
-        
-        # Add backend-specific configuration
-        if storage_backend == "sqlite_vec":
-            env_config["MCP_MEMORY_SQLITE_PRAGMAS"] = "busy_timeout=15000,cache_size=20000"
-        
-        config['mcpServers']['memory'] = {
-            "command": UV_EXECUTABLE_PATH or "uv",
-            "args": ["--directory", repo_path, "run", "memory"],
-            "env": env_config
-        }
+        config['mcpServers']['memory'] = build_mcp_server_config(storage_backend)
         
         # Write updated configuration
         with open(config_path, 'w') as f:
