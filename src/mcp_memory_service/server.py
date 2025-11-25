@@ -205,6 +205,7 @@ from .config import (
 # Storage imports will be done conditionally in the server class
 from .models.memory import Memory
 from .utils.hashing import generate_content_hash
+from .utils.document_processing import _process_and_store_chunk
 from .utils.system_detection import (
     get_system_info,
     print_system_diagnostics,
@@ -3858,27 +3859,23 @@ Memories Archived: {report.memories_archived}"""
                         file_chunks_processed += 1
                         total_chunks_processed += 1
                         
-                        try:
-                            # Create memory from chunk with directory and file context
-                            memory = create_memory_from_chunk(
-                                chunk,
-                                base_tags=tags.copy(),
-                                context_tags={
-                                    "source_dir": directory_path.name,
-                                    "file_type": file_path.suffix.lstrip('.')
-                                }
-                            )
-                            
-                            # Store the memory
-                            success, error = await storage.store(memory)
-                            if success:
-                                file_chunks_stored += 1
-                                total_chunks_stored += 1
-                            else:
-                                all_errors.append(f"{file_path.name} chunk {chunk.chunk_index}: {error}")
-                                
-                        except Exception as e:
-                            all_errors.append(f"{file_path.name} chunk {chunk.chunk_index}: {str(e)}")
+                        # Process and store the chunk
+                        success, error = await _process_and_store_chunk(
+                            chunk,
+                            storage,
+                            file_path.name,
+                            base_tags=tags.copy(),
+                            context_tags={
+                                "source_dir": directory_path.name,
+                                "file_type": file_path.suffix.lstrip('.')
+                            }
+                        )
+                        
+                        if success:
+                            file_chunks_stored += 1
+                            total_chunks_stored += 1
+                        else:
+                            all_errors.append(error)
                     
                     if file_chunks_stored > 0:
                         files_processed += 1

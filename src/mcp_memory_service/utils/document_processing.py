@@ -16,10 +16,13 @@
 Utilities for processing document chunks into memories.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
+import logging
 
 from ..models.memory import Memory
 from . import generate_content_hash
+
+logger = logging.getLogger(__name__)
 
 
 def create_memory_from_chunk(
@@ -80,3 +83,52 @@ def create_memory_from_chunk(
         memory_type=memory_type,
         metadata=chunk_metadata
     )
+
+
+async def _process_and_store_chunk(
+    chunk: Any,
+    storage: Any,
+    file_name: str,
+    base_tags: List[str],
+    context_tags: Dict[str, str],
+    memory_type: str = "document",
+    extra_metadata: Optional[Dict[str, Any]] = None
+) -> Tuple[bool, Optional[str]]:
+    """
+    Process a document chunk and store it as a memory.
+
+    This consolidates the common pattern of creating a memory from a chunk
+    and storing it to the database across multiple ingestion entry points.
+
+    Args:
+        chunk: Document chunk with content and metadata
+        storage: Storage backend instance
+        file_name: Name of the source file (for error messages)
+        base_tags: Base tags to apply to the memory
+        context_tags: Context-specific tags (e.g., source_dir, file_type)
+        memory_type: Type of memory (default: "document")
+        extra_metadata: Additional metadata to merge into chunk metadata
+
+    Returns:
+        Tuple of (success: bool, error: Optional[str])
+            - (True, None) if stored successfully
+            - (False, error_message) if storage failed
+    """
+    try:
+        # Create memory from chunk with context
+        memory = create_memory_from_chunk(
+            chunk,
+            base_tags=base_tags,
+            memory_type=memory_type,
+            context_tags=context_tags,
+            extra_metadata=extra_metadata
+        )
+
+        # Store the memory
+        success, error = await storage.store(memory)
+        if not success:
+            return False, f"{file_name} chunk {chunk.chunk_index}: {error}"
+        return True, None
+
+    except Exception as e:
+        return False, f"{file_name} chunk {chunk.chunk_index}: {str(e)}"

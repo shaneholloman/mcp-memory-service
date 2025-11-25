@@ -36,7 +36,7 @@ from pydantic import BaseModel
 
 from ...ingestion import get_loader_for_file, SUPPORTED_FORMATS
 from ...models.memory import Memory
-from ...utils import create_memory_from_chunk
+from ...utils import create_memory_from_chunk, _process_and_store_chunk
 from ..dependencies import get_storage
 
 logger = logging.getLogger(__name__)
@@ -524,36 +524,32 @@ async def process_batch_upload(
 
                 # Process chunks from this file
                 async for chunk in loader.extract_chunks(file_path_obj):
-                    file_chunks_processed += 1
-                    total_chunks_processed += 1
+                     file_chunks_processed += 1
+                     total_chunks_processed += 1
 
-                    try:
-                        # Create memory from chunk with upload context
-                        memory = create_memory_from_chunk(
-                            chunk,
-                            base_tags=tags.copy(),
-                            memory_type=memory_type,
-                            context_tags={
-                                "source_file": filename,
-                                "file_type": file_path_obj.suffix.lstrip('.'),
-                                "upload_id": batch_id
-                            },
-                            extra_metadata={
-                                "upload_id": batch_id,
-                                "source_file": filename
-                            }
-                        )
+                     # Process and store the chunk
+                     success, error = await _process_and_store_chunk(
+                         chunk,
+                         storage,
+                         filename,
+                         base_tags=tags.copy(),
+                         memory_type=memory_type,
+                         context_tags={
+                             "source_file": filename,
+                             "file_type": file_path_obj.suffix.lstrip('.'),
+                             "upload_id": batch_id
+                         },
+                         extra_metadata={
+                             "upload_id": batch_id,
+                             "source_file": filename
+                         }
+                     )
 
-                        # Store the memory
-                        success, error = await storage.store(memory)
-                        if success:
-                            file_chunks_stored += 1
-                            total_chunks_stored += 1
-                        else:
-                            all_errors.append(f"{filename} chunk {chunk.chunk_index}: {error}")
-
-                    except Exception as e:
-                        all_errors.append(f"{filename} chunk {chunk.chunk_index}: {str(e)}")
+                     if success:
+                         file_chunks_stored += 1
+                         total_chunks_stored += 1
+                     else:
+                         all_errors.append(error)
 
                 processed_files += 1
 

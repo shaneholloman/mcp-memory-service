@@ -27,7 +27,7 @@ import click
 
 from ..ingestion import get_loader_for_file, is_supported_file, SUPPORTED_FORMATS
 from ..models.memory import Memory
-from ..utils import create_memory_from_chunk
+from ..utils import create_memory_from_chunk, _process_and_store_chunk
 
 logger = logging.getLogger(__name__)
 
@@ -276,27 +276,23 @@ def ingest_directory(directory_path: Path, tags: tuple, recursive: bool, extensi
                             file_chunks_processed += 1
                             total_chunks_processed += 1
                             
-                            try:
-                                # Create memory from chunk with directory and file context
-                                memory = create_memory_from_chunk(
-                                    chunk,
-                                    base_tags=list(tags),
-                                    context_tags={
-                                        "source_dir": directory_path.name,
-                                        "file_type": file_path.suffix.lstrip('.')
-                                    }
-                                )
-                                
-                                # Store the memory
-                                success, error = await storage.store(memory)
-                                if success:
-                                    file_chunks_stored += 1
-                                    total_chunks_stored += 1
-                                else:
-                                    all_errors.append(f"{file_path.name} chunk {chunk.chunk_index}: {error}")
-                                    
-                            except Exception as e:
-                                all_errors.append(f"{file_path.name} chunk {chunk.chunk_index}: {str(e)}")
+                            # Process and store the chunk
+                            success, error = await _process_and_store_chunk(
+                                chunk,
+                                storage,
+                                file_path.name,
+                                base_tags=list(tags),
+                                context_tags={
+                                    "source_dir": directory_path.name,
+                                    "file_type": file_path.suffix.lstrip('.')
+                                }
+                            )
+                            
+                            if success:
+                                file_chunks_stored += 1
+                                total_chunks_stored += 1
+                            else:
+                                all_errors.append(error)
                         
                         if file_chunks_stored > 0:
                             files_processed += 1
