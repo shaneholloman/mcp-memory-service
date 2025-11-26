@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.38.1] - 2025-11-26
+
+### Fixed
+- **HTTP MCP Transport: JSON-RPC 2.0 Compliance** - Fixed critical bug where HTTP MCP responses violated JSON-RPC 2.0 specification (PR #249, fixes #236)
+  - **Problem**: FastAPI ignored Pydantic's `ConfigDict(exclude_none=True)` when directly returning models, causing responses to include null fields (`"error": null` in success, `"result": null` in errors)
+  - **Impact**: Claude Code/Desktop rejected all HTTP MCP communications due to spec violation
+  - **Solution**: Wrapped all `MCPResponse` returns in `JSONResponse` with explicit `.model_dump(exclude_none=True)` serialization
+  - **Verification**:
+    - Success responses now contain ONLY: `jsonrpc`, `id`, `result`
+    - Error responses now contain ONLY: `jsonrpc`, `id`, `error`
+  - **Testing**: Validated with curl commands against all 5 MCP endpoint response paths
+  - **Credits**: @timkjr (Tim Knauff) for identifying root cause and implementing proper fix
+
 ## [8.38.0] - 2025-11-25
 
 ### Improved
