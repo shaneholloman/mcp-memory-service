@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.39.0] - 2025-11-26
+
 ### Performance
 - **Analytics date-range filtering**: Moved from application layer to storage layer for 10x performance improvement (#238)
   - Added `get_memories_by_time_range()` to Cloudflare backend with D1 database filtering
