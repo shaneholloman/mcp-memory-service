@@ -1634,12 +1634,12 @@ class CloudflareStorage(MemoryStorage):
         """
         try:
             # Build SQL query with BETWEEN clause for efficient filtering
+            # Use SELECT m.* to get all columns (tags are loaded separately via _load_memory_tags)
             sql = """
-                SELECT id, content, content_hash, tags, memory_type, metadata_json,
-                       created_at, created_at_iso, updated_at, updated_at_iso, r2_key
-                FROM memories
-                WHERE created_at BETWEEN ? AND ?
-                ORDER BY created_at DESC
+                SELECT m.*
+                FROM memories m
+                WHERE m.created_at BETWEEN ? AND ?
+                ORDER BY m.created_at DESC
             """
 
             payload = {"sql": sql, "params": [start_time, end_time]}
