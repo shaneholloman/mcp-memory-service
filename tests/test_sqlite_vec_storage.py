@@ -560,6 +560,153 @@ class TestSqliteVecStorage:
             )
             assert cursor.fetchone() is not None
 
+    @pytest.mark.asyncio
+    async def test_get_memories_by_time_range_basic(self, storage):
+        """Test basic time range filtering."""
+        # Store memories at different times
+        now = time.time()
+
+        # Memory from 1 hour ago
+        memory1 = Memory(
+            content="Memory from 1 hour ago",
+            content_hash=generate_content_hash("Memory from 1 hour ago"),
+            tags=["timerange"],
+            created_at=now - 3600
+        )
+
+        # Memory from 30 minutes ago
+        memory2 = Memory(
+            content="Memory from 30 minutes ago",
+            content_hash=generate_content_hash("Memory from 30 minutes ago"),
+            tags=["timerange"],
+            created_at=now - 1800
+        )
+
+        # Memory from now
+        memory3 = Memory(
+            content="Memory from now",
+            content_hash=generate_content_hash("Memory from now"),
+            tags=["timerange"],
+            created_at=now
+        )
+
+        await storage.store(memory1)
+        await storage.store(memory2)
+        await storage.store(memory3)
+
+        # Get memories from last 45 minutes (should get memory2 and memory3)
+        results = await storage.get_memories_by_time_range(now - 2700, now + 100)
+        assert len(results) == 2
+        contents = [m.content for m in results]
+        assert "Memory from 30 minutes ago" in contents
+        assert "Memory from now" in contents
+        assert "Memory from 1 hour ago" not in contents
+
+    @pytest.mark.asyncio
+    async def test_get_memories_by_time_range_empty(self, storage):
+        """Test time range with no matching memories."""
+        # Store one memory now
+        memory = Memory(
+            content="Current memory",
+            content_hash=generate_content_hash("Current memory"),
+            tags=["test"]
+        )
+        await storage.store(memory)
+
+        # Query for memories from far in the past
+        now = time.time()
+        results = await storage.get_memories_by_time_range(now - 86400, now - 7200)
+        assert len(results) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_memories_by_time_range_boundaries(self, storage):
+        """Test inclusive boundaries of time range."""
+        now = time.time()
+
+        # Memory exactly at start boundary
+        memory_start = Memory(
+            content="At start boundary",
+            content_hash=generate_content_hash("At start boundary"),
+            tags=["boundary"],
+            created_at=now - 1000
+        )
+
+        # Memory exactly at end boundary
+        memory_end = Memory(
+            content="At end boundary",
+            content_hash=generate_content_hash("At end boundary"),
+            tags=["boundary"],
+            created_at=now
+        )
+
+        # Memory just before start
+        memory_before = Memory(
+            content="Before start",
+            content_hash=generate_content_hash("Before start"),
+            tags=["boundary"],
+            created_at=now - 1001
+        )
+
+        # Memory just after end
+        memory_after = Memory(
+            content="After end",
+            content_hash=generate_content_hash("After end"),
+            tags=["boundary"],
+            created_at=now + 1
+        )
+
+        await storage.store(memory_start)
+        await storage.store(memory_end)
+        await storage.store(memory_before)
+        await storage.store(memory_after)
+
+        # Query with inclusive boundaries
+        results = await storage.get_memories_by_time_range(now - 1000, now)
+        assert len(results) == 2
+        contents = [m.content for m in results]
+        assert "At start boundary" in contents
+        assert "At end boundary" in contents
+        assert "Before start" not in contents
+        assert "After end" not in contents
+
+    @pytest.mark.asyncio
+    async def test_get_memories_by_time_range_ordering(self, storage):
+        """Test that results are ordered by created_at DESC."""
+        now = time.time()
+
+        # Store three memories in random order
+        memory1 = Memory(
+            content="First",
+            content_hash=generate_content_hash("First"),
+            tags=["order"],
+            created_at=now - 300
+        )
+        memory2 = Memory(
+            content="Second",
+            content_hash=generate_content_hash("Second"),
+            tags=["order"],
+            created_at=now - 200
+        )
+        memory3 = Memory(
+            content="Third",
+            content_hash=generate_content_hash("Third"),
+            tags=["order"],
+            created_at=now - 100
+        )
+
+        await storage.store(memory3)  # Store in non-chronological order
+        await storage.store(memory1)
+        await storage.store(memory2)
+
+        # Get all three
+        results = await storage.get_memories_by_time_range(now - 400, now)
+        assert len(results) == 3
+
+        # Should be ordered newest first (DESC)
+        assert results[0].content == "Third"
+        assert results[1].content == "Second"
+        assert results[2].content == "First"
+
 
 class TestSqliteVecStorageWithoutEmbeddings:
     """Test SQLite-vec storage when sentence transformers is not available."""

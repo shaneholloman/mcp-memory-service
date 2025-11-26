@@ -237,6 +237,21 @@ When creating pull requests:
    - Retrieve related issues using memory service
    - Close resolved issues with grateful comments
    - Update project board/milestones
+   - **Update Wiki Roadmap** (if release includes major milestones):
+     - **When to update**: Major versions (x.0.0), significant features, architecture changes, performance breakthroughs
+     - **How to update**: Edit [13-Development-Roadmap](https://github.com/doobidoo/mcp-memory-service/wiki/13-Development-Roadmap) directly (no PR needed)
+     - **What to update**:
+       - Move completed items from "Current Focus" to "Completed Milestones"
+       - Update "Project Status" with new version number
+       - Add notable achievements to "Recent Achievements" section
+       - Adjust timelines if delays or accelerations occurred
+     - **Examples of roadmap-worthy changes**:
+       - Major version bumps (v8.x → v9.0)
+       - New storage backends or significant backend improvements
+       - Memory consolidation system milestones
+       - Performance improvements >20% (page load, search, sync)
+       - New user-facing features (dashboard, document ingestion, etc.)
+     - **Note**: Routine patches/hotfixes don't require roadmap updates
 
 ## CHANGELOG Validation Protocol (CRITICAL)
 

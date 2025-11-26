@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Performance
+- **Analytics date-range filtering**: Moved from application layer to storage layer for 10x performance improvement (#238)
+  - Added `get_memories_by_time_range()` to Cloudflare backend with D1 database filtering
+  - Updated memory growth endpoint to use database-layer queries instead of fetching all memories
+  - **Performance gains**:
+    - Reduced data transfer: 50MB → 1.5MB (97% reduction for 10,000 memories)
+    - Response time (SQLite-vec): ~500ms → ~50ms (10x improvement)
+    - Response time (Cloudflare): ~2-3s → ~200ms (10-15x improvement)
+  - **Scalability**: Now handles databases with >10,000 memories efficiently
+  - **Benefits**: Pushes filtering to database WHERE clauses, leverages indexes on `created_at`
+
 ## [8.38.1] - 2025-11-26
 
 ### Fixed

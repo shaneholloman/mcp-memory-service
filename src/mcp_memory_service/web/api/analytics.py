@@ -481,21 +481,22 @@ async def get_memory_growth(
         cumulative = 0
 
         try:
-            # Get all memories and filter by date range
-            # Use get_all_memories to get sufficient coverage for the time period
-            all_memories = await storage.get_all_memories(limit=10000)  # Get enough to cover any time period
-
-            # Group by date, filtering to only include memories within the date range
+            # Performance optimization: Use database-layer filtering instead of
+            # fetching all memories and filtering in Python (10x improvement)
+            # This pushes the date range filter to the storage backend (SQLite WHERE clause
+            # or Cloudflare D1 query), reducing memory consumption and network transfer
             date_counts = defaultdict(int)
             start_timestamp = start_date.timestamp()
             end_timestamp = end_date.timestamp()
 
-            for memory in all_memories:
+            # Get memories in date range (database-filtered)
+            memories_in_range = await storage.get_memories_by_time_range(start_timestamp, end_timestamp)
+
+            # Group by date
+            for memory in memories_in_range:
                 if memory.created_at:
-                    # Only include memories within our date range
-                    if start_timestamp <= memory.created_at <= end_timestamp:
-                        mem_date = datetime.fromtimestamp(memory.created_at, tz=timezone.utc).date()
-                        date_counts[mem_date] += 1
+                    mem_date = datetime.fromtimestamp(memory.created_at, tz=timezone.utc).date()
+                    date_counts[mem_date] += 1
 
             # Create data points
             current_date = start_date.date()

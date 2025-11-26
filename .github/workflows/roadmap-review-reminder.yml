@@ -1,0 +1,130 @@
+name: Quarterly Roadmap Review Reminder
+
+on:
+  schedule:
+    # Runs at 09:00 UTC on the 1st of Feb, May, Aug, Nov
+    - cron: '0 9 1 2,5,8,11 *'
+  workflow_dispatch:  # Allow manual trigger for testing or ad-hoc reviews
+
+jobs:
+  create-review-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Determine quarter
+      id: quarter
+      run: |
+        MONTH=$(date +%m)
+        YEAR=$(date +%Y)
+
+        case $MONTH in
+          02) QUARTER="Q1" ;;
+          05) QUARTER="Q2" ;;
+          08) QUARTER="Q3" ;;
+          11) QUARTER="Q4" ;;
+          *) QUARTER="Q?" ;;
+        esac
+
+        echo "quarter=$QUARTER" >> $GITHUB_OUTPUT
+        echo "year=$YEAR" >> $GITHUB_OUTPUT
+        echo "Detected: $QUARTER $YEAR"
+
+    - name: Create roadmap review issue
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const quarter = '${{ steps.quarter.outputs.quarter }}';
+          const year = '${{ steps.quarter.outputs.year }}';
+
+          const issueTitle = `Quarterly Roadmap Review - ${quarter} ${year}`;
+          const issueBody = `## 📊 Quarterly Roadmap Review
+
+          It's time for the quarterly roadmap review! Please review and update the development roadmap on the wiki.
+
+          **📖 Wiki Roadmap**: [13-Development-Roadmap](https://github.com/doobidoo/mcp-memory-service/wiki/13-Development-Roadmap)
+
+          ## ✅ Review Checklist
+
+          - [ ] **Completed Milestones**: Move finished features from "Current Focus" to "Completed Milestones"
+          - [ ] **Current Focus**: Update v8.39-v9.0 goals based on actual progress
+          - [ ] **Timeline Accuracy**: Verify Q1 2026 timeline is still realistic
+          - [ ] **Future Enhancements**: Adjust Q2 2026+ plans based on community feedback
+          - [ ] **Version References**: Update current version number in "Project Status" section
+          - [ ] **GitHub Projects Alignment**: Check if [GitHub Projects](https://github.com/doobidoo/mcp-memory-service/projects) need updates
+          - [ ] **Community Opportunities**: Review and update contribution opportunities section
+          - [ ] **Next Review Date**: Set next quarterly review date (3 months from now)
+
+          ## 🔍 What to Check
+
+          **Recent Releases** (since last review):
+          - Check [CHANGELOG.md](../CHANGELOG.md) for completed features
+          - Review [Recent Commits](https://github.com/doobidoo/mcp-memory-service/commits/main) for major changes
+          - Check [Closed Issues](https://github.com/doobidoo/mcp-memory-service/issues?q=is%3Aissue+is%3Aclosed) for resolved items
+
+          **Community Feedback**:
+          - Review [Open Issues](https://github.com/doobidoo/mcp-memory-service/issues) for feature requests
+          - Check [Discussions](https://github.com/doobidoo/mcp-memory-service/discussions) for community input
+          - Consider [Pull Requests](https://github.com/doobidoo/mcp-memory-service/pulls) for emerging patterns
+
+          ## 📝 Update Guidelines
+
+          **Why Wiki?**
+          - ✅ No PR required - edit directly for faster updates
+          - ✅ Better navigation - integrated with other wiki guides
+          - ✅ Community collaboration - lower barrier for community input
+
+          **Documentation Matrix**:
+          - **Wiki Roadmap**: Strategic vision, quarterly goals, long-term aspirations
+          - **GitHub Projects**: Sprint planning, task boards, issue tracking (if enabled)
+          - **CHANGELOG.md**: Release history, completed features
+          - **Open Issues**: Bug reports, feature requests, immediate priorities
+
+          ## 🎯 Success Metrics
+
+          After review, the roadmap should:
+          - Accurately reflect current version and recent achievements
+          - Provide clear guidance for next quarter's priorities
+          - Inspire community contributions with well-defined opportunities
+          - Align strategic vision with tactical execution (GitHub Projects/Issues)
+
+          ---
+
+          **Automated Reminder**: This issue is created quarterly by [roadmap-review-reminder workflow](../.github/workflows/roadmap-review-reminder.yml)
+          **Maintainer**: @doobidoo
+          **Due Date**: Within 2 weeks of creation`;
+
+          // Check if issue already exists for this quarter
+          const { data: existingIssues } = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: 'roadmap',
+            per_page: 100
+          });
+
+          const isDuplicate = existingIssues.some(issue =>
+            issue.title.includes(issueTitle)
+          );
+
+          if (isDuplicate) {
+            console.log(`✅ Issue already exists for ${quarter} ${year} - skipping creation`);
+            return;
+          }
+
+          // Create the issue
+          const { data: issue } = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: issueTitle,
+            body: issueBody,
+            labels: ['documentation', 'maintenance', 'roadmap'],
+            assignees: ['doobidoo']
+          });
+
+          console.log(`✅ Created issue #${issue.number}: ${issueTitle}`);
