@@ -2,8 +2,8 @@
 
 ## Project Status
 
-**Current Version**: v8.24.0  
-**Architecture**: Dual-Service (MCP + HTTP Dashboard with Code Execution API)  
+**Current Version**: v8.38.1
+**Architecture**: Dual-Service (MCP + HTTP Dashboard with Code Execution API)
 **Status**: Production-ready with PyPI distribution, OAuth, and 24 MCP tools
 
 ## 📋 Immediate Priorities (v4.0.0)
@@ -153,5 +153,5 @@
 - **Contributions**: Code, documentation, and community support welcome
 
 **Maintainer**: @doobidoo  
-**Last Updated**: November 14, 2025  
+**Last Updated**: November 26, 2025  
 **Next Review**: December 1, 2025
