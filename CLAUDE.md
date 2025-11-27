@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.41.2**: **Hook Installer Utility File Deployment** - Installer now copies ALL 14 utility files with glob pattern (*.js) instead of hardcoded lists. Fixes critical bug where v8.41.0/v8.41.1 installs only deployed 8/14 basic and 5/14 enhanced utilities, missing project affinity filtering and recency sorting fixes. Future-proof automatic inclusion of new utilities. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.42.0**: **Memory Awareness Enhancements** - Added visible memory injection display at session start (top 3 memories with relevance scores), raised session-end quality thresholds to prevent generic boilerplate (200 char min, 0.5 confidence), added optional LLM-powered session summarizer, cleaned 167 generic summaries from database (3352 → 3185 memories). Users now see what memories are being injected into their sessions. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

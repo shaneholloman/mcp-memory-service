@@ -10,6 +10,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.42.0] - 2025-11-27
+
+### Added
+- **Visible Memory Injection Display** - Users now see injected memories at session start (commit TBD)
+  - Added `showInjectedMemories` config option to display top 3 memories with relevance scores
+  - Shows memory age (e.g., "2 days ago"), tags, and relevance scores
+  - Formatted with colored output box for clear visibility
+  - Helps users understand what context the AI assistant is using
+  - Configurable via `~/.claude/hooks/config.json`
+
+### Changed
+- **Session-End Hook Quality Improvements** - Raised quality thresholds to prevent generic boilerplate (commit TBD)
+  - Increased `minSessionLength` from 100 → 200 characters (requires more substantial content)
+  - Increased `minConfidence` from 0.1 → 0.5 (requires 5+ meaningful items vs 1+)
+  - Added optional LLM-powered session summarizer using Gemini CLI
+  - New files: `llm-session-summarizer.js` utility and `session-end-llm.js` core hook
+  - Prevents low-quality memories like "User asked Claude to review code" from polluting database
+  - Database cleaned from 3352 → 3185 memories (167 generic entries removed)
+
+### Fixed
+- **Duplicate MCP Fallback Messages** - Fixed duplicate "MCP Fallback → Using standard MCP tools" log messages (commit TBD)
+  - Added module-level flag to track if fallback message was already logged
+  - Message now appears once per session instead of once per query
+  - Improved session start hook output clarity
+
+### Performance
+- **Configuration Improvements** - Better defaults for session analysis
+  - Enabled relevance scores in context formatting
+  - Improved memory scoring to prioritize quality over recency for generic content
+  - Session-end hook re-enabled with improved quality gates
+
 ## [8.41.2] - 2025-11-27
 
 ### Fixed

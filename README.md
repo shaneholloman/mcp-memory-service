@@ -23,15 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.41.2** (Nov 27, 2025)
+### 🆕 Latest Release: **v8.42.0** (Nov 27, 2025)
 
-**Hook Installer Utility File Deployment**
+**Memory Awareness Enhancements**
 
-- 🔧 **Complete Utility Deployment** - Installer now copies ALL 14 utility files instead of hardcoded lists (glob pattern *.js)
-- 🐛 **Fix Stale Hooks** - Previous installer only copied 8/14 basic and 5/14 enhanced utilities, missing critical v8.41.0/v8.41.1 fixes
-- 🚀 **Future-Proof** - Automatic inclusion of new utility files without manual list maintenance
+- 👁️ **Visible Memory Injection** - Users now see top 3 memories at session start with relevance scores, age, and tags
+- 🎯 **Quality Session Summaries** - Raised quality thresholds (200 char min, 0.5 confidence) to prevent generic boilerplate
+- 🤖 **LLM-Powered Summarization** - Optional Gemini CLI integration for intelligent session analysis
+- 🧹 **Database Quality** - Cleaned 167 generic summaries (3352 → 3185 memories)
 
 **Previous Releases**:
+- **v8.41.2** - Hook Installer Utility File Deployment (ALL 14 utilities copied, future-proof glob pattern)
 - **v8.41.1** - Context Formatter Memory Sorting (recency sorting within categories, newest first)
 - **v8.41.0** - Session Start Hook Reliability Improvements (error suppression, clean output, memory filtering, classification fixes)
 - **v8.40.0** - Session Start Version Display (automatic version comparison, PyPI status labels)

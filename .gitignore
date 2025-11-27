@@ -174,3 +174,6 @@ data/
 !.claude/amp/responses/ready/.gitkeep
 !.claude/amp/responses/consumed/.gitkeep
 .local/
+
+# Social media posts
+social-media/
