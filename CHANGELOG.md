@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.41.2] - 2025-11-27
+
 ### Fixed
 - **Hook Installer Utility File Deployment** - Installer now copies ALL utility files instead of hardcoded lists (commit 557be0e)
   - **BREAKING**: Previous installer only copied 8/14 basic utilities and 5/14 enhanced utilities
