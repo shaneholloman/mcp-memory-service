@@ -819,11 +819,29 @@ async def get_top_tags_report(
         # Filter by time period if needed
         if days is not None:
             cutoff_ts = (datetime.now(timezone.utc) - timedelta(days=days)).timestamp()
-            # TODO: CRITICAL - Period filtering not implemented
-            # This endpoint accepts a 'period' parameter (7d, 30d, 90d) but returns all-time data
-            # This is misleading for API consumers who expect filtered results
-            # Implementation requires: storage.get_tags_with_counts(start_timestamp=cutoff_ts)
-            pass  # Currently returns all tags regardless of period
+
+            # Get memories within the time range and count their tags
+            if hasattr(storage, 'get_memories_by_time_range'):
+                # Get memories from cutoff_ts to now
+                now_ts = datetime.now(timezone.utc).timestamp()
+                memories_in_period = await storage.get_memories_by_time_range(cutoff_ts, now_ts)
+
+                # Count tags from memories in this period
+                from collections import Counter
+                tag_counter = Counter()
+                period_memory_count = 0
+
+                for memory in memories_in_period:
+                    period_memory_count += 1
+                    if memory.tags:
+                        for tag in memory.tags:
+                            tag_counter[tag] += 1
+
+                # Convert to the expected format
+                tag_data = [{"tag": tag, "count": count} for tag, count in tag_counter.items()]
+                total_memories = period_memory_count
+            # If the storage backend doesn't support time range queries, fall back to all tags
+            # (This maintains backward compatibility with storage backends that don't implement the method)
 
         # Sort and limit
         tag_data.sort(key=lambda x: x["count"], reverse=True)

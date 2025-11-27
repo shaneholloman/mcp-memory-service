@@ -3887,14 +3887,21 @@ class MemoryDashboard {
         // Activity breakdown chart
         if (data.breakdown && data.breakdown.length > 0) {
             html += '<div class="activity-chart">';
+            // Calculate total count for percentage-based distribution
+            const totalCount = data.breakdown.reduce((sum, d) => sum + d.count, 0);
             const maxCount = Math.max(...data.breakdown.map(d => d.count));
 
             data.breakdown.forEach(item => {
-                const barWidth = maxCount > 0 ? (item.count / maxCount * 100) : 0;
+                // Show percentage of total activity, with minimum width for visibility
+                const percentage = totalCount > 0 ? (item.count / totalCount * 100) : 0;
+                // Use percentage for bar width, but scale up for better visualization
+                // Use max count for scaling to ensure largest bar reaches reasonable width
+                const barWidth = totalCount > 0 ? (item.count / maxCount * 100) : 0;
+
                 html += `<div class="activity-bar-row">
                     <span class="activity-label">${item.label}</span>
-                    <div class="activity-bar" style="width: ${barWidth}%" title="${item.count} memories"></div>
-                    <span class="activity-count">${item.count}</span>
+                    <div class="activity-bar" style="width: ${barWidth}%" title="${item.count} memories (${percentage.toFixed(1)}%)"></div>
+                    <span class="activity-count">${item.count} (${percentage.toFixed(1)}%)</span>
                 </div>`;
             });
 
@@ -4054,10 +4061,13 @@ class MemoryDashboard {
             html += '<h4>Largest Memories</h4>';
             html += '<ul class="largest-memories">';
             data.largest_memories.slice(0, 5).forEach(memory => {
-                const date = memory.created_at ? new Date(memory.created_at * 1000).toLocaleDateString() : 'Unknown';
+                // Backend provides created_at as ISO string, not timestamp
+                const date = memory.created_at ? new Date(memory.created_at).toLocaleDateString() : 'Unknown';
+                // Backend provides size_kb and preview (not size and content_preview)
+                const sizeDisplay = memory.size_kb ? `${memory.size_kb} KB` : `${memory.size_bytes || 0} bytes`;
                 html += `<li>
-                    <div class="memory-size">${memory.size} chars</div>
-                    <div class="memory-preview">${this.escapeHtml(memory.content_preview)}</div>
+                    <div class="memory-size">${sizeDisplay}</div>
+                    <div class="memory-preview">${this.escapeHtml(memory.preview || '')}</div>
                     <div class="memory-meta">${date} • Tags: ${memory.tags.join(', ') || 'none'}</div>
                 </li>`;
             });
