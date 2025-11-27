@@ -885,6 +885,15 @@ function groupMemoriesByCategory(memories, options = {}) {
             }
         });
 
+        // Sort each category by creation date (newest first)
+        Object.keys(categories).forEach(category => {
+            categories[category].sort((a, b) => {
+                const dateA = a.created_at_iso ? new Date(a.created_at_iso) : new Date(0);
+                const dateB = b.created_at_iso ? new Date(b.created_at_iso) : new Date(0);
+                return dateB - dateA; // Newest first
+            });
+        });
+
         return categories;
 
     } catch (error) {
