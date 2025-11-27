@@ -128,8 +128,8 @@ function parseHealthDataToStorageInfo(healthData) {
         
         const description = `${backendName} (${statusText})`;
         
-        // Build location info
-        let location = storage.database_path || storage.location || 'Unknown location';
+        // Build location info (use cwd as better fallback than "Unknown")
+        let location = storage.database_path || storage.location || process.cwd();
         if (location.length > 50) {
             location = '...' + location.substring(location.length - 47);
         }
@@ -424,14 +424,8 @@ except Exception as e:
             throw new Error(parsed.error || 'Code execution failed');
         }
     } catch (error) {
-        const executionTime = Date.now() - startTime;
-
-        // Log failure metrics
-        if (enableMetrics && config?.output?.verbose && config?.output?.showMemoryDetails) {
-            console.warn(`[Code Execution] Failed after ${executionTime}ms: ${error.message}`);
-        }
-
-        // Return null to signal fallback needed
+        // Silently return null to trigger MCP fallback
+        // Error logging suppressed - fallback is expected when module not installed
         return null;
     }
 }
@@ -1036,6 +1030,13 @@ async function executeSessionStart(context) {
                 return memory;
             }).sort((a, b) => b.relevanceScore - a.relevanceScore); // Re-sort after boost
 
+            // Filter out zero-scored memories (project affinity filtered)
+            const preFilterCount = scoredMemories.length;
+            scoredMemories = scoredMemories.filter(m => m.relevanceScore > 0);
+            if (verbose && showMemoryDetails && !cleanMode && preFilterCount !== scoredMemories.length) {
+                console.log(`[Memory Filter] Removed ${preFilterCount - scoredMemories.length} unrelated memories (no project affinity)`);
+            }
+
             // Show top scoring memories with recency info and detailed breakdown
             if (verbose && showMemoryDetails && scoredMemories.length > 0 && !cleanMode) {
                 const topMemories = scoredMemories.slice(0, 3);
@@ -1131,10 +1132,8 @@ async function executeSessionStart(context) {
             // Inject context into session
             if (context.injectSystemMessage) {
                 await context.injectSystemMessage(contextMessage);
-
-                // Print success message (removed - summary already shown in tree header)
-                // Display the formatted tree to user (CRITICAL - without this, user sees nothing)
-                console.log(contextMessage);
+                // Note: Don't console.log here - injectSystemMessage handles display
+                // console.log would cause duplicate output in Claude Code
 
 
                 // Write detailed session context log file (Option 3)

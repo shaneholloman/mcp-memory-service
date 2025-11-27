@@ -855,10 +855,14 @@ function groupMemoriesByCategory(memories, options = {}) {
             }
 
             // Detect current problems (issues, bugs, blockers, TODOs)
-            const isProblem =
+            // Exclude session summaries which may mention fixes but aren't problems themselves
+            const isSessionType = type === 'session' || type === 'session-summary' ||
+                tags.some(tag => tag.toLowerCase() === 'session-summary');
+            const isProblem = !isSessionType && (
                 type === 'issue' || type === 'bug' || type === 'bug-fix' ||
-                tags.some(tag => ['issue', 'bug', 'blocked', 'todo', 'problem', 'blocker', 'fix'].includes(tag.toLowerCase())) ||
-                content.includes('issue #') || content.includes('bug:') || content.includes('blocked');
+                tags.some(tag => ['issue', 'bug', 'blocked', 'todo', 'problem', 'blocker'].includes(tag.toLowerCase())) ||
+                content.includes('issue #') || content.includes('bug:') || content.includes('blocked')
+            );
 
             // Detect key decisions (architecture, design, technical choices)
             const isKeyDecision =

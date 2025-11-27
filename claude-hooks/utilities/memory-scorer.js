@@ -67,12 +67,10 @@ function calculateTagRelevance(memoryTags = [], projectContext) {
             return 0.5; // No context to match against
         }
         
-        // Calculate tag overlap
+        // Calculate tag overlap (exact match only to prevent cross-project pollution)
         const memoryTagsLower = memoryTags.map(tag => tag.toLowerCase());
-        const matchingTags = contextTags.filter(contextTag => 
-            memoryTagsLower.some(memoryTag => 
-                memoryTag.includes(contextTag) || contextTag.includes(memoryTag)
-            )
+        const matchingTags = contextTags.filter(contextTag =>
+            memoryTagsLower.includes(contextTag)
         );
         
         // Score based on percentage of matching tags
@@ -432,7 +430,32 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
         if (qualityScore < 0.2) {
             finalScore *= 0.5; // Heavily penalize low quality content
         }
-        
+
+        // Apply project affinity penalty - memories without project tag match get penalized
+        // This prevents cross-project memory pollution (e.g., Azure memories in Python project)
+        const memoryTags = (memory.tags || []).map(t => t.toLowerCase());
+        const memoryContent = (memory.content || '').toLowerCase();
+        const projectName = projectContext.name?.toLowerCase();
+
+        // Check for project name in tags OR content
+        const hasProjectTag = projectName && (
+            memoryTags.some(tag => tag === projectName || tag.includes(projectName)) ||
+            memoryContent.includes(projectName)
+        );
+
+        if (!hasProjectTag && tagScore < 0.3) {
+            // No project reference at all - definitely unrelated memory
+            // Hard filter: set score to 0 to exclude from results entirely
+            finalScore = 0;
+            breakdown.projectAffinity = 'none (filtered)';
+        } else if (!hasProjectTag) {
+            // Some tag relevance but no project tag - might be related
+            finalScore *= 0.5; // Moderate penalty
+            breakdown.projectAffinity = 'low';
+        } else {
+            breakdown.projectAffinity = 'high';
+        }
+
         // Ensure score is between 0 and 1
         const normalizedScore = Math.max(0, Math.min(1, finalScore));
         
