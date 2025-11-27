@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.38.0**: **Phase 2b Duplicate Consolidation COMPLETE** - Eliminated ~176-186 lines of duplicate code across 10 consolidation commits. Helper extraction pattern applied: document chunk processing, MCP response parsing, cache statistics logging, winter season boundary logic, test tempfile utilities. Duplication reduced 5.5% → 4.5-4.7% (approaching <3% target). 100% test coverage maintained. 5 groups strategically deferred (high-risk/low-benefit). Issue #246 Phase 2b. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.40.0**: **Session Start Version Display** - Session startup now automatically displays version comparison with PyPI. New version-checker utility reads local version and shows status labels (published/development/outdated). Provides instant visibility into version status and helps detect outdated installations. Issue #250. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

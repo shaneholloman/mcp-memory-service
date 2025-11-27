@@ -10,6 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.40.0] - 2025-11-27
+
+### Added
+- **Session Start Version Display** - Automatic version information display during session startup (commit f2f7d2b, fixes #250)
+  - **Version Checker Utility**: New `version-checker.js` utility in `claude-hooks/utilities/`
+    - Reads local version from `src/mcp_memory_service/__init__.py`
+    - Fetches latest published version from PyPI API
+    - Compares versions and displays status labels (published/development/outdated)
+    - Configurable timeout for PyPI API requests
+  - **Session Start Integration**: Version information now appears automatically during session initialization
+    - Displays format: `📦 Version → X.Y.Z (local) • PyPI: X.Y.Z`
+    - Shows after storage backend information
+    - Provides immediate visibility into version status
+  - **Testing**: Includes `test_version_checker.js` for utility validation
+  - **Benefits**:
+    - Quick version verification without manual checks
+    - Early detection of outdated installations
+    - Improved development workflow transparency
+    - Helps users stay current with latest features and fixes
+
 ## [8.39.1] - 2025-11-27
 
 ### Fixed

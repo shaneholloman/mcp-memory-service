@@ -23,18 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.39.1** (Nov 27, 2025)
+### 🆕 Latest Release: **v8.40.0** (Nov 27, 2025)
 
-**Dashboard Analytics Bug Fixes**
+**Session Start Version Display**
 
-- 🐛 **Three Critical Bug Fixes** - Resolved analytics section display issues (#253)
-- 📊 **Top Tags Filtering** - Now correctly filters by selected timeframe (7d/30d/90d)
-- 📈 **Recent Activity Display** - Bars show percentage distribution with enhanced tooltips
-- 💾 **Storage Report** - Fixed "undefined chars" display with proper field name mapping
-- ✅ **Backward Compatibility** - Maintains support for all storage backends
-- 👏 **Credits** - @claude[bot] and @doobidoo for fixing dashboard analytics issues
+- 📦 **Automatic Version Information** - Session startup now displays version comparison (#250)
+- 🔍 **Version Checker Utility** - New utility that reads local version and compares with PyPI
+- ℹ️ **Smart Status Labels** - Shows published/development/outdated status
+- ⚡ **Instant Visibility** - Version info appears automatically after backend info
+- 🧪 **Test Coverage** - Includes validation test script for version checker
+- 👏 **Credits** - @claude[bot] and @doobidoo for implementing version display feature
 
 **Previous Releases**:
+- **v8.39.1** - Dashboard Analytics Bug Fixes: Three critical fixes (top tags filtering, recent activity display, storage report fields)
 - **v8.39.0** - Performance Optimization: Storage-layer date-range filtering (10x faster analytics, 97% data transfer reduction)
 - **v8.38.1** - Critical Hotfix: HTTP MCP JSON-RPC 2.0 compliance fix (Claude Code/Desktop connection failures resolved)
 - **v8.38.0** - Code Quality: Phase 2b COMPLETE (~176-186 lines duplicate code eliminated, 10 consolidations)
