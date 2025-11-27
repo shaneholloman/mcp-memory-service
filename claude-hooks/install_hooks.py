@@ -566,25 +566,18 @@ class HookInstaller:
                 else:
                     self.warn(f"Core file not found: {file}")
 
-            # Basic utilities
-            utility_files = [
-                "project-detector.js",
-                "memory-scorer.js",
-                "context-formatter.js",
-                "context-shift-detector.js",
-                "conversation-analyzer.js",
-                "dynamic-context-updater.js",
-                "session-tracker.js",
-                "git-analyzer.js"
-            ]
-
-            for file in utility_files:
-                src = self.script_dir / "utilities" / file
-                dst = self.claude_hooks_dir / "utilities" / file
-                if src.exists():
-                    shutil.copy2(src, dst)
-                else:
-                    self.warn(f"Utility file not found: {file}")
+            # Copy ALL utility files to ensure updates are deployed
+            # This prevents stale versions when files are updated in the repo
+            utilities_dir = self.script_dir / "utilities"
+            if utilities_dir.exists():
+                utility_count = 0
+                for utility_file in utilities_dir.glob("*.js"):
+                    dst = self.claude_hooks_dir / "utilities" / utility_file.name
+                    shutil.copy2(utility_file, dst)
+                    utility_count += 1
+                self.success(f"Copied {utility_count} utility files")
+            else:
+                self.warn("Utilities directory not found")
 
             # Tests
             test_files = ["integration-test.js"]
@@ -647,22 +640,18 @@ class HookInstaller:
             else:
                 self.warn("Mid-conversation hook not found")
 
-            # v7.1.3 enhanced utilities
-            enhanced_utilities = [
-                "adaptive-pattern-detector.js",
-                "tiered-conversation-monitor.js",
-                "performance-manager.js",
-                "mcp-client.js",
-                "memory-client.js"
-            ]
-
-            for file in enhanced_utilities:
-                src = self.script_dir / "utilities" / file
-                dst = self.claude_hooks_dir / "utilities" / file
-                if src.exists():
-                    shutil.copy2(src, dst)
-                else:
-                    self.warn(f"Enhanced utility not found: {file}")
+            # CRITICAL: Copy ALL utility files to ensure updates are deployed
+            # This prevents the issue where updated files like memory-scorer.js don't get copied
+            utilities_dir = self.script_dir / "utilities"
+            if utilities_dir.exists():
+                utility_count = 0
+                for utility_file in utilities_dir.glob("*.js"):
+                    dst = self.claude_hooks_dir / "utilities" / utility_file.name
+                    shutil.copy2(utility_file, dst)
+                    utility_count += 1
+                self.success(f"Copied {utility_count} utility files (ensuring all updates are deployed)")
+            else:
+                self.warn("Utilities directory not found")
 
             # CLI management tools
             cli_tools = [
