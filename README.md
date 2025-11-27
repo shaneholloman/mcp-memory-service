@@ -23,18 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.39.0** (Nov 26, 2025)
+### 🆕 Latest Release: **v8.39.1** (Nov 27, 2025)
 
-**Performance Optimization - Storage-Layer Date-Range Filtering**
+**Dashboard Analytics Bug Fixes**
 
-- ⚡ **10x Faster Analytics** - Moved date-range filtering from application layer to database layer (#238)
-- 📉 **97% Data Transfer Reduction** - 50MB → 1.5MB for 10,000 memories
-- 🚀 **Response Time Improvements** - SQLite-vec: 500ms → 50ms, Cloudflare: 2-3s → 200ms
-- 🎯 **Scalability** - Efficiently handles databases with >10,000 memories
-- 🔧 **Database-Level Filtering** - Leverages indexes on `created_at` field
-- 👏 **Credits** - @doobidoo for implementing `get_memories_by_time_range()` across backends
+- 🐛 **Three Critical Bug Fixes** - Resolved analytics section display issues (#253)
+- 📊 **Top Tags Filtering** - Now correctly filters by selected timeframe (7d/30d/90d)
+- 📈 **Recent Activity Display** - Bars show percentage distribution with enhanced tooltips
+- 💾 **Storage Report** - Fixed "undefined chars" display with proper field name mapping
+- ✅ **Backward Compatibility** - Maintains support for all storage backends
+- 👏 **Credits** - @claude[bot] and @doobidoo for fixing dashboard analytics issues
 
 **Previous Releases**:
+- **v8.39.0** - Performance Optimization: Storage-layer date-range filtering (10x faster analytics, 97% data transfer reduction)
 - **v8.38.1** - Critical Hotfix: HTTP MCP JSON-RPC 2.0 compliance fix (Claude Code/Desktop connection failures resolved)
 - **v8.38.0** - Code Quality: Phase 2b COMPLETE (~176-186 lines duplicate code eliminated, 10 consolidations)
 - **v8.37.0** - Code Quality: Phase 2a COMPLETE (5 duplicate high-complexity functions eliminated)

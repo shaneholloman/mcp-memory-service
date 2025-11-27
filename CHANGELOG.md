@@ -10,6 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.39.1] - 2025-11-27
+
+### Fixed
+- **Dashboard Analytics Bugs** - Fixed three critical bugs in the analytics section (commit c898a72, fixes #253)
+  - **Top Tags filtering**: Now correctly filters tags by selected timeframe (7d/30d/90d)
+    - Implemented time-based filtering using `get_memories_by_time_range()`
+    - Counts tags only from memories within the selected period
+    - Maintains backward compatibility with all storage backends
+  - **Recent Activity display**: Bars now show percentage distribution
+    - Enhanced display to show both count and percentage of total
+    - Tooltip includes both absolute count and percentage
+    - Activity count label shows percentage (e.g., '42 (23.5%)')
+  - **Storage Report field mismatches**: Fixed "undefined chars" display
+    - Fixed field name: `size_kb` instead of `size`
+    - Fixed field name: `preview` instead of `content_preview`
+    - Fixed date parsing: `created_at` is ISO string, not timestamp
+    - Added null safety and proper size display (KB with bytes fallback)
+
 ## [8.39.0] - 2025-11-26
 
 ### Performance
