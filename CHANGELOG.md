@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.41.1] - 2025-11-27
+
+### Fixed
+- **Context Formatter Memory Sorting** - Memories now sorted by recency within each category (commit 2ede2a8)
+  - Added sorting by `created_at_iso` (descending) after grouping memories into categories
+  - Ensures most recent memories appear first in each section for better context relevance
+  - Applied in `context-formatter.js` after category grouping logic
+  - Improves user experience by prioritizing newest information in memory context
+
 ## [8.41.0] - 2025-11-27
 
 ### Fixed

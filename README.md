@@ -23,17 +23,14 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.41.0** (Nov 27, 2025)
+### 🆕 Latest Release: **v8.41.1** (Nov 27, 2025)
 
-**Session Start Hook Reliability Improvements**
+**Context Formatter Memory Sorting**
 
-- 🔇 **Error Suppression** - Code Execution ModuleNotFoundError spam eliminated
-- 📝 **Clean Output** - Duplicate "Injected Memory Context" messages removed
-- 🎯 **Memory Filtering** - Cross-project memory pollution prevented (project affinity scoring)
-- 🏷️ **Classification Fix** - Session summaries no longer misclassified as "Current Problems"
-- 📍 **Path Display** - "Unknown location" now shows actual path via process.cwd() fallback
+- 📅 **Recency Sorting** - Memories now sorted by newest first within each category (created_at_iso descending)
 
 **Previous Releases**:
+- **v8.41.0** - Session Start Hook Reliability Improvements (error suppression, clean output, memory filtering, classification fixes)
 - **v8.40.0** - Session Start Version Display (automatic version comparison, PyPI status labels)
 - **v8.39.1** - Dashboard Analytics Bug Fixes: Three critical fixes (top tags filtering, recent activity display, storage report fields)
 - **v8.39.0** - Performance Optimization: Storage-layer date-range filtering (10x faster analytics, 97% data transfer reduction)
