@@ -23,18 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.40.0** (Nov 27, 2025)
+### 🆕 Latest Release: **v8.41.0** (Nov 27, 2025)
 
-**Session Start Version Display**
+**Session Start Hook Reliability Improvements**
 
-- 📦 **Automatic Version Information** - Session startup now displays version comparison (#250)
-- 🔍 **Version Checker Utility** - New utility that reads local version and compares with PyPI
-- ℹ️ **Smart Status Labels** - Shows published/development/outdated status
-- ⚡ **Instant Visibility** - Version info appears automatically after backend info
-- 🧪 **Test Coverage** - Includes validation test script for version checker
-- 👏 **Credits** - @claude[bot] and @doobidoo for implementing version display feature
+- 🔇 **Error Suppression** - Code Execution ModuleNotFoundError spam eliminated
+- 📝 **Clean Output** - Duplicate "Injected Memory Context" messages removed
+- 🎯 **Memory Filtering** - Cross-project memory pollution prevented (project affinity scoring)
+- 🏷️ **Classification Fix** - Session summaries no longer misclassified as "Current Problems"
+- 📍 **Path Display** - "Unknown location" now shows actual path via process.cwd() fallback
 
 **Previous Releases**:
+- **v8.40.0** - Session Start Version Display (automatic version comparison, PyPI status labels)
 - **v8.39.1** - Dashboard Analytics Bug Fixes: Three critical fixes (top tags filtering, recent activity display, storage report fields)
 - **v8.39.0** - Performance Optimization: Storage-layer date-range filtering (10x faster analytics, 97% data transfer reduction)
 - **v8.38.1** - Critical Hotfix: HTTP MCP JSON-RPC 2.0 compliance fix (Claude Code/Desktop connection failures resolved)
