@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Hook Installer Utility File Deployment** - Installer now copies ALL utility files instead of hardcoded lists (commit 557be0e)
+  - **BREAKING**: Previous installer only copied 8/14 basic utilities and 5/14 enhanced utilities
+  - Updated files like `memory-scorer.js` and `context-formatter.js` were not deployed with `--natural-triggers` flag
+  - Replaced hardcoded file lists with glob pattern (`*.js`) to automatically include all utility files
+  - Ensures v8.41.0/v8.41.1 project affinity filtering fixes get properly deployed
+  - Future utility file additions automatically included without manual list maintenance
+  - **Impact**: Users running `python install_hooks.py --natural-triggers` now get all 14 utility files, preventing stale hooks
+
 ## [8.41.1] - 2025-11-27
 
 ### Fixed
