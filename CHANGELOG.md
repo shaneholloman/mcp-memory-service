@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.41.0] - 2025-11-27
+
+### Fixed
+- **Session Start Hook Reliability** - Improved session start hook reliability and memory filtering (commit 924962a)
+  - **Error Suppression**: Suppressed Code Execution ModuleNotFoundError spam
+    - Added `suppressErrors: true` to Code Execution call configuration
+    - Eliminates console noise from module import errors during session start
+  - **Clean Output**: Removed duplicate "Injected Memory Context" output
+    - Removed duplicate stdout console.log that caused double messages
+    - Session start output now cleaner and easier to read
+  - **Memory Filtering**: Added project affinity scoring to prevent cross-project memory pollution
+    - New `calculateProjectAffinity()` function in `memory-scorer.js`
+    - Hard filters out memories without project tag when in a project context
+    - Soft scoring penalty (0.3x) for memories from different projects
+    - Prevents Azure/Terraform memories from appearing in mcp-memory-service context
+  - **Classification Fix**: Session summaries no longer misclassified as "Current Problems"
+    - Excludes `session`, `session-summary`, and `session-end` memory types from problem classification
+    - Prevents confusion between historical session notes and actual current issues
+  - **Path Display**: "Unknown location" now shows actual path via `process.cwd()` fallback
+    - When git repository detection fails, uses `process.cwd()` instead of "Unknown location"
+    - Provides better context awareness even in non-git directories
+
 ## [8.40.0] - 2025-11-27
 
 ### Added
