@@ -23,13 +23,16 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.41.1** (Nov 27, 2025)
+### 🆕 Latest Release: **v8.41.2** (Nov 27, 2025)
 
-**Context Formatter Memory Sorting**
+**Hook Installer Utility File Deployment**
 
-- 📅 **Recency Sorting** - Memories now sorted by newest first within each category (created_at_iso descending)
+- 🔧 **Complete Utility Deployment** - Installer now copies ALL 14 utility files instead of hardcoded lists (glob pattern *.js)
+- 🐛 **Fix Stale Hooks** - Previous installer only copied 8/14 basic and 5/14 enhanced utilities, missing critical v8.41.0/v8.41.1 fixes
+- 🚀 **Future-Proof** - Automatic inclusion of new utility files without manual list maintenance
 
 **Previous Releases**:
+- **v8.41.1** - Context Formatter Memory Sorting (recency sorting within categories, newest first)
 - **v8.41.0** - Session Start Hook Reliability Improvements (error suppression, clean output, memory filtering, classification fixes)
 - **v8.40.0** - Session Start Version Display (automatic version comparison, PyPI status labels)
 - **v8.39.1** - Dashboard Analytics Bug Fixes: Three critical fixes (top tags filtering, recent activity display, storage report fields)
