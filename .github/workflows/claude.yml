@@ -35,16 +35,31 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          
+
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          # Auto-invoke github-release-manager agent for bug fixes and features
+          # This triggers release workflow when Claude fixes issues on GitHub
+          prompt: |
+            ${{ github.event.comment.body || github.event.issue.body || github.event.review.body }}
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://docs.claude.com/en/docs/claude-code/sdk#command-line for available options
-          # claude_args: '--model claude-opus-4-1-20250805 --allowed-tools Bash(gh pr:*)'
+            IMPORTANT: After completing the requested task, if you:
+            1. Fixed a bug (modified src/ code)
+            2. Added a new feature (modified src/ code)
+            3. Made any changes to pyproject.toml dependencies
+
+            Then automatically invoke the github-release-manager agent to:
+            - Determine appropriate version bump (patch for fixes, minor for features)
+            - Create release branch with version updates
+            - The Claude Branch Automation workflow will handle the rest
+
+            Skip release manager if you only changed:
+            - Documentation (.md files, docs/)
+            - Tests only (tests/ without src/ changes)
+            - CI/CD workflows (.github/)
+            - Development tools (.claude/)
+
+            Use your judgment - if unsure whether to release, ask the user.
 
