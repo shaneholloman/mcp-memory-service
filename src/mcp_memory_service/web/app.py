@@ -995,7 +995,37 @@ def create_app() -> FastAPI:
             # Error fallback to original template
             logger.warning(f"Error loading migrated dashboard: {e}")
             return html_template
-    
+
+    @app.get("/api/languages")
+    async def get_available_languages():
+        """Get list of available translation languages by scanning i18n directory."""
+        try:
+            i18n_path = os.path.join(os.path.dirname(__file__), "static", "i18n")
+
+            if not os.path.exists(i18n_path):
+                return {"languages": ["en"]}  # Fallback to English only
+
+            # Scan for .json files in i18n directory
+            languages = []
+            for filename in os.listdir(i18n_path):
+                if filename.endswith('.json'):
+                    # Extract language code (e.g., "en.json" -> "en")
+                    lang_code = filename[:-5]  # Remove .json extension
+                    languages.append(lang_code)
+
+            # Sort languages alphabetically
+            languages.sort()
+
+            # Ensure at least English is available
+            if not languages:
+                languages = ["en"]
+
+            return {"languages": languages}
+
+        except Exception as e:
+            logger.error(f"Error scanning i18n directory: {e}")
+            return {"languages": ["en"]}  # Fallback to English on error
+
     return app
 
 

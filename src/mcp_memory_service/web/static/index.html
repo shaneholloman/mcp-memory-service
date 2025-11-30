@@ -77,9 +77,19 @@
                             <path d="M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>
                         </svg>
                     </button>
-                    <div class="language-switcher" aria-label="Language">
-                        <button type="button" class="lang-btn active" data-lang-option="en" data-i18n="lang.english">English</button>
-                        <button type="button" class="lang-btn" data-lang-option="zh" data-i18n="lang.chinese">中文</button>
+                    <div class="language-selector" aria-label="Language">
+                        <button type="button" class="lang-dropdown-trigger" aria-haspopup="true" aria-expanded="false">
+                            <svg class="lang-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+                            </svg>
+                            <span class="lang-current" data-i18n="lang.english">English</span>
+                            <svg class="lang-chevron" width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <div class="lang-dropdown-menu" role="menu" hidden>
+                            <!-- Dynamically populated by JavaScript -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -330,12 +340,12 @@
                     <!-- Search Results -->
                     <div class="search-results">
                         <div class="search-header">
-                            <h2>Search Results</h2>
+                            <h2 data-i18n="search.results.title">Search Results</h2>
                             <div class="results-meta">
                                 <span id="resultsCount">0 results</span>
                                 <div class="view-options">
-                                    <button class="view-btn active" data-view="grid">Grid</button>
-                                    <button class="view-btn" data-view="list">List</button>
+                                    <button class="view-btn active" data-view="grid" data-i18n="search.view.grid">Grid</button>
+                                    <button class="view-btn" data-view="list" data-i18n="search.view.list">List</button>
                                 </div>
                             </div>
                         </div>
@@ -636,8 +646,8 @@
             <!-- Other views (Browse, Manage, Analytics) will be added in subsequent phases -->
             <div id="browseView" class="view-container">
                 <div class="view-header">
-                    <h2>Browse by Tags</h2>
-                    <p>Explore your memories organized by tags</p>
+                    <h2 data-i18n="browse.title">Browse by Tags</h2>
+                    <p data-i18n="browse.subtitle">Explore your memories organized by tags</p>
                 </div>
 
                 <div class="browse-content">
@@ -647,8 +657,8 @@
 
                     <div id="taggedMemoriesContainer" class="tagged-memories" style="display: none;">
                         <div class="section-header">
-                            <h3 id="selectedTagTitle">Memories tagged with: <span id="selectedTagName"></span></h3>
-                            <button id="clearTagFilter" class="btn btn-secondary">Show All Tags</button>
+                            <h3 id="selectedTagTitle"><span data-i18n="browse.memoriesTagged">Memories tagged with:</span> <span id="selectedTagName"></span></h3>
+                            <button id="clearTagFilter" class="btn btn-secondary" data-i18n="browse.showAllTags">Show All Tags</button>
                         </div>
                         <div id="taggedMemoriesList" class="memory-grid">
                             <!-- Filtered memories will be shown here -->
@@ -1021,7 +1031,7 @@
         <div id="memoryModal" class="modal-overlay">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3 id="modalTitle">Memory Details</h3>
+                    <h3 id="modalTitle" data-i18n="modal.memoryDetails.title">Memory Details</h3>
                     <button class="modal-close" aria-label="Close">
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
@@ -1034,9 +1044,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="editMemoryBtn">Edit</button>
-                    <button class="btn btn-danger" id="deleteMemoryBtn">Delete</button>
-                    <button class="btn btn-primary" id="shareMemoryBtn">Share</button>
+                    <button class="btn btn-secondary" id="editMemoryBtn" data-i18n="modal.memoryDetails.edit">Edit</button>
+                    <button class="btn btn-danger" id="deleteMemoryBtn" data-i18n="modal.memoryDetails.delete">Delete</button>
+                    <button class="btn btn-primary" id="shareMemoryBtn" data-i18n="modal.memoryDetails.share">Share</button>
                 </div>
             </div>
         </div>
@@ -1045,7 +1055,7 @@
         <div id="addMemoryModal" class="modal-overlay">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Add New Memory</h3>
+                    <h3 data-i18n="modal.addMemory.title">Add New Memory</h3>
                     <button class="modal-close" aria-label="Close">
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
@@ -1055,27 +1065,27 @@
                 <div class="modal-body">
                     <form id="addMemoryForm">
                         <div class="form-group">
-                            <label for="memoryContent">Content</label>
-                            <textarea id="memoryContent" rows="6" placeholder="Enter your memory content..."></textarea>
+                            <label for="memoryContent" data-i18n="modal.addMemory.contentLabel">Content</label>
+                            <textarea id="memoryContent" rows="6" data-i18n-placeholder="modal.addMemory.contentPlaceholder" placeholder="Enter your memory content..."></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="memoryTags">Tags (comma-separated)</label>
-                            <input type="text" id="memoryTags" placeholder="e.g., coding, javascript, api">
+                            <label for="memoryTags" data-i18n="modal.addMemory.tagsLabel">Tags (comma-separated)</label>
+                            <input type="text" id="memoryTags" data-i18n-placeholder="modal.addMemory.tagsPlaceholder" placeholder="e.g., coding, javascript, api">
                         </div>
                         <div class="form-group">
-                            <label for="memoryType">Type</label>
+                            <label for="memoryType" data-i18n="modal.addMemory.typeLabel">Type</label>
                             <select id="memoryType">
-                                <option value="note">Note</option>
-                                <option value="code">Code</option>
-                                <option value="reference">Reference</option>
-                                <option value="idea">Idea</option>
+                                <option value="note" data-i18n="modal.addMemory.typeNote">Note</option>
+                                <option value="code" data-i18n="modal.addMemory.typeCode">Code</option>
+                                <option value="reference" data-i18n="modal.addMemory.typeReference">Reference</option>
+                                <option value="idea" data-i18n="modal.addMemory.typeIdea">Idea</option>
                             </select>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
-                    <button class="btn btn-primary" id="saveMemoryBtn">Save Memory</button>
+                    <button class="btn btn-secondary" id="cancelAddBtn" data-i18n="modal.addMemory.cancel">Cancel</button>
+                    <button class="btn btn-primary" id="saveMemoryBtn" data-i18n="modal.addMemory.save">Save Memory</button>
                 </div>
             </div>
         </div>
@@ -1084,7 +1094,7 @@
         <div id="settingsModal" class="modal-overlay">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Settings</h3>
+                    <h3 data-i18n="modal.settings.title">Settings</h3>
                     <button class="modal-close" aria-label="Close">
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
@@ -1093,90 +1103,90 @@
                 </div>
                 <div class="modal-body">
                     <form id="settingsForm">
-                        <h4 class="settings-section-heading">Preferences</h4>
+                        <h4 class="settings-section-heading" data-i18n="modal.settings.preferences">Preferences</h4>
                         <div class="form-group">
-                            <label for="themeSelect">Theme</label>
+                            <label for="themeSelect" data-i18n="modal.settings.theme">Theme</label>
                             <select id="themeSelect">
-                                <option value="light">Light</option>
-                                <option value="dark">Dark</option>
+                                <option value="light" data-i18n="modal.settings.themeLight">Light</option>
+                                <option value="dark" data-i18n="modal.settings.themeDark">Dark</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="viewDensity">View Density</label>
+                            <label for="viewDensity" data-i18n="modal.settings.viewDensity">View Density</label>
                             <select id="viewDensity">
-                                <option value="comfortable">Comfortable</option>
-                                <option value="compact">Compact</option>
+                                <option value="comfortable" data-i18n="modal.settings.viewDensityComfortable">Comfortable</option>
+                                <option value="compact" data-i18n="modal.settings.viewDensityCompact">Compact</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="previewLines">Memory Preview Lines</label>
+                            <label for="previewLines" data-i18n="modal.settings.previewLines">Memory Preview Lines</label>
                             <input type="number" id="previewLines" min="1" max="10" value="3">
                         </div>
 
                         <hr class="settings-divider">
 
-                        <h4 class="settings-section-heading" style="margin-bottom: var(--space-4);">System Information</h4>
+                        <h4 class="settings-section-heading" style="margin-bottom: var(--space-4);" data-i18n="modal.settings.systemInfo">System Information</h4>
                         <div class="system-info">
                             <div class="info-row">
-                                <span class="info-label">Version:</span>
-                                <span class="info-value" id="settingsVersion">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.version">Version:</span>
+                                <span class="info-value" id="settingsVersion" data-i18n="status.loading">Loading...</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Storage Backend:</span>
-                                <span class="info-value" id="settingsBackend">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.storageBackend">Storage Backend:</span>
+                                <span class="info-value" id="settingsBackend" data-i18n="status.loading">Loading...</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Primary Backend:</span>
-                                <span class="info-value" id="settingsPrimaryBackend">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.primaryBackend">Primary Backend:</span>
+                                <span class="info-value" id="settingsPrimaryBackend" data-i18n="status.loading">Loading...</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Embedding Model:</span>
-                                <span class="info-value" id="settingsEmbeddingModel">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.embeddingModel">Embedding Model:</span>
+                                <span class="info-value" id="settingsEmbeddingModel" data-i18n="status.loading">Loading...</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Embedding Dimensions:</span>
-                                <span class="info-value" id="settingsEmbeddingDim">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.embeddingDimensions">Embedding Dimensions:</span>
+                                <span class="info-value" id="settingsEmbeddingDim" data-i18n="status.loading">Loading...</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Database Size:</span>
-                                <span class="info-value" id="settingsDbSize">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.databaseSize">Database Size:</span>
+                                <span class="info-value" id="settingsDbSize" data-i18n="status.loading">Loading...</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Total Memories:</span>
-                                <span class="info-value" id="settingsTotalMemories">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.totalMemories">Total Memories:</span>
+                                <span class="info-value" id="settingsTotalMemories" data-i18n="status.loading">Loading...</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Uptime:</span>
-                                <span class="info-value" id="settingsUptime">Loading...</span>
+                                <span class="info-label" data-i18n="modal.settings.uptime">Uptime:</span>
+                                <span class="info-value" id="settingsUptime" data-i18n="status.loading">Loading...</span>
                             </div>
                         </div>
 
                         <hr class="settings-divider">
 
-                        <h4 class="settings-section-heading">Backup & Restore</h4>
+                        <h4 class="settings-section-heading" data-i18n="modal.settings.backupRestore">Backup & Restore</h4>
                         <div class="backup-settings">
                             <div class="info-row">
-                                <span class="info-label">Last Backup:</span>
-                                <span class="info-value" id="settingsLastBackup">Never</span>
+                                <span class="info-label" data-i18n="modal.settings.lastBackup">Last Backup:</span>
+                                <span class="info-value" id="settingsLastBackup" data-i18n="modal.settings.never">Never</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Backup Count:</span>
+                                <span class="info-label" data-i18n="modal.settings.backupCount">Backup Count:</span>
                                 <span class="info-value" id="settingsBackupCount">0</span>
                             </div>
                             <div class="info-row">
-                                <span class="info-label">Next Scheduled:</span>
+                                <span class="info-label" data-i18n="modal.settings.nextScheduled">Next Scheduled:</span>
                                 <span class="info-value" id="settingsNextBackup">-</span>
                             </div>
                             <div class="backup-actions">
-                                <button id="backupNowButton" class="btn btn-sm btn-primary">Create Backup Now</button>
-                                <button id="viewBackupsButton" class="btn btn-sm btn-secondary">View Backups</button>
+                                <button id="backupNowButton" class="btn btn-sm btn-primary" data-i18n="modal.settings.backupNow">Create Backup Now</button>
+                                <button id="viewBackupsButton" class="btn btn-sm btn-secondary" data-i18n="modal.settings.viewBackups">View Backups</button>
                             </div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelSettingsBtn">Cancel</button>
-                    <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+                    <button class="btn btn-secondary" id="cancelSettingsBtn" data-i18n="modal.settings.cancel">Cancel</button>
+                    <button class="btn btn-primary" id="saveSettingsBtn" data-i18n="modal.settings.save">Save Settings</button>
                 </div>
             </div>
         </div>
@@ -1184,7 +1194,7 @@
         <!-- Loading Overlay -->
         <div id="loadingOverlay" class="loading-overlay">
             <div class="loading-spinner"></div>
-            <p>Loading...</p>
+            <p data-i18n="status.loading">Loading...</p>
         </div>
 
         <!-- Toast Notifications -->
@@ -1194,19 +1204,19 @@
     <!-- Connection Status Indicator -->
     <div id="connectionStatus" class="connection-status">
         <div class="status-indicator"></div>
-        <span class="status-text">Connected</span>
+        <span class="status-text" data-i18n="status.connected">Connected</span>
     </div>
 
     <!-- Memory Viewer Modal -->
     <div id="memoryViewerModal" class="modal" style="display: none;">
         <div class="modal-content memory-viewer-content">
             <div class="modal-header">
-                <h2>📝 Document Memory Chunks</h2>
+                <h2 data-i18n="modal.memoryViewer.title">📝 Document Memory Chunks</h2>
                 <button class="modal-close" data-action="closeMemoryViewer">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="document-info">
-                    <h3 id="memoryViewerFilename">Loading...</h3>
+                    <h3 id="memoryViewerFilename" data-i18n="status.loading">Loading...</h3>
                     <p id="memoryViewerStats" class="text-muted">0 chunks found</p>
                 </div>
                 <div class="memory-chunks-container">
@@ -1216,7 +1226,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-action="closeMemoryViewer">Close</button>
+                <button class="btn btn-secondary" data-action="closeMemoryViewer" data-i18n="modal.memoryViewer.close">Close</button>
             </div>
         </div>
     </div>

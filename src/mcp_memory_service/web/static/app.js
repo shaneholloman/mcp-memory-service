@@ -70,6 +70,7 @@ class MemoryDashboard {
         this.translations = {};
         this.fallbackTranslations = {};
         this.supportedLanguages = ['en', 'zh'];
+        this.languageMetadata = {}; // Stores language metadata (flags, names, etc.)
         this.searchResults = [];
         this.isLoading = false;
         this.liveSearchEnabled = true;
@@ -119,9 +120,12 @@ class MemoryDashboard {
      * 初始化国际化：检测语言，加载词典并应用
      */
     async initI18n() {
+        await this.detectAvailableLanguages(); // Dynamically detect available languages
+        await this.loadLanguageMetadata(); // Load metadata for all languages
         this.currentLang = this.detectLanguage();
         await this.ensureFallbackTranslations();
         await this.loadTranslations(this.currentLang);
+        await this.buildLanguageSelector(); // Build dropdown dynamically
         await this.applyTranslations();
     }
 
@@ -151,6 +155,116 @@ class MemoryDashboard {
         } catch (error) {
             console.warn('Failed to load fallback translations', error);
             this.fallbackTranslations = {};
+        }
+    }
+
+    /**
+     * Dynamically detect available languages from API
+     */
+    async detectAvailableLanguages() {
+        try {
+            const response = await fetch('/api/languages');
+            if (response.ok) {
+                const data = await response.json();
+                this.supportedLanguages = data.languages || ['en'];
+            }
+        } catch (error) {
+            console.warn('Failed to fetch language list, using defaults:', error);
+            this.supportedLanguages = ['en', 'zh'];
+        }
+    }
+
+    /**
+     * Load language metadata (flags, native names) from translation files
+     */
+    async loadLanguageMetadata() {
+        for (const lang of this.supportedLanguages) {
+            try {
+                const response = await fetch(`/static/i18n/${lang}.json`);
+                if (response.ok) {
+                    const data = await response.json();
+                    this.languageMetadata[lang] = {
+                        code: data['meta.language.code'] || lang,
+                        nativeName: data['meta.language.nativeName'] || lang.toUpperCase(),
+                        englishName: data['meta.language.englishName'] || lang.toUpperCase(),
+                        flag: data['meta.language.flag'] || '🌐'
+                    };
+                }
+            } catch (error) {
+                console.warn(`Failed to load metadata for ${lang}:`, error);
+                // Fallback metadata
+                this.languageMetadata[lang] = {
+                    code: lang,
+                    nativeName: lang.toUpperCase(),
+                    englishName: lang.toUpperCase(),
+                    flag: '🌐'
+                };
+            }
+        }
+    }
+
+    /**
+     * Build language selector dropdown dynamically
+     */
+    async buildLanguageSelector() {
+        const dropdown = document.querySelector('.lang-dropdown-menu');
+        if (!dropdown) return;
+
+        // Clear existing options
+        dropdown.innerHTML = '';
+
+        // Create option for each language
+        this.supportedLanguages.forEach(lang => {
+            const meta = this.languageMetadata[lang];
+            if (!meta) return;
+
+            const option = document.createElement('button');
+            option.className = 'lang-option';
+            option.dataset.lang = lang;
+            option.setAttribute('role', 'menuitem');
+            option.setAttribute('type', 'button');
+
+            // Build option HTML
+            option.innerHTML = `
+                <span class="lang-flag">${meta.flag}</span>
+                <span class="lang-name">${meta.nativeName}</span>
+                <svg class="lang-check" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            `;
+
+            // Add click handler
+            option.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await this.setLanguage(lang);
+                this.toggleLanguageDropdown(false);
+            });
+
+            dropdown.appendChild(option);
+        });
+    }
+
+    /**
+     * Toggle language dropdown visibility
+     */
+    toggleLanguageDropdown(show) {
+        const trigger = document.querySelector('.lang-dropdown-trigger');
+        const dropdown = document.querySelector('.lang-dropdown-menu');
+
+        if (!trigger || !dropdown) return;
+
+        if (show === undefined) {
+            // Toggle
+            show = dropdown.hasAttribute('hidden');
+        }
+
+        if (show) {
+            dropdown.removeAttribute('hidden');
+            trigger.setAttribute('aria-expanded', 'true');
+        } else {
+            dropdown.setAttribute('hidden', '');
+            trigger.setAttribute('aria-expanded', 'false');
         }
     }
 
@@ -244,11 +358,24 @@ class MemoryDashboard {
     }
 
     /**
-     * 高亮当前语言按钮
+     * 更新语言选择器状态
+     * Update language selector (dropdown trigger text and active option)
      */
     updateLanguageSwitcher() {
-        document.querySelectorAll('[data-lang-option]').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.langOption === this.currentLang);
+        const trigger = document.querySelector('.lang-dropdown-trigger');
+        const currentLangSpan = trigger?.querySelector('.lang-current');
+        const options = document.querySelectorAll('.lang-option');
+
+        // Update trigger text with current language native name
+        if (currentLangSpan && this.languageMetadata[this.currentLang]) {
+            const meta = this.languageMetadata[this.currentLang];
+            currentLangSpan.textContent = meta.nativeName;
+        }
+
+        // Update active state for dropdown options
+        options.forEach(option => {
+            const isActive = option.dataset.lang === this.currentLang;
+            option.classList.toggle('active', isActive);
         });
     }
 
@@ -262,12 +389,36 @@ class MemoryDashboard {
             item.addEventListener('click', this.handleNavigation);
         });
 
-        // Language switcher
-        document.querySelectorAll('[data-lang-option]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const lang = btn.dataset.langOption;
-                this.setLanguage(lang);
+        // Language dropdown
+        const langTrigger = document.querySelector('.lang-dropdown-trigger');
+        const langDropdown = document.querySelector('.lang-dropdown-menu');
+
+        if (langTrigger) {
+            // Toggle dropdown on trigger click
+            langTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleLanguageDropdown();
             });
+
+            // Keyboard navigation
+            langTrigger.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.toggleLanguageDropdown();
+                } else if (e.key === 'Escape') {
+                    this.toggleLanguageDropdown(false);
+                }
+            });
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (langDropdown && !langDropdown.hasAttribute('hidden')) {
+                const isClickInside = langTrigger?.contains(e.target) || langDropdown.contains(e.target);
+                if (!isClickInside) {
+                    this.toggleLanguageDropdown(false);
+                }
+            }
         });
 
         // Search functionality
