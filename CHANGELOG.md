@@ -10,6 +10,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.44.0] - 2025-11-30
+
+### Added
+- **Multi-Language Expansion** - Added 5 new languages to dashboard i18n system (commit a7d0ba7)
+  - 🇯🇵 **Japanese (日本語)** - 359 translation keys, complete UI coverage
+  - 🇰🇷 **Korean (한국어)** - 359 translation keys, complete UI coverage
+  - 🇩🇪 **German (Deutsch)** - 359 translation keys, complete UI coverage
+  - 🇫🇷 **French (Français)** - 359 translation keys, complete UI coverage
+  - 🇪🇸 **Spanish (Español)** - 359 translation keys, complete UI coverage
+  - All translations professionally validated (key parity, interpolation syntax, JSON structure)
+- **Complete i18n Coverage** - Extended translation support to all UI elements (+57 keys: 304 → 359)
+  - Search results view: headers, view buttons, empty states
+  - Browse by Tags view: title, subtitle, filter controls
+  - Memory Details Modal: all buttons and labels
+  - Add Memory Modal: complete form field coverage
+  - Settings Modal: preferences, system info, backup sections
+  - Loading states and connection status indicators
+  - Memory Viewer Modal: all interactive elements
+  - ~80 data-i18n attributes added to index.html for automatic translation
+
+### Fixed
+- **Dark Mode Language Dropdown** - Fixed styling inconsistencies in dark mode (commit a7d0ba7)
+  - Added proper background colors for dropdown items
+  - Fixed hover state styling (translucent white overlay)
+  - Fixed active language highlighting
+  - Improved contrast and readability in dark theme
+
+### Changed
+- **Translation Key Structure** - Expanded from 304 to 359 keys per language
+  - Maintains backward compatibility with existing translations
+  - English (en.json) and Chinese (zh.json) updated to match new structure
+  - Consistent key naming conventions across all languages
+
 ## [8.43.0] - 2025-11-30
 
 ### Added

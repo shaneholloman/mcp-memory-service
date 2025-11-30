@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.43.0**: **Internationalization & Quality Automation** - Complete i18n support with English and Chinese translations (PR #256, thanks @amm10090!), integrated security and complexity checks in Claude Branch automation (Groq/Gemini LLM analysis blocks vulnerable code at PR stage), optimized i18n performance (single unified DOM traversal). See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.44.0**: **Multi-Language Expansion** - Added 5 new languages (Japanese, Korean, German, French, Spanish) with complete UI translation coverage (+57 keys for search, modals, settings), fixed dark mode language dropdown styling, ~80 data-i18n attributes for full HTML coverage. Dashboard now supports 7 languages with 359 keys each, all professionally validated. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
