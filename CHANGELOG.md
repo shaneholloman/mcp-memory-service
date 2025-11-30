@@ -10,6 +10,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.43.0] - 2025-11-30
+
+### Added
+- **Frontend Internationalization** - Complete i18n support for dashboard with English and Chinese translations (PR #256, thanks @amm10090!)
+  - Language toggle switcher in header with 🌐 icon
+  - 300+ translation keys in `en.json` and `zh.json`
+  - Automatic language detection (localStorage > browser language > English)
+  - Dynamic translation of all UI elements, placeholders, tooltips
+  - English fallback for missing keys
+- **Enhanced Claude Branch Automation** - Integrated quality checks before PR creation
+  - New file-level quality validation utility (`scripts/pr/run_quality_checks_on_files.sh`, 286 lines)
+  - Groq API primary (fast, 200-300ms), Gemini CLI fallback
+  - Code complexity analysis (blocks >8, warns 7-8)
+  - Security vulnerability scan (SQL injection, XSS, command injection, path traversal, secrets)
+  - Conditional PR creation (blocks if security issues detected)
+  - GitHub Actions annotations for inline feedback
+  - Machine-parseable output format for CI/CD integration
+
+### Changed
+- **i18n Performance Optimization** - Reduced DOM traversal overhead (4 separate calls → single unified traversal)
+
+### Fixed
+- **Translation Accuracy** - Removed incorrect translation wrapping for backend error messages
+- **Translation Completeness** - Added missing `{reason}` placeholder to error translations
+
 ## [8.42.1] - 2025-11-29
 
 ### Fixed
