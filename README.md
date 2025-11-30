@@ -23,14 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.42.1** (Nov 29, 2025)
+### 🆕 Latest Release: **v8.43.0** (Nov 30, 2025)
 
-**Bug Fix Release**
+**Internationalization & Quality Automation**
 
-- 🐛 **MCP Resource Handler Fix** - Fixed `AttributeError: 'AnyUrl' object has no attribute 'startswith'` in `handle_read_resource` (issue #254)
-- 🔧 **Pydantic Compatibility** - Added automatic URI string conversion to handle both string and AnyUrl inputs from MCP SDK
+- 🌍 **Frontend Internationalization** - Complete i18n support with English and Chinese translations (PR #256, thanks @amm10090!)
+- 🔒 **Enhanced Claude Branch Automation** - Integrated security and complexity checks before PR creation
+- 🚀 **Quality Gates in CI/CD** - Groq/Gemini LLM analysis blocks vulnerable code at PR stage
+- ⚡ **Optimized i18n Performance** - Single unified DOM traversal (4 calls → 1)
 
 **Previous Releases**:
+- **v8.42.1** - MCP Resource Handler Fix (`AttributeError` with Pydantic AnyUrl objects)
 - **v8.42.0** - Memory Awareness Enhancements (visible memory injection, quality session summaries, LLM-powered summarization)
 - **v8.41.2** - Hook Installer Utility File Deployment (ALL 14 utilities copied, future-proof glob pattern)
 - **v8.41.1** - Context Formatter Memory Sorting (recency sorting within categories, newest first)
