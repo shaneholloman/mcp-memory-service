@@ -661,6 +661,24 @@ Proactive release workflow automation with issue tracking, version management, a
 - **Documentation Matrix**: Automatic CHANGELOG, CLAUDE.md, README.md updates
 - **Issue Tracking**: Auto-detects "fixes #", suggests closures with smart comments
 - **Release Procedure**: Merge → Tag → Push → Verify workflows (Docker Publish, HTTP-MCP Bridge)
+- **Environment Detection** 🆕: Adapts workflow for local vs GitHub execution contexts
+
+**Environment-Aware Execution** (v8.42.1+):
+The agent now detects its execution environment and adapts accordingly:
+
+| Environment | Capabilities | Limitations | Workflow |
+|-------------|--------------|-------------|----------|
+| **Local Repository** | Full automation: branch, commit, PR, merge, tag, release | None | Complete end-to-end automation |
+| **GitHub (via @claude)** | Branch creation, version bump commits (3 files) | Cannot run `uv lock`, cannot create PR | Provides manual completion instructions |
+
+**GitHub Environment Usage**:
+When invoked via `@claude` in GitHub issues/PRs, the agent:
+1. ✅ Creates branch (`claude/issue-{number}-{timestamp}`)
+2. ✅ Commits version bump (3 files: __init__.py, pyproject.toml, README.md)
+3. ❌ **STOPS** - Cannot run `uv lock` or create PR
+4. ✅ Provides clear copy-paste instructions for manual completion
+
+**Why This Matters**: Previously, GitHub invocations created incomplete branches. Now the agent provides structured guidance to complete the release locally, ensuring consistency across environments.
 
 **Post-Release Workflow:** Retrieves issues from release, suggests closures with PR links and CHANGELOG entries.
 
