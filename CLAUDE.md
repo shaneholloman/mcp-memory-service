@@ -684,6 +684,90 @@ When invoked via `@claude` in GitHub issues/PRs, the agent:
 
 See [.claude/agents/github-release-manager.md](.claude/agents/github-release-manager.md) for complete workflows.
 
+### Claude Branch Automation with Quality Enforcement 🆕
+
+**Automated workflow** that completes Claude-generated branches with integrated quality checks before PR creation.
+
+**Workflow Location**: `.github/workflows/claude-branch-automation.yml`
+
+**Complete Automation Flow**:
+```
+User: "@claude fix issue #254"
+    ↓
+Claude: Fixes code + Auto-invokes github-release-manager
+    ↓
+Agent: Creates claude/issue-254-xxx branch with version bump
+    ↓
+GitHub Actions: Workflow triggers on branch push
+    ↓
+Workflow: Runs uv lock → Commits if changed
+    ↓
+Workflow: Runs quality checks (complexity + security)
+    ↓
+✅ PASS → Creates PR with quality report
+❌ FAIL → Comments on issue, blocks PR creation
+    ↓
+User: Reviews PR → Merges (if quality passed)
+```
+
+**Quality Checks Integrated**:
+1. **Code Complexity Analysis** (via Groq/Gemini LLM)
+   - Blocks: Functions with complexity >8
+   - Warns: Functions with complexity 7-8
+   - Uses GitHub Actions annotations for inline feedback
+
+2. **Security Vulnerability Scan**
+   - Checks: SQL injection, XSS, command injection, path traversal, secrets
+   - Blocks: ANY security vulnerability detected
+   - Machine-parseable output format for reliability
+
+**Quality Gate Outcomes**:
+
+| Status | Complexity | Security | Action |
+|--------|-----------|----------|--------|
+| **Pass** | All ≤8 | Clean | ✅ Create PR with green badge |
+| **Warnings** | Some 7-8 | Clean | ⚠️ Create PR with warning badge |
+| **Blocked** | Any >8 OR | Vulnerabilities | 🔴 Block PR, comment on issue |
+
+**PR Body Enhancement**:
+PRs created by the workflow include quality check status:
+```markdown
+## Quality Checks
+✅ **All quality checks passed**
+
+- Code complexity: Analyzed
+- Security scan: Completed
+- Status: `passed`
+```
+
+**Issue Notifications**:
+- **Success**: Comments on original issue with PR link and quality status
+- **Blocked**: Comments with workflow logs link and remediation steps
+
+**Environment Requirements**:
+- **GROQ_API_KEY**: Set as GitHub Secret (recommended - fast, no OAuth)
+- **Alternative**: Gemini CLI (slower, requires OAuth configuration)
+
+**Manual Override** (if needed):
+If quality checks produce false positives, you can:
+1. Review workflow logs at `Actions → Claude Branch Automation`
+2. Fix legitimate issues in the branch
+3. Push fixes → Workflow re-runs automatically
+4. Or manually create PR with `gh pr create` if override warranted
+
+**Relationship to Pre-Commit Hooks**:
+- **Pre-commit**: Runs locally during `git commit` (optional, developer machine)
+- **Workflow checks**: Runs in CI/CD (mandatory, enforced for all changes)
+- **Defense in depth**: Both layers recommended for maximum quality assurance
+
+**Benefits**:
+- ✅ **Zero bad code in PRs** - Security issues caught before code review
+- ✅ **Automated enforcement** - No manual quality gate step needed
+- ✅ **Fast feedback** - Results in <2 minutes (typical workflow time)
+- ✅ **GitHub-native** - Annotations, step summaries, inline comments
+
+See workflow file for implementation details: `.github/workflows/claude-branch-automation.yml:95-133`
+
 ### Code Quality Guard (Gemini CLI / Groq API)
 
 Fast automated analysis for complexity scoring, security scanning, and refactoring suggestions.

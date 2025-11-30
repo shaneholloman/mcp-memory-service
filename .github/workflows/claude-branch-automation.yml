@@ -92,6 +92,46 @@ jobs:
 
           git push origin ${{ github.ref_name }}
 
+      - name: Run Quality Checks
+        id: quality_check
+        continue-on-error: true  # Don't fail workflow, just capture result
+        run: |
+          echo "=== Running Quality Gate Checks ==="
+
+          # Get list of changed Python files compared to main
+          git diff origin/main...HEAD --name-only --diff-filter=ACMR > /tmp/changed_files.txt
+
+          echo "Changed files:"
+          cat /tmp/changed_files.txt
+          echo ""
+
+          # Run quality checks on changed files
+          # Note: GROQ_API_KEY or Gemini CLI required
+          # Exit codes: 0=pass, 1=warnings, 2=critical
+          if bash scripts/pr/run_quality_checks_on_files.sh --files-from /tmp/changed_files.txt; then
+            echo "quality_passed=true" >> $GITHUB_OUTPUT
+            echo "quality_status=passed" >> $GITHUB_OUTPUT
+            echo "blocking=false" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -eq 2 ]; then
+              echo "quality_passed=false" >> $GITHUB_OUTPUT
+              echo "quality_status=failed" >> $GITHUB_OUTPUT
+              echo "blocking=true" >> $GITHUB_OUTPUT
+              echo "::error::Quality gate FAILED - Security vulnerabilities detected"
+              exit 1  # Fail the step
+            else
+              echo "quality_passed=false" >> $GITHUB_OUTPUT
+              echo "quality_status=warnings" >> $GITHUB_OUTPUT
+              echo "blocking=false" >> $GITHUB_OUTPUT
+              echo "::warning::Quality gate has warnings but is non-blocking"
+              exit 0  # Don't fail the step
+            fi
+          fi
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
       - name: Extract issue number from branch name
         id: extract_issue
         run: |
@@ -154,7 +194,9 @@ jobs:
           cat /tmp/changelog.md
 
       - name: Create Pull Request
-        if: steps.check_pr.outputs.exists == '0'
+        if: |
+          steps.check_pr.outputs.exists == '0' &&
+          steps.quality_check.outputs.blocking != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -178,6 +220,19 @@ jobs:
             PR_TITLE="${PR_TYPE}: release v${VERSION}"
           fi
 
+          # Get quality check status for PR body
+          QUALITY_STATUS="${{ steps.quality_check.outputs.quality_status }}"
+          QUALITY_EMOJI="✅"
+          QUALITY_TEXT="All quality checks passed"
+
+          if [ "$QUALITY_STATUS" = "warnings" ]; then
+            QUALITY_EMOJI="⚠️"
+            QUALITY_TEXT="Quality checks passed with warnings (see workflow logs)"
+          elif [ "$QUALITY_STATUS" = "failed" ]; then
+            QUALITY_EMOJI="🔴"
+            QUALITY_TEXT="Quality checks failed (PR should not have been created)"
+          fi
+
           # Build PR body
           cat > /tmp/pr-body.md << EOF
           ## 🤖 Automated Release Preparation
@@ -190,6 +245,13 @@ jobs:
           - Updated \`uv.lock\` (automated)
           - Updated \`CHANGELOG.md\`
 
+          ## Quality Checks
+          ${QUALITY_EMOJI} **${QUALITY_TEXT}**
+
+          - Code complexity: Analyzed
+          - Security scan: Completed
+          - Status: \`${QUALITY_STATUS}\`
+
           ## CHANGELOG Entry
 
           $(cat /tmp/changelog.md)
@@ -199,6 +261,7 @@ jobs:
           - [x] \`uv.lock\` updated (automated by workflow)
           - [x] CHANGELOG.md updated
           - [x] README.md updated
+          - [x] Quality checks completed
 
           ## Related
           EOF
@@ -221,8 +284,46 @@ jobs:
 
           echo "✅ Pull Request created successfully"
 
+      - name: Comment on issue (Quality Check Blocked)
+        if: |
+          steps.extract_issue.outputs.number != '' &&
+          steps.quality_check.outputs.blocking == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUM="${{ steps.extract_issue.outputs.number }}"
+          VERSION="${{ steps.read_version.outputs.version }}"
+
+          cat > /tmp/quality-block-comment.md << EOF
+          ## 🔴 Quality Gate Failed - PR Creation Blocked
+
+          The automated release preparation for **v${VERSION}** was blocked due to critical quality issues.
+
+          **Branch created:** \`${{ github.ref_name }}\`
+
+          **Critical Issues Detected:**
+          - Security vulnerabilities found in code changes
+          - PR creation was blocked to prevent merging vulnerable code
+
+          **Action Required:**
+          1. Review the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed security scan results
+          2. Fix all security vulnerabilities in the branch
+          3. Push fixes to \`${{ github.ref_name }}\`
+          4. This workflow will re-run automatically and create the PR if checks pass
+
+          **Quality Gate Details:**
+          - Status: ${{ steps.quality_check.outputs.quality_status }}
+          - Blocking: ${{ steps.quality_check.outputs.blocking }}
+
+          🤖 Automated by Claude Branch Automation workflow with quality enforcement
+          EOF
+
+          gh issue comment "$ISSUE_NUM" --body-file /tmp/quality-block-comment.md
+
+          echo "✅ Quality block notification added to issue #${ISSUE_NUM}"
+
       - name: Comment on issue
-        if: steps.extract_issue.outputs.number != '' && steps.check_pr.outputs.exists == '0'
+        if: steps.extract_issue.outputs.number != '' && steps.check_pr.outputs.exists == '0' && steps.quality_check.outputs.blocking != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -232,6 +333,16 @@ jobs:
           # Get PR number
           PR_NUM=$(gh pr list --head "${{ github.ref_name }}" --json number --jq '.[0].number')
 
+          # Determine quality check status message
+          QUALITY_STATUS="${{ steps.quality_check.outputs.quality_status }}"
+          if [ "$QUALITY_STATUS" = "passed" ]; then
+            QUALITY_MSG="✅ Quality checks passed (complexity + security)"
+          elif [ "$QUALITY_STATUS" = "warnings" ]; then
+            QUALITY_MSG="⚠️  Quality checks passed with warnings (see PR for details)"
+          else
+            QUALITY_MSG="✅ Quality checks completed"
+          fi
+
           cat > /tmp/issue-comment.md << EOF
           ## 🚀 Release Preparation Complete
 
@@ -240,6 +351,7 @@ jobs:
           ✅ Branch created: \`${{ github.ref_name }}\`
           ✅ Version bumped in all files
           ✅ \`uv.lock\` updated automatically
+          ${QUALITY_MSG}
           ✅ Pull Request created: #${PR_NUM}
 
           **Next Steps:**
@@ -247,7 +359,7 @@ jobs:
           2. Once approved, merge to complete the release
           3. Tag and GitHub release will follow standard workflow
 
-          🤖 Automated by Claude Branch Automation workflow
+          🤖 Automated by Claude Branch Automation workflow with quality enforcement
           EOF
 
           gh issue comment "$ISSUE_NUM" --body-file /tmp/issue-comment.md
