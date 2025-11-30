@@ -23,16 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.43.0** (Nov 30, 2025)
+### 🆕 Latest Release: **v8.44.0** (Nov 30, 2025)
 
-**Internationalization & Quality Automation**
+**Multi-Language Expansion & Complete i18n Coverage**
 
-- 🌍 **Frontend Internationalization** - Complete i18n support with English and Chinese translations (PR #256, thanks @amm10090!)
-- 🔒 **Enhanced Claude Branch Automation** - Integrated security and complexity checks before PR creation
-- 🚀 **Quality Gates in CI/CD** - Groq/Gemini LLM analysis blocks vulnerable code at PR stage
-- ⚡ **Optimized i18n Performance** - Single unified DOM traversal (4 calls → 1)
+- 🌐 **5 New Languages Added** - Japanese, Korean, German, French, Spanish (359 keys each, fully validated)
+- ✨ **Complete UI Translation** - All dashboard elements now translatable (+57 keys: search results, modals, settings, browse tags)
+- 🎨 **Dark Mode i18n Polish** - Fixed language dropdown styling (backgrounds, hover states, active states)
+- 📝 **Full HTML Coverage** - Added ~80 data-i18n attributes for complete translation support
 
 **Previous Releases**:
+- **v8.43.0** - Internationalization & Quality Automation (English/Chinese i18n, Claude branch automation, quality gates)
 - **v8.42.1** - MCP Resource Handler Fix (`AttributeError` with Pydantic AnyUrl objects)
 - **v8.42.0** - Memory Awareness Enhancements (visible memory injection, quality session summaries, LLM-powered summarization)
 - **v8.41.2** - Hook Installer Utility File Deployment (ALL 14 utilities copied, future-proof glob pattern)
