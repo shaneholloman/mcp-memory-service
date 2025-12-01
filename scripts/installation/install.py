@@ -14,14 +14,6 @@ from pathlib import Path
 from typing import Tuple, Dict, Any, Optional
 import re
 
-# Import shared GPU detection utilities
-try:
-    from mcp_memory_service.utils.gpu_detection import detect_gpu as shared_detect_gpu
-except ImportError:
-    # Fallback for scripts directory context
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from src.mcp_memory_service.utils.gpu_detection import detect_gpu as shared_detect_gpu
-
 def is_python_version_at_least(major, minor):
     """Check if current Python version is at least the specified version.
 
@@ -278,6 +270,14 @@ def detect_gpu():
 
     Wrapper function that uses the shared GPU detection module.
     """
+    # Lazy import to avoid module-level import issues in tests
+    try:
+        from mcp_memory_service.utils.gpu_detection import detect_gpu as shared_detect_gpu
+    except ImportError:
+        # Fallback for scripts directory context
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+        from src.mcp_memory_service.utils.gpu_detection import detect_gpu as shared_detect_gpu
+
     system_info = detect_system()
 
     # Use shared GPU detection module
