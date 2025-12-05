@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.45.0**: **Memory Quality System** - AI-driven automatic quality scoring with local SLM (ms-marco-MiniLM-L-6-v2 ONNX, zero cost, privacy-first). Features: quality-based forgetting (preserve high-quality memories 365 days), quality-boosted search (0.7×semantic + 0.3×quality reranking), dashboard analytics with quality badges, 3 MCP tools + 4 HTTP endpoints. Local-first design: 50-100ms latency (CPU), full privacy, offline-capable. Targets 40-70% retrieval precision improvement. See [docs/guides/memory-quality-guide.md](docs/guides/memory-quality-guide.md) and [CHANGELOG.md](CHANGELOG.md) for details.
+> **🆕 v8.45.1**: **Quality System Test Infrastructure Fixes** - Fixed HTTP API router configuration (missing `/api/quality` prefix causing 404s), corrected MCP tool storage method calls (`get_all_memories()` vs `search_all_memories()`), replaced synchronous TestClient with async httpx.AsyncClient for SQLite thread safety. All 27 functional tests passing, ONNX tests properly skipping. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

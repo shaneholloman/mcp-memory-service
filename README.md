@@ -23,18 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.45.0** (Dec 05, 2025)
+### 🆕 Latest Release: **v8.45.1** (Dec 05, 2025)
 
-**Memory Quality System - AI-Driven Automatic Quality Scoring**
+**Quality System Test Infrastructure Fixes**
 
-- 🧠 **Local SLM Quality Scoring** - ONNX-powered (23MB model), zero cost, full privacy, offline-capable (50-100ms CPU, 10-20ms GPU)
-- 🎯 **Multi-Tier Fallback** - Local SLM → Groq API → Gemini API → Implicit signals (95% local SLM usage target)
-- 📊 **Quality-Based Management** - Smart retention (high quality 365 days), weighted decay, quality-boosted search (0.7×semantic + 0.3×quality)
-- 🔧 **4 New MCP Tools** - rate_memory, get_memory_quality, analyze_quality_distribution, retrieve_with_quality_boost
-- 📈 **Dashboard Analytics** - Quality badges, distribution charts, provider breakdown, top/bottom performers
-- ⚙️ **10 New Config Variables** - Comprehensive quality system control (enable/disable, provider, boost weight, retention thresholds)
+- 🔧 **HTTP API Router Configuration** - Fixed missing `/api/quality` prefix causing 404 errors on all quality endpoints
+- 🛠️ **MCP Tool Storage Retrieval** - Corrected method call from `search_all_memories()` to `get_all_memories()` in quality distribution tool
+- ✅ **Test Infrastructure Improvements** - Replaced synchronous TestClient with async httpx.AsyncClient for SQLite thread safety
+- 📦 **Dependencies Added** - Added `pytest-benchmark` and `onnxruntime` as optional dependencies for quality system testing
 
 **Previous Releases**:
+- **v8.45.0** - Memory Quality System - AI-Driven Automatic Quality Scoring (ONNX-powered local SLM, multi-tier fallback, quality-based retention)
 - **v8.44.0** - Multi-Language Expansion (Japanese, Korean, German, French, Spanish - 359 keys each, complete i18n coverage)
 - **v8.43.0** - Internationalization & Quality Automation (English/Chinese i18n, Claude branch automation, quality gates)
 - **v8.42.1** - MCP Resource Handler Fix (`AttributeError` with Pydantic AnyUrl objects)

@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.45.1] - 2025-12-05
+
+### Fixed
+- **Quality System HTTP API** - Fixed router configuration causing 404 errors on all `/api/quality/*` endpoints (missing `/api/quality` prefix in app.py router inclusion)
+- **Quality Distribution MCP Tool** - Corrected storage method call from non-existent `search_all_memories()` to `get_all_memories()` in server.py quality distribution handler
+- **HTTP API Tests** - Replaced synchronous `TestClient` with async `httpx.AsyncClient` to fix SQLite thread safety issues in quality system tests
+- **Distribution Endpoint** - Fixed storage retrieval logic in quality.py and removed unnecessary dict-to-Memory conversions
+
+### Added
+- **Dependencies** - Added `pytest-benchmark` for performance testing support
+- **Dependencies** - Added `onnxruntime` as optional dependency for ONNX model support
+
+### Testing
+- All 27 functional tests passing
+- ONNX tests properly skip when model unavailable (expected behavior)
+- Zero errors in test suite
+
 ## [8.45.0] - 2025-12-05
 
 ### Added
