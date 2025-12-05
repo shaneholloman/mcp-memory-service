@@ -549,12 +549,22 @@ class CloudflareStorage(MemoryStorage):
             for match in matches:
                 memory = await self._load_memory_from_match(match)
                 if memory:
+                    # Record access for quality scoring (implicit signals)
+                    memory.record_access(query)
+
                     query_result = MemoryQueryResult(
                         memory=memory,
                         relevance_score=match.get("score", 0.0)
                     )
                     results.append(query_result)
-            
+
+            # Persist updated metadata for accessed memories
+            for result in results:
+                try:
+                    await self._persist_access_metadata(result.memory)
+                except Exception as e:
+                    logger.warning(f"Failed to persist access metadata: {e}")
+
             logger.info(f"Retrieved {len(results)} memories for query")
             return results
             
@@ -910,7 +920,26 @@ class CloudflareStorage(MemoryStorage):
         except Exception as e:
             logger.error(f"Failed to cleanup duplicates: {e}")
             return 0, f"Cleanup failed: {str(e)}"
-    
+
+    async def _persist_access_metadata(self, memory: Memory):
+        """
+        Persist access tracking metadata (access_count, last_accessed_at) to storage.
+
+        Args:
+            memory: Memory object with updated access metadata
+        """
+        # Update metadata in D1
+        sql = """
+            UPDATE memories
+            SET metadata_json = ?
+            WHERE content_hash = ?
+        """
+        payload = {
+            "sql": sql,
+            "params": [json.dumps(memory.metadata), memory.content_hash]
+        }
+        await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+
     async def update_memory_metadata(self, content_hash: str, updates: Dict[str, Any], preserve_timestamps: bool = True) -> Tuple[bool, str]:
         """Update memory metadata without recreating the entry."""
         try:

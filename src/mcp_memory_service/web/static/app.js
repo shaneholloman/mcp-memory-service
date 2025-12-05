@@ -1941,6 +1941,9 @@ class MemoryDashboard {
             case 'analytics':
                 await this.loadAnalyticsData();
                 break;
+            case 'qualityAnalytics':
+                await this.loadQualityAnalytics();
+                break;
             case 'apiDocs':
                 // API docs view - static content, no additional loading needed
                 break;
@@ -2915,6 +2918,7 @@ class MemoryDashboard {
 
     return `
     <div class="memory-card" data-memory-id="${memory.content_hash}">
+        ${this.renderQualityBadge(memory)}
     <div class="memory-header">
         <div class="memory-meta">
                         <span>${createdDate}</span>
@@ -4468,6 +4472,254 @@ class MemoryDashboard {
      */
     async handleGrowthPeriodChange() {
         await this.loadMemoryGrowthChart();
+    }
+
+    // ===== QUALITY ANALYTICS METHODS =====
+
+    /**
+     * Load quality analytics dashboard
+     */
+    async loadQualityAnalytics() {
+        try {
+            const response = await fetch(`${this.apiBase}/quality/distribution`);
+            if (!response.ok) throw new Error('Failed to load quality analytics');
+
+            const data = await response.json();
+
+            // Update summary stats
+            this.updateElementText('quality-total-memories', data.total_memories.toLocaleString());
+            this.updateElementText('quality-high-count', data.high_quality_count.toLocaleString());
+            this.updateElementText('quality-medium-count', data.medium_quality_count.toLocaleString());
+            this.updateElementText('quality-low-count', data.low_quality_count.toLocaleString());
+            this.updateElementText('quality-average-score', data.average_score.toFixed(2));
+
+            // Render charts
+            this.renderQualityDistributionChart(data);
+            this.renderQualityProviderChart(data.provider_breakdown);
+
+            // Render top/bottom memories
+            this.renderTopQualityMemories(data.top_memories);
+            this.renderBottomQualityMemories(data.bottom_memories);
+
+        } catch (error) {
+            console.error('Failed to load quality analytics:', error);
+            this.showToast('Failed to load quality analytics', 'error');
+        }
+    }
+
+    /**
+     * Render quality distribution bar chart
+     */
+    renderQualityDistributionChart(data) {
+        const canvas = document.getElementById('quality-distribution-chart');
+        if (!canvas) return;
+
+        // Destroy existing chart if present
+        if (this.qualityDistributionChart) {
+            this.qualityDistributionChart.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        this.qualityDistributionChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Low (<0.5)', 'Medium (0.5-0.7)', 'High (≥0.7)'],
+                datasets: [{
+                    label: 'Number of Memories',
+                    data: [
+                        data.low_quality_count,
+                        data.medium_quality_count,
+                        data.high_quality_count
+                    ],
+                    backgroundColor: [
+                        '#F8D7DA',  // Low
+                        '#FFF3CD',  // Medium
+                        '#D4EDDA'   // High
+                    ],
+                    borderColor: [
+                        '#F5C6CB',
+                        '#FFEAA7',
+                        '#C3E6CB'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Render quality provider pie chart
+     */
+    renderQualityProviderChart(providerData) {
+        const canvas = document.getElementById('quality-provider-chart');
+        if (!canvas) return;
+
+        // Destroy existing chart if present
+        if (this.qualityProviderChart) {
+            this.qualityProviderChart.destroy();
+        }
+
+        const labels = Object.keys(providerData);
+        const values = Object.values(providerData);
+
+        // Friendly provider names
+        const friendlyLabels = labels.map(label => {
+            switch(label) {
+                case 'ONNXRankerModel': return 'Local SLM';
+                case 'GroqEvaluator': return 'Groq API';
+                case 'GeminiEvaluator': return 'Gemini API';
+                case 'ImplicitSignalsEvaluator': return 'Implicit Only';
+                case 'local': return 'Local SLM';
+                case 'groq': return 'Groq API';
+                case 'gemini': return 'Gemini API';
+                case 'implicit': return 'Implicit Only';
+                default: return label;
+            }
+        });
+
+        const ctx = canvas.getContext('2d');
+        this.qualityProviderChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: friendlyLabels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: [
+                        '#4CAF50',  // Local (primary)
+                        '#2196F3',  // Groq
+                        '#FF9800',  // Gemini
+                        '#9E9E9E'   // Implicit
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Render top quality memories list
+     */
+    renderTopQualityMemories(memories) {
+        const container = document.getElementById('quality-top-memories-list');
+        if (!container) return;
+
+        if (!memories || memories.length === 0) {
+            container.innerHTML = '<p class="text-muted">No memories available</p>';
+            return;
+        }
+
+        const html = memories.map(memory => `
+            <div class="memory-preview" onclick="window.app.handleMemoryClick('${memory.content_hash}')">
+                <div class="quality-badge quality-tier-high">
+                    <span class="quality-star">★</span>
+                    <span class="quality-score">${memory.quality_score.toFixed(2)}</span>
+                </div>
+                <div class="memory-content">${this.escapeHtml(memory.content)}</div>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render bottom quality memories list (for improvement)
+     */
+    renderBottomQualityMemories(memories) {
+        const container = document.getElementById('quality-bottom-memories-list');
+        if (!container) return;
+
+        if (!memories || memories.length === 0) {
+            container.innerHTML = '<p class="text-muted">No memories available</p>';
+            return;
+        }
+
+        const html = memories.map(memory => `
+            <div class="memory-preview" onclick="window.app.handleMemoryClick('${memory.content_hash}')">
+                <div class="quality-badge quality-tier-low">
+                    <span class="quality-star">★</span>
+                    <span class="quality-score">${memory.quality_score.toFixed(2)}</span>
+                </div>
+                <div class="memory-content">${this.escapeHtml(memory.content)}</div>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render quality badge for a memory
+     */
+    renderQualityBadge(memory) {
+        const score = memory.quality_score || memory.metadata?.quality_score || 0.5;
+        const provider = memory.quality_provider || memory.metadata?.quality_provider || 'none';
+
+        // Determine tier
+        let tier = 'low';
+        if (score >= 0.7) tier = 'high';
+        else if (score >= 0.5) tier = 'medium';
+
+        return `
+            <div class="quality-badge quality-tier-${tier}"
+                 data-quality-score="${score.toFixed(2)}"
+                 title="Quality Score: ${score.toFixed(2)} (${provider})">
+                <span class="quality-star">★</span>
+                <span class="quality-score">${score.toFixed(2)}</span>
+            </div>
+        `;
+    }
+
+    /**
+     * Rate a memory manually
+     */
+    async rateMemory(contentHash, rating) {
+        try {
+            const response = await fetch(`${this.apiBase}/quality/memories/${contentHash}/rate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rating: rating,
+                    feedback: ''
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to rate memory');
+
+            const result = await response.json();
+            this.showToast(`Rating saved! Quality score updated to ${result.new_quality_score.toFixed(2)}`, 'success');
+
+            // Refresh memory display if viewing details
+            // This would refresh the modal or current view
+
+        } catch (error) {
+            console.error('Failed to rate memory:', error);
+            this.showToast('Failed to save rating', 'error');
+        }
     }
 
     // ===== UTILITY METHODS =====

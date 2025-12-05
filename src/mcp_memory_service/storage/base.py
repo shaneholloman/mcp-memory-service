@@ -95,7 +95,96 @@ class MemoryStorage(ABC):
     async def retrieve(self, query: str, n_results: int = 5) -> List[MemoryQueryResult]:
         """Retrieve memories by semantic search."""
         pass
-    
+
+    async def retrieve_with_quality_boost(
+        self,
+        query: str,
+        n_results: int = 10,
+        quality_boost: Optional[bool] = None,
+        quality_weight: Optional[float] = None
+    ) -> List[MemoryQueryResult]:
+        """
+        Retrieve memories with optional quality-based reranking.
+
+        This method enables quality-aware search that prioritizes high-quality memories
+        in the results. It over-fetches candidates (3x) then reranks by a composite score
+        combining semantic similarity and quality scores.
+
+        Args:
+            query: Search query
+            n_results: Number of results to return
+            quality_boost: Enable quality reranking (default from config)
+            quality_weight: Weight for quality score 0.0-1.0 (default 0.3, meaning 30% quality, 70% semantic)
+
+        Returns:
+            List of MemoryQueryResult, reranked by quality if enabled
+
+        Example:
+            # Standard search (semantic similarity only)
+            results = await storage.retrieve("python async", n_results=10)
+
+            # Quality-boosted search (70% semantic + 30% quality)
+            results = await storage.retrieve_with_quality_boost(
+                "python async",
+                n_results=10,
+                quality_boost=True,
+                quality_weight=0.3
+            )
+        """
+        from ..config import MCP_QUALITY_BOOST_ENABLED, MCP_QUALITY_BOOST_WEIGHT
+
+        # Get config defaults if not specified
+        if quality_boost is None:
+            quality_boost = MCP_QUALITY_BOOST_ENABLED
+        if quality_weight is None:
+            quality_weight = MCP_QUALITY_BOOST_WEIGHT
+
+        # Validate quality_weight
+        if not 0.0 <= quality_weight <= 1.0:
+            raise ValueError(f"quality_weight must be 0.0-1.0, got {quality_weight}")
+
+        if not quality_boost:
+            # Standard retrieval, no reranking
+            return await self.retrieve(query, n_results)
+
+        # Quality-boosted retrieval
+        # Step 1: Over-fetch (3x) to have pool for reranking
+        oversample_factor = 3
+        candidates = await self.retrieve(query, n_results * oversample_factor)
+
+        if not candidates:
+            return []
+
+        # Step 2: Rerank by composite score
+        semantic_weight = 1.0 - quality_weight
+
+        for result in candidates:
+            semantic_score = result.relevance_score  # Original similarity
+            quality_score = result.memory.quality_score
+
+            # Composite score
+            result.relevance_score = (
+                semantic_weight * semantic_score +
+                quality_weight * quality_score
+            )
+
+            # Store components in debug_info for transparency
+            if result.debug_info is None:
+                result.debug_info = {}
+            result.debug_info.update({
+                'original_semantic_score': semantic_score,
+                'quality_score': quality_score,
+                'quality_weight': quality_weight,
+                'semantic_weight': semantic_weight,
+                'reranked': True
+            })
+
+        # Step 3: Resort by new composite score
+        candidates.sort(key=lambda r: r.relevance_score, reverse=True)
+
+        # Step 4: Return top N
+        return candidates[:n_results]
+
     @abstractmethod
     async def search_by_tag(self, tags: List[str], time_start: Optional[float] = None) -> List[Memory]:
         """Search memories by tags with optional time filtering.

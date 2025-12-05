@@ -6,6 +6,8 @@
     <title data-i18n="meta.title">MCP Memory Service - Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+    <!-- Chart.js for quality analytics visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- Main Application Container -->
@@ -133,6 +135,12 @@
                         <path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/>
                     </svg>
                     Analytics
+                </button>
+                <button class="nav-item" data-view="qualityAnalytics" data-i18n="nav.qualityAnalytics">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z"/>
+                    </svg>
+                    Quality
                 </button>
                 <button class="nav-item" data-view="apiDocs" data-i18n="nav.apiDocs">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
@@ -858,6 +866,66 @@
                 </div>
             </div>
 
+            <!-- Quality Analytics View -->
+            <div id="qualityAnalyticsView" class="view-container">
+                <div class="quality-analytics-section">
+                    <h2 data-i18n="quality.analytics.title">⭐ Memory Quality Analytics</h2>
+                    <p data-i18n="quality.analytics.subtitle">Track and improve your memory quality with AI-powered scoring</p>
+
+                    <!-- Quality Distribution Summary -->
+                    <div class="quality-summary">
+                        <div class="stat-card">
+                            <div class="stat-value" id="quality-total-memories">-</div>
+                            <div class="stat-label" data-i18n="quality.stats.total">Total Memories</div>
+                        </div>
+
+                        <div class="stat-card stat-high">
+                            <div class="stat-value" id="quality-high-count">-</div>
+                            <div class="stat-label" data-i18n="quality.stats.high">High Quality (≥0.7)</div>
+                        </div>
+
+                        <div class="stat-card stat-medium">
+                            <div class="stat-value" id="quality-medium-count">-</div>
+                            <div class="stat-label" data-i18n="quality.stats.medium">Medium (0.5-0.7)</div>
+                        </div>
+
+                        <div class="stat-card stat-low">
+                            <div class="stat-value" id="quality-low-count">-</div>
+                            <div class="stat-label" data-i18n="quality.stats.low">Low (<0.5)</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value" id="quality-average-score">-</div>
+                            <div class="stat-label" data-i18n="quality.stats.average">Average Score</div>
+                        </div>
+                    </div>
+
+                    <!-- Distribution Chart -->
+                    <div class="chart-container">
+                        <h3 data-i18n="quality.chart.distribution.title">Quality Score Distribution</h3>
+                        <canvas id="quality-distribution-chart"></canvas>
+                    </div>
+
+                    <!-- Provider Breakdown -->
+                    <div class="chart-container">
+                        <h3 data-i18n="quality.chart.providers.title">Scoring Provider Breakdown</h3>
+                        <canvas id="quality-provider-chart"></canvas>
+                    </div>
+
+                    <!-- Top Performers -->
+                    <div class="top-performers">
+                        <h3 data-i18n="quality.top.title">🏆 Top Quality Memories</h3>
+                        <div id="quality-top-memories-list"></div>
+                    </div>
+
+                    <!-- Bottom Performers (for improvement) -->
+                    <div class="bottom-performers">
+                        <h3 data-i18n="quality.bottom.title">📈 Memories for Improvement</h3>
+                        <div id="quality-bottom-memories-list"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- API Documentation View -->
             <div id="apiDocsView" class="view-container">
                 <div class="api-docs-header">
@@ -1158,6 +1226,61 @@
                             <div class="info-row">
                                 <span class="info-label" data-i18n="modal.settings.uptime">Uptime:</span>
                                 <span class="info-value" id="settingsUptime" data-i18n="status.loading">Loading...</span>
+                            </div>
+                        </div>
+
+                        <hr class="settings-divider">
+
+                        <h4 class="settings-section-heading" data-i18n="modal.settings.qualitySystem">Quality System</h4>
+                        <div class="quality-settings">
+                            <!-- AI Provider Selection -->
+                            <div class="setting-item">
+                                <label for="quality-provider" data-i18n="settings.quality.provider.label">
+                                    AI Provider
+                                </label>
+                                <select id="quality-provider" class="form-select">
+                                    <option value="local" data-i18n="settings.quality.provider.local">
+                                        Local SLM (Privacy Mode)
+                                    </option>
+                                    <option value="groq" data-i18n="settings.quality.provider.groq">
+                                        Groq API
+                                    </option>
+                                    <option value="gemini" data-i18n="settings.quality.provider.gemini">
+                                        Gemini API
+                                    </option>
+                                    <option value="auto" data-i18n="settings.quality.provider.auto">
+                                        Auto (All Available)
+                                    </option>
+                                    <option value="none" data-i18n="settings.quality.provider.none">
+                                        Implicit Only (No AI)
+                                    </option>
+                                </select>
+                                <small class="form-text" data-i18n="settings.quality.provider.help">
+                                    Local SLM provides zero-cost, privacy-preserving quality scoring
+                                </small>
+                            </div>
+
+                            <!-- Quality Boost Toggle -->
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="quality-boost-enabled" checked>
+                                    <span data-i18n="settings.quality.boost.label">
+                                        Enable Quality-Boosted Search
+                                    </span>
+                                </label>
+                                <small class="form-text" data-i18n="settings.quality.boost.help">
+                                    Rerank search results to prioritize high-quality memories
+                                </small>
+                            </div>
+
+                            <!-- Current Provider Info -->
+                            <div class="setting-info">
+                                <div data-i18n="settings.quality.current.label">Current Provider:</div>
+                                <div id="current-provider-info" class="info-value">
+                                    <strong>Local SLM</strong> (ms-marco-MiniLM-L-6-v2)
+                                    <br>
+                                    <span class="text-muted">Zero cost • Full privacy • 50-100ms latency</span>
+                                </div>
                             </div>
                         </div>
 

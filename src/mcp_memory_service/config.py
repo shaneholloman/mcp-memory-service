@@ -855,3 +855,43 @@ if OAUTH_ENABLED:
     except ValueError as e:
         logger.error(f"OAuth configuration validation failed: {e}")
         raise
+
+# =============================================================================
+# Quality System Configuration (Memento-Inspired Quality System)
+# =============================================================================
+
+# Quality system master toggle
+MCP_QUALITY_SYSTEM_ENABLED = safe_get_bool_env('MCP_QUALITY_SYSTEM_ENABLED', True)
+
+# Quality scoring provider configuration
+# Options: 'local' (ONNX ranker), 'groq', 'gemini', 'auto' (fallback chain), 'none' (disabled)
+MCP_QUALITY_AI_PROVIDER = os.getenv('MCP_QUALITY_AI_PROVIDER', 'local').lower()
+
+# Local ONNX model configuration
+MCP_QUALITY_LOCAL_MODEL = os.getenv('MCP_QUALITY_LOCAL_MODEL', 'ms-marco-MiniLM-L-6-v2')
+MCP_QUALITY_LOCAL_DEVICE = os.getenv('MCP_QUALITY_LOCAL_DEVICE', 'auto').lower()  # auto|cpu|cuda|mps|directml
+
+# Quality-Boosted Search Configuration
+MCP_QUALITY_BOOST_ENABLED = safe_get_bool_env('MCP_QUALITY_BOOST_ENABLED', False)  # Opt-in by default
+MCP_QUALITY_BOOST_WEIGHT = float(os.getenv('MCP_QUALITY_BOOST_WEIGHT', '0.3'))  # 30% quality, 70% semantic
+
+# Validate quality boost weight
+if not 0.0 <= MCP_QUALITY_BOOST_WEIGHT <= 1.0:
+    logger.warning(f"Invalid quality boost weight: {MCP_QUALITY_BOOST_WEIGHT}, must be 0.0-1.0. Using default 0.3")
+    MCP_QUALITY_BOOST_WEIGHT = 0.3
+
+# Quality-Based Retention Policy (Consolidation)
+MCP_QUALITY_RETENTION_HIGH = safe_get_int_env('MCP_QUALITY_RETENTION_HIGH', 365, min_value=1, max_value=3650)       # days for quality ≥0.7
+MCP_QUALITY_RETENTION_MEDIUM = safe_get_int_env('MCP_QUALITY_RETENTION_MEDIUM', 180, min_value=1, max_value=3650)  # days for quality 0.5-0.7
+MCP_QUALITY_RETENTION_LOW_MIN = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MIN', 30, min_value=1, max_value=365)  # minimum days for quality <0.5
+MCP_QUALITY_RETENTION_LOW_MAX = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MAX', 90, min_value=1, max_value=365)  # maximum days for quality <0.5
+
+# Log quality system configuration
+logger.info(f"Quality System: enabled={MCP_QUALITY_SYSTEM_ENABLED}, provider={MCP_QUALITY_AI_PROVIDER}")
+if MCP_QUALITY_SYSTEM_ENABLED:
+    logger.info(f"Quality Boost Search: enabled={MCP_QUALITY_BOOST_ENABLED}, weight={MCP_QUALITY_BOOST_WEIGHT}")
+    logger.info(f"Quality Retention: high={MCP_QUALITY_RETENTION_HIGH}d, medium={MCP_QUALITY_RETENTION_MEDIUM}d, low={MCP_QUALITY_RETENTION_LOW_MIN}-{MCP_QUALITY_RETENTION_LOW_MAX}d")
+
+# =============================================================================
+# End Quality System Configuration
+# =============================================================================

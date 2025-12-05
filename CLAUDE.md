@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.44.0**: **Multi-Language Expansion** - Added 5 new languages (Japanese, Korean, German, French, Spanish) with complete UI translation coverage (+57 keys for search, modals, settings), fixed dark mode language dropdown styling, ~80 data-i18n attributes for full HTML coverage. Dashboard now supports 7 languages with 359 keys each, all professionally validated. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.45.0**: **Memory Quality System** - AI-driven automatic quality scoring with local SLM (ms-marco-MiniLM-L-6-v2 ONNX, zero cost, privacy-first). Features: quality-based forgetting (preserve high-quality memories 365 days), quality-boosted search (0.7×semantic + 0.3×quality reranking), dashboard analytics with quality badges, 3 MCP tools + 4 HTTP endpoints. Local-first design: 50-100ms latency (CPU), full privacy, offline-capable. Targets 40-70% retrieval precision improvement. See [docs/guides/memory-quality-guide.md](docs/guides/memory-quality-guide.md) and [CHANGELOG.md](CHANGELOG.md) for details.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -24,6 +24,10 @@ MCP Memory Service is a Model Context Protocol server providing semantic memory 
 | **Memory Ops** | `claude /memory-store "content"` | Store information |
 | | `claude /memory-recall "query"` | Retrieve information |
 | | `claude /memory-health` | Check service status |
+| **Quality System** | `curl http://127.0.0.1:8000/api/quality/distribution` | Get quality analytics (v8.45.0+) |
+| | `curl -X POST http://127.0.0.1:8000/api/quality/memories/{hash}/rate -d '{"rating":1}'` | Rate memory quality |
+| | `curl http://127.0.0.1:8000/api/quality/memories/{hash}` | Get quality metrics |
+| | `export MCP_QUALITY_BOOST_ENABLED=true` | Enable quality-boosted search |
 | **Validation** | `python scripts/validation/validate_configuration_complete.py` | Comprehensive config validation |
 | | `python scripts/validation/diagnose_backend_config.py` | Cloudflare diagnostics |
 | **Maintenance** | `python scripts/maintenance/consolidate_memory_types.py --dry-run` | Preview type consolidation |
@@ -76,7 +80,87 @@ See [docs/document-ingestion.md](docs/document-ingestion.md) for full configurat
 
 Web interface at `http://127.0.0.1:8000/` with CRUD operations, semantic/tag/time search, real-time updates (SSE), mobile responsive. Performance: 25ms page load, <100ms search.
 
-**API Endpoints:** `/api/search`, `/api/search/by-tag`, `/api/search/by-time`, `/api/events`
+**API Endpoints:** `/api/search`, `/api/search/by-tag`, `/api/search/by-time`, `/api/events`, `/api/quality/*` (v8.45.0+)
+
+## Memory Quality System 🆕 (v8.45.0+)
+
+**AI-driven automatic quality scoring** with local-first design for zero-cost, privacy-preserving memory evaluation.
+
+### Architecture
+
+**Tier 1 (Primary)**: Local SLM via ONNX
+- Model: `ms-marco-MiniLM-L-6-v2` cross-encoder (23MB)
+- Cost: **$0** (runs locally, CPU/GPU)
+- Latency: 50-100ms (CPU), 10-20ms (GPU with CUDA/MPS/DirectML)
+- Privacy: ✅ Full (no external API calls)
+- Offline: ✅ Works without internet
+
+**Tier 2-3 (Optional)**: Groq/Gemini APIs (user opt-in only)
+**Tier 4 (Fallback)**: Implicit signals (access patterns)
+
+### Key Features
+
+1. **Automatic Quality Scoring**
+   - Evaluates every retrieved memory (0.0-1.0 score)
+   - Combines AI evaluation + usage patterns
+   - Non-blocking (async background scoring)
+
+2. **Quality-Boosted Search**
+   - Reranks results: `0.7 × semantic + 0.3 × quality`
+   - Over-fetches 3×, returns top N by composite score
+   - Opt-in via `MCP_QUALITY_BOOST_ENABLED=true`
+
+3. **Quality-Based Forgetting**
+   - High quality (≥0.7): Preserved 365 days inactive
+   - Medium (0.5-0.7): Preserved 180 days inactive
+   - Low (<0.5): Archived 30-90 days inactive
+
+4. **Dashboard Integration**
+   - Quality badges on all memory cards (color-coded)
+   - Analytics view with distribution charts
+   - Top/bottom performers lists
+
+### Configuration
+
+```bash
+# Quality System (Local-First Defaults)
+export MCP_QUALITY_SYSTEM_ENABLED=true         # Default: enabled
+export MCP_QUALITY_AI_PROVIDER=local           # local|groq|gemini|auto|none
+export MCP_QUALITY_LOCAL_MODEL=ms-marco-MiniLM-L-6-v2
+export MCP_QUALITY_LOCAL_DEVICE=auto           # auto|cpu|cuda|mps|directml
+
+# Quality-Boosted Search (Opt-In)
+export MCP_QUALITY_BOOST_ENABLED=false         # Default: disabled (opt-in)
+export MCP_QUALITY_BOOST_WEIGHT=0.3            # 0.3 = 30% quality, 70% semantic
+
+# Quality-Based Retention
+export MCP_QUALITY_RETENTION_HIGH=365          # Days for quality ≥0.7
+export MCP_QUALITY_RETENTION_MEDIUM=180        # Days for 0.5-0.7
+export MCP_QUALITY_RETENTION_LOW_MIN=30        # Min days for <0.5
+```
+
+### MCP Tools
+
+- `rate_memory(content_hash, rating, feedback)` - Manual quality rating (-1/0/1)
+- `get_memory_quality(content_hash)` - Retrieve quality metrics
+- `analyze_quality_distribution(min_quality, max_quality)` - System-wide analytics
+- `retrieve_with_quality_boost(query, n_results, quality_weight)` - Quality-boosted search
+
+### Success Metrics (Phase 1 Targets)
+
+- ✅ **>40% improvement** in retrieval precision (50% → 70%+ useful)
+- ✅ **>95% local SLM usage** (Tier 1 success rate)
+- ✅ **<100ms search latency** with quality boost
+- ✅ **$0 monthly cost** (local SLM default)
+
+### Documentation
+
+See [docs/guides/memory-quality-guide.md](docs/guides/memory-quality-guide.md) for:
+- Comprehensive user guide
+- Configuration examples
+- Troubleshooting
+- Best practices
+- Performance benchmarks
 
 ## Memory Consolidation System 🆕
 

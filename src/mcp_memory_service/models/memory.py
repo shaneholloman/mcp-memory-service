@@ -192,6 +192,45 @@ class Memory:
         self.updated_at = now
         self.updated_at_iso = datetime.utcfromtimestamp(now).isoformat() + "Z"
 
+    @property
+    def quality_score(self) -> float:
+        """Get quality score from metadata (default: 0.5)."""
+        return self.metadata.get('quality_score', 0.5)
+
+    @property
+    def quality_provider(self) -> Optional[str]:
+        """Get the provider used for quality scoring."""
+        return self.metadata.get('quality_provider')
+
+    @property
+    def access_count(self) -> int:
+        """Get number of times this memory has been accessed."""
+        return self.metadata.get('access_count', 0)
+
+    @property
+    def last_accessed_at(self) -> Optional[float]:
+        """Get timestamp of last access (Unix timestamp)."""
+        return self.metadata.get('last_accessed_at')
+
+    def record_access(self, query: Optional[str] = None):
+        """
+        Record memory access for implicit signals tracking.
+
+        Args:
+            query: Optional query that triggered this access
+        """
+        now = time.time()
+        self.metadata['access_count'] = self.access_count + 1
+        self.metadata['last_accessed_at'] = now
+        if query:
+            # Store recent access queries for analysis (keep last 10)
+            access_queries = self.metadata.get('access_queries', [])
+            access_queries.append({
+                'query': query,
+                'timestamp': now
+            })
+            self.metadata['access_queries'] = access_queries[-10:]
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert memory to dictionary format for storage."""
         # Ensure timestamps are synchronized

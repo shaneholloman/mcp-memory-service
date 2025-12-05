@@ -1638,6 +1638,54 @@ class MemoryServer:
                         }
                     ),
                     types.Tool(
+                        name="retrieve_with_quality_boost",
+                        description="""Search memories with quality-based reranking.
+
+                        Prioritizes high-quality memories in results using composite scoring:
+                        - Over-fetches 3x candidates
+                        - Reranks by: (1 - quality_weight) * semantic_similarity + quality_weight * quality_score
+                        - Default: 70% semantic + 30% quality
+
+                        Quality scores (0.0-1.0) reflect memory usefulness based on:
+                        - Specificity and actionability
+                        - Recency and context relevance
+                        - Retrieval frequency
+
+                        Examples:
+                        {
+                            "query": "python async patterns",
+                            "n_results": 10
+                        }
+
+                        {
+                            "query": "deployment best practices",
+                            "n_results": 5,
+                            "quality_weight": 0.5
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Search query to find relevant memories"
+                                },
+                                "n_results": {
+                                    "type": "number",
+                                    "default": 10,
+                                    "description": "Number of results to return (default 10)"
+                                },
+                                "quality_weight": {
+                                    "type": "number",
+                                    "default": 0.3,
+                                    "minimum": 0.0,
+                                    "maximum": 1.0,
+                                    "description": "Quality score weight 0.0-1.0 (default 0.3 = 30% quality, 70% semantic)"
+                                }
+                            },
+                            "required": ["query"]
+                        }
+                    ),
+                    types.Tool(
                         name="search_by_tag",
                         description="""Search memories by tags. Must use array format.
                         Returns memories matching ANY of the specified tags.
@@ -2298,7 +2346,106 @@ class MemoryServer:
                 ]
                 tools.extend(ingestion_tools)
                 logger.info(f"Added {len(ingestion_tools)} ingestion tools")
-                
+
+                # Quality system tools
+                quality_tools = [
+                    types.Tool(
+                        name="rate_memory",
+                        description="""Manually rate a memory's quality.
+
+                        Allows manual quality override with thumbs up/down rating.
+                        User ratings are weighted higher than AI scores in quality calculation.
+
+                        Example:
+                        {
+                            "content_hash": "abc123def456",
+                            "rating": 1,
+                            "feedback": "Highly relevant information"
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "content_hash": {
+                                    "type": "string",
+                                    "description": "Hash of the memory to rate"
+                                },
+                                "rating": {
+                                    "type": "number",
+                                    "description": "Quality rating: -1 (thumbs down), 0 (neutral), 1 (thumbs up)",
+                                    "enum": [-1, 0, 1]
+                                },
+                                "feedback": {
+                                    "type": "string",
+                                    "description": "Optional feedback text explaining the rating",
+                                    "default": ""
+                                }
+                            },
+                            "required": ["content_hash", "rating"]
+                        }
+                    ),
+                    types.Tool(
+                        name="get_memory_quality",
+                        description="""Get quality metrics for a specific memory.
+
+                        Returns comprehensive quality information including:
+                        - Current quality score (0.0-1.0)
+                        - Quality provider (which tier scored it)
+                        - Access count and last access time
+                        - Historical AI scores
+                        - User rating if present
+
+                        Example:
+                        {
+                            "content_hash": "abc123def456"
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "content_hash": {
+                                    "type": "string",
+                                    "description": "Hash of the memory to query"
+                                }
+                            },
+                            "required": ["content_hash"]
+                        }
+                    ),
+                    types.Tool(
+                        name="analyze_quality_distribution",
+                        description="""Analyze quality score distribution across all memories.
+
+                        Provides system-wide quality analytics including:
+                        - Total memory count
+                        - High/medium/low quality distribution
+                        - Average quality score
+                        - Provider breakdown (local/groq/gemini/implicit)
+                        - Top 10 highest scoring memories
+                        - Bottom 10 lowest scoring memories
+
+                        Example:
+                        {
+                            "min_quality": 0.0,
+                            "max_quality": 1.0
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "min_quality": {
+                                    "type": "number",
+                                    "description": "Minimum quality threshold (default: 0.0)",
+                                    "default": 0.0
+                                },
+                                "max_quality": {
+                                    "type": "number",
+                                    "description": "Maximum quality threshold (default: 1.0)",
+                                    "default": 1.0
+                                }
+                            }
+                        }
+                    )
+                ]
+                tools.extend(quality_tools)
+                logger.info(f"Added {len(quality_tools)} quality system tools")
+
                 logger.info(f"Returning {len(tools)} tools")
                 return tools
             except Exception as e:
@@ -2326,6 +2473,8 @@ class MemoryServer:
                     return await self.handle_store_memory(arguments)
                 elif name == "retrieve_memory":
                     return await self.handle_retrieve_memory(arguments)
+                elif name == "retrieve_with_quality_boost":
+                    return await self.handle_retrieve_with_quality_boost(arguments)
                 elif name == "recall_memory":
                     return await self.handle_recall_memory(arguments)
                 elif name == "search_by_tag":
@@ -2389,6 +2538,16 @@ class MemoryServer:
                 elif name == "ingest_directory":
                     logger.info("Calling handle_ingest_directory")
                     return await self.handle_ingest_directory(arguments)
+                # Quality system tool handlers
+                elif name == "rate_memory":
+                    logger.info("Calling handle_rate_memory")
+                    return await self.handle_rate_memory(arguments)
+                elif name == "get_memory_quality":
+                    logger.info("Calling handle_get_memory_quality")
+                    return await self.handle_get_memory_quality(arguments)
+                elif name == "analyze_quality_distribution":
+                    logger.info("Calling handle_analyze_quality_distribution")
+                    return await self.handle_analyze_quality_distribution(arguments)
                 else:
                     logger.warning(f"Unknown tool requested: {name}")
                     raise ValueError(f"Unknown tool: {name}")
@@ -2512,6 +2671,96 @@ class MemoryServer:
         except Exception as e:
             logger.error(f"Error retrieving memories: {str(e)}\n{traceback.format_exc()}")
             return [types.TextContent(type="text", text=f"Error retrieving memories: {str(e)}")]
+
+    async def handle_retrieve_with_quality_boost(self, arguments: dict) -> List[types.TextContent]:
+        """Handle quality-boosted memory retrieval with reranking."""
+        query = arguments.get("query")
+        n_results = arguments.get("n_results", 10)
+        quality_weight = arguments.get("quality_weight", 0.3)
+
+        if not query:
+            return [types.TextContent(type="text", text="Error: Query is required")]
+
+        # Validate quality_weight
+        if not 0.0 <= quality_weight <= 1.0:
+            return [types.TextContent(
+                type="text",
+                text=f"Error: quality_weight must be 0.0-1.0, got {quality_weight}"
+            )]
+
+        try:
+            # Initialize storage
+            storage = await self._ensure_storage_initialized()
+
+            # Track performance
+            start_time = time.time()
+
+            # Call quality-boosted retrieval
+            results = await storage.retrieve_with_quality_boost(
+                query=query,
+                n_results=n_results,
+                quality_boost=True,
+                quality_weight=quality_weight
+            )
+
+            query_time_ms = (time.time() - start_time) * 1000
+
+            # Record query time for performance monitoring
+            self.record_query_time(query_time_ms)
+
+            if not results:
+                return [types.TextContent(type="text", text="No matching memories found")]
+
+            # Format results with quality information
+            response_parts = [
+                f"# Quality-Boosted Search Results",
+                f"Query: {query}",
+                f"Quality Weight: {quality_weight:.1%} (Semantic: {1-quality_weight:.1%})",
+                f"Results: {len(results)}",
+                f"Search Time: {query_time_ms:.0f}ms",
+                ""
+            ]
+
+            for i, result in enumerate(results, 1):
+                memory = result.memory
+                semantic_score = result.debug_info.get('original_semantic_score', 0) if result.debug_info else result.relevance_score
+                quality_score = result.debug_info.get('quality_score', 0.5) if result.debug_info else memory.quality_score
+                composite_score = result.relevance_score
+
+                # Format timestamp
+                created_at = memory.created_at
+                if created_at:
+                    try:
+                        dt = datetime.fromtimestamp(created_at)
+                        timestamp_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    except (ValueError, TypeError):
+                        timestamp_str = str(created_at)
+                else:
+                    timestamp_str = "N/A"
+
+                memory_info = [
+                    f"## Result {i} (Score: {composite_score:.3f})",
+                    f"- Semantic: {semantic_score:.3f}",
+                    f"- Quality: {quality_score:.3f}",
+                    f"- Timestamp: {timestamp_str}",
+                    f"- Hash: {memory.content_hash[:12]}...",
+                    f"- Content: {memory.content[:200]}{'...' if len(memory.content) > 200 else ''}",
+                ]
+
+                if memory.tags:
+                    memory_info.append(f"- Tags: {', '.join(memory.tags)}")
+
+                response_parts.append("\n".join(memory_info))
+                response_parts.append("")
+
+            return [types.TextContent(type="text", text="\n".join(response_parts))]
+
+        except Exception as e:
+            logger.error(f"Error in quality-boosted retrieval: {str(e)}\n{traceback.format_exc()}")
+            return [types.TextContent(
+                type="text",
+                text=f"Error retrieving memories with quality boost: {str(e)}"
+            )]
 
     async def handle_search_by_tag(self, arguments: dict) -> List[types.TextContent]:
         from .services.memory_service import normalize_tags
@@ -3925,6 +4174,276 @@ Memories Archived: {report.memories_archived}"""
                 type="text",
                 text=f"Error ingesting directory: {str(e)}"
             )]
+
+    async def handle_rate_memory(self, arguments: dict) -> List[types.TextContent]:
+        """Handle manual quality rating for a memory."""
+        try:
+            content_hash = arguments.get("content_hash")
+            rating = arguments.get("rating")
+            feedback = arguments.get("feedback", "")
+
+            if not content_hash:
+                return [types.TextContent(type="text", text="Error: content_hash is required")]
+            if rating is None:
+                return [types.TextContent(type="text", text="Error: rating is required")]
+            if rating not in [-1, 0, 1]:
+                return [types.TextContent(type="text", text="Error: rating must be -1, 0, or 1")]
+
+            # Initialize storage
+            storage = await self._ensure_storage_initialized()
+
+            # Retrieve the memory
+            try:
+                memory = await storage.get_by_hash(content_hash)
+                if not memory:
+                    return [types.TextContent(type="text", text=f"Error: Memory not found with hash: {content_hash}")]
+            except Exception as e:
+                return [types.TextContent(type="text", text=f"Error retrieving memory: {str(e)}")]
+
+            # Update metadata with user rating
+            import time
+            memory.metadata['user_rating'] = rating
+            memory.metadata['user_feedback'] = feedback
+            memory.metadata['user_rating_timestamp'] = time.time()
+
+            # Recalculate quality score with user rating weighted higher
+            # User rating: 0.6 weight, AI/implicit: 0.4 weight
+            user_score = (rating + 1) / 2.0  # Convert -1,0,1 to 0.0,0.5,1.0
+            existing_score = memory.metadata.get('quality_score', 0.5)
+
+            # Combine scores
+            new_quality_score = 0.6 * user_score + 0.4 * existing_score
+            memory.metadata['quality_score'] = new_quality_score
+
+            # Track historical ratings
+            rating_history = memory.metadata.get('rating_history', [])
+            rating_history.append({
+                'rating': rating,
+                'feedback': feedback,
+                'timestamp': time.time(),
+                'old_score': existing_score,
+                'new_score': new_quality_score
+            })
+            memory.metadata['rating_history'] = rating_history[-10:]  # Keep last 10 ratings
+
+            # Update memory in storage
+            try:
+                await storage.update_memory_metadata(
+                    content_hash=content_hash,
+                    updates=memory.metadata,
+                    preserve_timestamps=True
+                )
+            except Exception as e:
+                return [types.TextContent(type="text", text=f"Error updating memory: {str(e)}")]
+
+            # Format response
+            rating_text = {-1: "thumbs down", 0: "neutral", 1: "thumbs up"}[rating]
+            response = [
+                f"✅ Memory rated successfully: {rating_text}",
+                f"Content hash: {content_hash[:16]}...",
+                f"New quality score: {new_quality_score:.3f} (was {existing_score:.3f})",
+            ]
+            if feedback:
+                response.append(f"Feedback: {feedback}")
+
+            return [types.TextContent(type="text", text="\n".join(response))]
+
+        except Exception as e:
+            logger.error(f"Error in rate_memory: {str(e)}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=f"Error rating memory: {str(e)}")]
+
+    async def handle_get_memory_quality(self, arguments: dict) -> List[types.TextContent]:
+        """Handle request for quality metrics of a specific memory."""
+        try:
+            content_hash = arguments.get("content_hash")
+
+            if not content_hash:
+                return [types.TextContent(type="text", text="Error: content_hash is required")]
+
+            # Initialize storage
+            storage = await self._ensure_storage_initialized()
+
+            # Retrieve the memory
+            try:
+                memory = await storage.get_by_hash(content_hash)
+                if not memory:
+                    return [types.TextContent(type="text", text=f"Error: Memory not found with hash: {content_hash}")]
+            except Exception as e:
+                return [types.TextContent(type="text", text=f"Error retrieving memory: {str(e)}")]
+
+            # Extract quality metrics
+            import json
+            from datetime import datetime
+
+            quality_data = {
+                "content_hash": content_hash,
+                "quality_score": memory.metadata.get('quality_score', 0.5),
+                "quality_provider": memory.metadata.get('quality_provider', 'implicit'),
+                "access_count": memory.metadata.get('access_count', 0),
+                "last_accessed_at": memory.metadata.get('last_accessed_at'),
+                "ai_scores": memory.metadata.get('ai_scores', []),
+                "user_rating": memory.metadata.get('user_rating'),
+                "user_feedback": memory.metadata.get('user_feedback'),
+                "quality_components": memory.metadata.get('quality_components', {})
+            }
+
+            # Format as readable text
+            response_lines = [
+                f"🔍 Quality Metrics for Memory: {content_hash[:16]}...",
+                "",
+                f"Quality Score: {quality_data['quality_score']:.3f} / 1.0",
+                f"Quality Provider: {quality_data['quality_provider']}",
+                f"Access Count: {quality_data['access_count']}",
+            ]
+
+            if quality_data['last_accessed_at']:
+                dt = datetime.fromtimestamp(quality_data['last_accessed_at'])
+                response_lines.append(f"Last Accessed: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+
+            if quality_data['user_rating'] is not None:
+                rating_text = {-1: "👎 thumbs down", 0: "😐 neutral", 1: "👍 thumbs up"}[quality_data['user_rating']]
+                response_lines.append(f"User Rating: {rating_text}")
+                if quality_data['user_feedback']:
+                    response_lines.append(f"User Feedback: {quality_data['user_feedback']}")
+
+            if quality_data['ai_scores']:
+                response_lines.append(f"\nAI Score History ({len(quality_data['ai_scores'])} evaluations):")
+                for i, score_entry in enumerate(quality_data['ai_scores'][-5:], 1):  # Show last 5
+                    score = score_entry.get('score', 0.0)
+                    provider = score_entry.get('provider', 'unknown')
+                    response_lines.append(f"  {i}. {score:.3f} (provider: {provider})")
+
+            # Add JSON representation for programmatic access
+            response_lines.append("\n📊 Full JSON Data:")
+            response_lines.append(json.dumps(quality_data, indent=2))
+
+            return [types.TextContent(type="text", text="\n".join(response_lines))]
+
+        except Exception as e:
+            logger.error(f"Error in get_memory_quality: {str(e)}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=f"Error getting memory quality: {str(e)}")]
+
+    async def handle_analyze_quality_distribution(self, arguments: dict) -> List[types.TextContent]:
+        """Handle request for system-wide quality analytics."""
+        try:
+            min_quality = arguments.get("min_quality", 0.0)
+            max_quality = arguments.get("max_quality", 1.0)
+
+            # Initialize storage
+            storage = await self._ensure_storage_initialized()
+
+            # Retrieve all memories
+            try:
+                # Use search_by_tag with no tags to get all memories (or implement get_all if available)
+                all_memories_result = await storage.search_all_memories()
+                if not all_memories_result:
+                    # Fallback: try to get memories with empty query
+                    all_memories_result = await storage.search_by_tag([])
+            except AttributeError:
+                # If search_all_memories doesn't exist, use alternative method
+                try:
+                    # Try semantic search with empty query
+                    all_memories_result = await storage.semantic_search("", n_results=10000)
+                except Exception:
+                    return [types.TextContent(type="text", text="Error: Unable to retrieve all memories from storage backend")]
+
+            if not all_memories_result:
+                return [types.TextContent(type="text", text="No memories found in database")]
+
+            # Convert to Memory objects and filter by quality range
+            memories = []
+            for mem_dict in all_memories_result:
+                memory = Memory.from_dict(mem_dict)
+                quality_score = memory.metadata.get('quality_score', 0.5)
+                if min_quality <= quality_score <= max_quality:
+                    memories.append(memory)
+
+            if not memories:
+                return [types.TextContent(
+                    type="text",
+                    text=f"No memories found with quality score between {min_quality} and {max_quality}"
+                )]
+
+            # Calculate distribution statistics
+            total_memories = len(memories)
+            quality_scores = [m.metadata.get('quality_score', 0.5) for m in memories]
+
+            high_quality = [m for m in memories if m.metadata.get('quality_score', 0.5) >= 0.7]
+            medium_quality = [m for m in memories if 0.5 <= m.metadata.get('quality_score', 0.5) < 0.7]
+            low_quality = [m for m in memories if m.metadata.get('quality_score', 0.5) < 0.5]
+
+            average_score = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+
+            # Provider breakdown
+            provider_counts = {}
+            for memory in memories:
+                provider = memory.metadata.get('quality_provider', 'implicit')
+                provider_counts[provider] = provider_counts.get(provider, 0) + 1
+
+            # Top and bottom performers
+            sorted_memories = sorted(memories, key=lambda m: m.metadata.get('quality_score', 0.5), reverse=True)
+            top_10 = sorted_memories[:10]
+            bottom_10 = sorted_memories[-10:]
+
+            # Format response
+            import json
+            response_lines = [
+                "📊 Quality Score Distribution Analysis",
+                "=" * 50,
+                f"Total Memories: {total_memories}",
+                f"Average Quality Score: {average_score:.3f}",
+                "",
+                "Distribution by Tier:",
+                f"  🟢 High Quality (≥0.7): {len(high_quality)} ({len(high_quality)/total_memories*100:.1f}%)",
+                f"  🟡 Medium Quality (0.5-0.7): {len(medium_quality)} ({len(medium_quality)/total_memories*100:.1f}%)",
+                f"  🔴 Low Quality (<0.5): {len(low_quality)} ({len(low_quality)/total_memories*100:.1f}%)",
+                "",
+                "Provider Breakdown:"
+            ]
+
+            for provider, count in sorted(provider_counts.items(), key=lambda x: x[1], reverse=True):
+                response_lines.append(f"  {provider}: {count} ({count/total_memories*100:.1f}%)")
+
+            response_lines.extend([
+                "",
+                "🏆 Top 10 Highest Quality Memories:"
+            ])
+            for i, memory in enumerate(top_10, 1):
+                score = memory.metadata.get('quality_score', 0.5)
+                content_preview = memory.content[:60] + "..." if len(memory.content) > 60 else memory.content
+                response_lines.append(f"  {i}. Score: {score:.3f} - {content_preview}")
+
+            response_lines.extend([
+                "",
+                "⚠️  Bottom 10 Lowest Quality Memories:"
+            ])
+            for i, memory in enumerate(bottom_10, 1):
+                score = memory.metadata.get('quality_score', 0.5)
+                content_preview = memory.content[:60] + "..." if len(memory.content) > 60 else memory.content
+                response_lines.append(f"  {i}. Score: {score:.3f} - {content_preview}")
+
+            # Add JSON summary
+            summary_data = {
+                "total_memories": total_memories,
+                "high_quality_count": len(high_quality),
+                "medium_quality_count": len(medium_quality),
+                "low_quality_count": len(low_quality),
+                "average_score": round(average_score, 3),
+                "provider_breakdown": provider_counts,
+                "quality_range": {"min": min_quality, "max": max_quality}
+            }
+
+            response_lines.extend([
+                "",
+                "📋 JSON Summary:",
+                json.dumps(summary_data, indent=2)
+            ])
+
+            return [types.TextContent(type="text", text="\n".join(response_lines))]
+
+        except Exception as e:
+            logger.error(f"Error in analyze_quality_distribution: {str(e)}\n{traceback.format_exc()}")
+            return [types.TextContent(type="text", text=f"Error analyzing quality distribution: {str(e)}")]
 
 
 async def async_main():

@@ -75,42 +75,47 @@ class ExponentialDecayCalculator(ConsolidationBase):
         access_patterns: Dict[str, datetime]
     ) -> RelevanceScore:
         """
-        Calculate memory relevance using exponential decay.
-        
+        Calculate memory relevance using exponential decay with quality weighting.
+
         Factors:
         - Age of memory
         - Base importance score (from metadata or tags)
         - Retention period (varies by memory type)
         - Connections to other memories
         - Recent access patterns
+        - Quality score (high quality = slower decay)
         """
         # Get memory age in days
         age_days = self._get_memory_age_days(memory, current_time)
-        
+
         # Extract base importance score
         base_importance = self._get_base_importance(memory)
-        
+
         # Get retention period for memory type
         memory_type = self._extract_memory_type(memory)
         retention_period = self.retention_periods.get(memory_type, 30)
-        
+
         # Calculate exponential decay factor
         decay_factor = math.exp(-age_days / retention_period)
-        
+
         # Calculate connection boost
         connection_count = connections.get(memory.content_hash, 0)
         connection_boost = 1 + (0.1 * connection_count)  # 10% boost per connection
-        
+
         # Calculate access boost
         access_boost = self._calculate_access_boost(memory, access_patterns, current_time)
-        
-        # Calculate total relevance score
-        total_score = base_importance * decay_factor * connection_boost * access_boost
-        
+
+        # Quality boost (higher quality = slower decay)
+        quality_score = memory.quality_score
+        quality_multiplier = 1.0 + (quality_score * 0.5)  # 1.0-1.5x multiplier for quality 0.0-1.0
+
+        # Calculate total relevance score with quality weighting
+        total_score = base_importance * decay_factor * connection_boost * access_boost * quality_multiplier
+
         # Ensure protected memories maintain minimum relevance
         if self._is_protected_memory(memory):
             total_score = max(total_score, 0.5)  # Minimum 50% relevance for protected memories
-        
+
         return RelevanceScore(
             memory_hash=memory.content_hash,
             total_score=total_score,
@@ -123,7 +128,9 @@ class ExponentialDecayCalculator(ConsolidationBase):
                 'memory_type': memory_type,
                 'retention_period': retention_period,
                 'connection_count': connection_count,
-                'is_protected': self._is_protected_memory(memory)
+                'is_protected': self._is_protected_memory(memory),
+                'quality_score': quality_score,
+                'quality_multiplier': quality_multiplier
             }
         )
     

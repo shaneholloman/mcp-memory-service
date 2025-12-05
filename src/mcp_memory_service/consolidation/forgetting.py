@@ -114,40 +114,76 @@ class ControlledForgettingEngine(ConsolidationBase):
         access_patterns: Dict[str, datetime],
         time_horizon: str
     ) -> List[ForgettingCandidate]:
-        """Identify memories that are candidates for forgetting."""
+        """
+        Identify memories that are candidates for forgetting.
+
+        Uses quality-based retention policy:
+        - High quality (≥0.7): Preserve up to 365 days inactive
+        - Medium quality (0.5-0.7): Preserve up to 180 days inactive
+        - Low quality (<0.5): Archive after 30-90 days inactive (scaled by quality)
+        """
+        from ..config import (
+            MCP_QUALITY_RETENTION_HIGH,
+            MCP_QUALITY_RETENTION_MEDIUM,
+            MCP_QUALITY_RETENTION_LOW_MIN,
+            MCP_QUALITY_RETENTION_LOW_MAX
+        )
+
         candidates = []
         current_time = datetime.now()
-        
+
         for memory in memories:
             # Skip protected memories
             if self._is_protected_memory(memory):
                 continue
-            
+
             # Get relevance score
             relevance_score = score_lookup.get(memory.content_hash)
             if not relevance_score:
                 continue
-            
+
             # Check if memory meets forgetting criteria
             forgetting_reasons = []
             can_be_deleted = False
             archive_priority = 3  # Default to low priority
-            
+
             # Low relevance check
             if relevance_score.total_score < self.relevance_threshold:
                 forgetting_reasons.append("low_relevance")
                 archive_priority = min(archive_priority, 2)  # Medium priority
-            
-            # Access pattern check
+
+            # Access pattern check with quality-based thresholds
             last_accessed = access_patterns.get(memory.content_hash)
             if not last_accessed and memory.updated_at:
                 last_accessed = datetime.utcfromtimestamp(memory.updated_at)
-            
+
             if last_accessed:
                 days_since_access = (current_time - last_accessed).days
-                if days_since_access > self.access_threshold_days:
+
+                # Quality-based retention thresholds
+                quality_score = memory.quality_score
+
+                if quality_score >= 0.7:
+                    # High quality: Keep longer
+                    threshold_days = MCP_QUALITY_RETENTION_HIGH
+                elif quality_score >= 0.5:
+                    # Medium quality: Standard retention
+                    threshold_days = MCP_QUALITY_RETENTION_MEDIUM
+                else:
+                    # Low quality: Aggressive archival
+                    # Scale between min and max based on quality score
+                    threshold_days = int(
+                        MCP_QUALITY_RETENTION_LOW_MIN +
+                        (quality_score / 0.5) * (MCP_QUALITY_RETENTION_LOW_MAX - MCP_QUALITY_RETENTION_LOW_MIN)
+                    )
+
+                if days_since_access > threshold_days:
                     forgetting_reasons.append("old_access")
-                    if days_since_access > self.access_threshold_days * 2:
+                    self.logger.info(
+                        f"Archival candidate: {memory.content_hash[:12]} quality={quality_score:.2f}, "
+                        f"inactive={days_since_access:.0f}d, threshold={threshold_days}d"
+                    )
+                    if days_since_access > threshold_days * 2:
                         archive_priority = min(archive_priority, 1)  # High priority
                         can_be_deleted = True  # Can be deleted if very old
             

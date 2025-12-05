@@ -172,9 +172,11 @@ if [ "$RUN_PYSCN" = true ]; then
         if bash scripts/pr/run_pyscn_analysis.sh --pr $PR_NUMBER --threshold 50; then
             echo "✅ pyscn analysis passed"
         else
-            echo "⚠️  pyscn analysis found quality issues"
-            # Note: Don't block on pyscn failures (informational only for now)
-            # exit_code can be set to 1 here if you want to block on pyscn failures
+            echo "⚠️  pyscn analysis found quality issues (health score <50)"
+            # Block on pyscn failures when health score below threshold
+            if [ $exit_code -eq 0 ]; then
+                exit_code=1
+            fi
         fi
     else
         echo "⚠️  pyscn not installed, skipping comprehensive analysis"

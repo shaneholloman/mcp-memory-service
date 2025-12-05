@@ -195,7 +195,24 @@ class SqliteVecMemoryStorage(MemoryStorage):
         
         # If we get here, all retries failed
         raise last_exception
-    
+
+    async def _persist_access_metadata(self, memory: Memory):
+        """
+        Persist access tracking metadata (access_count, last_accessed_at) to storage.
+
+        Args:
+            memory: Memory object with updated access metadata
+        """
+        def update_metadata():
+            self.conn.execute('''
+                UPDATE memories
+                SET metadata = ?
+                WHERE content_hash = ?
+            ''', (json.dumps(memory.metadata), memory.content_hash))
+            self.conn.commit()
+
+        await self._execute_with_retry(update_metadata)
+
     def _check_extension_support(self):
         """Check if Python's sqlite3 supports loading extensions."""
         test_conn = None
@@ -924,17 +941,27 @@ SOLUTIONS:
                     # For cosine distance: distance ranges from 0 (identical) to 2 (opposite)
                     # Convert to similarity score: 1 - (distance/2) gives 0-1 range
                     relevance_score = max(0.0, 1.0 - (float(distance) / 2.0)) if distance is not None else 0.0
-                    
+
+                    # Record access for quality scoring (implicit signals)
+                    memory.record_access(query)
+
                     results.append(MemoryQueryResult(
                         memory=memory,
                         relevance_score=relevance_score,
                         debug_info={"distance": distance, "backend": "sqlite-vec"}
                     ))
-                    
+
                 except Exception as parse_error:
                     logger.warning(f"Failed to parse memory result: {parse_error}")
                     continue
-            
+
+            # Persist updated metadata for accessed memories
+            for result in results:
+                try:
+                    await self._persist_access_metadata(result.memory)
+                except Exception as e:
+                    logger.warning(f"Failed to persist access metadata: {e}")
+
             logger.info(f"Retrieved {len(results)} memories for query: {query}")
             return results
             
