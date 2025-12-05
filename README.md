@@ -23,16 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.44.0** (Nov 30, 2025)
+### 🆕 Latest Release: **v8.45.0** (Dec 05, 2025)
 
-**Multi-Language Expansion & Complete i18n Coverage**
+**Memory Quality System - AI-Driven Automatic Quality Scoring**
 
-- 🌐 **5 New Languages Added** - Japanese, Korean, German, French, Spanish (359 keys each, fully validated)
-- ✨ **Complete UI Translation** - All dashboard elements now translatable (+57 keys: search results, modals, settings, browse tags)
-- 🎨 **Dark Mode i18n Polish** - Fixed language dropdown styling (backgrounds, hover states, active states)
-- 📝 **Full HTML Coverage** - Added ~80 data-i18n attributes for complete translation support
+- 🧠 **Local SLM Quality Scoring** - ONNX-powered (23MB model), zero cost, full privacy, offline-capable (50-100ms CPU, 10-20ms GPU)
+- 🎯 **Multi-Tier Fallback** - Local SLM → Groq API → Gemini API → Implicit signals (95% local SLM usage target)
+- 📊 **Quality-Based Management** - Smart retention (high quality 365 days), weighted decay, quality-boosted search (0.7×semantic + 0.3×quality)
+- 🔧 **4 New MCP Tools** - rate_memory, get_memory_quality, analyze_quality_distribution, retrieve_with_quality_boost
+- 📈 **Dashboard Analytics** - Quality badges, distribution charts, provider breakdown, top/bottom performers
+- ⚙️ **10 New Config Variables** - Comprehensive quality system control (enable/disable, provider, boost weight, retention thresholds)
 
 **Previous Releases**:
+- **v8.44.0** - Multi-Language Expansion (Japanese, Korean, German, French, Spanish - 359 keys each, complete i18n coverage)
 - **v8.43.0** - Internationalization & Quality Automation (English/Chinese i18n, Claude branch automation, quality gates)
 - **v8.42.1** - MCP Resource Handler Fix (`AttributeError` with Pydantic AnyUrl objects)
 - **v8.42.0** - Memory Awareness Enhancements (visible memory injection, quality session summaries, LLM-powered summarization)
