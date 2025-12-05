@@ -267,7 +267,7 @@ def create_app() -> FastAPI:
     logger.info(f"✓ Included sync router with {len(sync_router.routes)} routes")
     app.include_router(backup_router, prefix="/api", tags=["backup"])
     logger.info(f"✓ Included backup router with {len(backup_router.routes)} routes")
-    app.include_router(quality_router, tags=["quality"])
+    app.include_router(quality_router, prefix="/api/quality", tags=["quality"])
     logger.info(f"✓ Included quality router with {len(quality_router.routes)} routes")
     try:
         app.include_router(documents_router, prefix="/api/documents", tags=["documents"])

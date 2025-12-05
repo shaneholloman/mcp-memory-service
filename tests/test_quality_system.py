@@ -614,9 +614,9 @@ class TestQualityAPILayer:
     @pytest.mark.asyncio
     async def test_rate_memory_http_endpoint(self):
         """Test POST /api/quality/memories/{hash}/rate HTTP endpoint."""
-        from fastapi.testclient import TestClient
+        import httpx
         from src.mcp_memory_service.web.app import app
-        from src.mcp_memory_service.web.dependencies import set_storage
+        from src.mcp_memory_service.web.dependencies import get_storage
         from src.mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
         from src.mcp_memory_service.models.memory import Memory
         import tempfile
@@ -636,28 +636,35 @@ class TestQualityAPILayer:
             )
             await storage.store(test_memory)
 
-            # Set storage in app dependencies
-            set_storage(storage)
+            # Override get_storage dependency to use test storage
+            async def override_get_storage():
+                return storage
 
-            # Test with client
-            with TestClient(app) as client:
-                response = client.post(
-                    "/api/quality/memories/http_test_hash/rate",
-                    json={"rating": 1, "feedback": "Excellent"}
-                )
+            app.dependency_overrides[get_storage] = override_get_storage
 
-                assert response.status_code == 200
-                data = response.json()
-                assert data["success"] is True
-                assert data["content_hash"] == "http_test_hash"
-                assert "new_quality_score" in data
+            try:
+                # Use async client for proper async/await support
+                async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                    response = await client.post(
+                        "/api/quality/memories/http_test_hash/rate",
+                        json={"rating": 1, "feedback": "Excellent"}
+                    )
+
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data["success"] is True
+                    assert data["content_hash"] == "http_test_hash"
+                    assert "new_quality_score" in data
+            finally:
+                # Clean up dependency override
+                app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_get_quality_http_endpoint(self):
         """Test GET /api/quality/memories/{hash} HTTP endpoint."""
-        from fastapi.testclient import TestClient
+        import httpx
         from src.mcp_memory_service.web.app import app
-        from src.mcp_memory_service.web.dependencies import set_storage
+        from src.mcp_memory_service.web.dependencies import get_storage
         from src.mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
         from src.mcp_memory_service.models.memory import Memory
         import tempfile
@@ -681,26 +688,33 @@ class TestQualityAPILayer:
             )
             await storage.store(test_memory)
 
-            # Set storage in app dependencies
-            set_storage(storage)
+            # Override get_storage dependency to use test storage
+            async def override_get_storage():
+                return storage
 
-            # Test with client
-            with TestClient(app) as client:
-                response = client.get("/api/quality/memories/http_quality_hash")
+            app.dependency_overrides[get_storage] = override_get_storage
 
-                assert response.status_code == 200
-                data = response.json()
-                assert data["content_hash"] == "http_quality_hash"
-                assert data["quality_score"] == 0.75
-                assert data["quality_provider"] == "implicit_signals"
-                assert data["access_count"] == 5
+            try:
+                # Use async client for proper async/await support
+                async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                    response = await client.get("/api/quality/memories/http_quality_hash")
+
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data["content_hash"] == "http_quality_hash"
+                    assert data["quality_score"] == 0.75
+                    assert data["quality_provider"] == "implicit_signals"
+                    assert data["access_count"] == 5
+            finally:
+                # Clean up dependency override
+                app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_distribution_http_endpoint(self):
         """Test GET /api/quality/distribution HTTP endpoint."""
-        from fastapi.testclient import TestClient
+        import httpx
         from src.mcp_memory_service.web.app import app
-        from src.mcp_memory_service.web.dependencies import set_storage
+        from src.mcp_memory_service.web.dependencies import get_storage
         from src.mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
         from src.mcp_memory_service.models.memory import Memory
         import tempfile
@@ -722,22 +736,29 @@ class TestQualityAPILayer:
                 )
                 await storage.store(memory)
 
-            # Set storage in app dependencies
-            set_storage(storage)
+            # Override get_storage dependency to use test storage
+            async def override_get_storage():
+                return storage
 
-            # Test with client
-            with TestClient(app) as client:
-                response = client.get("/api/quality/distribution?min_quality=0.0&max_quality=1.0")
+            app.dependency_overrides[get_storage] = override_get_storage
 
-                assert response.status_code == 200
-                data = response.json()
-                assert data["total_memories"] == 20
-                assert "high_quality_count" in data
-                assert "medium_quality_count" in data
-                assert "low_quality_count" in data
-                assert "average_score" in data
-                assert len(data["top_memories"]) <= 10
-                assert len(data["bottom_memories"]) <= 10
+            try:
+                # Use async client for proper async/await support
+                async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                    response = await client.get("/api/quality/distribution?min_quality=0.0&max_quality=1.0")
+
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data["total_memories"] == 20
+                    assert "high_quality_count" in data
+                    assert "medium_quality_count" in data
+                    assert "low_quality_count" in data
+                    assert "average_score" in data
+                    assert len(data["top_memories"]) <= 10
+                    assert len(data["bottom_memories"]) <= 10
+            finally:
+                # Clean up dependency override
+                app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
     async def test_async_background_scoring(self):

@@ -26,7 +26,7 @@ from ...quality.scorer import QualityScorer
 from ..dependencies import get_storage
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/quality", tags=["quality"])
+router = APIRouter()
 
 
 # Pydantic models for request/response
@@ -220,9 +220,7 @@ async def get_quality_distribution(
     try:
         # Retrieve all memories
         try:
-            all_memories_result = await storage.search_all_memories()
-            if not all_memories_result:
-                all_memories_result = await storage.search_by_tag([])
+            all_memories_result = await storage.get_all_memories()
         except AttributeError:
             try:
                 all_memories_result = await storage.semantic_search("", n_results=10000)
@@ -245,10 +243,9 @@ async def get_quality_distribution(
                 quality_range={"min": min_quality, "max": max_quality}
             )
 
-        # Convert to Memory objects and filter by quality range
+        # Filter by quality range
         memories = []
-        for mem_dict in all_memories_result:
-            memory = Memory.from_dict(mem_dict)
+        for memory in all_memories_result:
             quality_score = memory.metadata.get('quality_score', 0.5)
             if min_quality <= quality_score <= max_quality:
                 memories.append(memory)

@@ -4334,26 +4334,17 @@ Memories Archived: {report.memories_archived}"""
 
             # Retrieve all memories
             try:
-                # Use search_by_tag with no tags to get all memories (or implement get_all if available)
-                all_memories_result = await storage.search_all_memories()
-                if not all_memories_result:
-                    # Fallback: try to get memories with empty query
-                    all_memories_result = await storage.search_by_tag([])
-            except AttributeError:
-                # If search_all_memories doesn't exist, use alternative method
-                try:
-                    # Try semantic search with empty query
-                    all_memories_result = await storage.semantic_search("", n_results=10000)
-                except Exception:
-                    return [types.TextContent(type="text", text="Error: Unable to retrieve all memories from storage backend")]
+                all_memories = await storage.get_all_memories()
+            except Exception as e:
+                logger.error(f"Error retrieving all memories: {str(e)}\n{traceback.format_exc()}")
+                return [types.TextContent(type="text", text=f"Error: Unable to retrieve all memories from storage backend: {str(e)}")]
 
-            if not all_memories_result:
+            if not all_memories:
                 return [types.TextContent(type="text", text="No memories found in database")]
 
-            # Convert to Memory objects and filter by quality range
+            # Filter by quality range
             memories = []
-            for mem_dict in all_memories_result:
-                memory = Memory.from_dict(mem_dict)
+            for memory in all_memories:
                 quality_score = memory.metadata.get('quality_score', 0.5)
                 if min_quality <= quality_score <= max_quality:
                     memories.append(memory)
