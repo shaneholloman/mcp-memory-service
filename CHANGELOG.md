@@ -10,6 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.46.2] - 2025-12-06
+
+### Fixed
+- **Session-Start Hook Crash** - Added missing `queryMemoriesByTagsAndTime()` function to HTTP memory client
+  - Hook was calling undefined function, causing "is not a function" error on session start
+  - Implemented client-side tag filtering on time-based search results
+  - Works with both HTTP and MCP protocols
+  - Enables users to use session-start hooks without crashes
+
+- **Hook Installer Warnings Eliminated** - Removed confusing package import warnings during installation
+  - Created `_version.py` to isolate version metadata from main package
+  - Updated `install_hooks.py` to read version from `pyproject.toml` (avoids heavy imports)
+  - Warnings appeared because importing `mcp_memory_service` loaded sqlite-vec/sentence_transformers dependencies
+  - Provides clean installation experience without misleading warnings
+
+### Technical Details
+- Root cause (session-start): `memory-client.js` missing function implementation for combined tag+time queries
+- Root cause (installer warnings): Hook installer imported main package for version detection, triggering model initialization warnings
+- Fix applies to all platforms (Windows, macOS, Linux)
+
 ## [8.46.1] - 2025-12-06
 
 ### Fixed

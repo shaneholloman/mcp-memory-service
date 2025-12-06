@@ -23,16 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.46.1** (Dec 06, 2025)
+### 🆕 Latest Release: **v8.46.2** (Dec 06, 2025)
 
-**Windows Hooks Installer Fix + Quality System Integration**
+**Session-Start Hook Crash Fix + Hook Installer Improvements**
 
-- 🪟 **Windows Encoding Fix** - Fixed `charmap` codec error in hooks installer on Windows (UTF-8 console configuration)
-- 🔗 **Backend Quality Scoring** - 3-phase integration of AI quality scoring into memory awareness hooks (20% weight in scoring)
-- 📊 **Quality-Boosted Search** - Reranking with composite score: `(1-weight)*semantic + weight*quality` via `/api/search`
-- 🎯 **Evaluation Endpoint** - New `POST /api/quality/memories/{hash}/evaluate` for on-demand AI quality scoring (~355ms with ONNX)
+- ✅ **Session-Start Hook Fix** - Fixed crash caused by missing `queryMemoriesByTagsAndTime()` function (client-side tag filtering on time-based queries)
+- 🪟 **Hook Installer Warnings Eliminated** - Removed confusing package import warnings during installation (isolated version metadata)
+- 🔧 **Clean Installation** - Hook installer now reads version from `pyproject.toml` without loading heavy dependencies (sqlite-vec, sentence_transformers)
+- 🌐 **Cross-Platform** - Fixes apply to all platforms (Windows, macOS, Linux)
 
 **Previous Releases**:
+- **v8.46.1** - Windows Hooks Installer Fix + Quality System Integration (UTF-8 console configuration, backend quality scoring)
 - **v8.45.3** - ONNX Ranker Model Export Fix (automatic model export, offline mode support, 7-16ms CPU performance)
 - **v8.45.2** - Dashboard Dark Mode Consistency Fixes (global CSS overrides, Chart.js dark mode support)
 - **v8.45.1** - Quality System Test Infrastructure Fixes (HTTP API router, storage retrieval, async test client)

@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.46.0**: **Quality System + Hooks Integration** - Complete 3-phase integration of AI quality scoring into memory awareness hooks. Features backend quality extraction (20% weight), session-end evaluation endpoint (`POST /api/quality/memories/{hash}/evaluate`), and quality-boosted search with composite scoring. Hook functions: `calculateBackendQuality()`, `triggerQualityEvaluation()`, `qualityBoost` parameter. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.46.2**: **Session-Start Hook Crash Fix + Hook Installer Improvements** - Fixed crash caused by missing `queryMemoriesByTagsAndTime()` function in HTTP memory client. Eliminated hook installer warnings by isolating version metadata in `_version.py`. Hook installer now reads version from `pyproject.toml` without loading heavy dependencies (sqlite-vec, sentence_transformers). Clean installation experience across all platforms. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
