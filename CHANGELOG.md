@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-## [8.45.3] - 2025-12-06
+## [8.46.0] - 2025-12-06
 
 ### Added
 - **Quality System + Hooks Integration** - Complete 3-phase integration of AI quality scoring into memory awareness hooks:
@@ -33,6 +33,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - `triggerQualityEvaluation()` in `session-end.js` for async scoring
   - `queryMemories()` in `memory-client.js` supports `qualityBoost` option
 
+### Changed
+- Updated hook scoring weights: timeDecay (20%), tagRelevance (30%), contentRelevance (10%), contentQuality (20%), backendQuality (20%)
+
+### Technical Details
+- Hook evaluation: Non-blocking with 10s timeout, graceful fallback on failure
+- Requires Memory Quality System (v8.45.0+) to be enabled
+
+## [8.45.3] - 2025-12-06
+
 ### Fixed
 - **ONNX Ranker Model Export** - Fixed broken model download URL (404 from HuggingFace) by implementing automatic model export from transformers to ONNX format on first use
 - **Offline Mode Support** - Added `local_files_only=True` support for air-gapped/offline environments using cached HuggingFace models
@@ -42,13 +51,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Replaced failing `onnx.tar.gz` download approach with dynamic export from `cross-encoder/ms-marco-MiniLM-L-6-v2` via transformers
 - Model now exports to `~/.cache/mcp_memory/onnx_models/ms-marco-MiniLM-L-6-v2/model.onnx` on first initialization
 - Added graceful fallback: tries `local_files_only` first, then online download if not cached
-- Updated hook scoring weights: timeDecay (20%), tagRelevance (30%), contentRelevance (10%), contentQuality (20%), backendQuality (20%)
 
 ### Technical Details
 - Performance: 7-16ms per memory scoring on CPU (CPUExecutionProvider)
 - Model size: ~23MB exported ONNX model
 - Dependencies: Requires `transformers`, `torch`, `onnxruntime`, `onnx` packages
-- Hook evaluation: Non-blocking with 10s timeout, graceful fallback on failure
 
 ## [8.45.2] - 2025-12-06
 
