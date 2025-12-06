@@ -26,6 +26,20 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+# Fix Windows console encoding for Unicode output (emojis, checkmarks)
+if sys.platform == 'win32':
+    try:
+        # Set console to UTF-8 mode
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleOutputCP(65001)
+        kernel32.SetConsoleCP(65001)
+        # Reconfigure stdout/stderr to use UTF-8
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass  # Fallback: some terminals may not support this
+
 # Dynamic version detection from main project
 def get_project_version() -> str:
     """Get version dynamically from main project."""
@@ -723,7 +737,7 @@ class HookInstaller:
                     self.success("Generated configuration based on detected MCP setup")
                 elif config_src.exists():
                     # Use template configuration and update paths
-                    with open(config_src, 'r') as f:
+                    with open(config_src, 'r', encoding='utf-8') as f:
                         config = json.load(f)
 
                     # Update server working directory path for independent setup
@@ -741,8 +755,8 @@ class HookInstaller:
                     config = self.enhance_config_for_natural_triggers(config)
 
                 # Write the final configuration
-                with open(config_dst, 'w') as f:
-                    json.dump(config, f, indent=2)
+                with open(config_dst, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
 
                 self.success("Configuration installed successfully")
 
@@ -777,7 +791,7 @@ class HookInstaller:
             # Windows-specific warning for SessionStart hooks (issue #160)
             skip_session_start = False
             if self.platform_name == 'windows':
-                self.warn("⚠️  Windows Platform Detected - SessionStart Hook Limitation")
+                self.warn("Windows Platform Detected - SessionStart Hook Limitation")
                 self.warn("SessionStart hooks cause Claude Code to hang on Windows (issue #160)")
                 self.warn("Workaround: Use '/session-start' slash command instead")
                 self.info("Skipping SessionStart hook configuration for Windows")
@@ -852,7 +866,7 @@ class HookInstaller:
 
                 try:
                     # Load existing settings
-                    with open(settings_file, 'r') as f:
+                    with open(settings_file, 'r', encoding='utf-8') as f:
                         existing_settings = json.load(f)
 
                     # Intelligent merging: preserve existing hooks while adding/updating memory awareness hooks
@@ -908,8 +922,8 @@ class HookInstaller:
                     final_config = hook_config
 
             # Write final configuration
-            with open(settings_file, 'w') as f:
-                json.dump(final_config, f, indent=2)
+            with open(settings_file, 'w', encoding='utf-8') as f:
+                json.dump(final_config, f, indent=2, ensure_ascii=False)
 
             self.success("Claude Code settings configured successfully")
             return True
