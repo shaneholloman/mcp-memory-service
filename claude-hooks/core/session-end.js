@@ -208,6 +208,64 @@ function analyzeConversation(conversationData) {
 }
 
 /**
+ * Trigger quality evaluation for a stored memory (async, non-blocking)
+ * This calls the backend's quality scoring system to pre-score the memory
+ */
+function triggerQualityEvaluation(endpoint, apiKey, contentHash) {
+    return new Promise((resolve, reject) => {
+        const url = new URL(`/api/quality/memories/${contentHash}/evaluate`, endpoint);
+        const isHttps = url.protocol === 'https:';
+        const requestModule = isHttps ? https : http;
+
+        const postData = JSON.stringify({});
+
+        const options = {
+            hostname: url.hostname,
+            port: url.port || (isHttps ? 8443 : 8000),
+            path: url.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData),
+                'Authorization': `Bearer ${apiKey}`
+            },
+            timeout: 10000 // 10 second timeout for quality evaluation
+        };
+
+        if (isHttps) {
+            options.rejectUnauthorized = false;
+        }
+
+        const req = requestModule.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+            res.on('end', () => {
+                try {
+                    const response = JSON.parse(data);
+                    resolve(response);
+                } catch (parseError) {
+                    resolve({ success: false, error: 'Parse error', data });
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            resolve({ success: false, error: error.message });
+        });
+
+        req.on('timeout', () => {
+            req.destroy();
+            resolve({ success: false, error: 'Quality evaluation timed out' });
+        });
+
+        req.write(postData);
+        req.end();
+    });
+}
+
+/**
  * Store session consolidation to memory service
  */
 function storeSessionMemory(endpoint, apiKey, content, projectContext, analysis) {
@@ -353,6 +411,18 @@ async function onSessionEnd(context) {
             console.log(`[Memory Hook] Session consolidation stored successfully`);
             if (result.content_hash) {
                 console.log(`[Memory Hook] Memory hash: ${result.content_hash.substring(0, 8)}...`);
+
+                // Trigger async quality evaluation (non-blocking)
+                triggerQualityEvaluation(endpoint, apiKey, result.content_hash)
+                    .then(evalResult => {
+                        if (evalResult.success) {
+                            console.log(`[Memory Hook] Quality evaluated: ${evalResult.quality_score?.toFixed(3)} (${evalResult.quality_provider})`);
+                        }
+                    })
+                    .catch(err => {
+                        // Don't fail the hook if quality evaluation fails
+                        console.warn('[Memory Hook] Quality evaluation skipped:', err.message);
+                    });
             }
         } else {
             console.warn('[Memory Hook] Failed to store session consolidation:', result.error || 'Unknown error');

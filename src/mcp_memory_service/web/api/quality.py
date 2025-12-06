@@ -71,6 +71,23 @@ class RateMemoryResponse(BaseModel):
     old_quality_score: float
 
 
+class EvaluateRequest(BaseModel):
+    """Request model for quality evaluation."""
+    query: Optional[str] = Field(None, description="Optional query context for relevance scoring")
+
+
+class EvaluateResponse(BaseModel):
+    """Response model for quality evaluation."""
+    success: bool
+    content_hash: str
+    quality_score: float
+    quality_provider: str
+    ai_score: Optional[float]
+    implicit_score: Optional[float]
+    evaluation_time_ms: float
+    message: str
+
+
 # Endpoints
 @router.post("/memories/{content_hash}/rate", response_model=RateMemoryResponse)
 async def rate_memory(
@@ -145,6 +162,87 @@ async def rate_memory(
     except Exception as e:
         logger.error(f"Error rating memory {content_hash}: {e}")
         raise HTTPException(status_code=500, detail=f"Error rating memory: {str(e)}")
+
+
+@router.post("/memories/{content_hash}/evaluate", response_model=EvaluateResponse)
+async def evaluate_memory_quality(
+    content_hash: str,
+    request: EvaluateRequest = None,
+    storage=Depends(get_storage)
+):
+    """
+    Trigger AI-based quality evaluation for a memory.
+
+    Uses the multi-tier quality system (ONNX local → Groq API → Gemini → Implicit)
+    to score the memory's quality. This is useful for:
+    - Pre-scoring new memories after storage
+    - Re-evaluating memories with updated AI models
+    - Hook integrations that trigger async quality scoring
+
+    Args:
+        content_hash: Hash of the memory to evaluate
+        request: Optional request with query context
+        storage: Injected storage dependency
+
+    Returns:
+        Evaluation result with quality score and provider info
+    """
+    start_time = time.time()
+
+    try:
+        # Retrieve the memory
+        memory = await storage.get_by_hash(content_hash)
+        if not memory:
+            raise HTTPException(status_code=404, detail=f"Memory not found: {content_hash}")
+
+        # Use the first 200 chars of content as query context if not provided
+        query = (request.query if request and request.query
+                 else memory.content[:200] if memory.content else "")
+
+        # Initialize quality scorer and evaluate
+        scorer = QualityScorer()
+        old_score = memory.metadata.get('quality_score', 0.5)
+
+        # Calculate quality score (this updates memory.metadata internally)
+        quality_score = await scorer.calculate_quality_score(memory, query)
+
+        # Extract component scores from metadata
+        ai_score = None
+        ai_scores = memory.metadata.get('ai_scores', [])
+        if ai_scores:
+            ai_score = ai_scores[-1].get('score') if ai_scores else None
+
+        implicit_score = memory.metadata.get('quality_components', {}).get('implicit_score')
+        quality_provider = memory.metadata.get('quality_provider', 'implicit')
+
+        # Persist updated metadata to storage
+        await storage.update_memory_metadata(
+            content_hash=content_hash,
+            updates=memory.metadata,
+            preserve_timestamps=True
+        )
+
+        evaluation_time_ms = (time.time() - start_time) * 1000
+
+        logger.info(f"Evaluated memory {content_hash[:8]}... score: {quality_score:.3f} ({quality_provider}) in {evaluation_time_ms:.1f}ms")
+
+        return EvaluateResponse(
+            success=True,
+            content_hash=content_hash,
+            quality_score=quality_score,
+            quality_provider=quality_provider,
+            ai_score=ai_score,
+            implicit_score=implicit_score,
+            evaluation_time_ms=round(evaluation_time_ms, 2),
+            message=f"Quality evaluated: {quality_score:.3f} (was {old_score:.3f})"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        evaluation_time_ms = (time.time() - start_time) * 1000
+        logger.error(f"Error evaluating memory {content_hash}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error evaluating memory quality: {str(e)}")
 
 
 @router.get("/memories/{content_hash}", response_model=QualityMetricsResponse)
