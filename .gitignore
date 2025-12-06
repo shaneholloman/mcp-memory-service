@@ -1,4 +1,14 @@
 
+# Windows device name artifacts (created when running Windows commands in Git Bash)
+nul
+NUL
+con
+CON
+aux
+AUX
+prn
+PRN
+
 # Aider files
 .aider.*
 
