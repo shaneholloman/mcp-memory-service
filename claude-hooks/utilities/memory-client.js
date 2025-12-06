@@ -211,12 +211,16 @@ class MemoryClient {
 
     /**
      * Query memories using active protocol
+     * @param {string} query - Search query
+     * @param {number} limit - Maximum results to return
+     * @param {object} options - Additional options (qualityBoost, qualityWeight)
      */
-    async queryMemories(query, limit = 10) {
+    async queryMemories(query, limit = 10, options = {}) {
         if (this.activeProtocol === 'mcp' && this.mcpClient) {
+            // MCP doesn't support quality boost yet, fall through to semantic search
             return this.mcpClient.queryMemories(query, limit);
         } else if (this.activeProtocol === 'http') {
-            return this.queryMemoriesHTTP(query, limit);
+            return this.queryMemoriesHTTP(query, limit, options);
         } else {
             throw new Error('No active connection available');
         }
@@ -315,12 +319,27 @@ class MemoryClient {
 
     /**
      * Query memories via HTTP REST API
+     * @param {string} query - Search query
+     * @param {number} limit - Maximum results to return
+     * @param {object} options - Additional options
+     * @param {boolean} options.qualityBoost - Enable quality-boosted reranking
+     * @param {number} options.qualityWeight - Weight for quality in reranking (0.0-1.0)
      */
-    async queryMemoriesHTTP(query, limit = 10) {
-        return this._performApiPost('/api/search', {
+    async queryMemoriesHTTP(query, limit = 10, options = {}) {
+        const payload = {
             query: query,
             n_results: limit
-        });
+        };
+
+        // Add quality boost parameters if enabled
+        if (options.qualityBoost) {
+            payload.quality_boost = true;
+            if (typeof options.qualityWeight === 'number') {
+                payload.quality_weight = options.qualityWeight;
+            }
+        }
+
+        return this._performApiPost('/api/search', payload);
     }
 
     /**

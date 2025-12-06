@@ -54,6 +54,8 @@ class SemanticSearchRequest(BaseModel):
     query: str = Field(..., description="The search query for semantic similarity")
     n_results: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
     similarity_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Minimum similarity score")
+    quality_boost: bool = Field(default=False, description="Enable quality-boosted reranking using AI quality scores")
+    quality_weight: float = Field(default=0.3, ge=0.0, le=1.0, description="Weight for quality score in reranking (0.0-1.0)")
 
 
 class TagSearchRequest(BaseModel):
@@ -113,55 +115,89 @@ async def semantic_search(
 ):
     """
     Perform semantic similarity search on memory content.
-    
+
     Uses vector embeddings to find memories with similar meaning to the query,
     even if they don't share exact keywords.
+
+    When quality_boost=True, results are reranked using a composite score:
+    composite = (1 - quality_weight) * semantic_score + quality_weight * quality_score
+
+    This surfaces high-quality memories that may have slightly lower semantic match.
     """
     import time
     start_time = time.time()
-    
+
     try:
+        # Over-fetch if quality boost is enabled (3x to ensure good reranking pool)
+        fetch_limit = request.n_results * 3 if request.quality_boost else request.n_results
+
         # Perform semantic search using the storage layer
         query_results = await storage.retrieve(
             query=request.query,
-            n_results=request.n_results
+            n_results=fetch_limit
         )
-        
+
         # Filter by similarity threshold if specified
         if request.similarity_threshold is not None:
             query_results = [
                 result for result in query_results
                 if result.relevance_score and result.relevance_score >= request.similarity_threshold
             ]
-        
+
+        # Apply quality-boosted reranking if enabled
+        if request.quality_boost and query_results:
+            qw = request.quality_weight
+            sw = 1.0 - qw
+
+            # Calculate composite scores and rerank
+            for result in query_results:
+                semantic_score = result.relevance_score or 0.5
+                quality_score = result.memory.metadata.get('quality_score', 0.5)
+                result._composite_score = sw * semantic_score + qw * quality_score
+
+            # Sort by composite score (descending)
+            query_results.sort(key=lambda r: getattr(r, '_composite_score', 0), reverse=True)
+
+            # Take top N after reranking
+            query_results = query_results[:request.n_results]
+
+            logger.debug(f"Quality-boosted search: reranked {fetch_limit} → {len(query_results)} results")
+
         # Convert to search results
-        search_results = [
-            memory_query_result_to_search_result(result)
-            for result in query_results
-        ]
-        
+        search_results = []
+        for result in query_results:
+            search_result = memory_query_result_to_search_result(result)
+            # Include composite score in reason if quality boost was used
+            if request.quality_boost and hasattr(result, '_composite_score'):
+                quality_score = result.memory.metadata.get('quality_score', 0.5)
+                search_result.relevance_reason = (
+                    f"Composite: {result._composite_score:.3f} "
+                    f"(semantic: {result.relevance_score:.3f}, quality: {quality_score:.3f})"
+                )
+            search_results.append(search_result)
+
         processing_time = (time.time() - start_time) * 1000
-        
+
         # Broadcast SSE event for search completion
         try:
             event = create_search_completed_event(
                 query=request.query,
-                search_type="semantic",
+                search_type="semantic_quality_boost" if request.quality_boost else "semantic",
                 results_count=len(search_results),
                 processing_time_ms=processing_time
             )
             await sse_manager.broadcast_event(event)
         except Exception as e:
             logger.warning(f"Failed to broadcast search_completed event: {e}")
-        
+
         return SearchResponse(
             results=search_results,
             total_found=len(search_results),
             query=request.query,
-            search_type="semantic",
+            search_type="semantic_quality_boost" if request.quality_boost else "semantic",
             processing_time_ms=processing_time
         )
-        
+
     except Exception as e:
         logger.error(f"Semantic search failed: {str(e)}")
         raise HTTPException(status_code=500, detail="Search operation failed. Please try again.")
