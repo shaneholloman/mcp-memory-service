@@ -47,7 +47,8 @@ def setup_offline_mode():
 # Setup offline mode immediately when this module is imported
 setup_offline_mode()
 
-__version__ = "8.46.1"
+# Import version from separate file to avoid loading heavy dependencies
+from ._version import __version__
 
 from .models import Memory, MemoryQueryResult
 from .storage import MemoryStorage

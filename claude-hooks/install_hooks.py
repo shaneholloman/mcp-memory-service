@@ -42,16 +42,24 @@ if sys.platform == 'win32':
 
 # Dynamic version detection from main project
 def get_project_version() -> str:
-    """Get version dynamically from main project."""
+    """Get version dynamically from main project (reads pyproject.toml to avoid import warnings)."""
     try:
-        # Add the src directory to the path to import version
+        # Read version from pyproject.toml to avoid importing storage modules
+        pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+        if pyproject_path.exists():
+            with open(pyproject_path, 'r') as f:
+                for line in f:
+                    if line.startswith('version = '):
+                        # Extract version from: version = "X.Y.Z"
+                        return line.split('"')[1]
+
+        # Fallback: try importing (may show warnings)
         src_path = Path(__file__).parent.parent / "src"
         if str(src_path) not in sys.path:
             sys.path.insert(0, str(src_path))
-
-        from mcp_memory_service import __version__
+        from mcp_memory_service._version import __version__
         return __version__
-    except ImportError:
+    except Exception:
         # Fallback for standalone installations
         return "7.2.0"
 

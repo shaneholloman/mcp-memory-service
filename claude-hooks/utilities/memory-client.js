@@ -360,6 +360,35 @@ class MemoryClient {
     }
 
     /**
+     * Query memories by tags and time (combined filtering)
+     * @param {Array<string>} tags - Tags to filter by
+     * @param {string} timeQuery - Time-based query (e.g., "last week", "yesterday")
+     * @param {number} limit - Maximum results to return
+     * @param {boolean} semanticQuery - Optional semantic query for relevance filtering
+     */
+    async queryMemoriesByTagsAndTime(tags, timeQuery, limit = 10, semanticQuery = false) {
+        if (this.activeProtocol === 'mcp' && this.mcpClient) {
+            // For MCP, fall back to time-based query (tag filtering not yet supported)
+            return this.mcpClient.queryMemoriesByTime(timeQuery, limit);
+        } else if (this.activeProtocol === 'http') {
+            // HTTP API: use time-based search, then filter by tags client-side
+            const timeResults = await this.queryMemoriesByTimeHTTP(timeQuery, limit * 2, semanticQuery);
+
+            // Filter results by tags
+            const tagSet = new Set(Array.isArray(tags) ? tags : [tags]);
+            const filtered = timeResults.filter(memory => {
+                const memoryTags = memory.tags || memory.metadata?.tags || [];
+                const memoryTagsArray = Array.isArray(memoryTags) ? memoryTags : memoryTags.split(',').map(t => t.trim());
+                return memoryTagsArray.some(tag => tagSet.has(tag));
+            });
+
+            return filtered.slice(0, limit);
+        } else {
+            throw new Error('No active connection available');
+        }
+    }
+
+    /**
      * Get connection status and available protocols
      */
     getConnectionInfo() {
