@@ -59,8 +59,8 @@ jobs:
         run: |
           source test_venv/bin/activate
 
-          # Get source version
-          SOURCE_VERSION=$(grep '__version__' src/mcp_memory_service/__init__.py | cut -d'"' -f2)
+          # Get source version (from _version.py)
+          SOURCE_VERSION=$(grep '__version__' src/mcp_memory_service/_version.py | cut -d'"' -f2)
 
           # Get installed version
           INSTALLED_VERSION=$(python -c "import mcp_memory_service; print(mcp_memory_service.__version__)")
@@ -133,10 +133,10 @@ jobs:
 
           # Simulate version change in source (the stale venv scenario)
           # Save original version
-          ORIGINAL_VERSION=$(grep '__version__' src/mcp_memory_service/__init__.py)
+          ORIGINAL_VERSION=$(grep '__version__' src/mcp_memory_service/_version.py)
 
           # Change source version temporarily
-          sed -i 's/__version__ = ".*"/__version__ = "99.99.99"/' src/mcp_memory_service/__init__.py
+          sed -i 's/__version__ = ".*"/__version__ = "99.99.99"/' src/mcp_memory_service/_version.py
 
           # Run detection script - should FAIL because versions don't match
           EXIT_CODE=0
@@ -144,7 +144,7 @@ jobs:
 
           # Restore original version
           echo "$ORIGINAL_VERSION" | sed 's/.*\(__version__.*\)/\1/' > temp_version
-          sed -i "s/__version__ = .*$/$(cat temp_version)/" src/mcp_memory_service/__init__.py
+          sed -i "s/__version__ = .*$/$(cat temp_version)/" src/mcp_memory_service/_version.py
           rm temp_version
 
           # We expect failure (exit 1) because of version mismatch

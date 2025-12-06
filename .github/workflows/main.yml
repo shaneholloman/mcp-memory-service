@@ -50,9 +50,9 @@ jobs:
         export GIT_COMMITTER_EMAIL="github-actions[bot]@users.noreply.github.com"
         
         echo "=== DEBUG: Starting semantic-release process ==="
-        
-        # Capture current version (read directly from file)
-        CURRENT_VERSION=$(grep -E "^__version__" src/mcp_memory_service/__init__.py | cut -d'"' -f2 || echo "0.0.0")
+
+        # Capture current version (read directly from _version.py)
+        CURRENT_VERSION=$(grep -E "^__version__" src/mcp_memory_service/_version.py | cut -d'"' -f2 || echo "0.0.0")
         echo "DEBUG: Current version from file: $CURRENT_VERSION"
         
         # Check git log for recent commits
@@ -80,7 +80,7 @@ jobs:
         fi
         
         # Capture the version after semantic-release
-        AFTER_VERSION=$(grep -E "^__version__" src/mcp_memory_service/__init__.py | cut -d'"' -f2 || echo "0.0.0")
+        AFTER_VERSION=$(grep -E "^__version__" src/mcp_memory_service/_version.py | cut -d'"' -f2 || echo "0.0.0")
         echo "DEBUG: Version after semantic-release: $AFTER_VERSION"
         
         # Show git status after semantic-release
