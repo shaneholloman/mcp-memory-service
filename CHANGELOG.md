@@ -10,6 +10,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.46.3] - 2025-12-06
+
+### Fixed
+- **Quality Score Persistence in Hybrid Backend** - Fixed ONNX quality scores not persisting to Cloudflare in hybrid storage backend
+  - Scores remained at default 0.5 instead of evaluated ~1.0 values
+  - Root cause: `/api/quality/evaluate` endpoint was passing entire `memory.metadata` dict to `update_memory_metadata()`
+  - Cloudflare backend expects quality fields wrapped in 'metadata' key, not as top-level fields
+
+- **Metadata Normalization for Cloudflare** - Added `_normalize_metadata_for_cloudflare()` helper function
+  - Separates Cloudflare-recognized top-level keys (metadata, memory_type, tags, timestamps) from custom metadata fields
+  - Wraps custom fields in 'metadata' key as expected by Cloudflare D1 backend
+  - Only wraps if not already wrapped (idempotent operation)
+
+- **Quality API Metadata Handling** - Modified `/api/quality/evaluate` endpoint to extract only quality-related fields
+  - Now passes only: quality_score, quality_provider, ai_scores, quality_components
+  - Prevents accidental metadata overwrites from passing entire metadata dict
+  - Added detailed logging for troubleshooting persistence issues
+
+- **Hybrid Backend Sync Operation** - Enhanced `SyncOperation` dataclass with `preserve_timestamps` flag
+  - Ensures timestamp preservation through background sync queue
+  - Passes flag to Cloudflare backend during update operations
+  - Maintains temporal consistency across hybrid backends
+
+### Technical Details
+- Affects only hybrid backend with Cloudflare secondary storage
+- SQLite-vec primary storage was working correctly (scores persisted locally)
+- Issue manifested during background sync to Cloudflare D1
+- Verification: Search results now show quality scores of 1.000 instead of 0.500
+
 ## [8.46.2] - 2025-12-06
 
 ### Fixed
