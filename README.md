@@ -23,16 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.46.2** (Dec 06, 2025)
+### 🆕 Latest Release: **v8.46.3** (Dec 06, 2025)
 
-**Session-Start Hook Crash Fix + Hook Installer Improvements**
+**Quality Score Persistence Fix for Hybrid Backend**
 
-- ✅ **Session-Start Hook Fix** - Fixed crash caused by missing `queryMemoriesByTagsAndTime()` function (client-side tag filtering on time-based queries)
-- 🪟 **Hook Installer Warnings Eliminated** - Removed confusing package import warnings during installation (isolated version metadata)
-- 🔧 **Clean Installation** - Hook installer now reads version from `pyproject.toml` without loading heavy dependencies (sqlite-vec, sentence_transformers)
-- 🌐 **Cross-Platform** - Fixes apply to all platforms (Windows, macOS, Linux)
+- ✅ **ONNX Quality Score Persistence** - Fixed quality scores not persisting to Cloudflare in hybrid backend (scores remained at 0.5 instead of ~1.0)
+- 🔧 **Metadata Normalization** - Added Cloudflare-specific metadata wrapping (non-top-level fields wrapped in 'metadata' key)
+- 📊 **Quality API Fix** - `/api/quality/evaluate` endpoint now extracts only quality-related fields before persisting
+- 🔍 **Enhanced Logging** - Added detailed logging for troubleshooting metadata updates
 
 **Previous Releases**:
+- **v8.46.2** - Session-Start Hook Crash Fix + Hook Installer Improvements (client-side tag filtering, isolated version metadata)
 - **v8.46.1** - Windows Hooks Installer Fix + Quality System Integration (UTF-8 console configuration, backend quality scoring)
 - **v8.45.3** - ONNX Ranker Model Export Fix (automatic model export, offline mode support, 7-16ms CPU performance)
 - **v8.45.2** - Dashboard Dark Mode Consistency Fixes (global CSS overrides, Chart.js dark mode support)
