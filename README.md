@@ -23,14 +23,14 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.46.0** (Dec 06, 2025)
+### 🆕 Latest Release: **v8.46.1** (Dec 06, 2025)
 
-**Quality System + Hooks Integration**
+**Windows Hooks Installer Fix + Quality System Integration**
 
+- 🪟 **Windows Encoding Fix** - Fixed `charmap` codec error in hooks installer on Windows (UTF-8 console configuration)
 - 🔗 **Backend Quality Scoring** - 3-phase integration of AI quality scoring into memory awareness hooks (20% weight in scoring)
 - 📊 **Quality-Boosted Search** - Reranking with composite score: `(1-weight)*semantic + weight*quality` via `/api/search`
 - 🎯 **Evaluation Endpoint** - New `POST /api/quality/memories/{hash}/evaluate` for on-demand AI quality scoring (~355ms with ONNX)
-- ⚙️ **Hook Functions** - `calculateBackendQuality()`, `triggerQualityEvaluation()`, `qualityBoost` parameter support
 
 **Previous Releases**:
 - **v8.45.3** - ONNX Ranker Model Export Fix (automatic model export, offline mode support, 7-16ms CPU performance)

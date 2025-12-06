@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.46.1] - 2025-12-06
+
+### Fixed
+- **Windows Hooks Installer Encoding** - Fixed `'charmap' codec can't encode character` error when running `install_hooks.py` on Windows
+  - Added UTF-8 console configuration (CP65001) at script startup
+  - Reconfigured stdout/stderr with `encoding='utf-8', errors='replace'`
+  - Added explicit `encoding='utf-8'` to all JSON file read/write operations
+  - Added `ensure_ascii=False` to `json.dump()` for proper Unicode handling
+
+### Technical Details
+- Root cause: Windows console default encoding (CP1252) doesn't support Unicode emojis (✅, ⚠️, etc.)
+- Fix applies to all Windows systems regardless of console code page setting
+
 ## [8.46.0] - 2025-12-06
 
 ### Added
