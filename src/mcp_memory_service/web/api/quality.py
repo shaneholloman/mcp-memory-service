@@ -215,12 +215,29 @@ async def evaluate_memory_quality(
         implicit_score = memory.metadata.get('quality_components', {}).get('implicit_score')
         quality_provider = memory.metadata.get('quality_provider', 'implicit')
 
+        # Prepare updates with only the quality-related fields
+        updates = {
+            'quality_score': quality_score,
+            'quality_provider': quality_provider,
+        }
+        if ai_scores:
+            updates['ai_scores'] = ai_scores
+        if 'quality_components' in memory.metadata:
+            updates['quality_components'] = memory.metadata['quality_components']
+
+        logger.info(f"Persisting quality metadata for {content_hash[:8]}...: {updates}")
+
         # Persist updated metadata to storage
-        await storage.update_memory_metadata(
+        success, message = await storage.update_memory_metadata(
             content_hash=content_hash,
-            updates=memory.metadata,
+            updates=updates,
             preserve_timestamps=True
         )
+
+        if not success:
+            logger.error(f"Failed to persist quality metadata: {message}")
+        else:
+            logger.info(f"Successfully persisted quality metadata for {content_hash[:8]}...")
 
         evaluation_time_ms = (time.time() - start_time) * 1000
 

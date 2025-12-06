@@ -64,6 +64,7 @@ class SyncOperation:
     memory: Optional[Memory] = None
     content_hash: Optional[str] = None
     updates: Optional[Dict[str, Any]] = None
+    preserve_timestamps: bool = True
     timestamp: float = None
     retries: int = 0
     max_retries: int = 3
@@ -71,6 +72,47 @@ class SyncOperation:
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = time.time()
+
+
+def _normalize_metadata_for_cloudflare(updates: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize metadata updates for Cloudflare storage backend.
+
+    Cloudflare expects metadata fields wrapped in a 'metadata' key,
+    while SQLite-vec accepts flat fields. This function transforms
+    flat metadata fields into the wrapped format.
+
+    Args:
+        updates: Raw updates dict (may be flat or already wrapped)
+
+    Returns:
+        Normalized updates dict suitable for Cloudflare
+    """
+    # Protected top-level keys that Cloudflare recognizes
+    cloudflare_keys = {"metadata", "memory_type", "tags", "created_at",
+                       "created_at_iso", "updated_at", "updated_at_iso"}
+
+    # If updates already has 'metadata' key, it's already wrapped
+    if "metadata" in updates:
+        return updates
+
+    # Separate Cloudflare-recognized keys from metadata fields
+    wrapped_updates = {}
+    metadata_fields = {}
+
+    for key, value in updates.items():
+        if key in cloudflare_keys:
+            wrapped_updates[key] = value
+        else:
+            # These are metadata fields that need wrapping
+            metadata_fields[key] = value
+
+    # Only add metadata wrapper if there are fields to wrap
+    if metadata_fields:
+        wrapped_updates["metadata"] = metadata_fields
+
+    return wrapped_updates
+
 
 class BackgroundSyncService:
     """
@@ -492,8 +534,13 @@ class BackgroundSyncService:
                     raise Exception(f"Delete operation failed: {message}")
 
             elif operation.operation == 'update' and operation.content_hash and operation.updates:
+                # Normalize metadata for Cloudflare backend
+                normalized_updates = _normalize_metadata_for_cloudflare(operation.updates)
+
                 success, message = await self.secondary.update_memory_metadata(
-                    operation.content_hash, operation.updates
+                    operation.content_hash,
+                    normalized_updates,
+                    preserve_timestamps=operation.preserve_timestamps
                 )
                 if not success:
                     raise Exception(f"Update operation failed: {message}")
@@ -1223,7 +1270,8 @@ class HybridMemoryStorage(MemoryStorage):
             operation = SyncOperation(
                 operation='update',
                 content_hash=content_hash,
-                updates=updates
+                updates=updates,
+                preserve_timestamps=preserve_timestamps
             )
             await self.sync_service.enqueue_operation(operation)
 
