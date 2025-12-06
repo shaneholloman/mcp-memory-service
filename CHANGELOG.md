@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.45.3] - 2025-12-06
+
+### Fixed
+- **ONNX Ranker Model Export** - Fixed broken model download URL (404 from HuggingFace) by implementing automatic model export from transformers to ONNX format on first use
+- **Offline Mode Support** - Added `local_files_only=True` support for air-gapped/offline environments using cached HuggingFace models
+- **Tokenizer Loading** - Fixed tokenizer initialization to load from exported pretrained files instead of broken archive
+
+### Changed
+- Replaced failing `onnx.tar.gz` download approach with dynamic export from `cross-encoder/ms-marco-MiniLM-L-6-v2` via transformers
+- Model now exports to `~/.cache/mcp_memory/onnx_models/ms-marco-MiniLM-L-6-v2/model.onnx` on first initialization
+- Added graceful fallback: tries `local_files_only` first, then online download if not cached
+
+### Technical Details
+- Performance: 7-16ms per memory scoring on CPU (CPUExecutionProvider)
+- Model size: ~23MB exported ONNX model
+- Dependencies: Requires `transformers`, `torch`, `onnxruntime`, `onnx` packages
+
 ## [8.45.2] - 2025-12-06
 
 ### Fixed

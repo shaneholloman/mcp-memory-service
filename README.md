@@ -23,16 +23,16 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.45.2** (Dec 06, 2025)
+### 🆕 Latest Release: **v8.45.3** (Dec 06, 2025)
 
-**Dashboard Dark Mode Consistency Fixes**
+**ONNX Ranker Model Export Fix**
 
-- 🎨 **Dark Mode Regression Fixed** - Resolved white/light backgrounds on form controls, select elements, and view buttons in dark mode
-- 🌐 **Global Dark Mode CSS** - Added comprehensive overrides ensuring consistency across all 7 dashboard tabs
-- 📊 **Quality Tab Chart Contrast** - Improved chart readability with proper backgrounds and visible grid lines in dark mode
-- 🎨 **Chart.js Dark Mode Support** - Added dynamic color configuration for quality distribution and provider charts
+- 🔧 **Fixed Model Download** - Resolved 404 error from HuggingFace by implementing automatic model export from transformers to ONNX format
+- 🌐 **Offline Mode Support** - Added `local_files_only=True` for air-gapped/offline environments using cached models
+- ⚡ **Performance** - 7-16ms per memory scoring on CPU, model exports to `~/.cache/mcp_memory/onnx_models/`
 
 **Previous Releases**:
+- **v8.45.2** - Dashboard Dark Mode Consistency Fixes (global CSS overrides, Chart.js dark mode support)
 - **v8.45.1** - Quality System Test Infrastructure Fixes (HTTP API router, storage retrieval, async test client)
 - **v8.45.0** - Memory Quality System - AI-Driven Automatic Quality Scoring (ONNX-powered local SLM, multi-tier fallback, quality-based retention)
 - **v8.44.0** - Multi-Language Expansion (Japanese, Korean, German, French, Spanish - 359 keys each, complete i18n coverage)

@@ -1,12 +1,13 @@
 """
 ONNX-based cross-encoder model for quality scoring.
 Uses ms-marco-MiniLM-L-6-v2 model for relevance scoring.
+
+Exports the model from transformers to ONNX format on first use.
 """
 
-import hashlib
+import json
 import logging
 import os
-import tarfile
 from pathlib import Path
 from typing import Optional
 import numpy as np
@@ -21,40 +22,27 @@ except ImportError:
     ONNX_AVAILABLE = False
     logger.warning("ONNX Runtime not available. Install with: pip install onnxruntime")
 
-# Try to import tokenizers
+# Try to import transformers for model export
 try:
-    from tokenizers import Tokenizer
-    TOKENIZERS_AVAILABLE = True
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    import torch
+    TRANSFORMERS_AVAILABLE = True
 except ImportError:
-    TOKENIZERS_AVAILABLE = False
-    logger.warning("Tokenizers not available. Install with: pip install tokenizers")
-
-
-def _verify_sha256(fname: str, expected_sha256: str) -> bool:
-    """Verify SHA256 hash of a file."""
-    sha256_hash = hashlib.sha256()
-    with open(fname, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest() == expected_sha256
+    TRANSFORMERS_AVAILABLE = False
+    logger.warning("Transformers not available. Install with: pip install transformers torch")
 
 
 class ONNXRankerModel:
     """
     ONNX-based cross-encoder model for quality scoring.
     Evaluates (query, memory) pairs to produce relevance scores.
+
+    On first use, exports the model from transformers to ONNX format.
     """
 
-    MODEL_NAME = "ms-marco-MiniLM-L-6-v2"
-    DOWNLOAD_PATH = Path.home() / ".cache" / "mcp_memory" / "onnx_models" / MODEL_NAME
-    EXTRACTED_FOLDER_NAME = "onnx"
-    ARCHIVE_FILENAME = "onnx.tar.gz"
-    # Using Hugging Face model URL for ms-marco-MiniLM-L-6-v2
-    MODEL_DOWNLOAD_URL = (
-        "https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2/resolve/main/onnx.tar.gz"
-    )
-    # SHA256 hash for ms-marco-MiniLM-L-6-v2 ONNX model
-    _MODEL_SHA256 = "e222f54f61e20e0c7e7f1e5b1e5f8c9d9e8c7d6e5f4e3d2c1b0a9e8d7c6b5a4"
+    MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    MODEL_PATH = Path.home() / ".cache" / "mcp_memory" / "onnx_models" / "ms-marco-MiniLM-L-6-v2"
+    ONNX_MODEL_FILE = "model.onnx"
 
     def __init__(self, device: str = "auto", preferred_providers: Optional[list] = None):
         """
@@ -67,16 +55,16 @@ class ONNXRankerModel:
         if not ONNX_AVAILABLE:
             raise ImportError("ONNX Runtime is required but not installed. Install with: pip install onnxruntime")
 
-        if not TOKENIZERS_AVAILABLE:
-            raise ImportError("Tokenizers is required but not installed. Install with: pip install tokenizers")
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError("Transformers and torch are required. Install with: pip install transformers torch")
 
         self.device = device
         self._preferred_providers = preferred_providers or self._detect_providers(device)
         self._model = None
         self._tokenizer = None
 
-        # Download model if needed
-        self._download_model_if_needed()
+        # Ensure model is exported to ONNX
+        self._ensure_onnx_model()
 
         # Initialize the model
         self._init_model()
@@ -106,67 +94,73 @@ class ONNXRankerModel:
 
         return preferred_providers
 
-    def _download_model_if_needed(self):
-        """Download and extract ONNX model if not present."""
-        if not self.DOWNLOAD_PATH.exists():
-            self.DOWNLOAD_PATH.mkdir(parents=True, exist_ok=True)
+    def _ensure_onnx_model(self):
+        """Export transformers model to ONNX format if not already present."""
+        onnx_path = self.MODEL_PATH / self.ONNX_MODEL_FILE
 
-        archive_path = self.DOWNLOAD_PATH / self.ARCHIVE_FILENAME
-        extracted_path = self.DOWNLOAD_PATH / self.EXTRACTED_FOLDER_NAME
-
-        # Check if model is already extracted
-        if extracted_path.exists() and (extracted_path / "model.onnx").exists():
-            logger.info(f"ONNX ranker model already available at {extracted_path}")
+        if onnx_path.exists():
+            logger.info(f"ONNX model already available at {onnx_path}")
             return
 
-        # For now, we'll skip SHA256 verification for ms-marco model
-        # as the hash needs to be verified from official source
-        # Download if not present
-        if not archive_path.exists():
-            logger.info(f"Downloading ONNX ranker model from {self.MODEL_DOWNLOAD_URL}")
-            try:
-                import httpx
-                with httpx.Client(timeout=60.0) as client:
-                    response = client.get(self.MODEL_DOWNLOAD_URL, follow_redirects=True)
-                    response.raise_for_status()
-                    with open(archive_path, "wb") as f:
-                        f.write(response.content)
-                logger.info(f"Model downloaded to {archive_path}")
-            except Exception as e:
-                logger.error(f"Failed to download ONNX ranker model: {e}")
-                raise RuntimeError(f"Could not download ONNX ranker model: {e}")
+        # Create directory
+        self.MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
-        # Extract the archive
-        logger.info(f"Extracting model to {extracted_path}")
-        with tarfile.open(archive_path, "r:gz") as tar:
-            tar.extractall(self.DOWNLOAD_PATH)
+        logger.info(f"Exporting {self.MODEL_NAME} to ONNX format...")
 
-        # Verify extraction
-        if not (extracted_path / "model.onnx").exists():
-            raise RuntimeError(f"Model extraction failed - model.onnx not found in {extracted_path}")
+        # Load transformers model (try local_files_only first for offline mode)
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME, local_files_only=True)
+            model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME, local_files_only=True)
+        except Exception:
+            # Fall back to online mode if not cached
+            logger.info("Model not in cache, downloading...")
+            tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
+            model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME)
 
-        logger.info("ONNX ranker model ready for use")
+        model.eval()
+
+        # Create dummy inputs for export
+        dummy_text = "query [SEP] document"
+        inputs = tokenizer(dummy_text, return_tensors="pt", padding=True, truncation=True)
+
+        # Export to ONNX
+        with torch.no_grad():
+            torch.onnx.export(
+                model,
+                (inputs["input_ids"], inputs["attention_mask"], inputs["token_type_ids"]),
+                str(onnx_path),
+                input_names=["input_ids", "attention_mask", "token_type_ids"],
+                output_names=["logits"],
+                dynamic_axes={
+                    "input_ids": {0: "batch", 1: "sequence"},
+                    "attention_mask": {0: "batch", 1: "sequence"},
+                    "token_type_ids": {0: "batch", 1: "sequence"},
+                    "logits": {0: "batch"},
+                },
+                opset_version=14,
+            )
+
+        # Save tokenizer config for loading
+        tokenizer.save_pretrained(str(self.MODEL_PATH))
+
+        logger.info(f"ONNX model exported to {onnx_path}")
 
     def _init_model(self):
         """Initialize ONNX model and tokenizer."""
-        model_path = self.DOWNLOAD_PATH / self.EXTRACTED_FOLDER_NAME / "model.onnx"
-        tokenizer_path = self.DOWNLOAD_PATH / self.EXTRACTED_FOLDER_NAME / "tokenizer.json"
+        onnx_path = self.MODEL_PATH / self.ONNX_MODEL_FILE
 
-        if not model_path.exists():
-            raise FileNotFoundError(f"ONNX model not found at {model_path}")
-
-        if not tokenizer_path.exists():
-            raise FileNotFoundError(f"Tokenizer not found at {tokenizer_path}")
+        if not onnx_path.exists():
+            raise FileNotFoundError(f"ONNX model not found at {onnx_path}")
 
         # Initialize ONNX session
         logger.info(f"Loading ONNX ranker model with providers: {self._preferred_providers}")
         self._model = ort.InferenceSession(
-            str(model_path),
+            str(onnx_path),
             providers=self._preferred_providers
         )
 
-        # Initialize tokenizer
-        self._tokenizer = Tokenizer.from_file(str(tokenizer_path))
+        # Initialize tokenizer from saved pretrained files (local only)
+        self._tokenizer = AutoTokenizer.from_pretrained(str(self.MODEL_PATH), local_files_only=True)
 
         logger.info(f"ONNX ranker model loaded. Active provider: {self._model.get_providers()[0]}")
 
@@ -185,29 +179,30 @@ class ONNXRankerModel:
             return 0.0
 
         try:
-            # Format input as [CLS] query [SEP] memory [SEP]
-            text = f"{query} [SEP] {memory_content}"
+            # Tokenize query-document pair
+            inputs = self._tokenizer(
+                query,
+                memory_content,
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors="np"
+            )
 
-            # Tokenize
-            encoded = self._tokenizer.encode(text)
-
-            # Prepare inputs for ONNX model (batch size 1)
-            input_ids = np.array([encoded.ids], dtype=np.int64)
-            attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
-            token_type_ids = np.array([encoded.type_ids], dtype=np.int64)
-
-            # Run inference
+            # Prepare inputs for ONNX model
             ort_inputs = {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask,
-                "token_type_ids": token_type_ids,
+                "input_ids": inputs["input_ids"].astype(np.int64),
+                "attention_mask": inputs["attention_mask"].astype(np.int64),
+                "token_type_ids": inputs["token_type_ids"].astype(np.int64),
             }
 
             outputs = self._model.run(None, ort_inputs)
 
             # Extract logit and apply sigmoid
-            # Cross-encoder models typically output a single logit
-            logit = float(outputs[0][0][0])
+            # Cross-encoder models output logits for classification
+            logits = outputs[0][0]
+            # For binary classification, take first logit or single value
+            logit = float(logits[0] if len(logits.shape) > 0 and logits.shape[0] > 1 else logits)
 
             # Apply sigmoid to convert to 0-1 range
             score = 1.0 / (1.0 + np.exp(-logit))
@@ -233,8 +228,8 @@ def get_onnx_ranker_model(device: str = "auto") -> Optional[ONNXRankerModel]:
         logger.warning("ONNX Runtime not available")
         return None
 
-    if not TOKENIZERS_AVAILABLE:
-        logger.warning("Tokenizers not available")
+    if not TRANSFORMERS_AVAILABLE:
+        logger.warning("Transformers not available")
         return None
 
     try:
