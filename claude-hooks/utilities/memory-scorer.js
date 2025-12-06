@@ -277,6 +277,32 @@ function calculateRecencyBonus(memoryDate) {
 }
 
 /**
+ * Extract backend quality score from memory metadata
+ * This leverages the AI-based quality scoring from the MCP Memory Service backend
+ * (ONNX local SLM, Groq, or implicit signals)
+ */
+function calculateBackendQuality(memory) {
+    try {
+        // Check for quality_score in metadata (set by backend quality system)
+        if (memory.metadata && typeof memory.metadata.quality_score === 'number') {
+            return memory.metadata.quality_score;
+        }
+
+        // Also check direct property (some API responses flatten metadata)
+        if (typeof memory.quality_score === 'number') {
+            return memory.quality_score;
+        }
+
+        // Default to neutral score if not available
+        // This ensures graceful fallback when backend hasn't scored the memory
+        return 0.5;
+
+    } catch (error) {
+        return 0.5; // Neutral fallback
+    }
+}
+
+/**
  * Calculate conversation context relevance score (Phase 2)
  * Matches memory content with current conversation topics and intent
  */
@@ -375,19 +401,22 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
             conversationAnalysis = null
         } = options;
 
-        // Default weights including content quality factor
+        // Default weights including content quality and backend quality factors
+        // Backend quality leverages AI-based semantic scoring from MCP Memory Service
         const defaultWeights = includeConversationContext ? {
-            timeDecay: 0.20,           // Reduced weight for time
-            tagRelevance: 0.30,        // Tag matching remains important
-            contentRelevance: 0.15,    // Content matching reduced
-            contentQuality: 0.25,      // New quality factor
-            conversationRelevance: 0.25, // Conversation context factor
+            timeDecay: 0.15,           // Reduced weight for time
+            tagRelevance: 0.25,        // Tag matching remains important
+            contentRelevance: 0.10,    // Content matching reduced
+            contentQuality: 0.15,      // Heuristic quality factor
+            backendQuality: 0.15,      // AI-based backend quality (ONNX/Groq)
+            conversationRelevance: 0.20, // Conversation context factor
             typeBonus: 0.05            // Memory type provides minor adjustment
         } : {
-            timeDecay: 0.25,           // Reduced time weight
-            tagRelevance: 0.35,        // Tag matching important
-            contentRelevance: 0.15,    // Content matching
-            contentQuality: 0.25,      // Quality factor prioritized
+            timeDecay: 0.20,           // Reduced time weight
+            tagRelevance: 0.30,        // Tag matching important
+            contentRelevance: 0.10,    // Content matching reduced
+            contentQuality: 0.20,      // Heuristic quality factor
+            backendQuality: 0.20,      // AI-based backend quality (ONNX/Groq)
             typeBonus: 0.05            // Type bonus reduced
         };
 
@@ -398,6 +427,7 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
         const tagScore = calculateTagRelevance(memory.tags, projectContext);
         const contentScore = calculateContentRelevance(memory.content, projectContext);
         const qualityScore = calculateContentQuality(memory.content);
+        const backendQualityScore = calculateBackendQuality(memory); // AI-based quality from backend
         const typeBonus = calculateTypeBonus(memory.memory_type);
         const recencyBonus = calculateRecencyBonus(memory.created_at || memory.created_at_iso);
 
@@ -406,6 +436,7 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
             (tagScore * w.tagRelevance) +
             (contentScore * w.contentRelevance) +
             (qualityScore * w.contentQuality) +
+            (backendQualityScore * (w.backendQuality || 0)) + // Backend AI quality score
             typeBonus + // Type bonus is not weighted, acts as adjustment
             recencyBonus // Recency bonus provides explicit boost for very recent memories
         );
@@ -415,6 +446,7 @@ function calculateRelevanceScore(memory, projectContext, options = {}) {
             tagRelevance: tagScore,
             contentRelevance: contentScore,
             contentQuality: qualityScore,
+            backendQuality: backendQualityScore, // AI-based quality from ONNX/Groq
             typeBonus: typeBonus,
             recencyBonus: recencyBonus
         };
@@ -718,6 +750,9 @@ module.exports = {
     calculateTimeDecay,
     calculateTagRelevance,
     calculateContentRelevance,
+    calculateContentQuality,
+    calculateBackendQuality,  // AI-based quality scoring integration
+    calculateConversationRelevance,
     calculateTypeBonus,
     calculateRecencyBonus,
     filterByRelevance,
