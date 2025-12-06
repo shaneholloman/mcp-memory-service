@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.45.1**: **Quality System Test Infrastructure Fixes** - Fixed HTTP API router configuration (missing `/api/quality` prefix causing 404s), corrected MCP tool storage method calls (`get_all_memories()` vs `search_all_memories()`), replaced synchronous TestClient with async httpx.AsyncClient for SQLite thread safety. All 27 functional tests passing, ONNX tests properly skipping. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.45.3**: **Quality System + Hooks Integration** - Complete 3-phase integration of AI quality scoring into memory awareness hooks. ONNX ranker fix (exports from transformers), `/evaluate` endpoint for async scoring, quality-boosted search with reranking, and `backendQuality` factor in hook scoring (20% weight). See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -152,6 +152,39 @@ export MCP_QUALITY_RETENTION_LOW_MIN=30        # Min days for <0.5
 - ✅ **>95% local SLM usage** (Tier 1 success rate)
 - ✅ **<100ms search latency** with quality boost
 - ✅ **$0 monthly cost** (local SLM default)
+
+### Hooks Integration (v8.45.3+)
+
+Quality scoring is now integrated with memory awareness hooks:
+
+**Phase 1: Backend Quality in Hooks**
+- `memory-scorer.js` reads `quality_score` from memory metadata
+- Weight: 20% of hook scoring (reduces contentQuality/contentRelevance)
+- Graceful fallback to 0.5 if quality_score not available
+
+**Phase 2: Async Quality Evaluation**
+- Session-end hook triggers `/api/quality/memories/{hash}/evaluate`
+- Non-blocking: 10s timeout, doesn't delay session end
+- ONNX ranker provides ~355ms evaluation time
+
+**Phase 3: Quality-Boosted Retrieval**
+```bash
+# Search with quality boost
+curl -X POST http://127.0.0.1:8000/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "...", "quality_boost": true, "quality_weight": 0.3}'
+```
+
+**Complete Flow:**
+```
+Session End → Store Memory → Trigger /evaluate (async)
+                                    ↓
+                            ONNX Ranker (355ms)
+                                    ↓
+                            Update metadata.quality_score
+                                    ↓
+Next Session → Hook Retrieval → backendQuality = 20% weight
+```
 
 ### Documentation
 

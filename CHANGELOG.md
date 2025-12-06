@@ -12,6 +12,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [8.45.3] - 2025-12-06
 
+### Added
+- **Quality System + Hooks Integration** - Complete 3-phase integration of AI quality scoring into memory awareness hooks:
+  - **Phase 1**: Hooks read `backendQuality` from memory metadata (20% weight in scoring)
+  - **Phase 2**: Session-end hook triggers async `/api/quality/memories/{hash}/evaluate` endpoint
+  - **Phase 3**: Quality-boosted search with `quality_boost` and `quality_weight` parameters
+
+- **`POST /api/quality/memories/{hash}/evaluate`** - New endpoint to trigger AI-based quality evaluation
+  - Uses multi-tier system (ONNX local → Groq → Gemini → Implicit)
+  - Returns quality_score, quality_provider, ai_score, evaluation_time_ms
+  - Performance: ~355ms with ONNX ranker
+
+- **Quality-Boosted Search** - Added `quality_boost` and `quality_weight` to `/api/search`
+  - Over-fetches 3x results, reranks with composite score
+  - Formula: `(1-weight)*semantic + weight*quality`
+  - Returns `search_type: "semantic_quality_boost"` with score breakdown
+
+- **Hook Integration Functions**
+  - `calculateBackendQuality()` in `memory-scorer.js` extracts quality_score from metadata
+  - `triggerQualityEvaluation()` in `session-end.js` for async scoring
+  - `queryMemories()` in `memory-client.js` supports `qualityBoost` option
+
 ### Fixed
 - **ONNX Ranker Model Export** - Fixed broken model download URL (404 from HuggingFace) by implementing automatic model export from transformers to ONNX format on first use
 - **Offline Mode Support** - Added `local_files_only=True` support for air-gapped/offline environments using cached HuggingFace models
@@ -21,11 +42,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Replaced failing `onnx.tar.gz` download approach with dynamic export from `cross-encoder/ms-marco-MiniLM-L-6-v2` via transformers
 - Model now exports to `~/.cache/mcp_memory/onnx_models/ms-marco-MiniLM-L-6-v2/model.onnx` on first initialization
 - Added graceful fallback: tries `local_files_only` first, then online download if not cached
+- Updated hook scoring weights: timeDecay (20%), tagRelevance (30%), contentRelevance (10%), contentQuality (20%), backendQuality (20%)
 
 ### Technical Details
 - Performance: 7-16ms per memory scoring on CPU (CPUExecutionProvider)
 - Model size: ~23MB exported ONNX model
 - Dependencies: Requires `transformers`, `torch`, `onnxruntime`, `onnx` packages
+- Hook evaluation: Non-blocking with 10s timeout, graceful fallback on failure
 
 ## [8.45.2] - 2025-12-06
 
