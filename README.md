@@ -23,16 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.45.1** (Dec 05, 2025)
+### 🆕 Latest Release: **v8.45.2** (Dec 06, 2025)
 
-**Quality System Test Infrastructure Fixes**
+**Dashboard Dark Mode Consistency Fixes**
 
-- 🔧 **HTTP API Router Configuration** - Fixed missing `/api/quality` prefix causing 404 errors on all quality endpoints
-- 🛠️ **MCP Tool Storage Retrieval** - Corrected method call from `search_all_memories()` to `get_all_memories()` in quality distribution tool
-- ✅ **Test Infrastructure Improvements** - Replaced synchronous TestClient with async httpx.AsyncClient for SQLite thread safety
-- 📦 **Dependencies Added** - Added `pytest-benchmark` and `onnxruntime` as optional dependencies for quality system testing
+- 🎨 **Dark Mode Regression Fixed** - Resolved white/light backgrounds on form controls, select elements, and view buttons in dark mode
+- 🌐 **Global Dark Mode CSS** - Added comprehensive overrides ensuring consistency across all 7 dashboard tabs
+- 📊 **Quality Tab Chart Contrast** - Improved chart readability with proper backgrounds and visible grid lines in dark mode
+- 🎨 **Chart.js Dark Mode Support** - Added dynamic color configuration for quality distribution and provider charts
 
 **Previous Releases**:
+- **v8.45.1** - Quality System Test Infrastructure Fixes (HTTP API router, storage retrieval, async test client)
 - **v8.45.0** - Memory Quality System - AI-Driven Automatic Quality Scoring (ONNX-powered local SLM, multi-tier fallback, quality-based retention)
 - **v8.44.0** - Multi-Language Expansion (Japanese, Korean, German, French, Spanish - 359 keys each, complete i18n coverage)
 - **v8.43.0** - Internationalization & Quality Automation (English/Chinese i18n, Claude branch automation, quality gates)

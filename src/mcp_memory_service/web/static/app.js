@@ -3537,6 +3537,43 @@ class MemoryDashboard {
         const isDark = theme === 'dark';
         document.body.classList.toggle('dark-mode', isDark);
 
+        // Configure Chart.js colors for dark mode
+        if (typeof Chart !== 'undefined' && Chart.defaults) {
+            // Set global defaults for text and borders
+            if (Chart.defaults.color !== undefined) {
+                Chart.defaults.color = isDark ? '#f9fafb' : '#374151';
+            }
+            if (Chart.defaults.borderColor !== undefined) {
+                Chart.defaults.borderColor = isDark ? '#4b5563' : '#e5e7eb';
+            }
+
+            // Redraw existing charts if Quality tab is visible
+            if (this.qualityDistributionChart) {
+                this.qualityDistributionChart.options.scales.y.ticks = {
+                    ...this.qualityDistributionChart.options.scales.y.ticks,
+                    color: isDark ? '#f9fafb' : '#374151'
+                };
+                this.qualityDistributionChart.options.scales.y.grid = {
+                    ...this.qualityDistributionChart.options.scales.y.grid,
+                    color: isDark ? '#374151' : '#e5e7eb'
+                };
+                this.qualityDistributionChart.options.scales.x = {
+                    ...this.qualityDistributionChart.options.scales.x,
+                    ticks: { color: isDark ? '#f9fafb' : '#374151' },
+                    grid: { color: isDark ? '#374151' : '#e5e7eb' }
+                };
+                this.qualityDistributionChart.update();
+            }
+
+            if (this.qualityProviderChart) {
+                this.qualityProviderChart.options.plugins.legend.labels = {
+                    ...this.qualityProviderChart.options.plugins.legend.labels,
+                    color: isDark ? '#f9fafb' : '#374151'
+                };
+                this.qualityProviderChart.update();
+            }
+        }
+
         // Toggle icon visibility using CSS classes
         const sunIcon = document.getElementById('sunIcon');
         const moonIcon = document.getElementById('moonIcon');
@@ -4520,6 +4557,10 @@ class MemoryDashboard {
         }
 
         const ctx = canvas.getContext('2d');
+        const isDark = document.body.classList.contains('dark-mode');
+        const textColor = isDark ? '#f9fafb' : '#374151';
+        const gridColor = isDark ? '#374151' : '#e5e7eb';
+
         this.qualityDistributionChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -4552,7 +4593,22 @@ class MemoryDashboard {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'Count'
+                            text: 'Count',
+                            color: textColor
+                        },
+                        ticks: {
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: textColor
+                        },
+                        grid: {
+                            color: gridColor
                         }
                     }
                 },
@@ -4596,6 +4652,9 @@ class MemoryDashboard {
         });
 
         const ctx = canvas.getContext('2d');
+        const isDark = document.body.classList.contains('dark-mode');
+        const textColor = isDark ? '#f9fafb' : '#374151';
+
         this.qualityProviderChart = new Chart(ctx, {
             type: 'pie',
             data: {
@@ -4615,7 +4674,10 @@ class MemoryDashboard {
                 maintainAspectRatio: true,
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        position: 'bottom',
+                        labels: {
+                            color: textColor
+                        }
                     }
                 }
             }

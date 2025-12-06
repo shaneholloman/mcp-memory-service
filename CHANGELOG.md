@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.45.2] - 2025-12-06
+
+### Fixed
+- **Dashboard Dark Mode Consistency** - Fixed dark mode regression where form controls, select elements, and view buttons had white/light backgrounds in dark mode
+- **Global Dark Mode CSS** - Added comprehensive `.form-control` and `.form-select` dark mode overrides ensuring consistency across all 7 dashboard tabs (Dashboard, Search, Browse, Documents, Manage, Analytics, Quality)
+- **Quality Tab Chart Contrast** - Improved chart readability in dark mode with proper `var(--neutral-400)` backgrounds and visible grid lines
+- **Chart.js Dark Mode Support** - Added dynamic Chart.js color configuration in `applyTheme()` function with light text (#f9fafb) and proper legend colors
+- **Quality Distribution Chart** - Updated `renderQualityDistributionChart()` with dynamic text/grid colors for dark mode
+- **Quality Provider Chart** - Updated `renderQualityProviderChart()` with dark mode-aware legend colors
+
+### Changed
+- Enhanced `.view-btn` dark mode styles with proper hover states for better user interaction
+
 ## [8.45.1] - 2025-12-05
 
 ### Fixed

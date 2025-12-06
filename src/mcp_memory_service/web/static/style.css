@@ -3289,8 +3289,8 @@ body.dark-mode .bulk-op-card,
 body.dark-mode .system-op-card,
 body.dark-mode .chart-card,
 body.dark-mode .report-card {
-    background: var(--neutral-50) !important;  /* Darker nested card background */
-    border-color: var(--neutral-200) !important;
+    background: var(--neutral-200) !important;  /* Lighter nested card background for contrast */
+    border-color: var(--neutral-300) !important;
     color: var(--neutral-900) !important;
 }
 
@@ -3576,8 +3576,8 @@ body.dark-mode .chart-card input,
 body.dark-mode .chart-card select,
 body.dark-mode .manage-section .form-control,
 body.dark-mode .analytics-section .form-control {
-    background: var(--neutral-100) !important;
-    border-color: var(--neutral-200) !important;
+    background: var(--neutral-300) !important;
+    border-color: var(--neutral-400) !important;
     color: var(--neutral-900) !important;
 }
 
@@ -3586,7 +3586,7 @@ body.dark-mode .bulk-op-card select:focus,
 body.dark-mode .chart-card input:focus,
 body.dark-mode .chart-card select:focus {
     border-color: var(--primary) !important;
-    background: var(--neutral-50) !important;
+    background: var(--neutral-400) !important;
 }
 
 /* Buttons in Manage/Analytics dark mode */
@@ -3594,6 +3594,79 @@ body.dark-mode .bulk-op-card .btn,
 body.dark-mode .system-op-card .btn,
 body.dark-mode .chart-card .btn {
     opacity: 1;
+}
+
+/* Fix all white backgrounds in Analytics/Quality dark mode */
+body.dark-mode .chart-container,
+body.dark-mode .stat-card,
+body.dark-mode .quality-summary .stat-card,
+body.dark-mode .chart-area,
+body.dark-mode .analytics-section .chart-container,
+body.dark-mode .quality-section .stat-card {
+    background: var(--neutral-300) !important;
+}
+
+/* Quality tab memory previews and lists */
+body.dark-mode .memory-preview {
+    background: var(--neutral-200) !important;
+    border-color: var(--neutral-300) !important;
+}
+
+body.dark-mode .memory-preview:hover {
+    background: var(--neutral-300) !important;
+    border-color: var(--primary) !important;
+}
+
+body.dark-mode .memory-preview .memory-content {
+    color: var(--neutral-700) !important;
+}
+
+body.dark-mode .top-performers,
+body.dark-mode .bottom-performers {
+    background: var(--neutral-200) !important;
+    border-color: var(--neutral-300) !important;
+}
+
+body.dark-mode .top-performers h3,
+body.dark-mode .bottom-performers h3 {
+    color: var(--neutral-900) !important;
+}
+
+/* GLOBAL dark mode overrides for ALL white backgrounds across ALL tabs */
+body.dark-mode .form-control,
+body.dark-mode input.form-control,
+body.dark-mode select.form-control,
+body.dark-mode textarea.form-control,
+body.dark-mode .form-select,
+body.dark-mode select.form-select {
+    background: var(--neutral-200) !important;
+    border-color: var(--neutral-300) !important;
+    color: var(--neutral-900) !important;
+}
+
+body.dark-mode .form-control:focus {
+    background: var(--neutral-300) !important;
+    border-color: var(--primary) !important;
+}
+
+body.dark-mode .view-btn,
+body.dark-mode button.view-btn {
+    background: var(--neutral-200) !important;
+    color: var(--neutral-900) !important;
+    border-color: var(--neutral-300) !important;
+}
+
+body.dark-mode .view-btn:hover {
+    background: var(--neutral-300) !important;
+    border-color: var(--primary) !important;
+}
+
+/* Quality tab chart contrast improvements */
+body.dark-mode .quality-section .chart-container,
+body.dark-mode .quality-distribution,
+body.dark-mode .quality-chart {
+    background: var(--neutral-400) !important;
+    border-color: var(--neutral-500) !important;
 }
 
 body.dark-mode .metric-card {
@@ -4415,18 +4488,21 @@ body.dark-mode .result-content {
 }
 
 /* Dark mode quality badge support */
+body.dark-mode .quality-tier-high,
 [data-theme="dark"] .quality-tier-high {
     background-color: #2D5A3D;
     color: #A5E0B5;
     border-color: #4A8A5E;
 }
 
+body.dark-mode .quality-tier-medium,
 [data-theme="dark"] .quality-tier-medium {
     background-color: #5A4A1F;
     color: #F4D88A;
     border-color: #7A6A2F;
 }
 
+body.dark-mode .quality-tier-low,
 [data-theme="dark"] .quality-tier-low {
     background-color: #5A1F23;
     color: #F5A5AB;
