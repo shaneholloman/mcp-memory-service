@@ -84,6 +84,7 @@ class ExponentialDecayCalculator(ConsolidationBase):
         - Connections to other memories
         - Recent access patterns
         - Quality score (high quality = slower decay)
+        - Association-based quality boost (v8.47.0+)
         """
         # Get memory age in days
         age_days = self._get_memory_age_days(memory, current_time)
@@ -105,8 +106,37 @@ class ExponentialDecayCalculator(ConsolidationBase):
         # Calculate access boost
         access_boost = self._calculate_access_boost(memory, access_patterns, current_time)
 
-        # Quality boost (higher quality = slower decay)
+        # Get initial quality score
         quality_score = memory.quality_score
+
+        # Association-based quality boost (v8.47.0+)
+        association_boost_applied = False
+        quality_boost_factor = 1.0
+
+        from ..config import (
+            MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED,
+            MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST,
+            MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR
+        )
+
+        if MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED:
+            connection_count = connections.get(memory.content_hash, 0)
+
+            # Boost quality if memory has many connections (network effect)
+            if connection_count >= MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST:
+                quality_boost_factor = MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR
+                boosted_quality = min(1.0, quality_score * quality_boost_factor)
+
+                if boosted_quality > quality_score:
+                    association_boost_applied = True
+                    self.logger.debug(
+                        f"Association quality boost: {memory.content_hash[:12]} "
+                        f"quality {quality_score:.3f} → {boosted_quality:.3f} "
+                        f"({connection_count} connections)"
+                    )
+                    quality_score = boosted_quality
+
+        # Quality multiplier (higher quality = slower decay)
         quality_multiplier = 1.0 + (quality_score * 0.5)  # 1.0-1.5x multiplier for quality 0.0-1.0
 
         # Calculate total relevance score with quality weighting
@@ -130,7 +160,10 @@ class ExponentialDecayCalculator(ConsolidationBase):
                 'connection_count': connection_count,
                 'is_protected': self._is_protected_memory(memory),
                 'quality_score': quality_score,
-                'quality_multiplier': quality_multiplier
+                'quality_multiplier': quality_multiplier,
+                'association_boost_applied': association_boost_applied,
+                'quality_boost_factor': quality_boost_factor,
+                'original_quality_score': memory.quality_score
             }
         )
     
@@ -239,5 +272,26 @@ class ExponentialDecayCalculator(ConsolidationBase):
             'connection_boost': score.connection_boost,
             'access_boost': score.access_boost
         })
+
+        # Update quality score if association boost was applied (v8.47.0+)
+        if score.metadata.get('association_boost_applied', False):
+            boosted_quality = score.metadata.get('quality_score')
+            original_quality = score.metadata.get('original_quality_score')
+
+            if boosted_quality and boosted_quality > original_quality:
+                # Update quality_score via metadata (no setter available)
+                memory.metadata.update({
+                    'quality_score': boosted_quality,
+                    'quality_boost_applied': True,
+                    'quality_boost_date': datetime.now().isoformat(),
+                    'quality_boost_reason': 'association_connections',
+                    'quality_boost_connection_count': score.metadata.get('connection_count', 0),
+                    'original_quality_before_boost': original_quality
+                })
+                self.logger.info(
+                    f"Persisting association quality boost for {memory.content_hash[:12]}: "
+                    f"{original_quality:.3f} → {boosted_quality:.3f}"
+                )
+
         memory.touch()  # Update the updated_at timestamp
         return memory

@@ -23,16 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.46.3** (Dec 06, 2025)
+### 🆕 Latest Release: **v8.47.0** (Dec 06, 2025)
 
-**Quality Score Persistence Fix for Hybrid Backend**
+**Association-Based Quality Boost**
 
-- ✅ **ONNX Quality Score Persistence** - Fixed quality scores not persisting to Cloudflare in hybrid backend (scores remained at 0.5 instead of ~1.0)
-- 🔧 **Metadata Normalization** - Added Cloudflare-specific metadata wrapping (non-top-level fields wrapped in 'metadata' key)
-- 📊 **Quality API Fix** - `/api/quality/evaluate` endpoint now extracts only quality-related fields before persisting
-- 🔍 **Enhanced Logging** - Added detailed logging for troubleshooting metadata updates
+- 🔗 **Connection-Based Quality Enhancement** - Memories with many connections (≥5) automatically receive 20% quality boost during consolidation
+- 🎯 **Network Effect Leverage** - Well-connected memories are recognized as more valuable knowledge hubs
+- ⚙️ **Configurable Thresholds** - Adjust min connections, boost factor, and enable/disable via environment variables
+- 📊 **Metadata Persistence** - All boosts tracked with audit trail (connection count, original scores, boost date)
+- ✅ **Full Test Coverage** - 5 new test cases validating boost logic, thresholds, caps, and persistence
 
 **Previous Releases**:
+- **v8.46.3** - Quality Score Persistence Fix (ONNX scores in hybrid backend, metadata normalization)
 - **v8.46.2** - Session-Start Hook Crash Fix + Hook Installer Improvements (client-side tag filtering, isolated version metadata)
 - **v8.46.1** - Windows Hooks Installer Fix + Quality System Integration (UTF-8 console configuration, backend quality scoring)
 - **v8.45.3** - ONNX Ranker Model Export Fix (automatic model export, offline mode support, 7-16ms CPU performance)

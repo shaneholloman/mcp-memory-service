@@ -895,3 +895,38 @@ if MCP_QUALITY_SYSTEM_ENABLED:
 # =============================================================================
 # End Quality System Configuration
 # =============================================================================
+
+# =============================================================================
+# Association-Based Quality Enhancement Configuration (v8.47.0+)
+# =============================================================================
+
+# Enable association-based quality boost during consolidation
+MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED = safe_get_bool_env('MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED', True)
+
+# Minimum connection count required to trigger quality boost
+MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST = safe_get_int_env('MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST', 5, min_value=1, max_value=100)
+
+# Quality boost multiplier (e.g., 1.2 = 20% boost)
+MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR = float(os.getenv('MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR', '1.2'))
+
+# Validate quality boost factor
+if not 1.0 <= MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR <= 2.0:
+    logger.warning(f"Invalid consolidation quality boost factor: {MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR}, must be 1.0-2.0. Using default 1.2")
+    MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR = 1.2
+
+# Minimum average quality of connected memories to trigger boost
+MCP_CONSOLIDATION_MIN_CONNECTED_QUALITY = float(os.getenv('MCP_CONSOLIDATION_MIN_CONNECTED_QUALITY', '0.7'))
+
+# Validate minimum connected quality
+if not 0.0 <= MCP_CONSOLIDATION_MIN_CONNECTED_QUALITY <= 1.0:
+    logger.warning(f"Invalid consolidation minimum connected quality: {MCP_CONSOLIDATION_MIN_CONNECTED_QUALITY}, must be 0.0-1.0. Using default 0.7")
+    MCP_CONSOLIDATION_MIN_CONNECTED_QUALITY = 0.7
+
+# Log association-based quality boost configuration
+if MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED:
+    logger.info(f"Association Quality Boost: enabled, min_connections={MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST}, "
+               f"boost_factor={MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR}, min_connected_quality={MCP_CONSOLIDATION_MIN_CONNECTED_QUALITY}")
+
+# =============================================================================
+# End Association-Based Quality Enhancement Configuration
+# =============================================================================

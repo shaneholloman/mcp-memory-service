@@ -294,9 +294,181 @@ class TestExponentialDecayCalculator:
             embedding=None,  # No embedding
             created_at=datetime.now().timestamp()
         )
-        
+
         scores = await decay_calculator.process([memory])
-        
+
         # Should still work, just without embedding-based features
         assert len(scores) == 1
         assert scores[0].total_score > 0
+
+    @pytest.mark.asyncio
+    async def test_association_quality_boost_enabled(self, decay_calculator, monkeypatch):
+        """Test that association-based quality boost increases quality scores."""
+        from mcp_memory_service import config
+
+        # Enable association quality boost
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED', True)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST', 5)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR', 1.2)
+
+        # Create memory with low initial quality
+        memory = Memory(
+            content="Well-connected memory",
+            content_hash="well_connected",
+            tags=["test"],
+            embedding=[0.1] * 320,
+            created_at=datetime.now().timestamp(),
+            metadata={"quality_score": 0.5}  # Low initial quality
+        )
+
+        # Process without connections (no boost)
+        scores_no_connections = await decay_calculator.process(
+            [memory],
+            connections={}
+        )
+
+        # Process with many connections (should boost)
+        scores_with_connections = await decay_calculator.process(
+            [memory],
+            connections={"well_connected": 10}  # More than min threshold
+        )
+
+        no_conn_score = scores_no_connections[0]
+        with_conn_score = scores_with_connections[0]
+
+        # Quality score should be boosted
+        assert with_conn_score.metadata['quality_score'] > no_conn_score.metadata['quality_score']
+        assert with_conn_score.metadata['association_boost_applied'] is True
+        assert with_conn_score.metadata['quality_boost_factor'] == 1.2
+
+        # Original quality should be preserved in metadata
+        assert with_conn_score.metadata['original_quality_score'] == 0.5
+
+        # Total score should be higher due to quality boost
+        assert with_conn_score.total_score > no_conn_score.total_score
+
+    @pytest.mark.asyncio
+    async def test_association_quality_boost_threshold(self, decay_calculator, monkeypatch):
+        """Test that quality boost requires minimum connection count."""
+        from mcp_memory_service import config
+
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED', True)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST', 5)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR', 1.2)
+
+        memory = Memory(
+            content="Few connections",
+            content_hash="few_connections",
+            tags=["test"],
+            embedding=[0.1] * 320,
+            created_at=datetime.now().timestamp(),
+            metadata={"quality_score": 0.5}
+        )
+
+        # Process with connections below threshold (should NOT boost)
+        scores = await decay_calculator.process(
+            [memory],
+            connections={"few_connections": 3}  # Below min threshold of 5
+        )
+
+        score = scores[0]
+
+        # Quality should NOT be boosted
+        assert score.metadata['association_boost_applied'] is False
+        assert score.metadata['quality_score'] == 0.5  # Unchanged
+
+    @pytest.mark.asyncio
+    async def test_association_quality_boost_caps_at_one(self, decay_calculator, monkeypatch):
+        """Test that quality boost doesn't exceed 1.0."""
+        from mcp_memory_service import config
+
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED', True)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST', 5)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR', 1.5)  # Large boost
+
+        memory = Memory(
+            content="High quality memory",
+            content_hash="high_quality",
+            tags=["test"],
+            embedding=[0.1] * 320,
+            created_at=datetime.now().timestamp(),
+            metadata={"quality_score": 0.9}  # Already high quality
+        )
+
+        scores = await decay_calculator.process(
+            [memory],
+            connections={"high_quality": 10}
+        )
+
+        score = scores[0]
+
+        # Quality should be capped at 1.0
+        assert score.metadata['quality_score'] <= 1.0
+        assert score.metadata['association_boost_applied'] is True
+
+    @pytest.mark.asyncio
+    async def test_association_quality_boost_disabled(self, decay_calculator, monkeypatch):
+        """Test that quality boost can be disabled."""
+        from mcp_memory_service import config
+
+        # Disable association quality boost
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED', False)
+
+        memory = Memory(
+            content="Many connections",
+            content_hash="many_connections",
+            tags=["test"],
+            embedding=[0.1] * 320,
+            created_at=datetime.now().timestamp(),
+            metadata={"quality_score": 0.5}
+        )
+
+        scores = await decay_calculator.process(
+            [memory],
+            connections={"many_connections": 10}
+        )
+
+        score = scores[0]
+
+        # Quality should NOT be boosted even with many connections
+        assert score.metadata['association_boost_applied'] is False
+        assert score.metadata['quality_score'] == 0.5
+
+    @pytest.mark.asyncio
+    async def test_association_quality_boost_persists_to_memory(self, decay_calculator, monkeypatch):
+        """Test that quality boost updates are persisted to memory metadata."""
+        from mcp_memory_service import config
+
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED', True)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST', 5)
+        monkeypatch.setattr(config, 'MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR', 1.3)
+
+        memory = Memory(
+            content="Connected memory",
+            content_hash="connected_mem",
+            tags=["test"],
+            embedding=[0.1] * 320,
+            created_at=datetime.now().timestamp(),
+            metadata={"quality_score": 0.6}
+        )
+
+        scores = await decay_calculator.process(
+            [memory],
+            connections={"connected_mem": 8}
+        )
+
+        score = scores[0]
+
+        # Update memory with relevance metadata
+        updated_memory = await decay_calculator.update_memory_relevance_metadata(memory, score)
+
+        # Check that quality score was updated
+        assert updated_memory.quality_score > 0.6  # Boosted
+        assert updated_memory.quality_score == pytest.approx(0.78, rel=0.01)  # 0.6 * 1.3
+
+        # Check metadata
+        assert updated_memory.metadata['quality_boost_applied'] is True
+        assert updated_memory.metadata['quality_boost_reason'] == 'association_connections'
+        assert updated_memory.metadata['quality_boost_connection_count'] == 8
+        assert updated_memory.metadata['original_quality_before_boost'] == 0.6
+        assert 'quality_boost_date' in updated_memory.metadata

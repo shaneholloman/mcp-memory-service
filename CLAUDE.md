@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.46.3**: **Quality Score Persistence Fix** - Fixed ONNX quality scores not persisting to Cloudflare in hybrid backend (scores remained at 0.5 instead of ~1.0). Added metadata normalization for Cloudflare backend, enhanced logging, and preserve_timestamps support in sync operations. Affects only hybrid backend with Cloudflare secondary storage. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.47.0**: **Association-Based Quality Boost** - Memories with many connections (≥5) automatically receive quality score boosts (20% default) during consolidation. Leverages network effect: well-connected memories are likely more valuable. Configurable thresholds and boost factors. See [docs/features/association-quality-boost.md](docs/features/association-quality-boost.md) and [CHANGELOG.md](CHANGELOG.md) for details.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -246,6 +246,11 @@ curl http://127.0.0.1:8000/api/consolidation/recommendations/weekly
 # Enable consolidation (default: true)
 export MCP_CONSOLIDATION_ENABLED=true
 
+# Association-based quality boost (v8.47.0+)
+export MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED=true   # Enable boost (default: true)
+export MCP_CONSOLIDATION_MIN_CONNECTIONS_FOR_BOOST=5  # Min connections (default: 5)
+export MCP_CONSOLIDATION_QUALITY_BOOST_FACTOR=1.2     # Boost multiplier (default: 1.2 = 20%)
+
 # Scheduler configuration (in config.py)
 CONSOLIDATION_SCHEDULE = {
     'daily': '02:00',              # Daily at 2 AM
@@ -259,6 +264,7 @@ CONSOLIDATION_SCHEDULE = {
 ### Features
 
 - **Exponential decay scoring** - Prioritize recent, frequently accessed memories
+- **Association-based quality boost** 🆕 - Well-connected memories (≥5 connections) get 20% quality boost
 - **Creative association discovery** - Find semantic connections (0.3-0.7 similarity)
 - **Semantic clustering** - Group related memories (DBSCAN algorithm)
 - **Compression** - Summarize redundant information (preserves originals)
