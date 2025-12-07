@@ -80,21 +80,25 @@ def _normalize_metadata_for_cloudflare(updates: Dict[str, Any]) -> Dict[str, Any
 
     Cloudflare expects metadata fields wrapped in a 'metadata' key,
     while SQLite-vec accepts flat fields. This function transforms
-    flat metadata fields into the wrapped format.
+    flat metadata fields into the wrapped format and applies CSV
+    compression for quality/consolidation metadata (60% size reduction).
 
     Args:
         updates: Raw updates dict (may be flat or already wrapped)
 
     Returns:
-        Normalized updates dict suitable for Cloudflare
+        Normalized and compressed updates dict suitable for Cloudflare
     """
     # Protected top-level keys that Cloudflare recognizes
     cloudflare_keys = {"metadata", "memory_type", "tags", "created_at",
                        "created_at_iso", "updated_at", "updated_at_iso"}
 
-    # If updates already has 'metadata' key, it's already wrapped
+    # If updates already has 'metadata' key, apply compression
     if "metadata" in updates:
-        return updates
+        from ..quality.metadata_codec import compress_metadata_for_sync
+        compressed = updates.copy()
+        compressed["metadata"] = compress_metadata_for_sync(updates["metadata"])
+        return compressed
 
     # Separate Cloudflare-recognized keys from metadata fields
     wrapped_updates = {}
@@ -109,7 +113,8 @@ def _normalize_metadata_for_cloudflare(updates: Dict[str, Any]) -> Dict[str, Any
 
     # Only add metadata wrapper if there are fields to wrap
     if metadata_fields:
-        wrapped_updates["metadata"] = metadata_fields
+        from ..quality.metadata_codec import compress_metadata_for_sync
+        wrapped_updates["metadata"] = compress_metadata_for_sync(metadata_fields)
 
     return wrapped_updates
 
@@ -544,6 +549,20 @@ class BackgroundSyncService:
                     raise Exception(f"Delete operation failed: {message}")
 
             elif operation.operation == 'update' and operation.content_hash and operation.updates:
+                # Validate metadata size before syncing to Cloudflare
+                if 'metadata' in operation.updates:
+                    import json
+                    metadata_json = json.dumps(operation.updates['metadata'])
+                    metadata_size_kb = len(metadata_json.encode('utf-8')) / 1024
+
+                    if metadata_size_kb > 9.5:  # 9.5KB safety margin (Cloudflare limit is 10KB)
+                        logger.warning(
+                            f"Skipping Cloudflare sync for {operation.content_hash[:16]}: "
+                            f"metadata too large ({metadata_size_kb:.2f}KB > 9.5KB limit)"
+                        )
+                        self.sync_stats['operations_failed'] += 1
+                        return  # Skip this update permanently (too large for Cloudflare)
+
                 # Normalize metadata for Cloudflare backend
                 normalized_updates = _normalize_metadata_for_cloudflare(operation.updates)
 

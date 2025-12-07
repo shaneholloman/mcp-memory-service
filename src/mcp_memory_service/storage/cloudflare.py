@@ -602,14 +602,22 @@ class CloudflareStorage(MemoryStorage):
             
             # Load tags
             tags = await self._load_memory_tags(row["id"])
-            
+
+            # Parse and decompress metadata
+            metadata = {}
+            if row.get("metadata_json"):
+                metadata = json.loads(row["metadata_json"])
+                # Decompress CSV-encoded quality metadata if present
+                from ..quality.metadata_codec import decompress_metadata_from_sync
+                metadata = decompress_metadata_from_sync(metadata)
+
             # Reconstruct Memory object
             memory = Memory(
                 content=content,
                 content_hash=content_hash,
                 tags=tags,
                 memory_type=row.get("memory_type"),
-                metadata=json.loads(row["metadata_json"]) if row.get("metadata_json") else {},
+                metadata=metadata,
                 created_at=row.get("created_at"),
                 created_at_iso=row.get("created_at_iso"),
                 updated_at=row.get("updated_at"),
@@ -729,13 +737,21 @@ class CloudflareStorage(MemoryStorage):
             
             # Load tags
             tags = await self._load_memory_tags(row["id"])
-            
+
+            # Parse and decompress metadata
+            metadata = {}
+            if row.get("metadata_json"):
+                metadata = json.loads(row["metadata_json"])
+                # Decompress CSV-encoded quality metadata if present
+                from ..quality.metadata_codec import decompress_metadata_from_sync
+                metadata = decompress_metadata_from_sync(metadata)
+
             memory = Memory(
                 content=content,
                 content_hash=row["content_hash"],
                 tags=tags,
                 memory_type=row.get("memory_type"),
-                metadata=json.loads(row["metadata_json"]) if row.get("metadata_json") else {},
+                metadata=metadata,
                 created_at=row.get("created_at"),
                 created_at_iso=row.get("created_at_iso"),
                 updated_at=row.get("updated_at"),
@@ -811,13 +827,21 @@ class CloudflareStorage(MemoryStorage):
             # Load tags
             tags = await self._load_memory_tags(row["id"])
 
+            # Parse and decompress metadata
+            metadata = {}
+            if row.get("metadata_json"):
+                metadata = json.loads(row["metadata_json"])
+                # Decompress CSV-encoded quality metadata if present
+                from ..quality.metadata_codec import decompress_metadata_from_sync
+                metadata = decompress_metadata_from_sync(metadata)
+
             # Construct Memory object
             memory = Memory(
                 content=content,
                 content_hash=content_hash,
                 tags=tags,
                 memory_type=row.get("memory_type"),
-                metadata=json.loads(row["metadata_json"]) if row.get("metadata_json") else {},
+                metadata=metadata,
                 created_at=row.get("created_at"),
                 created_at_iso=row.get("created_at_iso"),
                 updated_at=row.get("updated_at"),
@@ -1471,12 +1495,20 @@ class CloudflareStorage(MemoryStorage):
             # Just keep the placeholder
             pass
 
+        # Parse and decompress metadata
+        metadata = {}
+        if row.get("metadata_json"):
+            metadata = json.loads(row["metadata_json"])
+            # Decompress CSV-encoded quality metadata if present
+            from ..quality.metadata_codec import decompress_metadata_from_sync
+            metadata = decompress_metadata_from_sync(metadata)
+
         return Memory(
             content=content,
             content_hash=row["content_hash"],
             tags=[],  # Skip tag loading for bulk operations
             memory_type=row.get("memory_type"),
-            metadata=json.loads(row["metadata_json"]) if row.get("metadata_json") else {},
+            metadata=metadata,
             created_at=row.get("created_at"),
             created_at_iso=row.get("created_at_iso"),
             updated_at=row.get("updated_at"),
