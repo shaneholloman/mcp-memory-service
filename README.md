@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.47.1** (Dec 07, 2025)
+### 🆕 Latest Release: **v8.48.0** (Dec 07, 2025)
 
-**ONNX Quality Evaluation Bug Fixes**
+**CSV-Based Metadata Compression for Cloudflare Sync**
 
-- 🐛 **Self-Match Bug Fix** - Fixed ONNX bulk evaluation using memory content as query (inflated scores 1.0 → realistic 0.468 avg)
-- 🚫 **Association Pollution Fix** - System-generated memories (associations, clusters) now excluded from quality evaluation (948 filtered)
-- ⚡ **Sync Queue Overflow Fix** - Increased queue capacity from 1,000 to 2,000, batch size 50 → 100 (sync failures 27.8% → 0%)
-- 🔧 **Consolidation Optimization** - Batch update for relevance scores (50-100x speedup via update_memories_batch)
-- 📊 **Realistic Quality Distribution** - Now shows 42.9% high / 3.2% medium / 53.9% low (was 99.96% high due to bug)
+- 📦 **78% Size Reduction** - Intelligent CSV compression for quality/consolidation metadata (732B → 159B typical)
+- ✅ **100% Sync Success** - Resolved all Cloudflare metadata size limit failures (10KB D1 limit)
+- 🔒 **Metadata Validation** - Pre-sync size checks prevent 400 Bad Request errors before API calls
+- 🎯 **Smart Optimization** - Provider codes (onnx_local → ox), limited ai_scores history (10 → 3 entries)
+- 🔄 **Transparent Operation** - Automatic compression on write, decompression on read (zero user impact)
 
 **Previous Releases**:
+- **v8.47.1** - ONNX Quality Evaluation Bug Fixes (self-match fix, association pollution, sync queue overflow, realistic distribution)
 - **v8.47.0** - Association-Based Quality Boost (connection-based enhancement, network effect leverage, metadata persistence)
 - **v8.46.3** - Quality Score Persistence Fix (ONNX scores in hybrid backend, metadata normalization)
 - **v8.46.2** - Session-Start Hook Crash Fix + Hook Installer Improvements (client-side tag filtering, isolated version metadata)

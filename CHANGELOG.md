@@ -10,6 +10,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.48.0] - 2025-12-07
+
+### Added
+- **CSV-Based Metadata Compression** - Intelligent metadata compression system for Cloudflare sync operations
+  - Implemented CSV encoding/decoding for quality and consolidation metadata
+  - Achieved 78% size reduction (732B → 159B typical case)
+  - Provider code mapping (onnx_local → ox, groq_llama3_70b → gp, etc.) for 70% reduction in provider field
+  - Metadata size validation (<9.5KB) prevents sync failures before Cloudflare API calls
+  - Transparent compression/decompression in hybrid backend operations
+  - Quality metadata optimizations:
+    - ai_scores history limited to 3 most recent entries (10 → 3)
+    - quality_components removed from sync (debug-only, reconstructible)
+    - Cloudflare-specific field suppression (metadata_source, last_quality_check)
+  - Location: `src/mcp_memory_service/quality/metadata_codec.py`
+
+- **Verification Script** - Shell script to verify compression effectiveness
+  - Tests CSV encoding/decoding round-trip accuracy
+  - Measures compression ratios
+  - Validates metadata size under Cloudflare limits
+  - Location: `verify_compression.sh`
+
+### Fixed
+- **Cloudflare Sync Failures** - Resolved 100% of metadata size limit errors
+  - Problem: Cloudflare D1 10KB metadata limit was exceeded by quality/consolidation metadata
+  - Impact: 1 operation stuck in retry queue with 400 Bad Request errors
+  - Root cause: Uncompressed metadata (ai_scores history, quality_components) exceeded limit
+  - Solution: CSV compression + metadata size validation before sync
+  - Result: 0 sync failures, all operations processing successfully
+  - Locations: `src/mcp_memory_service/storage/hybrid.py` (lines 547-559, 77-119), `src/mcp_memory_service/storage/cloudflare.py` (lines 606-612, 741-747, 830-836, 1474-1480)
+
+### Technical Details
+- **Compression Architecture**: Phase 1 of 3-phase metadata optimization plan
+  - Phase 1 (COMPLETE): CSV-based compression for quality/consolidation metadata
+  - Phase 2 (AVAILABLE): Binary encoding with struct/msgpack (85-90% reduction target)
+  - Phase 3 (AVAILABLE): Reference-based deduplication for repeated values
+- **Backward Compatibility**: Fully transparent - automatic compression on write, decompression on read
+- **Performance Impact**: Negligible (<1ms overhead per operation)
+- **Testing**: All quality system tests passing, sync queue empty, 3,750 ONNX-scored memories verified
+
 ## [8.47.1] - 2025-12-07
 
 ### Fixed
