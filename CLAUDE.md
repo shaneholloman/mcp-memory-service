@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.47.0**: **Association-Based Quality Boost** - Memories with many connections (≥5) automatically receive quality score boosts (20% default) during consolidation. Leverages network effect: well-connected memories are likely more valuable. Configurable thresholds and boost factors. See [docs/features/association-quality-boost.md](docs/features/association-quality-boost.md) and [CHANGELOG.md](CHANGELOG.md) for details.
+> **🆕 v8.47.1**: **ONNX Quality Evaluation Bug Fixes** - Fixed three critical bugs: (1) Self-match producing inflated scores (~1.0 → realistic 0.468 avg), (2) Association pollution with 948 system-generated memories excluded, (3) Sync queue overflow (27.8% → 0% failure rate). Added reset script, enhanced bulk evaluation, optimized consolidation batch updates (50-100x speedup). See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -94,9 +94,17 @@ Web interface at `http://127.0.0.1:8000/` with CRUD operations, semantic/tag/tim
 - Latency: 50-100ms (CPU), 10-20ms (GPU with CUDA/MPS/DirectML)
 - Privacy: ✅ Full (no external API calls)
 - Offline: ✅ Works without internet
+- **⚠️ Requires meaningful query-memory pairs** (designed for relevance ranking, not absolute quality)
 
 **Tier 2-3 (Optional)**: Groq/Gemini APIs (user opt-in only)
 **Tier 4 (Fallback)**: Implicit signals (access patterns)
+
+**IMPORTANT ONNX Limitations:**
+- The ONNX ranker (`ms-marco-MiniLM-L-6-v2`) is a cross-encoder trained for document relevance ranking
+- It scores how well a memory matches a **query**, not absolute memory quality
+- Bulk evaluation generates queries from tags/metadata (what memory is *about*)
+- Self-matching queries (memory content as its own query) produce artificially high scores (~1.0)
+- System-generated memories (associations, compressed clusters) are **not scored**
 
 ### Key Features
 
