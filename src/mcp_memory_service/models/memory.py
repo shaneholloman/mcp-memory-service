@@ -81,7 +81,6 @@ class Memory:
                         # UTC timezone indicated by 'Z'
                         dt = datetime.fromisoformat(iso_str[:-1])
                         # Treat as UTC and convert to timestamp
-                        import calendar
                         return calendar.timegm(dt.timetuple()) + dt.microsecond / 1000000.0
                     elif '+' in iso_str or iso_str.count('-') > 2:
                         # Has timezone info, use fromisoformat in Python 3.7+
