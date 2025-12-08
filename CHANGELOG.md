@@ -10,6 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.48.1] - 2025-12-08
+
+### Fixed
+- **CRITICAL: Service Startup Failure** - Fixed fatal `UnboundLocalError` that prevented v8.48.0 from starting
+  - **Root Cause**: Redundant local `import calendar` statement at line 84 in `src/mcp_memory_service/models/memory.py`
+  - **Python Scoping Issue**: Local import declaration made `calendar` a local variable within `iso_to_float()` function
+  - **Error Location**: Exception handler at line 168 referenced `calendar` before the local import statement was executed
+  - **Impact**: Service entered infinite loop during Cloudflare sync initialization, repeating error every ~100ms
+  - **Symptoms**: Health endpoint unresponsive, dashboard inaccessible, all MCP Memory Service functionality unavailable
+  - **Resolution**: Removed redundant local import (module already imported globally at line 21)
+  - **Severity**: CRITICAL - All v8.48.0 users affected, immediate upgrade required
+  - **Migration**: Drop-in replacement, no configuration changes needed
+  - Location: `src/mcp_memory_service/models/memory.py:84` (removed)
+
+### Technical Details
+- **Error Message**: `UnboundLocalError: cannot access local variable 'calendar' where it is not associated with a value`
+- **Frequency**: Repeating continuously (~100ms intervals) during Cloudflare hybrid backend initialization
+- **Testing**: Service now starts successfully, health endpoint responds correctly, Cloudflare sync completes without errors
+- **Verification**: No timestamp parsing errors in logs, dashboard accessible at https://localhost:8000
+
 ## [8.48.0] - 2025-12-07
 
 ### Added
