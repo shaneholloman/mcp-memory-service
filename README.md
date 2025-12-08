@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.48.2** (Dec 08, 2025)
+### 🆕 Latest Release: **v8.48.3** (Dec 08, 2025)
 
-**HTTP Server Auto-Start & Time Parser Improvements**
+**Code Execution Hook Fix - 75% Token Reduction Now Working**
 
-- 🔧 **HTTP Server Manager** - Smart auto-start system with orphaned process cleanup, version mismatch detection, config change detection
-- 🩺 **Session-Start Health Check** - Warning in hooks when HTTP server is down with actionable fix instructions
-- 🐛 **Time Parser Fix** - Support for "last N days/weeks/months/years" patterns (fixes issue #266)
-- ⚡ **Hook Configuration** - Reverted to "last 3 days" time windows (now works correctly)
-- 🔍 **Shell Integration** - Auto-start support for .zshrc (automatic server management)
+- 🐛 **Code Execution Fixed** - Session-start hook now successfully uses Code Execution API (75% token reduction per session)
+- 🔧 **Root Causes Resolved** - Fixed invalid time_filter parameter, Python warnings to stderr, and system Python path issues
+- 🎯 **Performance Impact** - Reduced session-start tokens from 1200-2400 → 300-600 (75% reduction)
+- 🔍 **Installer Enhanced** - Auto-detects venv Python path using sys.executable for seamless Code Execution
+- ⏱️ **Connection Timeout** - Increased from 2s to 5s to prevent premature failures during initialization
 
 **Previous Releases**:
+- **v8.48.2** - HTTP Server Auto-Start & Time Parser Improvements (smart service management, "last N periods" support)
 - **v8.48.1** - Critical Hotfix - Startup Failure Fix (redundant calendar import removed, immediate upgrade required)
 - **v8.48.0** - CSV-Based Metadata Compression (78% size reduction, 100% sync success, metadata validation)
 - **v8.47.1** - ONNX Quality Evaluation Bug Fixes (self-match fix, association pollution, sync queue overflow, realistic distribution)

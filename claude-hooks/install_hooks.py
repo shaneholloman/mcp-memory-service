@@ -272,16 +272,27 @@ class HookInstaller:
         """Detect the appropriate Python executable path for the current platform.
 
         Returns:
-            str: Python executable name/path ('python3' for Unix, 'python' for Windows)
+            str: Python executable path (sys.executable for venv support, fallback to 'python3'/'python')
         """
         import sys
         import platform
+        import os
 
         # Check Python version (must be 3.10+)
         if sys.version_info < (3, 10):
             self.warn(f"Python {sys.version_info.major}.{sys.version_info.minor} detected - code execution requires 3.10+")
 
-        # Platform-specific Python path
+        # Use sys.executable to get the current Python interpreter
+        # This ensures venv Python is used if installer runs from venv
+        current_python = sys.executable
+
+        # Verify the executable exists and is accessible
+        if current_python and os.path.isfile(current_python) and os.access(current_python, os.X_OK):
+            self.info(f"Using Python interpreter: {current_python}")
+            return current_python
+
+        # Fallback to platform-specific defaults if sys.executable is unavailable
+        self.warn("Could not detect Python executable, using platform default")
         if platform.system() == 'Windows':
             return 'python'
         else:

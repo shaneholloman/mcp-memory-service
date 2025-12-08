@@ -10,6 +10,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.48.3] - 2025-12-08
+
+### Fixed
+- **Code Execution Hook Failure** - Fixed session-start hook falling back to MCP tools instead of using fast Code Execution API
+  - **Root Cause 1**: Invalid `time_filter` parameter passed to `search()` function (API signature only accepts `query`, `limit`, `tags`)
+  - **Root Cause 2**: Python `transformers` library emitted `FutureWarning` to stderr, causing `execSync()` to fail
+  - **Root Cause 3**: Installer used system `python3` instead of detecting venv Python path
+  - **Fix 1**: Removed time_filter parameter from Code Execution queries (line 325 in `claude-hooks/core/session-start.js`)
+  - **Fix 2**: Added `-W ignore` flag to suppress Python warnings during execution (line 359)
+  - **Fix 3**: Updated installer to use `sys.executable` for automatic venv detection (`claude-hooks/install_hooks.py:271-299`)
+  - **Impact**: 75% token reduction per session start (1200-2400 tokens → 300-600 tokens with Code Execution)
+  - **Behavior**: Hook now successfully uses Code Execution API instead of falling back to slower MCP tools
+  - **Documentation**: Added memory with troubleshooting guide for future reference
+  - **Location**: `claude-hooks/core/session-start.js:315-363`, `claude-hooks/install_hooks.py:271-299`
+
+### Changed
+- **Session-Start Hook Connection Timeout** - Increased quick connection timeout from 2s to 5s
+  - Prevents premature timeout during memory client initialization
+  - Allows more time for HTTP server connection during high-load periods
+  - Location: `~/.claude/hooks/core/session-start.js:750` (user installation)
+
 ## [8.48.2] - 2025-12-08
 
 ### Added

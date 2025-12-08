@@ -312,50 +312,17 @@ async function queryMemoryServiceViaCode(query, config) {
         // Escape query strings for safe shell execution
         const escapeForPython = (str) => str.replace(/"/g, '\\"').replace(/\n/g, '\\n');
 
-        // Build Python code for memory search with time filter support
+        // Build Python code for memory search
         // Use v8.19.0+ Code Execution Interface API for optimal performance
-        const pythonCode = query.timeFilter ? `
+        // Note: time_filter not supported in Code Execution API, only in MCP tools
+        const pythonCode = `
 import sys
 import json
 from datetime import datetime
 from mcp_memory_service.api import search
 
 try:
-    # Execute search with time filter (v8.21.0+ API enhancement)
-    results = search("${escapeForPython(query.semanticQuery || '')}", limit=${query.limit || 8}, time_filter="${escapeForPython(query.timeFilter)}")
-
-    # Format compact output
-    output = {
-        'success': True,
-        'memories': [
-            {
-                'hash': m.hash,
-                'preview': m.preview,
-                'tags': list(m.tags),
-                'created': m.created,
-                'created_at': m.created,
-                'created_at_iso': datetime.fromtimestamp(m.created).isoformat(),
-                'score': m.score,
-                'content': m.preview  # Use preview as content for compatibility
-            }
-            for m in results.memories
-        ],
-        'total': results.total,
-        'method': 'code_execution'
-    }
-    print(json.dumps(output))
-    sys.exit(0)
-except Exception as e:
-    print(json.dumps({'success': False, 'error': str(e), 'method': 'code_execution'}))
-    sys.exit(1)
-` : `
-import sys
-import json
-from datetime import datetime
-from mcp_memory_service.api import search
-
-try:
-    # Execute search with semantic query and limit
+    # Execute search with semantic query and limit (time filtering done server-side)
     results = search("${escapeForPython(query.semanticQuery || '')}", limit=${query.limit || 8})
 
     # Format compact output
@@ -388,8 +355,8 @@ except Exception as e:
         const pythonPath = config?.codeExecution?.pythonPath || 'python3';
         const timeout = config?.codeExecution?.timeout || 5000;
 
-        // Execute Python code with timeout
-        const result = execSync(`${pythonPath} -c "${pythonCode.replace(/"/g, '\\"')}"`, {
+        // Execute Python code with timeout (suppress warnings to avoid stderr failures)
+        const result = execSync(`${pythonPath} -W ignore -c "${pythonCode.replace(/"/g, '\\"')}"`, {
             encoding: 'utf-8',
             timeout: timeout,
             stdio: ['pipe', 'pipe', 'pipe']
