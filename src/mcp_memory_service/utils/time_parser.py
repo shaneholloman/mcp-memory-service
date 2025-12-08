@@ -58,6 +58,7 @@ PATTERNS = {
     "relative_weeks": re.compile(r'(\d+)\s+weeks?\s+ago'),
     "relative_months": re.compile(r'(\d+)\s+months?\s+ago'),
     "relative_years": re.compile(r'(\d+)\s+years?\s+ago'),
+    "last_n_periods": re.compile(r'last\s+(\d+)\s+(days?|weeks?|months?|years?)'),
     "last_period": re.compile(r'last\s+(day|week|month|year|summer|spring|winter|fall|autumn)'),
     "this_period": re.compile(r'this\s+(day|week|month|year|summer|spring|winter|fall|autumn)'),
     "month_name": re.compile(r'(january|february|march|april|may|june|july|august|september|october|november|december)'),
@@ -235,8 +236,16 @@ def parse_time_expression(query: str) -> Tuple[Optional[float], Optional[float]]
             start_dt = datetime(target_year, 1, 1, 0, 0, 0)
             end_dt = datetime(target_year, 12, 31, 23, 59, 59)
             return start_dt.timestamp(), end_dt.timestamp()
-        
-        # "Last X" expressions
+
+        # "Last N X" expressions (e.g., "last 3 days", "last 2 weeks")
+        # Check this BEFORE "last_period" to match more specific pattern first
+        last_n_periods_match = PATTERNS["last_n_periods"].search(query)
+        if last_n_periods_match:
+            n = int(last_n_periods_match.group(1))
+            period = last_n_periods_match.group(2)
+            return get_last_n_periods_range(n, period)
+
+        # "Last X" expressions (e.g., "last week", "last month")
         last_period_match = PATTERNS["last_period"].search(query)
         if last_period_match:
             period = last_period_match.group(1)
@@ -417,6 +426,53 @@ def get_last_period_range(period: str) -> Tuple[float, float]:
         end_dt = now
         start_dt = end_dt - timedelta(days=1)
         
+    return start_dt.timestamp(), end_dt.timestamp()
+
+def get_last_n_periods_range(n: int, period: str) -> Tuple[float, float]:
+    """Get timestamp range for 'last N X' expressions (e.g., 'last 3 days')."""
+    now = datetime.now()
+    today = date.today()
+
+    # Normalize period to singular form
+    period = period.rstrip('s')  # Remove trailing 's' if present
+
+    if period == "day":
+        # Last N days means from N days ago 00:00 until now
+        start_date = today - timedelta(days=n)
+        start_dt = datetime.combine(start_date, time.min)
+        end_dt = now
+    elif period == "week":
+        # Last N weeks means from N weeks ago Monday 00:00 until now
+        start_date = today - timedelta(weeks=n)
+        # Get Monday of that week
+        start_date = start_date - timedelta(days=start_date.weekday())
+        start_dt = datetime.combine(start_date, time.min)
+        end_dt = now
+    elif period == "month":
+        # Last N months means from N months ago first day 00:00 until now
+        current = datetime.now()
+        year = current.year
+        month = current.month - n
+
+        # Handle year boundary
+        while month <= 0:
+            month += 12
+            year -= 1
+
+        start_date = date(year, month, 1)
+        start_dt = datetime.combine(start_date, time.min)
+        end_dt = now
+    elif period == "year":
+        # Last N years means from N years ago Jan 1 00:00 until now
+        start_year = today.year - n
+        start_dt = datetime(start_year, 1, 1, 0, 0, 0)
+        end_dt = now
+    else:
+        # Fallback - interpret as days
+        start_date = today - timedelta(days=n)
+        start_dt = datetime.combine(start_date, time.min)
+        end_dt = now
+
     return start_dt.timestamp(), end_dt.timestamp()
 
 def get_this_period_range(period: str) -> Tuple[float, float]:
