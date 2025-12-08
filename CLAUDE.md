@@ -99,12 +99,14 @@ Web interface at `http://127.0.0.1:8000/` with CRUD operations, semantic/tag/tim
 **Tier 2-3 (Optional)**: Groq/Gemini APIs (user opt-in only)
 **Tier 4 (Fallback)**: Implicit signals (access patterns)
 
-**IMPORTANT ONNX Limitations:**
-- The ONNX ranker (`ms-marco-MiniLM-L-6-v2`) is a cross-encoder trained for document relevance ranking
-- It scores how well a memory matches a **query**, not absolute memory quality
-- Bulk evaluation generates queries from tags/metadata (what memory is *about*)
-- Self-matching queries (memory content as its own query) produce artificially high scores (~1.0)
-- System-generated memories (associations, compressed clusters) are **not scored**
+**⚠️ IMPORTANT ONNX Limitations (v8.48.3 Evaluation):**
+- The ONNX ranker (`ms-marco-MiniLM-L-6-v2`) is a cross-encoder trained for document relevance ranking, NOT absolute quality assessment
+- **Self-matching bias**: Tag-generated queries produce artificially high scores (~1.0) for ~25% of memories
+- **Bimodal distribution**: Average score 0.469 (expected: 0.6-0.7) with clustering at 1.0 and 0.0
+- **No ground truth**: Cannot validate if high scores represent actual quality without user feedback
+- **Use for relative ranking only** - Do not use for absolute quality thresholds or archival decisions
+- **Full evaluation**: [Memory Quality System Evaluation Wiki](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Quality-System-Evaluation)
+- **Improvements planned**: [Issue #268](https://github.com/doobidoo/mcp-memory-service/issues/268) (Hybrid scoring, user feedback, LLM-as-judge)
 
 ### Key Features
 
@@ -154,12 +156,21 @@ export MCP_QUALITY_RETENTION_LOW_MIN=30        # Min days for <0.5
 - `analyze_quality_distribution(min_quality, max_quality)` - System-wide analytics
 - `retrieve_with_quality_boost(query, n_results, quality_weight)` - Quality-boosted search
 
-### Success Metrics (Phase 1 Targets)
+### Success Metrics (Phase 1 Results - v8.48.3)
 
-- ✅ **>40% improvement** in retrieval precision (50% → 70%+ useful)
-- ✅ **>95% local SLM usage** (Tier 1 success rate)
-- ✅ **<100ms search latency** with quality boost
-- ✅ **$0 monthly cost** (local SLM default)
+**Achieved:**
+- ✅ **<100ms search latency** with quality boost (45ms avg, +17% overhead)
+- ✅ **$0 monthly cost** (local SLM default, zero API calls)
+- ✅ **75% local SLM usage** (3,570 of 4,762 memories)
+- ✅ **95% quality score coverage** (4,521 of 4,762 memories scored)
+
+**Challenges Identified:**
+- ⚠️ Average quality score 0.469 (target: 0.6+)
+- ⚠️ Self-matching bias affects ~25% of scores
+- ⚠️ Quality boost provides minimal ranking improvement (0-3%)
+- ⚠️ No user feedback validation
+
+**Next Phase:** See [Issue #268](https://github.com/doobidoo/mcp-memory-service/issues/268) for improvements (hybrid scoring, user feedback, LLM-as-judge)
 
 ### Hooks Integration (v8.45.3+)
 
@@ -196,7 +207,7 @@ Next Session → Hook Retrieval → backendQuality = 20% weight
 
 ### Documentation
 
-See [docs/guides/memory-quality-guide.md](docs/guides/memory-quality-guide.md) for:
+**Updated for v8.48.3** - See [docs/guides/memory-quality-guide.md](docs/guides/memory-quality-guide.md) for:
 - Comprehensive user guide
 - Configuration examples
 - Troubleshooting

@@ -1,8 +1,9 @@
 # Memory Quality System Guide
 
-> **Version**: 8.45.0
-> **Status**: Production Ready
+> **Version**: 8.48.3
+> **Status**: Production Ready (with known limitations)
 > **Feature**: Memento-Inspired Quality System (Issue #260)
+> **Evaluation**: [Quality System Evaluation Report](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Quality-System-Evaluation)
 
 ## Overview
 
@@ -45,6 +46,134 @@ implicit_signals = (
     retrieval_ranking × 0.30      # Average position in results
 )
 ```
+
+## ⚠️ ONNX Model Limitations (Important)
+
+**Update (v8.48.3)**: Following comprehensive evaluation with 4,762 memories, we've identified important limitations of the local ONNX model.
+
+### What the Model Is Designed For
+
+The ONNX model (`ms-marco-MiniLM-L-6-v2`) is a **cross-encoder designed for query-document relevance ranking**, NOT absolute quality assessment.
+
+**Intended use**:
+```python
+# ✅ GOOD: Ranking search results by relevance
+query = "How to fix hook connection?"
+results = search(query)
+ranked = onnx_model.rank(query, results)  # Relative ranking
+```
+
+**Not designed for**:
+```python
+# ❌ PROBLEMATIC: Absolute quality assessment
+memory = get_memory("abc123...")
+quality = onnx_model.evaluate(memory)  # May produce biased scores
+```
+
+### Known Issues
+
+#### 1. Self-Matching Bias
+
+**Problem**: When queries are generated from memory tags during bulk evaluation, they closely match the memory content, producing artificially high scores (~1.0).
+
+**Example**:
+```python
+# Memory content: "SessionStart hook configuration for hybrid backend..."
+# Tags: ["session-start", "hook", "configuration"]
+# Generated query: "session start hook configuration"
+# Result: Score 1.0 (artificially high due to self-matching)
+```
+
+**Impact**: ~25% of memories have perfect 1.0 scores due to this bias.
+
+#### 2. Bimodal Distribution
+
+**Observed**: Many scores cluster at 1.0 (perfect) or near 0.0, with average 0.469 (expected: 0.6-0.7).
+
+**Distribution**:
+- High Quality (≥0.7): 32.2% (many are false positives)
+- Medium Quality (0.5-0.7): 27.4%
+- Low Quality (<0.5): 40.4%
+
+**Root cause**: Model designed for relevance ranking creates binary-like scores when used for absolute quality.
+
+#### 3. No Ground Truth Validation
+
+**Issue**: Without user feedback, we cannot validate if high scores represent genuinely high quality.
+
+**Consequence**: Cannot distinguish between:
+- True high-quality memories (useful, accurate, complete)
+- Self-matching bias artifacts (high score but average quality)
+
+### Recommended Usage
+
+Based on evaluation results, here's how to use quality scores effectively:
+
+✅ **DO use for**:
+- **Relative ranking** within search results (reranking by quality)
+- **Comparative analysis** (which memories are better than others)
+- **Trend analysis** (is quality improving over time?)
+- **Combined scoring** (quality + access patterns + recency)
+
+❌ **DO NOT use for**:
+- **Absolute quality thresholds** (e.g., "archive all memories <0.5")
+- **Quality-based archival decisions** (without user feedback validation)
+- **Ground truth quality labels** (scores may not reflect actual usefulness)
+
+### Workarounds & Solutions
+
+#### Short-Term (Immediate)
+
+1. **Keep quality boost as opt-in** (default: disabled)
+   ```bash
+   export MCP_QUALITY_BOOST_ENABLED=false  # Current default
+   ```
+
+2. **Combine with implicit signals**
+   ```python
+   # Hybrid scoring (recommended)
+   final_score = 0.3 * onnx_score + 0.4 * access_count + 0.3 * recency
+   ```
+
+3. **Manual validation for important decisions**
+   ```bash
+   # Review low-scoring memories before archival
+   analyze_quality_distribution()  # Check bottom 10 manually
+   ```
+
+#### Mid-Term (1-2 Weeks)
+
+4. **Implement hybrid quality scoring** (Issue #268)
+   - Combine ONNX + access patterns + recency + completeness
+   - Reduces reliance on single model
+
+5. **Add user feedback system** (Issue #268)
+   - Allow manual ratings (👍/👎)
+   - Weight user ratings 2-3x higher than AI scores
+
+#### Long-Term (1-3 Months)
+
+6. **Evaluate LLM-as-judge** (Issue #268)
+   - Use Groq/Gemini for absolute quality assessment
+   - ONNX only for relative ranking
+
+7. **Improve query generation** (Issue #268)
+   - Extract diverse queries from content (not just tags)
+   - Reduces self-matching bias
+
+### Performance Impact (Measured)
+
+**A/B Test Results** (5 test queries, v8.48.3):
+- Standard search: 38.2ms average
+- Quality boost (0.3): 44.7ms average (+17% overhead)
+- Quality boost (0.5): 45.7ms average (+20% overhead)
+
+**Quality improvement**: Minimal (0-3% ranking changes) when top results already high-quality.
+
+**Recommendation**: Use quality boost **only** for:
+- Large databases (>10,000 memories)
+- Explicit "best practices" or "authoritative" searches
+- When quality variance is high
 
 ### Local SLM (Tier 1 - Primary)
 
@@ -367,13 +496,15 @@ claude /memory-recall "any search query"
 
 ## Best Practices
 
-### 1. Start with Defaults
+### 1. Start with Defaults (Updated for v8.48.3)
 
 Use local SLM (default) for:
 - Zero cost
 - Full privacy
 - Offline capability
-- Good accuracy (80%+ correlation with human ratings)
+- **Good for relative ranking** (not absolute quality assessment)
+
+**Important**: Local SLM scores should be **combined with implicit signals** (access patterns, recency) for best results. Do not rely on ONNX scores alone.
 
 ### 2. Enable Quality Boost Gradually
 
@@ -389,17 +520,24 @@ export MCP_QUALITY_BOOST_WEIGHT=0.2  # 20% quality
 export MCP_QUALITY_BOOST_WEIGHT=0.3  # 30% quality (recommended)
 ```
 
-### 3. Monitor Quality Distribution
+### 3. Monitor Quality Distribution (With Caution)
 
-Check analytics regularly:
+Check analytics regularly, but interpret with awareness of limitations:
 ```bash
 analyze_quality_distribution()
 
-# Target distribution (Pareto principle):
+# Current observed distribution (v8.48.3):
+# - High quality (≥0.7): 32.2% (includes ~25% false positives from self-matching)
+# - Medium quality (0.5-0.7): 27.4%
+# - Low quality (<0.5): 40.4%
+
+# Ideal distribution (future with hybrid scoring):
 # - High quality (≥0.7): 20-30% of memories
 # - Medium quality (0.5-0.7): 50-60%
 # - Low quality (<0.5): 10-20%
 ```
+
+**Warning**: High scores may not always indicate high quality due to self-matching bias. Validate manually before making retention decisions.
 
 ### 4. Manual Rating for Edge Cases
 
@@ -414,14 +552,15 @@ rate_memory(content_hash="def456...", rating=-1, feedback="Outdated")
 
 Manual ratings weighted 60%, AI scores 40%.
 
-### 5. Periodic Review
+### 5. Periodic Review (Updated for v8.48.3)
 
 Monthly checklist:
 - [ ] Check quality distribution (analytics dashboard)
-- [ ] Review top 10 performers (should be genuinely helpful)
-- [ ] Review bottom 10 (candidates for deletion)
-- [ ] Verify provider breakdown (mostly local SLM)
-- [ ] Check average quality score (target: 0.6-0.7)
+- [ ] **Manually validate** top 10 performers (verify genuinely helpful, not just self-matching bias)
+- [ ] **Manually validate** bottom 10 before deletion (may be low-quality or just poor matches)
+- [ ] Verify provider breakdown (target: 75%+ local SLM)
+- [ ] Check average quality score (current: 0.469, target with hybrid: 0.6+)
+- [ ] **Review Issue #268** progress on quality improvements
 
 ## Advanced Configuration
 
@@ -525,6 +664,14 @@ From Issue #260 and #261 roadmap:
 
 ## Changelog
 
+**v8.48.3** (2025-12-08):
+- **Documentation Update**: Added comprehensive ONNX limitations section
+- Documented self-matching bias and bimodal distribution issues
+- Updated best practices with manual validation recommendations
+- Added performance benchmarks from evaluation (4,762 memories)
+- Linked to [Quality System Evaluation Report](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Quality-System-Evaluation)
+- Created [Issue #268](https://github.com/doobidoo/mcp-memory-service/issues/268) for Phase 2 improvements
+
 **v8.45.0** (2025-01-XX):
 - Initial release of Memory Quality System
 - Local SLM (ONNX) as primary tier
@@ -536,3 +683,5 @@ From Issue #260 and #261 roadmap:
 ---
 
 **Need help?** Open an issue at https://github.com/doobidoo/mcp-memory-service/issues
+
+**Quality System Improvements**: See [Issue #268](https://github.com/doobidoo/mcp-memory-service/issues/268) for planned enhancements
