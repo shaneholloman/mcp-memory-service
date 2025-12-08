@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.48.1** (Dec 08, 2025)
+### 🆕 Latest Release: **v8.48.2** (Dec 08, 2025)
 
-**Critical Hotfix - Startup Failure Fix**
+**HTTP Server Auto-Start & Time Parser Improvements**
 
-- 🚨 **CRITICAL** - Fixes v8.48.0 startup failure (service completely non-functional)
-- 🐛 **Root Cause** - Redundant local `import calendar` caused `UnboundLocalError` in timestamp parsing
-- ✅ **Resolution** - Removed duplicate import (already imported globally), service now starts successfully
-- ⚡ **Immediate Upgrade** - All v8.48.0 users must upgrade immediately (drop-in replacement)
-- 🔍 **Impact** - v8.48.0 infinite loop during Cloudflare sync, health endpoint unresponsive
+- 🔧 **HTTP Server Manager** - Smart auto-start system with orphaned process cleanup, version mismatch detection, config change detection
+- 🩺 **Session-Start Health Check** - Warning in hooks when HTTP server is down with actionable fix instructions
+- 🐛 **Time Parser Fix** - Support for "last N days/weeks/months/years" patterns (fixes issue #266)
+- ⚡ **Hook Configuration** - Reverted to "last 3 days" time windows (now works correctly)
+- 🔍 **Shell Integration** - Auto-start support for .zshrc (automatic server management)
 
 **Previous Releases**:
+- **v8.48.1** - Critical Hotfix - Startup Failure Fix (redundant calendar import removed, immediate upgrade required)
 - **v8.48.0** - CSV-Based Metadata Compression (78% size reduction, 100% sync success, metadata validation)
 - **v8.47.1** - ONNX Quality Evaluation Bug Fixes (self-match fix, association pollution, sync queue overflow, realistic distribution)
 - **v8.47.0** - Association-Based Quality Boost (connection-based enhancement, network effect leverage, metadata persistence)

@@ -10,6 +10,72 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.48.2] - 2025-12-08
+
+### Added
+- **HTTP Server Auto-Start System** - Smart service management with comprehensive health checks
+  - Created `scripts/service/http_server_manager.sh` with 376 lines of robust service management
+  - Orphaned process detection and cleanup (handles stale PIDs from crashes/force kills)
+  - Version mismatch detection (alerts when installed version differs from running version)
+  - Config change detection (monitors .env file modification timestamps, triggers restart on changes)
+  - Hybrid storage initialization wait (10-second timeout ensures storage backends are ready)
+  - Health check with retry logic (3 attempts with 2s intervals before declaring failure)
+  - Commands: `status`, `start`, `stop`, `restart`, `auto-start`, `logs`
+  - Shell integration support (add to ~/.zshrc for automatic startup on terminal launch)
+  - Location: `scripts/service/http_server_manager.sh`
+
+- **Session-Start Hook Health Check** - Proactive HTTP server availability monitoring
+  - Added health check warning in `~/.claude/hooks/core/session-start.js` (lines 657-674)
+  - Displays clear error message when HTTP server is unreachable
+  - Provides actionable fix instructions (how to start server, how to enable auto-start)
+  - Detects connection errors: ECONNREFUSED, fetch failed, network errors, timeout
+  - Non-blocking check (warns but doesn't block Claude Code session initialization)
+  - Location: `~/.claude/hooks/core/session-start.js:657-674`
+
+### Fixed
+- **Time Parser "Last N Periods" Support** - Fixed issue #266 (time expressions not working)
+  - Added new regex pattern `last_n_periods` to match "last N days/weeks/months/years"
+  - Implemented `get_last_n_periods_range(n, period)` function for date calculations
+  - Pattern positioning: Checked BEFORE `last_period` pattern to match more specific expressions first
+  - Properly handles:
+    - "last 3 days" → From 3 days ago 00:00:00 to now
+    - "last 2 weeks" → From 2 weeks ago Monday 00:00:00 to now
+    - "last 1 month" → From 1 month ago first day 00:00:00 to now
+    - "last 5 years" → From 5 years ago Jan 1 00:00:00 to now
+  - Backward compatible with existing "last week", "last month" patterns
+  - Location: `src/mcp_memory_service/utils/time_parser.py`
+
+### Changed
+- **Hook Configuration Time Windows** - Reverted to "last 3 days" (now works with parser fix)
+  - Applied to `recentTimeWindow` and `fallbackTimeWindow` in hook config
+  - Previously limited to "yesterday" due to parser bug
+  - Now leverages full 3-day context window for better memory recall
+  - Location: `~/.claude/hooks/config.json`
+
+### Technical Details
+- **HTTP Server Manager Architecture**:
+  - PID tracking via `/tmp/mcp_memory_http.pid` (shared location for orphan detection)
+  - Config fingerprinting via MD5 hash of `.env` file (detects credential/backend changes)
+  - Version extraction from installed package (compares with runtime version)
+  - Log rotation support (tails last 50 lines from `~/.mcp-memory-service/http_server.log`)
+  - SIGTERM graceful shutdown (10s timeout before SIGKILL)
+  - Auto-start function for shell integration (idempotent, safe for rc files)
+
+- **Time Parser Improvements**:
+  - Regex pattern: `r'last\s+(\d+)\s+(days?|weeks?|months?|years?)'`
+  - Handles singular/plural forms (day/days, week/weeks, etc.)
+  - Week boundaries: Monday 00:00:00 (ISO 8601 standard)
+  - Month boundaries: First day 00:00:00 (calendar month alignment)
+  - Fallback behavior: Interprets unknown periods as days (defensive programming)
+
+- **Testing Coverage**:
+  - HTTP server manager: Tested status/start/stop/restart/auto-start commands
+  - Orphaned process cleanup: Verified detection and cleanup of stale PIDs
+  - Version mismatch: Confirmed detection when installed vs running version differs
+  - Config change detection: Verified restart trigger on .env modification
+  - Time parser: Tested "last 3 days", "last 2 weeks", "last 1 month", "last 5 years"
+  - Backward compatibility: Verified "last week", "last month" still work
+
 ## [8.48.1] - 2025-12-08
 
 ### Fixed

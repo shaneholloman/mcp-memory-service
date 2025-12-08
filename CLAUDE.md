@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.48.1**: **CRITICAL HOTFIX - Startup Failure Fix** - Fixed fatal `UnboundLocalError` that prevented v8.48.0 from starting. Removed redundant local `import calendar` causing Python scoping issue. All v8.48.0 users must upgrade immediately (drop-in replacement, no configuration changes). Service now starts successfully and passes all health checks. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.48.2**: **HTTP Server Auto-Start & Time Parser Improvements** - Smart HTTP server manager with orphaned process cleanup, version mismatch detection, config change detection. Session-start hook health check warns when server is down with actionable fix instructions. Fixed time parser to support "last N days/weeks/months/years" patterns (issue #266). Hook configuration reverted to "last 3 days" time windows. Shell integration ready (.zshrc auto-start support). See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
