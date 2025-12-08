@@ -23,17 +23,18 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.48.0** (Dec 07, 2025)
+### 🆕 Latest Release: **v8.48.1** (Dec 08, 2025)
 
-**CSV-Based Metadata Compression for Cloudflare Sync**
+**Critical Hotfix - Startup Failure Fix**
 
-- 📦 **78% Size Reduction** - Intelligent CSV compression for quality/consolidation metadata (732B → 159B typical)
-- ✅ **100% Sync Success** - Resolved all Cloudflare metadata size limit failures (10KB D1 limit)
-- 🔒 **Metadata Validation** - Pre-sync size checks prevent 400 Bad Request errors before API calls
-- 🎯 **Smart Optimization** - Provider codes (onnx_local → ox), limited ai_scores history (10 → 3 entries)
-- 🔄 **Transparent Operation** - Automatic compression on write, decompression on read (zero user impact)
+- 🚨 **CRITICAL** - Fixes v8.48.0 startup failure (service completely non-functional)
+- 🐛 **Root Cause** - Redundant local `import calendar` caused `UnboundLocalError` in timestamp parsing
+- ✅ **Resolution** - Removed duplicate import (already imported globally), service now starts successfully
+- ⚡ **Immediate Upgrade** - All v8.48.0 users must upgrade immediately (drop-in replacement)
+- 🔍 **Impact** - v8.48.0 infinite loop during Cloudflare sync, health endpoint unresponsive
 
 **Previous Releases**:
+- **v8.48.0** - CSV-Based Metadata Compression (78% size reduction, 100% sync success, metadata validation)
 - **v8.47.1** - ONNX Quality Evaluation Bug Fixes (self-match fix, association pollution, sync queue overflow, realistic distribution)
 - **v8.47.0** - Association-Based Quality Boost (connection-based enhancement, network effect leverage, metadata persistence)
 - **v8.46.3** - Quality Score Persistence Fix (ONNX scores in hybrid backend, metadata normalization)
