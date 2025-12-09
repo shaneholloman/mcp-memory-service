@@ -16,7 +16,7 @@ class QualityConfig:
     ai_provider: str = 'local'
 
     # Local ONNX model settings
-    local_model: str = 'ms-marco-MiniLM-L-6-v2'
+    local_model: str = 'nvidia-quality-classifier-deberta'
     local_device: str = 'auto'  # auto|cpu|cuda|mps|directml
 
     # Cloud API settings (optional, user opt-in)
@@ -75,3 +75,45 @@ class QualityConfig:
     def can_use_gemini(self) -> bool:
         """Check if Gemini API is available."""
         return self.gemini_api_key is not None and self.ai_provider in ['gemini', 'auto']
+
+
+# Model registry for supported ONNX models
+SUPPORTED_MODELS = {
+    'nvidia-quality-classifier-deberta': {
+        'hf_name': 'nvidia/quality-classifier-deberta',
+        'type': 'classifier',  # 3-class classification (Low/Medium/High)
+        'size_mb': 450,
+        'inputs': ['input_ids', 'attention_mask'],  # No token_type_ids
+        'output_classes': ['low', 'medium', 'high'],
+        'description': 'Absolute quality assessment (recommended, eliminates self-matching bias)'
+    },
+    'ms-marco-MiniLM-L-6-v2': {
+        'hf_name': 'cross-encoder/ms-marco-MiniLM-L-6-v2',
+        'type': 'cross-encoder',  # Query-document relevance ranking
+        'size_mb': 23,
+        'inputs': ['input_ids', 'attention_mask', 'token_type_ids'],
+        'output_classes': None,  # Continuous score via sigmoid
+        'description': 'Legacy relevance ranker (has self-matching bias, use for relative ranking only)'
+    }
+}
+
+
+def validate_model_selection(model_name: str) -> dict:
+    """
+    Validate model selection and return model config.
+
+    Args:
+        model_name: Name of the model to validate
+
+    Returns:
+        Model configuration dictionary
+
+    Raises:
+        ValueError: If model_name is not supported
+    """
+    if model_name not in SUPPORTED_MODELS:
+        raise ValueError(
+            f"Unsupported model: {model_name}. "
+            f"Supported models: {list(SUPPORTED_MODELS.keys())}"
+        )
+    return SUPPORTED_MODELS[model_name]

@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import Optional
 import numpy as np
 
+# Set HuggingFace cache paths before importing transformers
+os.environ['HF_HOME'] = os.path.expanduser('~/.cache/huggingface')
+if 'TRANSFORMERS_CACHE' not in os.environ:
+    os.environ['TRANSFORMERS_CACHE'] = os.path.expanduser('~/.cache/huggingface/hub')
+
 logger = logging.getLogger(__name__)
 
 # Try to import ONNX Runtime
@@ -24,31 +29,66 @@ except ImportError:
 
 # Try to import transformers for model export
 try:
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModel, AutoConfig
     import torch
+    from torch import nn
+    from huggingface_hub import PyTorchModelHubMixin
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
-    logger.warning("Transformers not available. Install with: pip install transformers torch")
+    logger.warning("Transformers not available. Install with: pip install transformers torch huggingface-hub")
+
+
+# Custom model class for NVIDIA DeBERTa quality classifier
+if TRANSFORMERS_AVAILABLE:
+    class QualityModel(nn.Module, PyTorchModelHubMixin):
+        """Custom model class for NVIDIA DeBERTa quality classifier."""
+        def __init__(self, config):
+            super(QualityModel, self).__init__()
+
+            # Load base model with snapshot path detection
+            base_model_name = config["base_model"]
+            cache_dir = Path.home() / '.cache/huggingface/hub' / f'models--{base_model_name.replace("/", "--")}/snapshots'
+            if cache_dir.exists():
+                snapshots = list(cache_dir.glob('*'))
+                if snapshots:
+                    base_model_path = str(snapshots[0])
+                    logger.info(f"Loading base model from cached snapshot: {base_model_path}")
+                    self.model = AutoModel.from_pretrained(base_model_path)
+                else:
+                    self.model = AutoModel.from_pretrained(base_model_name)
+            else:
+                self.model = AutoModel.from_pretrained(base_model_name)
+
+            self.dropout = nn.Dropout(config["fc_dropout"])
+            self.fc = nn.Linear(self.model.config.hidden_size, len(config["id2label"]))
+
+        def forward(self, input_ids, attention_mask):
+            features = self.model(
+                input_ids=input_ids, attention_mask=attention_mask
+            ).last_hidden_state
+            dropped = self.dropout(features)
+            outputs = self.fc(dropped)
+            # Return raw logits (not softmax) - softmax will be applied during inference
+            return outputs[:, 0, :]
 
 
 class ONNXRankerModel:
     """
-    ONNX-based cross-encoder model for quality scoring.
-    Evaluates (query, memory) pairs to produce relevance scores.
+    ONNX-based model for quality scoring with multi-model support.
+    Supports both classifier (DeBERTa) and cross-encoder (MS-MARCO) types.
 
     On first use, exports the model from transformers to ONNX format.
     """
 
-    MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-    MODEL_PATH = Path.home() / ".cache" / "mcp_memory" / "onnx_models" / "ms-marco-MiniLM-L-6-v2"
     ONNX_MODEL_FILE = "model.onnx"
 
-    def __init__(self, device: str = "auto", preferred_providers: Optional[list] = None):
+    def __init__(self, model_name: str = "nvidia-quality-classifier-deberta", device: str = "auto", preferred_providers: Optional[list] = None):
         """
         Initialize ONNX ranker model.
 
         Args:
+            model_name: Model to use (default: 'nvidia-quality-classifier-deberta')
             device: Device to use ('auto', 'cpu', 'cuda', 'mps', 'directml')
             preferred_providers: List of ONNX execution providers in order of preference
         """
@@ -57,6 +97,13 @@ class ONNXRankerModel:
 
         if not TRANSFORMERS_AVAILABLE:
             raise ImportError("Transformers and torch are required. Install with: pip install transformers torch")
+
+        # Import config validation here to avoid circular imports
+        from .config import validate_model_selection
+
+        self.model_name = model_name
+        self.model_config = validate_model_selection(model_name)
+        self.MODEL_PATH = Path.home() / ".cache" / "mcp_memory" / "onnx_models" / model_name
 
         self.device = device
         self._preferred_providers = preferred_providers or self._detect_providers(device)
@@ -105,45 +152,122 @@ class ONNXRankerModel:
         # Create directory
         self.MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Exporting {self.MODEL_NAME} to ONNX format...")
+        hf_model_name = self.model_config['hf_name']
+        logger.info(f"Exporting {hf_model_name} to ONNX format...")
+
+        # Helper function to find cached snapshot path
+        def get_snapshot_path(model_id):
+            """Find the snapshot path for a cached HuggingFace model."""
+            cache_dir = Path.home() / '.cache/huggingface/hub' / f'models--{model_id.replace("/", "--")}/snapshots'
+            if cache_dir.exists():
+                snapshots = list(cache_dir.glob('*'))
+                if snapshots:
+                    return str(snapshots[0])
+            return None
 
         # Load transformers model (try local_files_only first for offline mode)
         try:
-            tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME, local_files_only=True)
-            model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME, local_files_only=True)
-        except Exception:
+            logger.info(f"Attempting to load tokenizer for {hf_model_name} (local_files_only=True)...")
+
+            # Try to find cached snapshot path first
+            snapshot_path = get_snapshot_path(hf_model_name)
+            load_path = snapshot_path if snapshot_path else hf_model_name
+
+            if snapshot_path:
+                logger.info(f"Found cached snapshot at: {snapshot_path}")
+                tokenizer = AutoTokenizer.from_pretrained(load_path)
+            else:
+                tokenizer = AutoTokenizer.from_pretrained(hf_model_name, local_files_only=True)
+            logger.info("✓ Tokenizer loaded successfully")
+
+            # Use custom QualityModel class for NVIDIA DeBERTa
+            if self.model_config['type'] == 'classifier' and 'nvidia' in hf_model_name.lower():
+                logger.info("Loading NVIDIA DeBERTa with custom QualityModel class...")
+                # Load config and create QualityModel instance
+                logger.info("Loading config...")
+                config_dict = AutoConfig.from_pretrained(load_path).to_dict()
+                logger.info(f"✓ Config loaded: {list(config_dict.keys())[:5]}...")
+                model = QualityModel(config=config_dict)
+                logger.info("✓ Model instance created")
+                # Load weights
+                import safetensors.torch
+                logger.info("Loading model weights from safetensors...")
+                if snapshot_path:
+                    model_file = Path(snapshot_path) / "model.safetensors"
+                else:
+                    from huggingface_hub import hf_hub_download
+                    model_file = hf_hub_download(repo_id=hf_model_name, filename="model.safetensors", local_files_only=True)
+                logger.info(f"✓ Model path: {model_file}")
+                state_dict = safetensors.torch.load_file(str(model_file))
+                model.load_state_dict(state_dict, strict=False)
+                logger.info("✓ Weights loaded successfully")
+            else:
+                if snapshot_path:
+                    model = AutoModelForSequenceClassification.from_pretrained(load_path)
+                else:
+                    model = AutoModelForSequenceClassification.from_pretrained(hf_model_name, local_files_only=True)
+        except Exception as e:
             # Fall back to online mode if not cached
-            logger.info("Model not in cache, downloading...")
-            tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
-            model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME)
+            logger.info(f"Local loading failed: {e}")
+            logger.info("Falling back to online mode...")
+            tokenizer = AutoTokenizer.from_pretrained(hf_model_name)
+
+            # Use custom QualityModel class for NVIDIA DeBERTa
+            if self.model_config['type'] == 'classifier' and 'nvidia' in hf_model_name.lower():
+                # Load config and create QualityModel instance
+                from huggingface_hub import hf_hub_download
+                config_dict = AutoConfig.from_pretrained(hf_model_name).to_dict()
+                model = QualityModel(config=config_dict)
+                # Load weights
+                import safetensors.torch
+                model_path = hf_hub_download(repo_id=hf_model_name, filename="model.safetensors")
+                state_dict = safetensors.torch.load_file(model_path)
+                model.load_state_dict(state_dict, strict=False)
+            else:
+                model = AutoModelForSequenceClassification.from_pretrained(hf_model_name)
 
         model.eval()
 
-        # Create dummy inputs for export
-        dummy_text = "query [SEP] document"
-        inputs = tokenizer(dummy_text, return_tensors="pt", padding=True, truncation=True)
+        # Create dummy inputs based on model type
+        if self.model_config['type'] == 'classifier':
+            # Classifier (DeBERTa): single text input
+            dummy_text = "This is a sample memory content for quality evaluation."
+            inputs = tokenizer(dummy_text, return_tensors="pt", padding=True, truncation=True)
+            input_names = ["input_ids", "attention_mask"]
+            model_inputs = (inputs["input_ids"], inputs["attention_mask"])
+
+        elif self.model_config['type'] == 'cross-encoder':
+            # Cross-encoder (MS-MARCO): query [SEP] document format
+            dummy_text = "query [SEP] document"
+            inputs = tokenizer(dummy_text, return_tensors="pt", padding=True, truncation=True)
+            input_names = ["input_ids", "attention_mask", "token_type_ids"]
+            model_inputs = (inputs["input_ids"], inputs["attention_mask"], inputs["token_type_ids"])
+
+        else:
+            raise ValueError(f"Unsupported model type: {self.model_config['type']}")
 
         # Export to ONNX
         with torch.no_grad():
+            dynamic_axes = {name: {0: "batch", 1: "sequence"} for name in input_names}
+            dynamic_axes["logits"] = {0: "batch"}
+
             torch.onnx.export(
                 model,
-                (inputs["input_ids"], inputs["attention_mask"], inputs["token_type_ids"]),
+                model_inputs,
                 str(onnx_path),
-                input_names=["input_ids", "attention_mask", "token_type_ids"],
+                input_names=input_names,
                 output_names=["logits"],
-                dynamic_axes={
-                    "input_ids": {0: "batch", 1: "sequence"},
-                    "attention_mask": {0: "batch", 1: "sequence"},
-                    "token_type_ids": {0: "batch", 1: "sequence"},
-                    "logits": {0: "batch"},
-                },
+                dynamic_axes=dynamic_axes,
                 opset_version=14,
+                do_constant_folding=True,
+                export_params=True
             )
 
         # Save tokenizer config for loading
         tokenizer.save_pretrained(str(self.MODEL_PATH))
 
         logger.info(f"ONNX model exported to {onnx_path}")
+        logger.info(f"Model type: {self.model_config['type']}, Inputs: {input_names}")
 
     def _init_model(self):
         """Initialize ONNX model and tokenizer."""
@@ -166,59 +290,99 @@ class ONNXRankerModel:
 
     def score_quality(self, query: str, memory_content: str) -> float:
         """
-        Score the quality/relevance of a memory for a given query.
+        Score the quality/relevance of a memory.
+
+        For classifiers (DeBERTa): Evaluates absolute quality (ignores query, uses memory only)
+        For cross-encoders (MS-MARCO): Evaluates query-document relevance
 
         Args:
-            query: The search query
-            memory_content: The memory content to score
+            query: Search query (used only for cross-encoders, ignored for classifiers)
+            memory_content: Memory content to score
 
         Returns:
             Quality score between 0.0 and 1.0
         """
-        if not query or not memory_content:
+        if not memory_content:
             return 0.0
 
         try:
-            # Tokenize query-document pair
-            inputs = self._tokenizer(
-                query,
-                memory_content,
-                padding=True,
-                truncation=True,
-                max_length=512,
-                return_tensors="np"
-            )
+            # Prepare input based on model type
+            if self.model_config['type'] == 'classifier':
+                # DeBERTa: Evaluate memory content only (absolute quality)
+                # Query parameter is ignored for classifier models
+                text_input = memory_content[:512]  # Truncate to max length
+                inputs = self._tokenizer(
+                    text_input,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="np"
+                )
 
-            # Prepare inputs for ONNX model
-            ort_inputs = {
-                "input_ids": inputs["input_ids"].astype(np.int64),
-                "attention_mask": inputs["attention_mask"].astype(np.int64),
-                "token_type_ids": inputs["token_type_ids"].astype(np.int64),
-            }
+                ort_inputs = {
+                    "input_ids": inputs["input_ids"].astype(np.int64),
+                    "attention_mask": inputs["attention_mask"].astype(np.int64)
+                }
 
+            elif self.model_config['type'] == 'cross-encoder':
+                # MS-MARCO: Evaluate query-document relevance
+                if not query:
+                    return 0.0
+
+                inputs = self._tokenizer(
+                    query,
+                    memory_content,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="np"
+                )
+
+                ort_inputs = {
+                    "input_ids": inputs["input_ids"].astype(np.int64),
+                    "attention_mask": inputs["attention_mask"].astype(np.int64),
+                    "token_type_ids": inputs["token_type_ids"].astype(np.int64)
+                }
+
+            else:
+                logger.error(f"Unsupported model type: {self.model_config['type']}")
+                return 0.5
+
+            # Run inference
             outputs = self._model.run(None, ort_inputs)
+            logits = outputs[0][0]  # Shape: (num_classes,)
 
-            # Extract logit and apply sigmoid
-            # Cross-encoder models output logits for classification
-            logits = outputs[0][0]
-            # For binary classification, take first logit or single value
-            logit = float(logits[0] if len(logits.shape) > 0 and logits.shape[0] > 1 else logits)
+            # Convert logits to score based on model type
+            if self.model_config['type'] == 'classifier':
+                # DeBERTa: 3-class classification
+                # Apply softmax to get probabilities
+                exp_logits = np.exp(logits - np.max(logits))  # Numerical stability
+                probs = exp_logits / exp_logits.sum()
 
-            # Apply sigmoid to convert to 0-1 range
-            score = 1.0 / (1.0 + np.exp(-logit))
+                # Map to 0-1 scale with proper spacing
+                # NVIDIA DeBERTa label order: 0=High, 1=Medium, 2=Low
+                # So class_values should be [1.0, 0.5, 0.0]
+                class_values = np.array([1.0, 0.5, 0.0])
+                score = float(np.dot(probs, class_values))
 
-            return score
+            elif self.model_config['type'] == 'cross-encoder':
+                # MS-MARCO: Binary classification with sigmoid
+                logit = float(logits[0] if len(logits.shape) > 0 and logits.shape[0] > 1 else logits)
+                score = 1.0 / (1.0 + np.exp(-logit))
+
+            return np.clip(score, 0.0, 1.0)
 
         except Exception as e:
-            logger.error(f"Error scoring quality: {e}")
+            logger.error(f"Error scoring quality with {self.model_name}: {e}")
             return 0.5  # Return neutral score on error
 
 
-def get_onnx_ranker_model(device: str = "auto") -> Optional[ONNXRankerModel]:
+def get_onnx_ranker_model(model_name: str = None, device: str = "auto") -> Optional[ONNXRankerModel]:
     """
     Get ONNX ranker model if available.
 
     Args:
+        model_name: Model to use (default from config if None)
         device: Device to use ('auto', 'cpu', 'cuda', 'mps', 'directml')
 
     Returns:
@@ -232,8 +396,14 @@ def get_onnx_ranker_model(device: str = "auto") -> Optional[ONNXRankerModel]:
         logger.warning("Transformers not available")
         return None
 
+    # Use config default if not specified
+    if model_name is None:
+        from .config import QualityConfig
+        config = QualityConfig.from_env()
+        model_name = config.local_model
+
     try:
-        return ONNXRankerModel(device=device)
+        return ONNXRankerModel(model_name=model_name, device=device)
     except Exception as e:
-        logger.error(f"Failed to create ONNX ranker model: {e}")
+        logger.error(f"Failed to create ONNX ranker for {model_name}: {e}")
         return None

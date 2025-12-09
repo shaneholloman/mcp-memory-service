@@ -2,6 +2,7 @@
 """Bulk ONNX quality evaluation using local-first pattern."""
 
 import asyncio
+import logging
 import sys
 from pathlib import Path
 
@@ -11,6 +12,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from mcp_memory_service.storage.factory import create_storage_instance
 from mcp_memory_service.config import STORAGE_BACKEND
 from mcp_memory_service.quality.scorer import QualityScorer
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 
 async def bulk_evaluate_all_memories():
@@ -90,37 +94,59 @@ async def bulk_evaluate_all_memories():
         print("🔄 Starting bulk ONNX evaluation...")
         print()
 
+        # Get model configuration to determine query strategy
+        from mcp_memory_service.quality.config import QualityConfig, SUPPORTED_MODELS
+        config = QualityConfig.from_env()
+        model_config = SUPPORTED_MODELS.get(config.local_model, {})
+        model_type = model_config.get('type', 'cross-encoder')
+
+        logger.info(f"Using model: {config.local_model} (type: {model_type})")
+
         success_count = 0
         error_count = 0
         scores = []
 
         for i, memory in enumerate(needs_evaluation, 1):
             try:
-                # Generate meaningful query from memory metadata and tags
-                # This represents what the memory is *about*, not the memory itself
-                query_parts = []
+                # Generate query based on model type
+                if model_type == 'classifier':
+                    # DeBERTa: Absolute quality assessment, no query needed
+                    # Pass empty string since model evaluates content directly
+                    query = ""
+                    logger.debug(f"Classifier model: using empty query for memory {memory.content_hash[:16]}")
 
-                # Use tags as primary query source (specific topics/categories)
-                if memory.tags:
-                    # Tags are often already a list, but handle string case too
-                    if isinstance(memory.tags, list):
-                        query_parts.append(' '.join(memory.tags[:5]))  # Up to 5 tags
-                    else:
-                        query_parts.append(str(memory.tags))
+                elif model_type == 'cross-encoder':
+                    # MS-MARCO: Query-document relevance, need meaningful query
+                    # Generate query from memory metadata and tags
+                    query_parts = []
 
-                # Add memory type as context
-                memory_type = memory.memory_type or 'note'
-                query_parts.append(memory_type)
+                    # Use tags as primary query source (specific topics/categories)
+                    if memory.tags:
+                        # Tags are often already a list, but handle string case too
+                        if isinstance(memory.tags, list):
+                            query_parts.append(' '.join(memory.tags[:5]))  # Up to 5 tags
+                        else:
+                            query_parts.append(str(memory.tags))
 
-                # Add summary if available in metadata
-                if metadata and 'summary' in metadata:
-                    query_parts.append(str(metadata['summary'])[:100])
+                    # Add memory type as context
+                    memory_type = memory.memory_type or 'note'
+                    query_parts.append(memory_type)
 
-                # Combine parts into query
-                query = ' '.join(query_parts).strip()
+                    # Add summary if available in metadata
+                    metadata = memory.metadata or {}
+                    if metadata and 'summary' in metadata:
+                        query_parts.append(str(metadata['summary'])[:100])
 
-                # Fallback to content if no metadata/tags available
-                if not query:
+                    # Combine parts into query
+                    query = ' '.join(query_parts).strip()
+
+                    # Fallback to content if no metadata/tags available
+                    if not query:
+                        query = memory.content[:200] if memory.content else "general knowledge"
+
+                else:
+                    # Unknown model type, use cross-encoder strategy as fallback
+                    logger.warning(f"Unknown model type '{model_type}', using cross-encoder query strategy")
                     query = memory.content[:200] if memory.content else "general knowledge"
 
                 # Evaluate quality using ONNX model

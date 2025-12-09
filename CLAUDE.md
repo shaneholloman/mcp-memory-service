@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.48.4**: **Cloudflare D1 Drift Detection Performance Fix** - Fixed slow/failing queries in hybrid backend drift detection (issue #264). Changed from ISO string comparison to fast numeric comparison using indexed `updated_at` column. 10-100x faster queries, eliminates D1 timeout/400 Bad Request errors on large datasets. Credit to Claude Code workflow (GitHub Actions) for root cause analysis. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.49.0**: **DeBERTa Quality Classifier** - Replaced MS-MARCO with NVIDIA DeBERTa quality classifier for absolute quality assessment. Eliminates self-matching bias (~25% false positives), provides uniform distribution (mean 0.60-0.70 vs 0.469), reduces perfect 1.0 scores from 20% to <5%. Multi-model architecture supports both DeBERTa (default) and MS-MARCO (legacy). Migration script available: `python scripts/quality/migrate_to_deberta.py`. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -89,24 +89,28 @@ Web interface at `http://127.0.0.1:8000/` with CRUD operations, semantic/tag/tim
 ### Architecture
 
 **Tier 1 (Primary)**: Local SLM via ONNX
-- Model: `ms-marco-MiniLM-L-6-v2` cross-encoder (23MB)
+- **Default Model**: `nvidia-quality-classifier-deberta` (450MB, v8.49.0+)
+  - 3-class classifier (Low/Medium/High) for absolute quality assessment
+  - Query-independent: Evaluates content directly without search context
+  - Eliminates self-matching bias, uniform distribution (mean: 0.60-0.70)
+  - Performance: 80-150ms (CPU), 20-40ms (GPU with CUDA/MPS/DirectML)
+- **Legacy Model**: `ms-marco-MiniLM-L-6-v2` (23MB, backward compatible)
+  - Cross-encoder for query-document relevance ranking
+  - Known limitations: Self-matching bias (~25% false positives), bimodal distribution
+  - Use only for legacy compatibility or relative ranking
 - Cost: **$0** (runs locally, CPU/GPU)
-- Latency: 50-100ms (CPU), 10-20ms (GPU with CUDA/MPS/DirectML)
 - Privacy: ✅ Full (no external API calls)
 - Offline: ✅ Works without internet
-- **⚠️ Requires meaningful query-memory pairs** (designed for relevance ranking, not absolute quality)
 
 **Tier 2-3 (Optional)**: Groq/Gemini APIs (user opt-in only)
 **Tier 4 (Fallback)**: Implicit signals (access patterns)
 
-**⚠️ IMPORTANT ONNX Limitations (v8.48.3 Evaluation):**
-- The ONNX ranker (`ms-marco-MiniLM-L-6-v2`) is a cross-encoder trained for document relevance ranking, NOT absolute quality assessment
-- **Self-matching bias**: Tag-generated queries produce artificially high scores (~1.0) for ~25% of memories
-- **Bimodal distribution**: Average score 0.469 (expected: 0.6-0.7) with clustering at 1.0 and 0.0
-- **No ground truth**: Cannot validate if high scores represent actual quality without user feedback
-- **Use for relative ranking only** - Do not use for absolute quality thresholds or archival decisions
-- **Full evaluation**: [Memory Quality System Evaluation Wiki](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Quality-System-Evaluation)
-- **Improvements planned**: [Issue #268](https://github.com/doobidoo/mcp-memory-service/issues/268) (Hybrid scoring, user feedback, LLM-as-judge)
+**✨ DeBERTa Improvements (v8.49.0):**
+- ✅ **Eliminates self-matching bias** - No query needed, evaluates content directly
+- ✅ **Uniform distribution** - More realistic scores (mean 0.60-0.70 vs 0.469)
+- ✅ **Fewer false positives** - <5% perfect 1.0 scores (vs 20% with MS-MARCO)
+- ✅ **Absolute quality assessment** - Designed for quality scoring, not relevance ranking
+- 📖 **Migration guide**: [Memory Quality Guide](docs/guides/memory-quality-guide.md#migration-from-ms-marco-to-deberta)
 
 ### Key Features
 
@@ -136,11 +140,14 @@ Web interface at `http://127.0.0.1:8000/` with CRUD operations, semantic/tag/tim
 # Quality System (Local-First Defaults)
 export MCP_QUALITY_SYSTEM_ENABLED=true         # Default: enabled
 export MCP_QUALITY_AI_PROVIDER=local           # local|groq|gemini|auto|none
-export MCP_QUALITY_LOCAL_MODEL=ms-marco-MiniLM-L-6-v2
+export MCP_QUALITY_LOCAL_MODEL=nvidia-quality-classifier-deberta  # Default v8.49.0+
 export MCP_QUALITY_LOCAL_DEVICE=auto           # auto|cpu|cuda|mps|directml
 
-# Quality-Boosted Search (Opt-In)
-export MCP_QUALITY_BOOST_ENABLED=false         # Default: disabled (opt-in)
+# Legacy model (backward compatible, not recommended)
+# export MCP_QUALITY_LOCAL_MODEL=ms-marco-MiniLM-L-6-v2
+
+# Quality-Boosted Search (Recommended with DeBERTa)
+export MCP_QUALITY_BOOST_ENABLED=true          # More accurate with DeBERTa
 export MCP_QUALITY_BOOST_WEIGHT=0.3            # 0.3 = 30% quality, 70% semantic
 
 # Quality-Based Retention

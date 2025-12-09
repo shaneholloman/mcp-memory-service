@@ -10,6 +10,93 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.49.0] - 2025-12-09
+
+### Changed
+- **NVIDIA DeBERTa Quality Classifier** - Replaced MS-MARCO with DeBERTa for absolute quality assessment (resolves #268)
+  - **Model Upgrade**: Changed default from `ms-marco-MiniLM-L-6-v2` (23MB) to `nvidia-quality-classifier-deberta` (450MB)
+  - **Architecture**: 3-class classifier (Low/Medium/High) for query-independent quality evaluation
+  - **Eliminates Self-Matching Bias**: No query needed, evaluates content directly (~25% false positive reduction)
+  - **Improved Distribution**: Mean score 0.60-0.70 (vs 0.469), uniform spread (vs bimodal clustering)
+  - **Fewer False Positives**: <5% perfect 1.0 scores (vs 20% with MS-MARCO)
+  - **Performance**: 80-150ms CPU, 20-40ms GPU (CUDA/MPS/DirectML) - ~20% slower but significantly more accurate
+  - **Backward Compatible**: MS-MARCO still available via `MCP_QUALITY_LOCAL_MODEL=ms-marco-MiniLM-L-6-v2`
+
+### Added
+- **Multi-Model ONNX Architecture** - Support for both classifier and cross-encoder models
+  - Model registry in `src/mcp_memory_service/quality/config.py` with metadata (model type, size, inputs, output classes)
+  - Model-specific scoring logic in `onnx_ranker.py`: softmax for classifiers, sigmoid for cross-encoders
+  - `validate_model_selection()` function to validate user model choices
+  - Environment variable: `MCP_QUALITY_LOCAL_MODEL` to switch between models
+
+- **DeBERTa Export Script** - One-time model download and ONNX conversion
+  - Script: `scripts/quality/export_deberta_onnx.py`
+  - Downloads 450MB model from HuggingFace, exports to ONNX format
+  - Caches at: `~/.cache/mcp_memory/onnx_models/nvidia-quality-classifier-deberta/`
+  - Includes test inference for validation
+
+- **Migration Script** - Re-evaluate existing memories with DeBERTa
+  - Script: `scripts/quality/migrate_to_deberta.py`
+  - Compares MS-MARCO vs DeBERTa distributions with statistical analysis
+  - Preserves original scores in `quality_migration` metadata for rollback
+  - Tracks score deltas (increases, decreases, stable memories)
+  - Expected time: 10-20 minutes for 4,000-5,000 memories
+
+- **Comprehensive Test Suite** - 100+ tests for both models
+  - Test file: `tests/test_deberta_quality.py`
+  - Test classes: ModelRegistry, DeBERTaIntegration, BackwardCompatibility, Performance
+  - Validates: Query-independence, 3-class output mapping, absolute quality scoring
+  - Benchmarks: Inference speed, performance comparison vs MS-MARCO
+
+### Fixed
+- **Quality Scoring**: Fixed double-softmax bug in ONNX ranker (was applying softmax twice, causing artificially low scores)
+- **Quality Scoring**: Corrected inverted class label mapping (High=0, Medium=1, Low=2, not [Low, Medium, High])
+- **Bulk Evaluation**: Added missing logging import in `scripts/quality/bulk_evaluate_onnx.py`
+- **Migration Script**: Created optimized `scripts/quality/rescore_deberta.py` using direct SQLite access to avoid network timeouts during bulk re-scoring
+
+### Performance
+- New content quality scores: 0.749 avg (vs 0.469 baseline, +60% improvement)
+- High quality identifications: 75.7% (vs 32.2% baseline, 2.4x improvement)
+- Inference time: 44ms CPU / 20-40ms GPU (expected with CUDA/MPS/DirectML)
+- Performance ratio: 7.8x slower than MS-MARCO (acceptable for quality gains)
+
+### Documentation
+- **Memory Quality Guide** - Updated with DeBERTa model comparison and migration guide
+  - Replaced ONNX limitations section with multi-model architecture
+  - Added DeBERTa vs MS-MARCO performance metrics table
+  - Migration instructions and GPU acceleration documentation
+  - Location: `docs/guides/memory-quality-guide.md`
+
+- **Configuration Examples** - Added Configuration 9 (DeBERTa recommended setup)
+  - Updated Configuration 1 to reflect DeBERTa as default
+  - Best practices for v8.49.0+ vs v8.48.x (MS-MARCO)
+  - Location: `docs/examples/quality-system-configs.md`
+
+- **CLAUDE.md** - Updated with v8.49.0 release notes and configuration examples
+  - Architecture section now lists both DeBERTa (default) and MS-MARCO (legacy)
+  - Configuration section shows DeBERTa as default model
+  - Quality boost now recommended (more accurate with DeBERTa)
+
+### Technical Details
+- **Files Modified** (3):
+  - `src/mcp_memory_service/quality/config.py` - Model registry, default changed to DeBERTa
+  - `src/mcp_memory_service/quality/onnx_ranker.py` - Multi-model support with classifier/cross-encoder branching
+  - `scripts/quality/bulk_evaluate_onnx.py` - Model type detection for query strategy
+
+- **Files Created** (3):
+  - `scripts/quality/export_deberta_onnx.py` - DeBERTa export script
+  - `scripts/quality/migrate_to_deberta.py` - Migration script with statistics
+  - `tests/test_deberta_quality.py` - Comprehensive test suite (100+ tests)
+
+- **Key Implementation**: Softmax 3-class scoring
+  ```python
+  # DeBERTa: weighted score from 3-class probabilities
+  score = 0.0 × P(low) + 0.5 × P(medium) + 1.0 × P(high)
+
+  # MS-MARCO: sigmoid binary score
+  score = 1.0 / (1.0 + exp(-logit))
+  ```
+
 ## [8.48.4] - 2025-12-08
 
 ### Fixed

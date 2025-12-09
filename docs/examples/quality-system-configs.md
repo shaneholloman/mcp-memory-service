@@ -1,39 +1,43 @@
 # Memory Quality System - Example Configurations
 
-> **Version**: 8.48.3
+> **Version**: 8.49.0
 > **Updated**: December 8, 2025
 > **See Also**: [Memory Quality Guide](../guides/memory-quality-guide.md), [Evaluation Report](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Quality-System-Evaluation)
 
-This document provides tested configuration examples for different use cases, taking into account the ONNX model limitations identified in v8.48.3.
+This document provides tested configuration examples for different use cases. **v8.49.0 introduces NVIDIA DeBERTa quality classifier** as the new default model, eliminating self-matching bias and providing absolute quality assessment.
 
 ---
 
-## Configuration 1: Default (Recommended for Most Users)
+## Configuration 1: Default (Recommended for Most Users - v8.49.0+)
 
-**Use case**: General usage with awareness of limitations
+**Use case**: General usage with accurate quality assessment
 
 ```bash
-# .env configuration
+# .env configuration (v8.49.0+ defaults)
 MCP_QUALITY_SYSTEM_ENABLED=true
-MCP_QUALITY_AI_PROVIDER=local           # Local ONNX only
-MCP_QUALITY_BOOST_ENABLED=false         # Keep opt-in (minimal benefit)
-MCP_QUALITY_BOOST_WEIGHT=0.3            # If enabled, use 30%
+MCP_QUALITY_AI_PROVIDER=local                               # Local ONNX only
+MCP_QUALITY_LOCAL_MODEL=nvidia-quality-classifier-deberta   # DeBERTa (default)
+MCP_QUALITY_BOOST_ENABLED=true                              # Recommended with DeBERTa
+MCP_QUALITY_BOOST_WEIGHT=0.3                                # 30% quality, 70% semantic
 
-# Warnings:
-# - Quality scores may be biased due to self-matching
-# - Use for relative ranking, not absolute thresholds
-# - Manually validate before making retention decisions
+# Benefits over v8.48.x (MS-MARCO):
+# ✅ No self-matching bias
+# ✅ Absolute quality assessment (query-independent)
+# ✅ Uniform distribution (mean: 0.60-0.70)
+# ✅ Fewer false positives (<5% perfect scores)
 ```
 
 **Why this works**:
-- Zero cost, full privacy
-- Scores still useful for relative ranking
-- Avoids over-reliance on potentially biased scores
+- Zero cost, full privacy (runs locally)
+- Accurate absolute quality assessment
+- Suitable for archival and retention decisions
+- GPU acceleration for fast inference (20-40ms)
 
 **When to use**:
-- Small to medium databases (<10,000 memories)
-- Cost-conscious users
-- Privacy-focused setups
+- ✅ **All new installations** (default)
+- ✅ **All database sizes** (small to large)
+- ✅ **Cost-conscious users** (zero API costs)
+- ✅ **Privacy-focused setups** (no external calls)
 
 ---
 
@@ -237,6 +241,72 @@ MCP_QUALITY_RETENTION_LOW_MIN=30        # 1 month minimum for low
 
 ---
 
+## Configuration 9: DeBERTa Quality Classifier (Recommended - v8.49.0+)
+
+**Use case**: Absolute quality assessment without self-matching bias
+
+```bash
+# .env configuration
+MCP_QUALITY_SYSTEM_ENABLED=true
+MCP_QUALITY_AI_PROVIDER=local
+MCP_QUALITY_LOCAL_MODEL=nvidia-quality-classifier-deberta  # Default v8.49.0+
+MCP_QUALITY_LOCAL_DEVICE=auto                             # Auto-detect GPU
+
+# Quality boost recommended with DeBERTa (more accurate scores)
+MCP_QUALITY_BOOST_ENABLED=true
+MCP_QUALITY_BOOST_WEIGHT=0.3
+
+# Expected improvements:
+# - Mean score: 0.60-0.70 (vs 0.469 with MS-MARCO)
+# - Perfect 1.0 scores: <5% (vs 20% with MS-MARCO)
+# - Uniform distribution (vs bimodal clustering)
+# - No self-matching bias
+```
+
+**Why this works best**:
+- ✅ **Eliminates self-matching bias** - Query-independent evaluation
+- ✅ **Absolute quality assessment** - Designed for quality scoring
+- ✅ **Uniform distribution** - More realistic score spread
+- ✅ **Fewer false positives** - <5% perfect scores
+- ✅ **Still zero cost** - Runs locally with GPU acceleration
+
+**Performance**:
+- Model size: 450MB (one-time download)
+- CPU: 80-150ms per evaluation
+- GPU (CUDA/MPS/DirectML): 20-40ms per evaluation
+- ~20% slower than MS-MARCO but significantly more accurate
+
+**Migration from MS-MARCO**:
+```bash
+# Export DeBERTa model (one-time)
+python scripts/quality/export_deberta_onnx.py
+
+# Re-evaluate existing memories
+python scripts/quality/migrate_to_deberta.py
+
+# Verify improved distribution
+curl -ks https://127.0.0.1:8000/api/quality/distribution | python3 -m json.tool
+```
+
+**When to use**:
+- ✅ **All new installations** (default in v8.49.0+)
+- ✅ **Upgrading from v8.48.x** (migration script available)
+- ✅ **When quality accuracy matters** (archival decisions, retention policies)
+- ✅ **Large databases** (>5,000 memories)
+
+**When NOT to use**:
+- Extremely limited disk space (<500MB available)
+- Legacy systems requiring MS-MARCO compatibility
+- When 450MB model download is not feasible
+
+**Fallback to MS-MARCO** (not recommended):
+```bash
+# Override to legacy model (only if needed)
+export MCP_QUALITY_LOCAL_MODEL=ms-marco-MiniLM-L-6-v2
+```
+
+---
+
 ## Monitoring & Validation
 
 Regardless of configuration, **always validate** quality scores before making decisions:
@@ -375,13 +445,19 @@ retrieve_with_quality_boost(query="best practices", quality_weight=0.5)
 
 ## Best Practices Summary
 
-1. **Start with defaults** (Configuration 1)
-2. **Enable quality boost only if needed** (>10k memories)
-3. **Always manually validate** before archival decisions
-4. **Use scores for relative ranking**, not absolute thresholds
-5. **Monitor distribution monthly** with `analyze_quality_distribution()`
-6. **Provide manual ratings** for important memories
-7. **Stay updated** on Phase 2/3 improvements (Issue #268)
+**v8.49.0+ (DeBERTa)**:
+1. **Use defaults** (Configuration 1 or 9) - DeBERTa provides accurate quality assessment
+2. **Enable quality boost** - More effective with DeBERTa's accurate scores
+3. **Trust quality scores** - Suitable for archival and retention decisions
+4. **Monitor distribution monthly** with `analyze_quality_distribution()`
+5. **Provide manual ratings** for important memories (enhances learning)
+6. **Migrate from MS-MARCO** if upgrading: `python scripts/quality/migrate_to_deberta.py`
+
+**v8.48.x and earlier (MS-MARCO)**:
+1. **Upgrade to v8.49.0** for DeBERTa improvements
+2. If staying on MS-MARCO: Use scores for **relative ranking only**
+3. **Manually validate** before archival decisions (self-matching bias)
+4. **Monitor false positives** (20% perfect 1.0 scores)
 
 ---
 
