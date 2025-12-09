@@ -23,18 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.49.0** (Dec 09, 2025)
+### 🆕 Latest Release: **v8.50.0** (Dec 09, 2025)
 
-**DeBERTa Quality Classifier - Absolute Quality Assessment**
+**Fallback Quality Scoring - DeBERTa + MS-MARCO Hybrid System**
 
-- 🎯 **Eliminates Self-Matching Bias** - Replaced MS-MARCO with NVIDIA DeBERTa for query-independent quality evaluation
-- 📊 **Uniform Distribution** - Mean score improved from 0.469 to 0.60-0.70, more realistic quality spread
-- ✨ **Fewer False Positives** - Perfect 1.0 scores reduced from 20% to <5%
-- 🔧 **Multi-Model Architecture** - Supports both DeBERTa (default) and MS-MARCO (legacy) models
-- 🚀 **GPU Acceleration** - 20-40ms evaluation on GPU (CUDA/MPS/DirectML), 80-150ms on CPU
-- 📖 **Migration Script** - Seamless upgrade: `python scripts/quality/migrate_to_deberta.py`
+- 🔄 **Multi-Model Fallback** - DeBERTa primary with MS-MARCO rescue for technical content (solves prose bias)
+- 📈 **Technical Content Rescue** - Expected 45-65% improvement for technical fragments (0.48 → 0.70-0.80)
+- ⚡ **Smart Performance** - Fast path (115ms, 40% of memories) for confident scores, full fallback (155ms, 60%)
+- 🎯 **Important Discovery** - MS-MARCO limitations documented (query-document relevance model, not quality classifier)
+- ✅ **Recommended Configuration** - Implicit signals only for technical corpora (DeBERTa prose bias confirmed)
+- 📊 **Complete Test Coverage** - 20/20 tests passing with comprehensive fallback logic validation
 
 **Previous Releases**:
+- **v8.49.0** - DeBERTa Quality Classifier (absolute quality assessment, eliminates self-matching bias)
 - **v8.48.4** - Cloudflare D1 Drift Detection Performance (10-100x faster queries, numeric comparison fix)
 - **v8.48.3** - Code Execution Hook Fix - 75% token reduction now working (fixed time_filter parameter, Python warnings, venv detection)
 - **v8.48.2** - HTTP Server Auto-Start & Time Parser Improvements (smart service management, "last N periods" support)

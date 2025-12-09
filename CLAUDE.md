@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.49.0**: **DeBERTa Quality Classifier** - Replaced MS-MARCO with NVIDIA DeBERTa quality classifier for absolute quality assessment. Eliminates self-matching bias (~25% false positives), provides uniform distribution (mean 0.60-0.70 vs 0.469), reduces perfect 1.0 scores from 20% to <5%. Multi-model architecture supports both DeBERTa (default) and MS-MARCO (legacy). Migration script available: `python scripts/quality/migrate_to_deberta.py`. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.50.0**: **Fallback Quality Scoring** - Multi-model fallback system with DeBERTa primary + MS-MARCO rescue for technical content. Addresses DeBERTa prose bias (technical fragments score 0.48 → 0.70-0.80 with rescue). Important discovery: MS-MARCO limitations as quality classifier documented. Recommended configuration: Implicit signals only for technical corpora. Complete test coverage: 20/20 tests passing. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

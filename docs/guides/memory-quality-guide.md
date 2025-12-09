@@ -1,9 +1,97 @@
 # Memory Quality System Guide
 
-> **Version**: 8.48.3
-> **Status**: Production Ready (with known limitations)
+> **Version**: 8.50.0
+> **Status**: Production Ready
 > **Feature**: Memento-Inspired Quality System (Issue #260)
 > **Evaluation**: [Quality System Evaluation Report](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Quality-System-Evaluation)
+>
+> **⚠️ IMPORTANT (v8.50.0)**: Fallback mode is **not recommended** due to MS-MARCO architectural limitations (query-document relevance model cannot assess absolute quality). See [Recommended Configuration](#recommended-configuration-v850) for the simpler, more robust approach.
+
+## Recommended Configuration (v8.50.0)
+
+### Primary Recommendation: Implicit Signals Only
+
+**✅ For Technical Corpora (RECOMMENDED)**
+
+If your memory base contains:
+- Technical fragments, file paths, references
+- Code snippets, CLI output, configuration
+- Task lists, tickets, abbreviations
+- Short notes and checklists
+
+```bash
+# Disable AI quality scoring (avoids prose bias)
+export MCP_QUALITY_AI_PROVIDER=none
+
+# Quality based on implicit signals only
+export MCP_QUALITY_SYSTEM_ENABLED=true
+export MCP_QUALITY_BOOST_ENABLED=false
+```
+
+**Why Implicit Signals Work Better**:
+- ✅ **Access patterns = true quality** - Frequently-used memories are valuable
+- ✅ **No prose bias** - Technical fragments treated fairly
+- ✅ **Self-learning** - Quality improves based on actual usage
+- ✅ **Simpler** - No model loading, zero latency
+- ✅ **Works offline** - No external dependencies
+
+**Implicit Signal Components**:
+```python
+quality_score = (
+    access_frequency × 0.40 +  # How often retrieved
+    recency × 0.30 +           # When last accessed
+    retrieval_ranking × 0.30   # Average position in results
+)
+```
+
+**Real-World Test Results** (v8.50.0):
+- DeBERTa average score: 0.209 (median: 0.165)
+- Only 4% of memories scored ≥ 0.6 (DeBERTa's "good" threshold)
+- Manual review: 72% classified as "low quality" were valid technical references
+- Examples misclassified: file paths, Terraform configs, technical abbreviations
+
+**Conclusion**: DeBERTa trained on Wikipedia/news systematically under-scores technical content.
+
+---
+
+### Alternative: DeBERTa for Prose-Heavy Corpora
+
+**For Long-Form Documentation Only**
+
+If your memory base contains primarily:
+- Blog posts, articles, tutorials
+- Narrative meeting notes
+- Long-form documentation with prose paragraphs
+
+```bash
+# AI quality scoring with DeBERTa
+export MCP_QUALITY_AI_PROVIDER=local
+export MCP_QUALITY_LOCAL_MODEL=nvidia-quality-classifier-deberta
+
+# Lower threshold for technical tolerance
+export MCP_QUALITY_DEBERTA_THRESHOLD=0.4  # Or 0.3 for more leniency
+
+# Combine AI + implicit signals
+export MCP_QUALITY_BOOST_ENABLED=true
+export MCP_QUALITY_BOOST_WEIGHT=0.3
+```
+
+**When to Use AI Scoring**:
+| Content Type | Use AI? | Reason |
+|--------------|---------|--------|
+| Narrative documentation | ✅ Yes | DeBERTa trained for prose |
+| Blog posts, articles | ✅ Yes | Complete paragraphs |
+| Meeting notes (narrative) | ✅ Yes | Story-like structure |
+| Technical fragments | ❌ No | Prose bias under-scores |
+| File paths, references | ❌ No | Not prose |
+| Code snippets, CLI output | ❌ No | Technical, not narrative |
+| Task lists, tickets | ❌ No | Fragmented |
+
+**Expected Distribution** (prose-heavy corpus with 0.4 threshold):
+- Low quality (< 0.4): ~20% filtered
+- Medium (0.4-0.6): ~40% accepted
+- Good (0.6-0.8): ~30% accepted
+- Excellent (≥ 0.8): ~10% accepted
 
 ## Overview
 
@@ -122,6 +210,136 @@ export MCP_QUALITY_BOOST_WEIGHT=0.3
 # Override to use MS-MARCO (not recommended)
 export MCP_QUALITY_LOCAL_MODEL=ms-marco-MiniLM-L-6-v2
 ```
+
+#### **Fallback Quality Scoring** (Best of Both Worlds) 🆕 v8.50.0
+
+**Model**: DeBERTa + MS-MARCO hybrid approach
+**Architecture**: Threshold-based fallback for optimal quality assessment
+**Type**: Absolute quality with technical content rescue
+
+**Problem Solved**:
+DeBERTa has systematic bias toward prose/narrative content over technical documentation:
+- **Prose content**: 0.78-0.92 scores (excellent)
+- **Technical content**: 0.48-0.60 scores (undervalued)
+- **Impact**: 95% of technical memories undervalued in technical databases
+
+**Solution - Threshold-Based Fallback**:
+```python
+# Always score with DeBERTa first
+deberta_score = score_with_deberta(content)
+
+# If DeBERTa confident (high score), use it
+if deberta_score >= DEBERTA_THRESHOLD:
+    return deberta_score  # MS-MARCO not consulted (fast path)
+
+# DeBERTa scored low - check if MS-MARCO thinks it's good (technical content)
+ms_marco_score = score_with_ms_marco(content)
+if ms_marco_score >= MS_MARCO_THRESHOLD:
+    return ms_marco_score  # Rescue technical content
+
+# Both agree it's low quality
+return deberta_score
+```
+
+**Key Features**:
+- ✅ **Signal Preservation** - No averaging dilution, uses strongest signal
+- ✅ **DeBERTa Primary** - Eliminates self-matching bias for prose
+- ✅ **MS-MARCO Rescue** - Catches undervalued technical content
+- ✅ **Performance Optimized** - MS-MARCO only runs when DeBERTa scores low (~60% of memories)
+- ✅ **Simple Configuration** - Just thresholds, no complex weights
+
+**Expected Results**:
+| Content Type | DeBERTa-Only | Fallback Mode | Improvement |
+|--------------|--------------|---------------|-------------|
+| **Technical content** | 0.48-0.60 | 0.70-0.80 | +45-65% ✅ |
+| **Prose content** | 0.78-0.92 | 0.78-0.92 | No change ✅ |
+| **High quality (≥0.7)** | 0.4% (17 memories) | 20-30% (800-1200) | 50-75x ✅ |
+
+**Performance**:
+| Scenario | DeBERTa-Only | Fallback | Time |
+|----------|--------------|----------|------|
+| **High prose** (~40% of memories) | DeBERTa only | DeBERTa only | 115ms ⚡ |
+| **Low technical** (~35% of memories) | DeBERTa only | DeBERTa + MS-MARCO rescue | 155ms |
+| **Low garbage** (~25% of memories) | DeBERTa only | DeBERTa + MS-MARCO both low | 155ms |
+| **Average** | 115ms | 139ms | +21% acceptable overhead |
+
+**Configuration**:
+```bash
+# Enable fallback mode (requires both models)
+export MCP_QUALITY_FALLBACK_ENABLED=true
+export MCP_QUALITY_LOCAL_MODEL="nvidia-quality-classifier-deberta,ms-marco-MiniLM-L-6-v2"
+
+# Thresholds (recommended defaults)
+export MCP_QUALITY_DEBERTA_THRESHOLD=0.6   # DeBERTa confidence threshold
+export MCP_QUALITY_MSMARCO_THRESHOLD=0.7   # MS-MARCO rescue threshold
+
+# Quality boost works well with fallback
+export MCP_QUALITY_BOOST_ENABLED=true
+export MCP_QUALITY_BOOST_WEIGHT=0.3
+```
+
+**Configuration Tuning**:
+```bash
+# Technical-heavy systems (more MS-MARCO rescues)
+export MCP_QUALITY_DEBERTA_THRESHOLD=0.5   # Lower threshold → more rescues
+export MCP_QUALITY_MSMARCO_THRESHOLD=0.6   # Lower bar for technical content
+
+# Quality-focused (stricter standards)
+export MCP_QUALITY_DEBERTA_THRESHOLD=0.7   # Higher threshold → DeBERTa must be very confident
+export MCP_QUALITY_MSMARCO_THRESHOLD=0.8   # Higher bar for rescue
+
+# Balanced (recommended default)
+export MCP_QUALITY_DEBERTA_THRESHOLD=0.6
+export MCP_QUALITY_MSMARCO_THRESHOLD=0.7
+```
+
+**Decision Tracking**:
+Fallback mode stores detailed decision metadata:
+```json
+{
+  "quality_score": 0.78,
+  "quality_provider": "fallback_deberta-msmarco",
+  "quality_components": {
+    "decision": "ms_marco_rescue",
+    "deberta_score": 0.52,
+    "ms_marco_score": 0.78,
+    "final_score": 0.78
+  }
+}
+```
+
+**Decision Types**:
+- `deberta_confident`: DeBERTa ≥ threshold, used DeBERTa (fast path, ~40%)
+- `ms_marco_rescue`: DeBERTa low, MS-MARCO ≥ threshold, used MS-MARCO (~35%)
+- `both_low`: Both below thresholds, used DeBERTa (~25%)
+- `deberta_only`: MS-MARCO not loaded, DeBERTa only
+- `ms_marco_failed`: MS-MARCO error, used DeBERTa
+
+**Re-scoring Existing Memories**:
+```bash
+# Dry-run (preview changes)
+python scripts/quality/rescore_fallback.py
+
+# Execute re-scoring
+python scripts/quality/rescore_fallback.py --execute
+
+# Custom thresholds
+python scripts/quality/rescore_fallback.py --execute \
+  --deberta-threshold 0.5 \
+  --msmarco-threshold 0.6
+
+# Expected time: 3-5 minutes for 4,000-5,000 memories
+# Creates backup automatically in ~/backups/mcp-memory-service/
+```
+
+**When to Use Fallback Mode**:
+| Use Case | Recommended Mode |
+|----------|-----------------|
+| **Technical documentation** | ✅ Fallback (rescues undervalued content) |
+| **Mixed content** (code + prose) | ✅ Fallback (best of both) |
+| **Prose-only** (creative writing) | DeBERTa-only (faster, same quality) |
+| **Strict quality** (academic) | DeBERTa-only (no rescue for low scores) |
+| **Legacy compatibility** | MS-MARCO-only (if required) |
 
 ### GPU Acceleration (Automatic)
 

@@ -32,26 +32,59 @@ PROVIDER_CODES = {
     'gemini': 'gm',
     'local': 'lc',
     'auto': 'au',
-    'none': 'no'
+    'none': 'no',
+    'fallback_deberta-msmarco': 'fb',  # Fallback mode (DeBERTa + MS-MARCO)
+    'onnx_deberta': 'od',              # DeBERTa-only scoring
+    'onnx_msmarco': 'om'               # Legacy MS-MARCO-only scoring
 }
 
 PROVIDER_DECODE = {v: k for k, v in PROVIDER_CODES.items()}
+
+# Decision code mapping for fallback scoring
+DECISION_CODES = {
+    'deberta_confident': 'dc',
+    'ms_marco_rescue': 'mr',
+    'both_low': 'bl',
+    'deberta_only': 'do',
+    'ms_marco_failed': 'mf'
+}
+
+DECISION_DECODE = {v: k for k, v in DECISION_CODES.items()}
 
 
 def encode_quality_metadata(metadata: Dict[str, Any]) -> str:
     """
     Encode quality and consolidation metadata to compact CSV format.
 
-    Format: qs,qp,as_scores,rs,rca,df,cb,ab,qba,qbd,qbr,qbcc,oqbb
+    Format: qs,qp,as_scores,rs,rca,df,cb,ab,qba,qbd,qbr,qbcc,oqbb,dec,dbs,mms
+
+    Fields:
+        qs   - quality_score
+        qp   - quality_provider (encoded)
+        as   - ai_scores (last 3)
+        rs   - relevance_score
+        rca  - relevance_calculated_at
+        df   - decay_factor
+        cb   - connection_boost
+        ab   - access_boost
+        qba  - quality_boost_applied
+        qbd  - quality_boost_date
+        qbr  - quality_boost_reason
+        qbcc - quality_boost_connection_count
+        oqbb - original_quality_before_boost
+        dec  - decision (fallback mode only)
+        dbs  - deberta_score (fallback mode only)
+        mms  - ms_marco_score (fallback mode only)
 
     Example:
-        0.851,ox,0.997:1733583071;0.995:1733583072,0.87,1733583071,0.95,0.12,0.05,1,1733583071,assoc,5,0.750
+        0.851,ox,0.997:1733583071;0.995:1733583072,0.87,1733583071,0.95,0.12,0.05,1,1733583071,assoc,5,0.750,,,
+        0.723,fb,,,,,,,,,,,mr,0.58,0.85
 
     Args:
         metadata: Full metadata dict with quality/consolidation fields
 
     Returns:
-        Compact CSV string (~110 bytes vs ~180 bytes JSON)
+        Compact CSV string (~110-130 bytes vs ~180-220 bytes JSON)
     """
     parts = []
 
@@ -114,6 +147,25 @@ def encode_quality_metadata(metadata: Dict[str, Any]) -> str:
     parts.append(str(metadata.get('quality_boost_connection_count', '')))
     parts.append(str(metadata.get('original_quality_before_boost', '')))
 
+    # Fallback-specific fields (quality_components)
+    components = metadata.get('quality_components', {})
+    if components:
+        # Decision code (dc, mr, bl, do, mf)
+        decision = components.get('decision', '')
+        parts.append(DECISION_CODES.get(decision, ''))
+
+        # Individual model scores (for analysis/debugging)
+        deberta_score = components.get('deberta_score')
+        parts.append(f"{deberta_score:.3f}" if deberta_score is not None else '')
+
+        ms_marco_score = components.get('ms_marco_score')
+        parts.append(f"{ms_marco_score:.3f}" if ms_marco_score is not None else '')
+    else:
+        # No fallback data - append empty fields
+        parts.append('')  # decision
+        parts.append('')  # deberta_score
+        parts.append('')  # ms_marco_score
+
     return ','.join(parts)
 
 
@@ -131,8 +183,9 @@ def decode_quality_metadata(csv_string: str) -> Dict[str, Any]:
         return {}
 
     parts = csv_string.split(',')
+    # Support both old format (13 parts) and new format (16 parts)
     if len(parts) < 13:
-        logger.warning(f"Invalid CSV metadata format: expected 13 parts, got {len(parts)}")
+        logger.warning(f"Invalid CSV metadata format: expected at least 13 parts, got {len(parts)}")
         return {}
 
     metadata = {}
@@ -192,6 +245,28 @@ def decode_quality_metadata(csv_string: str) -> Dict[str, Any]:
             metadata['quality_boost_connection_count'] = int(parts[11])
         if parts[12]:
             metadata['original_quality_before_boost'] = float(parts[12])
+
+        # Fallback-specific fields (new format only - 16 parts)
+        if len(parts) >= 16:
+            components = {}
+
+            # Decision code
+            if parts[13]:
+                components['decision'] = DECISION_DECODE.get(parts[13], parts[13])
+
+            # DeBERTa score
+            if parts[14]:
+                components['deberta_score'] = float(parts[14])
+
+            # MS-MARCO score
+            if parts[15]:
+                components['ms_marco_score'] = float(parts[15])
+
+            # Only add quality_components if we have any fallback data
+            if components:
+                # Add final_score for consistency
+                components['final_score'] = metadata.get('quality_score')
+                metadata['quality_components'] = components
 
     except (ValueError, IndexError) as e:
         logger.error(f"Error decoding CSV metadata: {e}")

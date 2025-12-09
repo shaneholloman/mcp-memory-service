@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # Use SQLite directly to avoid Cloudflare network timeouts
-from mcp_memory_service.storage.sqlite_vec_storage import SQLiteVecStorage
+from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 from mcp_memory_service.config import SQLITE_VEC_PATH
 from mcp_memory_service.quality.onnx_ranker import get_onnx_ranker_model
 
@@ -16,7 +16,7 @@ async def rescore():
     deberta = get_onnx_ranker_model('nvidia-quality-classifier-deberta', 'auto')
 
     print("Connecting to storage (SQLite-vec only, no network)...")
-    storage = SQLiteVecStorage(SQLITE_VEC_PATH)
+    storage = SqliteVecMemoryStorage(SQLITE_VEC_PATH)
     await storage.initialize()
 
     print("Fetching memories...")

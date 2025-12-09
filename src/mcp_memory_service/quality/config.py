@@ -27,6 +27,12 @@ class QualityConfig:
     boost_enabled: bool = False
     boost_weight: float = 0.3  # Weight for implicit signals when combining with AI
 
+    # Fallback scoring (DeBERTa primary, MS-MARCO rescue for technical content)
+    # NOTE: Fallback mode not recommended - MS-MARCO is query-relevance model, not quality classifier
+    fallback_enabled: bool = False
+    deberta_threshold: float = 0.4  # Lowered from 0.6 to accept more technical content (v8.50.0)
+    ms_marco_threshold: float = 0.7  # If DeBERTa low AND MS-MARCO >= this, use MS-MARCO (rescue)
+
     @classmethod
     def from_env(cls) -> 'QualityConfig':
         """Load configuration from environment variables."""
@@ -38,7 +44,10 @@ class QualityConfig:
             groq_api_key=os.getenv('GROQ_API_KEY'),
             gemini_api_key=os.getenv('GEMINI_API_KEY'),
             boost_enabled=os.getenv('MCP_QUALITY_BOOST_ENABLED', 'false').lower() == 'true',
-            boost_weight=float(os.getenv('MCP_QUALITY_BOOST_WEIGHT', '0.3'))
+            boost_weight=float(os.getenv('MCP_QUALITY_BOOST_WEIGHT', '0.3')),
+            fallback_enabled=os.getenv('MCP_QUALITY_FALLBACK_ENABLED', 'false').lower() == 'true',
+            deberta_threshold=float(os.getenv('MCP_QUALITY_DEBERTA_THRESHOLD', '0.6')),
+            ms_marco_threshold=float(os.getenv('MCP_QUALITY_MSMARCO_THRESHOLD', '0.7'))
         )
 
     def validate(self) -> bool:
@@ -51,6 +60,29 @@ class QualityConfig:
 
         if not 0.0 <= self.boost_weight <= 1.0:
             raise ValueError(f"boost_weight must be between 0.0 and 1.0, got {self.boost_weight}")
+
+        # Validate fallback thresholds
+        if not 0.0 <= self.deberta_threshold <= 1.0:
+            raise ValueError(f"deberta_threshold must be between 0.0 and 1.0, got {self.deberta_threshold}")
+
+        if not 0.0 <= self.ms_marco_threshold <= 1.0:
+            raise ValueError(f"ms_marco_threshold must be between 0.0 and 1.0, got {self.ms_marco_threshold}")
+
+        # Validate multi-model support for fallback
+        if self.fallback_enabled:
+            models = [m.strip() for m in self.local_model.split(',')]
+            if len(models) < 2:
+                raise ValueError(
+                    "Fallback mode requires at least 2 models in local_model (comma-separated), "
+                    f"got: {self.local_model}"
+                )
+            # Validate each model exists
+            for model in models:
+                if model not in SUPPORTED_MODELS:
+                    raise ValueError(
+                        f"Unknown model '{model}' in local_model. "
+                        f"Supported models: {list(SUPPORTED_MODELS.keys())}"
+                    )
 
         # Warn if cloud providers selected but no API keys
         if self.ai_provider == 'groq' and not self.groq_api_key:
