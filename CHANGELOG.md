@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **i18n Quality Analytics Translations** - Completed translations for quality analytics feature (PR #271)
+  - Added 25 quality strings to Spanish, French, German, Japanese, Korean (125 translations total)
+  - Completes i18n coverage started in PR #270 (English/Chinese)
+  - Languages now fully supported: English, Chinese, Spanish, French, German, Japanese, Korean
+  - Strings added: navigation labels, quality stats/charts, provider settings, help text
+
 ## [8.50.0] - 2025-12-09
 
 ### Added
