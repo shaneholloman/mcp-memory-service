@@ -313,7 +313,8 @@ async def backfill_associations(
                     target_hash=target,
                     similarity=assoc['similarity'],
                     connection_types=assoc['connection_types'],
-                    metadata=assoc['metadata']
+                    metadata=assoc['metadata'],
+                    created_at=assoc['created_at']
                 )
 
                 if success:

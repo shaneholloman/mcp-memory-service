@@ -84,7 +84,8 @@ class GraphStorage:
         target_hash: str,
         similarity: float,
         connection_types: List[str],
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        created_at: Optional[float] = None
     ) -> bool:
         """
         Store a memory association with bidirectional edges.
@@ -95,6 +96,7 @@ class GraphStorage:
             similarity: Similarity score (0.0-1.0)
             connection_types: List of connection types (e.g., ["semantic", "temporal"])
             metadata: Optional metadata dict with discovery context
+            created_at: Optional timestamp (Unix epoch). If None, uses current time.
 
         Returns:
             True if stored successfully, False otherwise
@@ -114,7 +116,8 @@ class GraphStorage:
 
         try:
             conn = await self._get_connection()
-            created_at = datetime.now(timezone.utc).timestamp()
+            if created_at is None:
+                created_at = datetime.now(timezone.utc).timestamp()
             metadata_json = json.dumps(metadata or {})
             connection_types_json = json.dumps(connection_types)
 
