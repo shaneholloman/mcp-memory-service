@@ -496,7 +496,7 @@ class GraphStorage:
         try:
             conn = await self._get_connection()
 
-            async with asyncio.Lock():  # Ensure thread safety
+            async with self._lock:  # Ensure thread safety
                 cursor = conn.cursor()
 
                 # Delete both directions (bidirectional storage)

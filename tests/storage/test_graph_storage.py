@@ -490,3 +490,54 @@ class TestGraphStorage:
         # Should include edges A→B and B→C
         assert len(subgraph["edges"]) == 2, \
             "Should have 2 edges (A→B, B→C) in radius-2 subgraph"
+
+    @pytest.mark.asyncio
+    async def test_delete_association(self, graph_storage):
+        """Test deleting associations and bidirectional removal."""
+        # Store test association
+        await graph_storage.store_association(
+            "hash_a", "hash_b", 0.8, ["test"], {}
+        )
+
+        # Verify it exists
+        assoc = await graph_storage.get_association("hash_a", "hash_b")
+        assert assoc is not None, "Association should exist before deletion"
+
+        # Delete the association
+        deleted = await graph_storage.delete_association("hash_a", "hash_b")
+        assert deleted is True, "Deletion should be successful"
+
+        # Verify it's gone
+        assoc_after = await graph_storage.get_association("hash_a", "hash_b")
+        assert assoc_after is None, "Association should not exist after deletion"
+
+        # Verify idempotency (deleting again should return False)
+        deleted_again = await graph_storage.delete_association("hash_a", "hash_b")
+        assert deleted_again is False, \
+            "Deleting non-existent association should return False"
+
+    @pytest.mark.asyncio
+    async def test_get_association_count(self, graph_storage):
+        """Test getting the count of direct associations for a memory."""
+        # Create a hub node with 5 connections
+        hub_hash = "hash_hub"
+        for i in range(5):
+            await graph_storage.store_association(
+                hub_hash, f"hash_spoke_{i}", 0.7, ["test"], {}
+            )
+
+        # Get count for hub node
+        count = await graph_storage.get_association_count(hub_hash)
+        assert count == 5, f"Hub node should have 5 connections, got {count}"
+
+        # Create single connection
+        await graph_storage.store_association(
+            "hash_single", "hash_other", 0.6, ["test"], {}
+        )
+
+        count_single = await graph_storage.get_association_count("hash_single")
+        assert count_single == 1, "Single connection node should have count 1"
+
+        # Node with no connections
+        count_none = await graph_storage.get_association_count("non_existent_hash")
+        assert count_none == 0, "Non-existent node should have count 0"

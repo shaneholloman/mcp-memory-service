@@ -90,10 +90,10 @@ The memory consolidation system automatically discovers semantic associations be
 CREATE TABLE IF NOT EXISTS memory_graph (
     source_hash TEXT NOT NULL,
     target_hash TEXT NOT NULL,
-    similarity REAL,
-    connection_types TEXT,  -- JSON array: ["temporal_proximity", "shared_concepts"]
-    metadata TEXT,          -- JSON object: {"discovery_method": "creative_association"}
-    created_at REAL,
+    similarity REAL NOT NULL,
+    connection_types TEXT NOT NULL,  -- JSON array: ["temporal_proximity", "shared_concepts"]
+    metadata TEXT,                   -- JSON object: {"discovery_method": "creative_association"}
+    created_at REAL NOT NULL,
     PRIMARY KEY (source_hash, target_hash)
 );
 ```
