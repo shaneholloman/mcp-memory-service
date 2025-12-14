@@ -2723,8 +2723,8 @@ def _parse_arguments():
                         help='Force compatible versions of PyTorch (2.0.1) and sentence-transformers (2.2.2)')
     parser.add_argument('--fallback-deps', action='store_true',
                         help='Use fallback versions of PyTorch (1.13.1) and sentence-transformers (2.2.2)')
-    parser.add_argument('--storage-backend', choices=['chromadb', 'sqlite_vec', 'auto_detect'],
-                        help='Choose storage backend: chromadb (default), sqlite_vec (lightweight), or auto_detect (try chromadb, fallback to sqlite_vec)')
+    parser.add_argument('--storage-backend', choices=['cloudflare', 'sqlite_vec', 'hybrid', 'auto_detect'],
+                        help='Choose storage backend: cloudflare (production cloud), sqlite_vec (local development), hybrid (production + local sync), or auto_detect')
     parser.add_argument('--skip-pytorch', action='store_true',
                         help='Skip PyTorch installation and use ONNX runtime with SQLite-vec backend instead')
     parser.add_argument('--use-homebrew-pytorch', action='store_true',
