@@ -349,6 +349,16 @@ class GraphStorage:
             nodes = {memory_hash}
             nodes.update(hash for hash, _ in connected)
 
+            # Check SQLite parameter limit (999 max, we use 2*len(nodes))
+            if len(nodes) > 499:
+                logger.warning(
+                    f"Subgraph too large ({len(nodes)} nodes > 499 limit). "
+                    f"Truncating to prevent SQLite parameter overflow."
+                )
+                # Keep center node + first 498 connected nodes
+                nodes = {memory_hash}
+                nodes.update(h for h, _ in list(connected)[:498])
+
             # Fetch all edges between nodes in subgraph
             conn = await self._get_connection()
 

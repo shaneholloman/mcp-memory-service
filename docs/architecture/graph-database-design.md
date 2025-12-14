@@ -172,8 +172,8 @@ async def find_connected(
 **Recursive CTE Implementation**:
 ```sql
 WITH RECURSIVE connected_memories(hash, distance, path) AS (
-    -- Base case: Starting node
-    SELECT ?, 0, ?
+    -- Base case: Starting node (path wrapped with delimiters)
+    SELECT ?, 0, ?  -- Parameters: (hash, ',hash,')
 
     UNION ALL
 
@@ -181,11 +181,11 @@ WITH RECURSIVE connected_memories(hash, distance, path) AS (
     SELECT
         mg.target_hash,
         cm.distance + 1,
-        cm.path || ',' || mg.target_hash
+        cm.path || mg.target_hash || ','  -- Append hash with delimiter
     FROM connected_memories cm
     JOIN memory_graph mg ON cm.hash = mg.source_hash
-    WHERE cm.distance < ?                           -- Max hops limit
-      AND instr(cm.path, mg.target_hash) = 0        -- Cycle prevention
+    WHERE cm.distance < ?                                         -- Max hops limit
+      AND instr(cm.path, ',' || mg.target_hash || ',') = 0        -- Cycle prevention (exact match)
 )
 SELECT DISTINCT hash, distance
 FROM connected_memories

@@ -490,7 +490,13 @@ class DreamInspiredConsolidator:
 
             except Exception as e:
                 failed_count += 1
-                self.logger.warning(f"Error storing association as memory: {e}")
+                # Try to extract hashes for better debugging context
+                try:
+                    hashes = association.source_memory_hashes
+                    hash_info = f"{hashes[0][:8]} <-> {hashes[1][:8]} "
+                except (AttributeError, IndexError):
+                    hash_info = ""
+                self.logger.warning(f"Error storing association {hash_info}as memory: {e}")
 
         self.logger.info(
             f"Stored {stored_count} associations as memories "

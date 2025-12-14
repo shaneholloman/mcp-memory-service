@@ -24,6 +24,7 @@ import subprocess
 import shutil
 import json
 import asyncio
+import traceback
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime
@@ -439,7 +440,6 @@ async def async_main(args):
 
     except Exception as e:
         print(f"\n❌ Error: {e}")
-        import traceback
         traceback.print_exc()
         return 1
 
