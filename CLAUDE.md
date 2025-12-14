@@ -650,6 +650,106 @@ Use 24 core types: `note`, `reference`, `document`, `guide`, `session`, `impleme
 - Test both OAuth enabled/disabled modes for web interface
 - Validate search endpoints: semantic (`/api/search`), tag (`/api/search/by-tag`), time (`/api/search/by-time`)
 
+### 📝 **GitHub API Workflows**
+
+**Creating GitHub Discussions with Proper Formatting:**
+
+⚠️ **CRITICAL**: Never use `jq -Rs .` to pre-escape markdown when using `gh api graphql`. The `-f` flag handles JSON escaping automatically.
+
+**❌ WRONG APPROACH (causes broken formatting):**
+```bash
+# This double-escapes newlines, showing literal \n in the discussion
+BODY=$(cat discussion.md | jq -Rs .)
+gh api graphql -f body="${BODY}" -f query='...'
+```
+
+**✅ CORRECT APPROACH:**
+```bash
+# Let gh CLI handle JSON escaping automatically
+BODY=$(cat discussion.md)
+gh api graphql -f body="$BODY" -f query='...'
+```
+
+**Complete Working Example:**
+```bash
+#!/bin/bash
+set -e
+
+# Read markdown content (no pre-escaping)
+BODY=$(cat /tmp/discussion.md)
+
+# Create discussion - gh handles JSON escaping
+gh api graphql \
+  -f repositoryId="R_kgDONic2fw" \
+  -f categoryId="DIC_kwDONic2f84CtxsU" \
+  -f title="Discussion Title" \
+  -f body="$BODY" \
+  -f query='
+mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+  createDiscussion(input: {
+    repositoryId: $repositoryId
+    categoryId: $categoryId
+    title: $title
+    body: $body
+  }) {
+    discussion {
+      id
+      url
+    }
+  }
+}'
+```
+
+**Update Existing Discussion:**
+```bash
+BODY=$(cat /tmp/discussion.md)
+
+gh api graphql \
+  -f discussionId="D_kwDONic2f84AjRLF" \
+  -f body="$BODY" \
+  -f query='
+mutation($discussionId: ID!, $body: String!) {
+  updateDiscussion(input: {
+    discussionId: $discussionId
+    body: $body
+  }) {
+    discussion {
+      url
+    }
+  }
+}'
+```
+
+**Get Discussion Categories:**
+```bash
+gh api graphql -f query='
+query {
+  repository(owner: "doobidoo", name: "mcp-memory-service") {
+    discussionCategories(first: 10) {
+      nodes {
+        id
+        name
+      }
+    }
+  }
+}' --jq '.data.repository.discussionCategories.nodes'
+```
+
+**Verification Checklist:**
+- ✅ Visit the discussion URL in browser
+- ✅ Check headers (##, ###) render correctly
+- ✅ Verify code blocks have syntax highlighting
+- ✅ Confirm tables are formatted
+- ✅ Ensure no visible `\n` escape characters
+
+**Key Takeaways:**
+1. Use `-f` flag for string parameters (auto-escapes JSON)
+2. Use `-F` flag for file parameters if reading directly from file
+3. Never manually escape with `jq -Rs .` before passing to `gh api graphql`
+4. Always verify output in browser after creation/update
+
+**Reference**: See [GitHub discussion #278](https://github.com/doobidoo/mcp-memory-service/discussions/278) for example of correct formatting.
+
 ## Code Quality Monitoring
 
 ### Multi-Layer Quality Strategy
