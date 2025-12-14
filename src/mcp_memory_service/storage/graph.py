@@ -52,6 +52,7 @@ class GraphStorage:
         """
         self.db_path = db_path
         self._connection = None
+        self._lock = asyncio.Lock()  # Instance-level lock for thread safety
         logger.info(f"Initialized GraphStorage with database: {db_path}")
 
     async def _get_connection(self) -> sqlite3.Connection:
@@ -106,6 +107,11 @@ class GraphStorage:
             logger.warning(f"Cannot create self-loop: {source_hash}")
             return False
 
+        # Validate similarity score bounds
+        if not (0.0 <= similarity <= 1.0):
+            logger.error(f"Invalid similarity score {similarity}, must be in range [0.0, 1.0]")
+            return False
+
         try:
             conn = await self._get_connection()
             created_at = datetime.now(timezone.utc).timestamp()
@@ -114,26 +120,28 @@ class GraphStorage:
 
             # Store bidirectional edges (both A→B and B→A)
             # This simplifies queries - no need to check both directions
-            async with asyncio.Lock():  # Ensure thread safety
+            async with self._lock:  # Use instance lock for thread safety
                 cursor = conn.cursor()
+                try:
+                    # Insert or replace source → target
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO memory_graph
+                        (source_hash, target_hash, similarity, connection_types, metadata, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (source_hash, target_hash, similarity, connection_types_json,
+                          metadata_json, created_at))
 
-                # Insert or replace source → target
-                cursor.execute("""
-                    INSERT OR REPLACE INTO memory_graph
-                    (source_hash, target_hash, similarity, connection_types, metadata, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (source_hash, target_hash, similarity, connection_types_json,
-                      metadata_json, created_at))
+                    # Insert or replace target → source (bidirectional)
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO memory_graph
+                        (source_hash, target_hash, similarity, connection_types, metadata, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (target_hash, source_hash, similarity, connection_types_json,
+                          metadata_json, created_at))
 
-                # Insert or replace target → source (bidirectional)
-                cursor.execute("""
-                    INSERT OR REPLACE INTO memory_graph
-                    (source_hash, target_hash, similarity, connection_types, metadata, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (target_hash, source_hash, similarity, connection_types_json,
-                      metadata_json, created_at))
-
-                conn.commit()
+                    conn.commit()
+                finally:
+                    cursor.close()
 
             logger.debug(f"Stored bidirectional association: {source_hash} ↔ {target_hash}")
             return True
@@ -198,13 +206,16 @@ class GraphStorage:
             """
 
             cursor = conn.cursor()
-            cursor.execute(query, (memory_hash, memory_hash, max_hops))
-            results = cursor.fetchall()
+            try:
+                cursor.execute(query, (memory_hash, memory_hash, max_hops))
+                results = cursor.fetchall()
 
-            connected = [(row['hash'], row['distance']) for row in results]
-            logger.debug(f"Found {len(connected)} connected memories within {max_hops} hops")
+                connected = [(row['hash'], row['distance']) for row in results]
+                logger.debug(f"Found {len(connected)} connected memories within {max_hops} hops")
 
-            return connected
+                return connected
+            finally:
+                cursor.close()
 
         except sqlite3.Error as e:
             logger.error(f"Failed to find connected memories: {e}")
@@ -270,16 +281,19 @@ class GraphStorage:
             """
 
             cursor = conn.cursor()
-            cursor.execute(query, (hash1, hash1, max_depth, hash2, hash2))
-            result = cursor.fetchone()
+            try:
+                cursor.execute(query, (hash1, hash1, max_depth, hash2, hash2))
+                result = cursor.fetchone()
 
-            if result:
-                path = result['path'].split(',')
-                logger.debug(f"Found path of length {len(path)}: {hash1} → {hash2}")
-                return path
-            else:
-                logger.debug(f"No path found between {hash1} and {hash2}")
-                return None
+                if result:
+                    path = result['path'].split(',')
+                    logger.debug(f"Found path of length {len(path)}: {hash1} → {hash2}")
+                    return path
+                else:
+                    logger.debug(f"No path found between {hash1} and {hash2}")
+                    return None
+            finally:
+                cursor.close()
 
         except sqlite3.Error as e:
             logger.error(f"Failed to find shortest path: {e}")
@@ -333,6 +347,7 @@ class GraphStorage:
             conn = await self._get_connection()
 
             # Use parameterized query with IN clause
+            # Safety: placeholders are constructed from validated node set, not user input
             placeholders = ','.join('?' * len(nodes))
             query = f"""
             SELECT
@@ -347,40 +362,43 @@ class GraphStorage:
             """
 
             cursor = conn.cursor()
-            # Duplicate node list for both IN clauses
-            params = list(nodes) + list(nodes)
-            cursor.execute(query, params)
-            results = cursor.fetchall()
+            try:
+                # Duplicate node list for both IN clauses
+                params = list(nodes) + list(nodes)
+                cursor.execute(query, params)
+                results = cursor.fetchall()
 
-            # Format edges for visualization
-            edges = []
-            seen_edges = set()  # Avoid duplicates from bidirectional storage
+                # Format edges for visualization
+                edges = []
+                seen_edges = set()  # Avoid duplicates from bidirectional storage
 
-            for row in results:
-                source = row['source_hash']
-                target = row['target_hash']
+                for row in results:
+                    source = row['source_hash']
+                    target = row['target_hash']
 
-                # Use canonical edge representation (sorted tuple) to deduplicate
-                edge_key = tuple(sorted([source, target]))
-                if edge_key in seen_edges:
-                    continue
-                seen_edges.add(edge_key)
+                    # Use canonical edge representation (sorted tuple) to deduplicate
+                    edge_key = tuple(sorted([source, target]))
+                    if edge_key in seen_edges:
+                        continue
+                    seen_edges.add(edge_key)
 
-                edges.append({
-                    "source": source,
-                    "target": target,
-                    "similarity": row['similarity'],
-                    "connection_types": json.loads(row['connection_types']),
-                    "metadata": json.loads(row['metadata']) if row['metadata'] else {}
-                })
+                    edges.append({
+                        "source": source,
+                        "target": target,
+                        "similarity": row['similarity'],
+                        "connection_types": json.loads(row['connection_types']),
+                        "metadata": json.loads(row['metadata']) if row['metadata'] else {}
+                    })
 
-            subgraph = {
-                "nodes": list(nodes),
-                "edges": edges
-            }
+                subgraph = {
+                    "nodes": list(nodes),
+                    "edges": edges
+                }
 
-            logger.debug(f"Extracted subgraph: {len(nodes)} nodes, {len(edges)} edges")
-            return subgraph
+                logger.debug(f"Extracted subgraph: {len(nodes)} nodes, {len(edges)} edges")
+                return subgraph
+            finally:
+                cursor.close()
 
         except sqlite3.Error as e:
             logger.error(f"Failed to extract subgraph: {e}")
