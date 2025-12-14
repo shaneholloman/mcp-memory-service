@@ -181,6 +181,7 @@ class GraphStorage:
             # Recursive CTE query for multi-hop traversal
             # Base case: Direct neighbors (distance = 1)
             # Recursive case: Neighbors of neighbors (distance + 1)
+            # Cycle prevention: Wrap hashes with delimiters to avoid substring matches
             query = """
             WITH RECURSIVE connected_memories(hash, distance, path) AS (
                 -- Base case: Start with the given memory
@@ -192,12 +193,12 @@ class GraphStorage:
                 SELECT
                     mg.target_hash,
                     cm.distance + 1,
-                    cm.path || ',' || mg.target_hash
+                    cm.path || mg.target_hash || ','
                 FROM connected_memories cm
                 JOIN memory_graph mg ON cm.hash = mg.source_hash
                 WHERE
                     cm.distance < ?  -- Limit recursion depth
-                    AND instr(cm.path, mg.target_hash) = 0  -- Prevent cycles
+                    AND instr(cm.path, ',' || mg.target_hash || ',') = 0  -- Prevent cycles (exact match)
             )
             SELECT DISTINCT hash, distance
             FROM connected_memories
@@ -207,7 +208,7 @@ class GraphStorage:
 
             cursor = conn.cursor()
             try:
-                cursor.execute(query, (memory_hash, memory_hash, max_hops))
+                cursor.execute(query, (memory_hash, f',{memory_hash},', max_hops))
                 results = cursor.fetchall()
 
                 connected = [(row['hash'], row['distance']) for row in results]
@@ -257,6 +258,7 @@ class GraphStorage:
 
             # Recursive CTE for BFS pathfinding
             # Stops at first path found (BFS guarantees shortest)
+            # Cycle prevention: Wrap hashes with delimiters to avoid substring matches
             query = """
             WITH RECURSIVE path_finder(current_hash, path, depth) AS (
                 -- Base case: Start from hash1
@@ -267,13 +269,13 @@ class GraphStorage:
                 -- Recursive case: Expand path
                 SELECT
                     mg.target_hash,
-                    pf.path || ',' || mg.target_hash,
+                    pf.path || mg.target_hash || ',',
                     pf.depth + 1
                 FROM path_finder pf
                 JOIN memory_graph mg ON pf.current_hash = mg.source_hash
                 WHERE
                     pf.depth < ?  -- Limit search depth
-                    AND instr(pf.path, mg.target_hash) = 0  -- Prevent cycles
+                    AND instr(pf.path, ',' || mg.target_hash || ',') = 0  -- Prevent cycles (exact match)
                     AND pf.current_hash != ?  -- Stop if target found (handled in outer query)
             )
             SELECT path
@@ -285,11 +287,12 @@ class GraphStorage:
 
             cursor = conn.cursor()
             try:
-                cursor.execute(query, (hash1, hash1, max_depth, hash2, hash2))
+                cursor.execute(query, (hash1, f',{hash1},', max_depth, hash2, hash2))
                 result = cursor.fetchone()
 
                 if result:
-                    path = result['path'].split(',')
+                    # Path format: ",hash1,,hash2,,hash3," - filter empty strings
+                    path = [h for h in result['path'].split(',') if h]
                     logger.debug(f"Found path of length {len(path)}: {hash1} → {hash2}")
                     return path
                 else:
