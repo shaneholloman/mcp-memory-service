@@ -932,3 +932,26 @@ if MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED:
 # =============================================================================
 # End Association-Based Quality Enhancement Configuration
 # =============================================================================
+
+# =============================================================================
+# Graph Database Configuration (v8.51.0+)
+# =============================================================================
+
+# Graph storage mode controls how memory associations are stored
+# Options:
+#   - 'memories_only': Store associations in memories.metadata.associations (backward compatible, v8.48.0 behavior)
+#   - 'dual_write': Write to both memories.metadata.associations AND memory_graph table (migration mode, default)
+#   - 'graph_only': Write to memory_graph table only (future mode, requires migration complete)
+GRAPH_STORAGE_MODE = os.getenv('MCP_GRAPH_STORAGE_MODE', 'dual_write').lower()
+
+# Validate graph storage mode
+VALID_GRAPH_MODES = ['memories_only', 'dual_write', 'graph_only']
+if GRAPH_STORAGE_MODE not in VALID_GRAPH_MODES:
+    logger.warning(f"Invalid graph storage mode: {GRAPH_STORAGE_MODE}, must be one of {VALID_GRAPH_MODES}. Using default 'dual_write'")
+    GRAPH_STORAGE_MODE = 'dual_write'
+
+logger.info(f"Graph Storage Mode: {GRAPH_STORAGE_MODE}")
+
+# =============================================================================
+# End Graph Database Configuration
+# =============================================================================

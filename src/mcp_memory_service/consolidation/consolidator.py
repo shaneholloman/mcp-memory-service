@@ -28,6 +28,8 @@ from .compression import SemanticCompressionEngine
 from .forgetting import ControlledForgettingEngine
 from .health import ConsolidationHealthMonitor
 from ..models.memory import Memory
+from ..storage.graph import GraphStorage
+from ..config import GRAPH_STORAGE_MODE
 
 # Protocol for storage backend interface
 class StorageProtocol(Protocol):
@@ -140,6 +142,9 @@ class DreamInspiredConsolidator:
         # Initialize health monitoring
         self.health_monitor = ConsolidationHealthMonitor(config)
 
+        # Initialize graph storage for associations
+        self._init_graph_storage()
+
         # Performance tracking
         self.last_consolidation_times = {}
         self.consolidation_stats = {
@@ -151,6 +156,33 @@ class DreamInspiredConsolidator:
             'total_memories_compressed': 0,
             'total_memories_archived': 0
         }
+
+    def _init_graph_storage(self) -> None:
+        """Initialize GraphStorage with appropriate db_path from storage backend."""
+        try:
+            # Try to get db_path from storage backend
+            # Hybrid backend: storage.primary.db_path
+            # SQLite-vec backend: storage.db_path
+            if hasattr(self.storage, 'primary') and hasattr(self.storage.primary, 'db_path'):
+                # Hybrid backend
+                db_path = self.storage.primary.db_path
+                self.logger.info(f"Initialized GraphStorage with hybrid backend: {db_path}")
+            elif hasattr(self.storage, 'db_path'):
+                # SQLite-vec backend
+                db_path = self.storage.db_path
+                self.logger.info(f"Initialized GraphStorage with SQLite backend: {db_path}")
+            else:
+                # Cloudflare-only or unsupported backend
+                self.logger.warning("Storage backend does not support graph storage (no db_path)")
+                self.graph_storage = None
+                return
+
+            self.graph_storage = GraphStorage(db_path)
+            self.logger.info(f"Graph storage mode: {GRAPH_STORAGE_MODE}")
+
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize GraphStorage: {e}")
+            self.graph_storage = None
     
     async def consolidate(self, time_horizon: str, **kwargs) -> ConsolidationReport:
         """
@@ -393,37 +425,130 @@ class DreamInspiredConsolidator:
             return set()
     
     async def _store_associations_as_memories(self, associations) -> None:
-        """Store discovered associations as first-class memories."""
+        """
+        Store discovered associations using configured graph storage mode.
+
+        Supports three modes:
+        - memories_only: Store as Memory objects (legacy, backward compatible)
+        - dual_write: Store in BOTH memories and graph table (transition mode, default)
+        - graph_only: Only store in graph table (recommended, modern)
+        """
+        if not associations:
+            return
+
+        self.logger.info(f"Storing {len(associations)} associations using mode: {GRAPH_STORAGE_MODE}")
+
+        # Store in memories table if enabled
+        if GRAPH_STORAGE_MODE in ['memories_only', 'dual_write']:
+            await self._store_associations_in_memories(associations)
+
+        # Store in graph table if enabled
+        if GRAPH_STORAGE_MODE in ['dual_write', 'graph_only']:
+            await self._store_associations_in_graph_table(associations)
+
+    async def _store_associations_in_memories(self, associations) -> None:
+        """Store associations as Memory objects (legacy method)."""
+        stored_count = 0
+        failed_count = 0
+
         for association in associations:
-            # Create memory content from association
-            source_hashes = association.source_memory_hashes
-            similarity = association.similarity_score
-            connection_type = association.connection_type
-            
-            content = f"Association between memories {source_hashes[0][:8]} and {source_hashes[1][:8]}: {connection_type} (similarity: {similarity:.3f})"
-            
-            # Create association memory
-            association_memory = Memory(
-                content=content,
-                content_hash=f"assoc_{source_hashes[0][:8]}_{source_hashes[1][:8]}",
-                tags=['association', 'discovered'] + connection_type.split(', '),
-                memory_type='association',
-                metadata={
-                    'source_memory_hashes': source_hashes,
-                    'similarity_score': similarity,
-                    'connection_type': connection_type,
+            try:
+                # Create memory content from association
+                source_hashes = association.source_memory_hashes
+                similarity = association.similarity_score
+                connection_type = association.connection_type
+
+                content = f"Association between memories {source_hashes[0][:8]} and {source_hashes[1][:8]}: {connection_type} (similarity: {similarity:.3f})"
+
+                # Create association memory
+                association_memory = Memory(
+                    content=content,
+                    content_hash=f"assoc_{source_hashes[0][:8]}_{source_hashes[1][:8]}",
+                    tags=['association', 'discovered'] + connection_type.split(', '),
+                    memory_type='association',
+                    metadata={
+                        'source_memory_hashes': source_hashes,
+                        'similarity_score': similarity,
+                        'connection_type': connection_type,
+                        'discovery_method': association.discovery_method,
+                        'discovery_date': association.discovery_date.isoformat(),
+                        **association.metadata
+                    },
+                    created_at=datetime.now().timestamp(),
+                    created_at_iso=datetime.now().isoformat() + 'Z'
+                )
+
+                # Store the association memory
+                success, _ = await self.storage.store(association_memory)
+                if success:
+                    stored_count += 1
+                else:
+                    failed_count += 1
+                    self.logger.warning(
+                        f"Failed to store association memory for {source_hashes[0][:8]} <-> {source_hashes[1][:8]}"
+                    )
+
+            except Exception as e:
+                failed_count += 1
+                self.logger.warning(f"Error storing association as memory: {e}")
+
+        self.logger.info(
+            f"Stored {stored_count} associations as memories "
+            f"({failed_count} failed)" if failed_count > 0 else f"Stored {stored_count} associations as memories"
+        )
+
+    async def _store_associations_in_graph_table(self, associations) -> None:
+        """Store associations in graph table using GraphStorage."""
+        if self.graph_storage is None:
+            self.logger.warning("GraphStorage not available, skipping graph table storage")
+            return
+
+        stored_count = 0
+        failed_count = 0
+
+        for association in associations:
+            try:
+                source_hashes = association.source_memory_hashes
+                if len(source_hashes) < 2:
+                    self.logger.warning(f"Invalid association: less than 2 source hashes")
+                    failed_count += 1
+                    continue
+
+                source_hash = source_hashes[0]
+                target_hash = source_hashes[1]
+
+                # Convert connection_type string to list
+                connection_types = [ct.strip() for ct in association.connection_type.split(',')]
+
+                # Prepare metadata
+                metadata = {
                     'discovery_method': association.discovery_method,
                     'discovery_date': association.discovery_date.isoformat(),
                     **association.metadata
-                },
-                created_at=datetime.now().timestamp(),
-                created_at_iso=datetime.now().isoformat() + 'Z'
-            )
+                }
 
-            # Store the association memory
-            success, _ = await self.storage.store(association_memory)
-            if not success:
-                logger.warning(f"Failed to store association memory for {memory1_hash} <-> {memory2_hash}")
+                # Store in graph table
+                success = await self.graph_storage.store_association(
+                    source_hash=source_hash,
+                    target_hash=target_hash,
+                    similarity=association.similarity_score,
+                    connection_types=connection_types,
+                    metadata=metadata
+                )
+
+                if success:
+                    stored_count += 1
+                else:
+                    failed_count += 1
+
+            except Exception as e:
+                failed_count += 1
+                self.logger.warning(f"Failed to store association in graph table: {e}")
+
+        self.logger.info(
+            f"Stored {stored_count} associations in graph table "
+            f"({failed_count} failed)" if failed_count > 0 else f"Stored {stored_count} associations in graph table"
+        )
     
     async def _handle_compression_results(self, compression_results) -> None:
         """Handle storage of compressed memories and linking to originals."""
