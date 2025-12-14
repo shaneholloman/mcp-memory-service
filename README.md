@@ -23,18 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.50.0** (Dec 09, 2025)
+### 🆕 Latest Release: **v8.50.1** (Dec 14, 2025)
 
-**Fallback Quality Scoring - DeBERTa + MS-MARCO Hybrid System**
+**Critical Bug Fixes - Configuration & Installation**
 
-- 🔄 **Multi-Model Fallback** - DeBERTa primary with MS-MARCO rescue for technical content (solves prose bias)
-- 📈 **Technical Content Rescue** - Expected 45-65% improvement for technical fragments (0.48 → 0.70-0.80)
-- ⚡ **Smart Performance** - Fast path (115ms, 40% of memories) for confident scores, full fallback (155ms, 60%)
-- 🎯 **Important Discovery** - MS-MARCO limitations documented (query-document relevance model, not quality classifier)
-- ✅ **Recommended Configuration** - Implicit signals only for technical corpora (DeBERTa prose bias confirmed)
-- 📊 **Complete Test Coverage** - 20/20 tests passing with comprehensive fallback logic validation
+- 🔧 **MCP_EMBEDDING_MODEL Environment Variable Fixed** - Custom embedding models now properly respected (PR #276, fixes #275)
+- 📦 **Installation Script Backend Support** - Added missing cloudflare/hybrid options, removed stale ChromaDB references (fixes #273)
+- 🌐 **i18n Quality Analytics Complete** - Added 125 translations across 5 languages (Spanish, French, German, Japanese, Korean)
+- ✅ **User-Reported Issues Resolved** - Both configuration bugs fixed in patch release
 
 **Previous Releases**:
+- **v8.50.0** - Fallback Quality Scoring (DeBERTa + MS-MARCO hybrid, technical content rescue, 20/20 tests passing)
 - **v8.49.0** - DeBERTa Quality Classifier (absolute quality assessment, eliminates self-matching bias)
 - **v8.48.4** - Cloudflare D1 Drift Detection Performance (10-100x faster queries, numeric comparison fix)
 - **v8.48.3** - Code Execution Hook Fix - 75% token reduction now working (fixed time_filter parameter, Python warnings, venv detection)

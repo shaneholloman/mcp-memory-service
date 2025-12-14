@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.50.1] - 2025-12-14
+
+### Fixed
+- **MCP_EMBEDDING_MODEL Environment Variable Now Respected** (PR #276, fixes #275)
+  - The `MCP_EMBEDDING_MODEL` environment variable was being ignored in server.py during storage initialization
+  - All storage backends (sqlite_vec, hybrid) now correctly use `EMBEDDING_MODEL_NAME` from config
+  - Users can now configure custom embedding models like `paraphrase-multilingual-mpnet-base-v2`
+  - Technical details: Fixed by passing `config.embedding_model` to storage backend constructors
+
+- **Installation Script Backend Support Updated** (fixes #273, commit 892212c)
+  - Removed stale ChromaDB references from `--storage-backend` choices (ChromaDB was removed in v8.3.0)
+  - Added missing 'cloudflare' and 'hybrid' options to both installation scripts
+  - Updated help text to reflect current supported backends: sqlite_vec, cloudflare, hybrid
+  - Fixes: `scripts/installation/install.py` and root-level `install.py`
+
 ### Added
 - **i18n Quality Analytics Translations** - Completed translations for quality analytics feature (PR #271)
   - Added 25 quality strings to Spanish, French, German, Japanese, Korean (125 translations total)
