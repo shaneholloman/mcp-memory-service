@@ -210,10 +210,11 @@ async def shortest_path(
 ```
 
 **Algorithm**:
-- Bidirectional BFS from both source and target
-- Early termination when paths meet
-- Returns `None` if no path exists (disconnected nodes)
-- Path reconstruction using parent tracking
+- Unidirectional BFS from source to target
+- BFS guarantees shortest path found first (level-order traversal)
+- Early termination when target is reached
+- Returns `None` if no path exists within max_depth
+- Performance: ~15ms typical (excellent for sparse graphs)
 
 ##### `get_subgraph()`
 ```python

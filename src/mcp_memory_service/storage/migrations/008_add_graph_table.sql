@@ -13,6 +13,6 @@ CREATE TABLE IF NOT EXISTS memory_graph (
 );
 
 -- Optimize bidirectional traversal (A→B and B→A queries)
+-- Note: PRIMARY KEY already creates an index on (source_hash, target_hash)
 CREATE INDEX IF NOT EXISTS idx_graph_source ON memory_graph(source_hash);
 CREATE INDEX IF NOT EXISTS idx_graph_target ON memory_graph(target_hash);
-CREATE INDEX IF NOT EXISTS idx_graph_bidirectional ON memory_graph(source_hash, target_hash);

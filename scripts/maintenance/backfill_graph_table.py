@@ -33,15 +33,14 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from mcp_memory_service.storage.graph import GraphStorage
+from mcp_memory_service.config import SQLITE_VEC_PATH
 
-# Database path (platform-aware)
-import platform
-if platform.system() == "Darwin":  # macOS
-    DB_PATH = Path.home() / "Library/Application Support/mcp-memory/sqlite_vec.db"
-elif platform.system() == "Windows":
-    DB_PATH = Path(os.getenv('LOCALAPPDATA')) / "mcp-memory" / "sqlite_vec.db"
-else:  # Linux and other Unix-like systems
-    DB_PATH = Path.home() / ".local/share/mcp-memory/sqlite_vec.db"
+# Database path from application configuration
+DB_PATH = Path(SQLITE_VEC_PATH) if SQLITE_VEC_PATH else None
+if DB_PATH is None:
+    print("❌ Error: SQLite database path not configured")
+    print("   Ensure MCP_MEMORY_STORAGE_BACKEND is set to 'sqlite_vec' or 'hybrid'")
+    sys.exit(1)
 
 # Version
 VERSION = "1.0.0"

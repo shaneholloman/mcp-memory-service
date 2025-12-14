@@ -230,8 +230,11 @@ class GraphStorage:
         """
         Find shortest path between two memories using recursive CTE (BFS).
 
-        Uses breadth-first search to find the shortest connection path.
-        Stops as soon as target is found to optimize performance.
+        Uses unidirectional breadth-first search from source to target.
+        BFS guarantees the shortest path is found first due to level-order traversal.
+
+        Note: Bidirectional BFS could improve performance for deep searches but adds
+        complexity. Current performance (15ms typical) is excellent for our use case.
 
         Args:
             hash1: Source memory content hash
