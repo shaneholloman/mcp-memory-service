@@ -132,14 +132,17 @@ def perform_safety_checks(db_path: Path, dry_run: bool = False) -> bool:
             print("✓ HTTP server is not running")
 
     # Check 4: Sufficient disk space
-    stat = os.statvfs(db_path.parent)
-    free_space = stat.f_bavail * stat.f_frsize
-    db_size = db_path.stat().st_size
-    if free_space < db_size * 2:  # Need at least 2x database size for VACUUM
-        print(f"⚠️  Low disk space: {free_space / 1024**2:.1f} MB free, need {db_size * 2 / 1024**2:.1f} MB")
+    try:
+        free_space = shutil.disk_usage(db_path.parent).free
+        db_size = db_path.stat().st_size
+        if free_space < db_size * 2:  # Need at least 2x database size for VACUUM
+            print(f"⚠️  Low disk space: {free_space / 1024**2:.1f} MB free, need {db_size * 2 / 1024**2:.1f} MB")
+            all_passed = False
+        else:
+            print(f"✓ Sufficient disk space: {free_space / 1024**2:.1f} MB free")
+    except Exception as e:
+        print(f"⚠️  Could not check disk space: {e}")
         all_passed = False
-    else:
-        print(f"✓ Sufficient disk space: {free_space / 1024**2:.1f} MB free")
 
     # Check 5: Graph table exists
     try:
@@ -177,53 +180,53 @@ def perform_safety_checks(db_path: Path, dry_run: bool = False) -> bool:
     return all_passed
 
 
-def fetch_association_memories(conn: sqlite3.Connection) -> List[Tuple[str, str]]:
+def fetch_association_memories(conn: sqlite3.Connection) -> List[Tuple[str, str, str]]:
     """
     Fetch all association memories from the database.
 
     Returns:
-        List of (content_hash, content) tuples
+        List of (content_hash, content, metadata) tuples
     """
     cursor = conn.cursor()
 
     # Query for association memories with discovered tag
     cursor.execute("""
-        SELECT content_hash, content
+        SELECT content_hash, content, metadata
         FROM memories
         WHERE tags LIKE '%association%'
           AND tags LIKE '%discovered%'
     """)
 
     results = cursor.fetchall()
-    associations = [(row[0], row[1]) for row in results]
+    associations = [(row[0], row[1], row[2]) for row in results]
 
     return associations
 
 
-def verify_in_graph_table(conn: sqlite3.Connection, content_hash: str) -> bool:
+def verify_in_graph_table(conn: sqlite3.Connection, source_hash: str, target_hash: str) -> bool:
     """
-    Verify that a memory's associations exist in the graph table.
-
-    Checks if the content_hash appears in either source_hash or target_hash columns.
+    Verify that an association edge exists in the graph table.
 
     Args:
         conn: Database connection
-        content_hash: Memory content hash to verify
+        source_hash: Source memory content hash
+        target_hash: Target memory content hash
 
     Returns:
-        True if hash exists in graph table, False otherwise
+        True if edge exists in graph table, False otherwise
     """
     cursor = conn.cursor()
 
-    # Check if hash appears in graph table (either as source or target)
+    # Check if edge exists in either direction
     cursor.execute("""
-        SELECT COUNT(*)
+        SELECT 1
         FROM memory_graph
-        WHERE source_hash = ? OR target_hash = ?
-    """, (content_hash, content_hash))
+        WHERE (source_hash = ? AND target_hash = ?)
+           OR (source_hash = ? AND target_hash = ?)
+        LIMIT 1
+    """, (source_hash, target_hash, target_hash, source_hash))
 
-    count = cursor.fetchone()[0]
-    return count > 0
+    return cursor.fetchone() is not None
 
 
 def get_graph_stats(conn: sqlite3.Connection) -> Dict[str, int]:
@@ -249,7 +252,7 @@ def get_graph_stats(conn: sqlite3.Connection) -> Dict[str, int]:
 
 def analyze_associations(
     conn: sqlite3.Connection,
-    associations: List[Tuple[str, str]]
+    associations: List[Tuple[str, str, str]]
 ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
     """
     Analyze associations and categorize them.
@@ -264,14 +267,24 @@ def analyze_associations(
 
     print("\n🔍 Verifying associations in graph table...")
 
-    for i, (content_hash, content) in enumerate(associations):
+    for i, (content_hash, content, metadata_str) in enumerate(associations):
         # Progress indicator
         if (i + 1) % 100 == 0:
             print(f"Progress: {i + 1}/{len(associations)} [{(i + 1) / len(associations) * 100:.0f}%]", end='\r')
 
-        if verify_in_graph_table(conn, content_hash):
-            verified.append((content_hash, content))
-        else:
+        try:
+            metadata = json.loads(metadata_str) if metadata_str else {}
+            source_hashes = metadata.get('source_memory_hashes')
+
+            if isinstance(source_hashes, list) and len(source_hashes) == 2:
+                if verify_in_graph_table(conn, source_hashes[0], source_hashes[1]):
+                    verified.append((content_hash, content))
+                else:
+                    orphaned.append((content_hash, content))
+            else:
+                # Malformed or missing source hashes
+                orphaned.append((content_hash, content))
+        except (json.JSONDecodeError, TypeError):
             orphaned.append((content_hash, content))
 
     print()  # New line after progress

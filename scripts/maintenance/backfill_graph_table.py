@@ -136,14 +136,17 @@ def perform_safety_checks(db_path: Path, dry_run: bool = False) -> bool:
             print("✓ HTTP server is not running")
 
     # Check 4: Sufficient disk space
-    stat = os.statvfs(db_path.parent)
-    free_space = stat.f_bavail * stat.f_frsize
-    db_size = db_path.stat().st_size
-    if free_space < db_size * 2:  # Need at least 2x database size
-        print(f"⚠️  Low disk space: {free_space / 1024**2:.1f} MB free, need {db_size * 2 / 1024**2:.1f} MB")
+    try:
+        free_space = shutil.disk_usage(db_path.parent).free
+        db_size = db_path.stat().st_size
+        if free_space < db_size * 2:  # Need at least 2x database size
+            print(f"⚠️  Low disk space: {free_space / 1024**2:.1f} MB free, need {db_size * 2 / 1024**2:.1f} MB")
+            all_passed = False
+        else:
+            print(f"✓ Sufficient disk space: {free_space / 1024**2:.1f} MB free")
+    except Exception as e:
+        print(f"⚠️  Could not check disk space: {e}")
         all_passed = False
-    else:
-        print(f"✓ Sufficient disk space: {free_space / 1024**2:.1f} MB free")
 
     # Check 5: Graph table exists (create if missing)
     try:

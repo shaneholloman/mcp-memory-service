@@ -249,8 +249,8 @@ class DreamInspiredConsolidator:
                     report.associations_discovered = len(associations)
                     self.logger.info(f"✓ Association discovery completed in {time.time() - performance_start:.1f}s, found {len(associations)} associations")
 
-                    # Store new associations as memories
-                    await self._store_associations_as_memories(associations)
+                    # Store new associations
+                    await self._store_associations(associations)
 
                 # 5. Compress clusters (if enabled and clusters exist)
                 compression_results = []
@@ -424,7 +424,7 @@ class DreamInspiredConsolidator:
             self.logger.warning(f"Error getting existing associations: {e}")
             return set()
     
-    async def _store_associations_as_memories(self, associations) -> None:
+    async def _store_associations(self, associations) -> None:
         """
         Store discovered associations using configured graph storage mode.
 
