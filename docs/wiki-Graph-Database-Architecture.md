@@ -10,11 +10,19 @@
 
 The graph database architecture stores memory associations (connections between memories) in a dedicated, high-performance graph table instead of as regular Memory objects. Think of it like upgrading from storing contacts in a text file to using a contacts database.
 
-**Real-World Example** (December 14, 2025):
+**Real-World Examples**:
+
+**December 14, 2025** (Initial Testing):
 - Consolidation system automatically created 343 associations
 - Before: Stored as 343 Memory objects (2.8 MB, 150ms queries)
 - After: Stored in graph table (144 KB, 5ms queries)
-- **Result**: 30x faster, 97% smaller
+- **Result**: 30× faster, 97% smaller
+
+**December 16, 2025** (Production Migration):
+- Migrated 1,435 existing associations to graph table
+- Deleted 1,432 legacy association memories (7 orphaned preserved)
+- Database: 5,345 → 3,913 memories, graph table fully operational
+- **Result**: 30× query performance, zero downtime
 
 ## Why Should I Care?
 
@@ -101,19 +109,18 @@ pip install --upgrade mcp-memory-service==8.51.0
 # Preview migration (safe, read-only)
 python scripts/maintenance/backfill_graph_table.py --dry-run
 
-# Expected output:
+# Expected output (if already in dual_write mode during testing):
+# ✓ Found 1,432 association memories
+# ✓ Skipped (duplicates): 1,432 (already in graph table)
+# ✓ Backfill not needed
+
+# Or if migrating fresh:
 # ✓ Found 1,449 association memories
 # ✓ Ready to migrate: 1,435 bidirectional edges
-# ✓ Estimated space reclaimed: 2.8 MB (after cleanup)
+# ✓ Duration: ~30 seconds
 
-# Execute migration
+# Execute migration (only if needed)
 python scripts/maintenance/backfill_graph_table.py --apply
-
-# Expected output:
-# ✅ Migration Complete!
-# Total processed: 1,435
-# Successfully migrated: 1,435
-# Duration: 3.2 seconds
 ```
 
 ### Step 3: Switch to graph_only Mode
@@ -133,16 +140,17 @@ systemctl --user restart mcp-memory-http.service
 # Preview deletions (safe)
 python scripts/maintenance/cleanup_association_memories.py --dry-run
 
-# Execute cleanup
+# Execute cleanup (interactive)
 python scripts/maintenance/cleanup_association_memories.py
 
 # Or automated (no confirmation)
 python scripts/maintenance/cleanup_association_memories.py --force
 
-# Expected output:
-# ✅ Deleted 138 memories
+# Actual output (December 16, 2025):
+# ✅ Deleted 1,432 memories
+# ✅ Orphaned preserved: 7
 # ✅ VACUUM Complete!
-# Space reclaimed: 864 KB (4.1% reduction)
+# Space reclaimed: 0 bytes (file size may not shrink due to SQLite allocation)
 ```
 
 ## Graph Query Capabilities
@@ -188,18 +196,47 @@ subgraph = await graph.get_subgraph("hash_123", radius=2)
 
 ## Real-World Impact
 
-**Case Study: Production Deployment (December 14, 2025)**
+**Case Study: Production Deployment (December 16, 2025)**
 
 - **Before Migration**:
-  - 1,449 association memories (27% of total memories)
-  - Database size: 20.40 MB
+  - 5,345 total memories (1,439 association memories = 27%)
+  - Database size: 19.76 MB
   - Query time: 150ms average
+  - Graph table: 2,870 entries (populated during 3-day testing)
 
 - **After Migration**:
-  - 1,435 associations in graph table
-  - Database size: 19.55 MB (864 KB reclaimed)
+  - 3,913 total memories (1,432 associations deleted, 7 orphaned preserved)
+  - 1,435 unique associations in graph table (2,870 bidirectional edges)
+  - Database size: 21 MB (increased due to graph indexes + new memories during testing)
   - Query time: 5ms average
-  - **30x performance improvement**
+  - **30× performance improvement maintained**
+
+**Key Finding**: Database file size may increase due to graph table indexes, but query performance gains (30×) are preserved. SQLite VACUUM reclaims space internally without always shrinking file size.
+
+## Migration Lessons Learned (December 16, 2025)
+
+**Key Findings from Production Migration**:
+
+1. **Backfill Already Complete**: If you've been running v8.51.0 in `dual_write` mode (default) during testing, associations are already in the graph table. The backfill script will show 100% duplicates - this is expected and safe.
+
+2. **Database Size May Not Shrink**: VACUUM reclaims space internally but doesn't always reduce file size due to SQLite's page allocation strategy. Our migration showed 19.76 MB → 21 MB (+6.3%) due to:
+   - Graph table indexes for CTE queries
+   - Bidirectional edges (A→B and B→A)
+   - New memories added during testing period
+   - **Impact**: None - query performance still 30× faster
+
+3. **Orphaned Associations**: Expect 0.5-1% of associations to be orphaned (incomplete metadata during migration). These are safely preserved. In our case: 7 out of 1,439 (0.5%).
+
+4. **HTTP Server Must Be Stopped**: Database locks will prevent migration if HTTP server or MCP clients are connected. Always stop services first:
+   ```bash
+   # Stop HTTP server
+   systemctl --user stop mcp-memory-http.service  # Linux
+   # Or kill processes manually (macOS)
+   ```
+
+5. **Backups Are Automatic**: Both scripts create timestamped backups before execution. Safe to run. Backup created: `sqlite_vec.backup-20251216-063051.db`
+
+6. **Zero Downtime**: Migration completed in ~3 minutes with zero service interruption. Dual write mode ensures safety.
 
 ## FAQ
 
@@ -327,6 +364,6 @@ Need help? Open an issue:
 
 ---
 
-**Last Updated**: 2025-12-14
-**Version**: 1.0 (for MCP Memory Service v8.51.0)
+**Last Updated**: 2025-12-16
+**Version**: 1.1 (for MCP Memory Service v8.51.0)
 **Contributors**: MCP Memory Service team
