@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.52.0] - 2025-12-16
+
+### Added
+- **Time-of-Day Emoji Icons**: Visual indicators on all memory timestamps
+  - 8 emoji icons for 3-hour segments throughout the day (🌙🌅☕💻🍽️⛅🍷🛏️)
+  - Icons: 🌙 Late Night (00-03), 🌅 Early Morning (03-06), ☕ Morning (06-09), 💻 Late Morning (09-12), 🍽️ Afternoon (12-15), ⛅ Late Afternoon (15-18), 🍷 Evening (18-21), 🛏️ Night (21-24)
+  - Position: After date on memory cards, document groups, and detail modal
+  - Tooltips show time period labels on hover for accessibility
+  - Dark mode support with reduced opacity (75%) and subtle grayscale filter
+  - Automatic timezone detection using browser's local time
+  - Performance: Negligible impact (pure CSS + simple JS, ~0.1ms per memory)
+  - Implementation: ~45 lines added (31 JS + 14 CSS)
+
 ## [8.51.0] - 2025-12-16
 
 ### Added

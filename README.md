@@ -23,18 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.51.0** (Dec 16, 2025)
+### 🆕 Latest Release: **v8.52.0** (Dec 16, 2025)
 
-**Graph Database Architecture - 30x Query Performance, 97% Storage Reduction**
+**Time-of-Day Emoji Icons - Visual Memory Timeline**
 
-- 🗄️ **SQLite Graph Table with Recursive CTEs** - Dedicated graph storage for 30x faster association queries (150ms → 5ms)
-- 📊 **97% Storage Reduction** - Associations now 50 bytes vs 500 bytes (2.8 MB → 144 KB for 1,449 associations)
-- ⚙️ **Zero Breaking Changes** - Default dual_write mode maintains backward compatibility with gradual migration
-- 🔄 **Three Storage Modes** - memories_only (legacy), dual_write (default), graph_only (recommended)
-- 🛠️ **Migration Scripts** - Automated backfill and cleanup scripts for existing deployments
-- 🧪 **Comprehensive Testing** - 26 new tests passing (22 GraphStorage + 4 mode tests), 90%+ coverage
+- 🕐 **8 Time-Segment Icons** - Visual indicators for 3-hour periods (🌙🌅☕💻🍽️⛅🍷🛏️)
+- 📍 **Universal Placement** - Appears on memory cards, document groups, and detail modals
+- 🌓 **Dark Mode Support** - Optimized opacity and grayscale for night viewing
+- 🌍 **Automatic Timezone** - Uses browser local time for accurate display
+- ⚡ **Zero Performance Impact** - Pure CSS + simple JS (~0.1ms per memory)
+- ♿ **Accessibility** - Tooltips show time period labels on hover
 
 **Previous Releases**:
+- **v8.51.0** - Graph Database Architecture (30x query performance, 97% storage reduction for associations)
 - **v8.50.1** - Critical Bug Fixes (MCP_EMBEDDING_MODEL fix, installation script backend support, i18n quality analytics complete)
 - **v8.50.0** - Fallback Quality Scoring (DeBERTa + MS-MARCO hybrid, technical content rescue, 20/20 tests passing)
 - **v8.49.0** - DeBERTa Quality Classifier (absolute quality assessment, eliminates self-matching bias)
