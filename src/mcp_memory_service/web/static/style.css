@@ -875,6 +875,20 @@ h3 { font-size: var(--text-xl); }
     color: var(--neutral-500);
 }
 
+/* Time-of-day emoji icon */
+.time-icon {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 1em;
+    opacity: 0.85;
+    vertical-align: middle;
+    cursor: help; /* Shows tooltip on hover */
+}
+
+.time-icon:hover {
+    opacity: 1;
+}
+
 .memory-content {
     color: var(--neutral-700);
     line-height: 1.6;
@@ -2367,6 +2381,17 @@ body.dark-mode .memory-meta {
 
 body.dark-mode .memory-meta strong {
     color: var(--neutral-900) !important;  /* Bright labels for readability */
+}
+
+/* Dark mode - reduce emoji brightness slightly */
+body.dark-mode .time-icon {
+    opacity: 0.75;
+    filter: grayscale(10%); /* Subtle desaturation */
+}
+
+body.dark-mode .time-icon:hover {
+    opacity: 0.9;
+    filter: grayscale(0%);
 }
 
 body.dark-mode .action-card h3,

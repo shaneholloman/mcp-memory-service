@@ -1800,6 +1800,33 @@ class MemoryDashboard {
     }
 
     /**
+     * Get time-of-day emoji icon based on timestamp
+     * @param {number} timestamp - Unix timestamp in seconds
+     * @returns {string} HTML with emoji + tooltip
+     */
+    renderTimeIcon(timestamp) {
+        if (!timestamp) return '';
+
+        const date = new Date(timestamp * 1000);
+        const hour = date.getHours(); // Local timezone
+        const segment = Math.floor(hour / 3); // 0-7
+
+        const icons = ['🌙', '🌅', '☕', '💻', '🍽️', '⛅', '🍷', '🛏️'];
+        const labels = [
+            'Late Night',    // 00-03
+            'Early Morning', // 03-06
+            'Morning',       // 06-09
+            'Late Morning',  // 09-12
+            'Afternoon',     // 12-15
+            'Late Afternoon',// 15-18
+            'Evening',       // 18-21
+            'Night'          // 21-24
+        ];
+
+        return `<span class="time-icon" title="${labels[segment]}">${icons[segment]}</span>`;
+    }
+
+    /**
      * Toggle chunking help section visibility
      */
     toggleChunkingHelp() {
@@ -2354,7 +2381,7 @@ class MemoryDashboard {
         return `
             <div class="memory-detail">
                 <div class="memory-meta">
-                    <p><strong>Created:</strong> ${createdDate}</p>
+                    <p><strong>Created:</strong> ${createdDate} ${this.renderTimeIcon(memory.created_at)}</p>
                     ${updatedDate ? `<p><strong>Updated:</strong> ${updatedDate}</p>` : ''}
                     <p><strong>Type:</strong> ${memory.memory_type || 'note'}</p>
                     <p><strong>ID:</strong> ${memory.content_hash}</p>
@@ -2758,7 +2785,7 @@ class MemoryDashboard {
                     <div class="document-info">
                         <div class="document-title">${fileName}</div>
                         <div class="document-meta">
-                            ${chunkCount} chunks • ${createdDate}
+                            ${chunkCount} chunks • ${createdDate} ${this.renderTimeIcon(group.created_at)}
                         </div>
                     </div>
                 </div>
@@ -2921,7 +2948,7 @@ class MemoryDashboard {
         ${this.renderQualityBadge(memory)}
     <div class="memory-header">
         <div class="memory-meta">
-                        <span>${createdDate}</span>
+                        <span>${createdDate} ${this.renderTimeIcon(memory.created_at)}</span>
             ${memory.memory_type ? `<span> • ${memory.memory_type}</span>` : ''}
         ${relevanceScore ? `<span> • ${relevanceScore}% match</span>` : ''}
         </div>
