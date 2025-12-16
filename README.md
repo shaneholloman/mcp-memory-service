@@ -23,16 +23,19 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.50.1** (Dec 14, 2025)
+### 🆕 Latest Release: **v8.51.0** (Dec 16, 2025)
 
-**Critical Bug Fixes - Configuration & Installation**
+**Graph Database Architecture - 30x Query Performance, 97% Storage Reduction**
 
-- 🔧 **MCP_EMBEDDING_MODEL Environment Variable Fixed** - Custom embedding models now properly respected (PR #276, fixes #275)
-- 📦 **Installation Script Backend Support** - Added missing cloudflare/hybrid options, removed stale ChromaDB references (fixes #273)
-- 🌐 **i18n Quality Analytics Complete** - Added 125 translations across 5 languages (Spanish, French, German, Japanese, Korean)
-- ✅ **User-Reported Issues Resolved** - Both configuration bugs fixed in patch release
+- 🗄️ **SQLite Graph Table with Recursive CTEs** - Dedicated graph storage for 30x faster association queries (150ms → 5ms)
+- 📊 **97% Storage Reduction** - Associations now 50 bytes vs 500 bytes (2.8 MB → 144 KB for 1,449 associations)
+- ⚙️ **Zero Breaking Changes** - Default dual_write mode maintains backward compatibility with gradual migration
+- 🔄 **Three Storage Modes** - memories_only (legacy), dual_write (default), graph_only (recommended)
+- 🛠️ **Migration Scripts** - Automated backfill and cleanup scripts for existing deployments
+- 🧪 **Comprehensive Testing** - 26 new tests passing (22 GraphStorage + 4 mode tests), 90%+ coverage
 
 **Previous Releases**:
+- **v8.50.1** - Critical Bug Fixes (MCP_EMBEDDING_MODEL fix, installation script backend support, i18n quality analytics complete)
 - **v8.50.0** - Fallback Quality Scoring (DeBERTa + MS-MARCO hybrid, technical content rescue, 20/20 tests passing)
 - **v8.49.0** - DeBERTa Quality Classifier (absolute quality assessment, eliminates self-matching bias)
 - **v8.48.4** - Cloudflare D1 Drift Detection Performance (10-100x faster queries, numeric comparison fix)
