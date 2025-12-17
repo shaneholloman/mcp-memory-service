@@ -3,27 +3,118 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![PyPI version](https://img.shields.io/pypi/v/mcp-memory-service?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/mcp-memory-service/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-memory-service?logo=python&logoColor=white)](https://pypi.org/project/mcp-memory-service/)
-[![CI/CD](https://github.com/doobidoo/mcp-memory-service/actions/workflows/main.yml/badge.svg)](https://github.com/doobidoo/mcp-memory-service/actions/workflows/main.yml)
-[![Downloads](https://img.shields.io/pypi/dm/mcp-memory-service)](https://pypi.org/project/mcp-memory-service/)
-[![Last Commit](https://img.shields.io/github/last-commit/doobidoo/mcp-memory-service)](https://github.com/doobidoo/mcp-memory-service/commits/main)
 [![GitHub stars](https://img.shields.io/github/stars/doobidoo/mcp-memory-service?style=social)](https://github.com/doobidoo/mcp-memory-service/stargazers)
-[![Production Ready](https://img.shields.io/badge/Production-Ready-brightgreen?style=flat&logo=checkmark)](https://github.com/doobidoo/mcp-memory-service#-in-production)
-
 [![Works with Claude](https://img.shields.io/badge/Works%20with-Claude-blue)](https://claude.ai)
 [![Works with Cursor](https://img.shields.io/badge/Works%20with-Cursor-orange)](https://cursor.sh)
-[![MCP Protocol](https://img.shields.io/badge/MCP-Compatible-4CAF50?style=flat)](https://modelcontextprotocol.io/)
-[![Multi-Client](https://img.shields.io/badge/Multi--Client-13+%20Apps-FF6B35?style=flat)](https://github.com/doobidoo/mcp-memory-service/wiki)
-[![Docker](https://img.shields.io/badge/Docker-Available-2496ED?logo=docker&logoColor=white)](https://github.com/doobidoo/mcp-memory-service/pkgs/container/mcp-memory-service)
-[![Issues](https://img.shields.io/github/issues/doobidoo/mcp-memory-service)](https://github.com/doobidoo/mcp-memory-service/issues)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/doobidoo/mcp-memory-service)
 
-**Production-ready MCP memory service** with **zero database locks**, **hybrid backend** (fast local + cloud sync), and **intelligent memory search** for **AI assistants**. Features **v8.9.0 auto-configuration** for multi-client access, **5ms local reads** with background Cloudflare sync, **Natural Memory Triggers** with 85%+ accuracy, and **OAuth 2.1 team collaboration**. Works with **Claude Desktop, VS Code, Cursor, Continue, and 13+ AI applications**.
+## Stop Re-Explaining Your Project to AI Every Session
 
-<img width="240" alt="MCP Memory Service" src="https://github.com/user-attachments/assets/eab1f341-ca54-445c-905e-273cd9e89555" />
+Your AI assistant forgets everything when you start a new chat. After 50 tool uses, context explodes to 500k+ tokens—Claude slows down, you restart, and now it remembers nothing. You spend 10 minutes re-explaining your architecture. **Again.**
 
-## 🚀 Quick Start (2 minutes)
+**MCP Memory Service solves this.**
 
-### 🆕 Latest Release: **v8.52.1** (Dec 17, 2025)
+It automatically captures your project context, architecture decisions, and code patterns. When you start fresh sessions, your AI already knows everything—no re-explaining, no context loss, no wasted time.
+
+### ⚡ Works With Your Favorite AI Tools
+
+**Claude Desktop** · **VS Code** · **Cursor** · **Continue** · **Windsurf** · **Zed** · **Sourcegraph Cody** · **Raycast** · **JetBrains** · and 8+ more
+
+---
+
+## 🚀 Get Started in 60 Seconds
+
+**Express Install** (recommended for most users):
+
+```bash
+pip install mcp-memory-service
+# Auto-configure for Claude Desktop (macOS/Linux)
+python -m mcp_memory_service.scripts.installation.install --quick
+```
+
+**What just happened?**
+- ✅ Installed memory service
+- ✅ Configured optimal backend (SQLite)
+- ✅ Set up Claude Desktop integration
+- ✅ Enabled automatic context capture
+
+**Next:** Restart Claude Desktop. Your AI now remembers everything across sessions.
+
+<details>
+<summary><strong>📦 Alternative: PyPI + Manual Configuration</strong></summary>
+
+```bash
+pip install mcp-memory-service
+```
+
+Then add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "memory",
+      "args": ["server"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>🔧 Advanced: Custom Backends & Team Setup</strong></summary>
+
+For production deployments, team collaboration, or cloud sync:
+
+```bash
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service
+python scripts/installation/install.py
+```
+
+Choose from:
+- **SQLite** (local, fast, single-user)
+- **Cloudflare** (cloud, multi-device sync)
+- **Hybrid** (best of both: 5ms local + background cloud sync)
+
+</details>
+
+---
+
+## 💡 Why You Need This
+
+### The Problem
+
+| Session 1 | Session 2 (Fresh Start) |
+|-----------|-------------------------|
+| You: "We're building a Next.js app with Prisma and tRPC" | AI: "What's your tech stack?" ❌ |
+| AI: "Got it, I see you're using App Router" | You: *Explains architecture again for 10 minutes* 😤 |
+| You: "Add authentication with NextAuth" | AI: "Should I use Pages Router or App Router?" ❌ |
+
+### The Solution
+
+| Session 1 | Session 2 (Fresh Start) |
+|-----------|-------------------------|
+| You: "We're building a Next.js app with Prisma and tRPC" | AI: "I remember—Next.js App Router with Prisma and tRPC. What should we build?" ✅ |
+| AI: "Got it, I see you're using App Router" | You: "Add OAuth login" |
+| You: "Add authentication with NextAuth" | AI: "I'll integrate NextAuth with your existing Prisma setup." ✅ |
+
+**Result:** Zero re-explaining. Zero context loss. Just continuous, intelligent collaboration.
+
+---
+
+## ✨ Key Features
+
+🧠 **Automatic Memory** – Captures context without manual intervention
+🔍 **Semantic Search** – Finds relevant context using AI embeddings
+⚡ **5ms Retrieval** – Instant context injection, no latency
+🔄 **Multi-Client** – Works across 13+ AI applications
+☁️ **Cloud Sync** – Optional Cloudflare backend for team collaboration
+🔒 **Privacy-First** – Local-first, you control your data
+📊 **Web Dashboard** – Visualize and manage memories at `http://localhost:8000`
+
+---
+
+## 🆕 Latest Release: **v8.52.1** (Dec 17, 2025)
 
 **Critical Bug Fixes - Windows & Script Portability**
 
@@ -90,119 +181,52 @@
 
 ---
 
+## 📚 Documentation & Resources
+
+- **[Installation Guide](docs/installation.md)** – Detailed setup instructions
+- **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
+- **[Architecture Overview](docs/architecture.md)** – How it works under the hood
+- **[Team Setup Guide](docs/teams.md)** – OAuth and cloud collaboration
+- **[Troubleshooting](docs/troubleshooting/)** – Common issues and solutions
+- **[API Reference](docs/api.md)** – Programmatic usage
+- **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** – Complete documentation
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Quick Development Setup:**
 ```bash
-# One-command installation with auto-configuration
-git clone https://github.com/doobidoo/mcp-memory-service.git
-cd mcp-memory-service && python install.py
-
-# Choose option 4 (Hybrid - RECOMMENDED) when prompted
-# Installer automatically configures:
-#   ✅ SQLite pragmas for concurrent access
-#   ✅ Cloudflare credentials for cloud sync
-#   ✅ Claude Desktop integration
-
-# Done! Fast local + cloud sync with zero database locks
-```
-
-### PyPI Installation (Simplest)
-
-**Install from PyPI:**
-```bash
-# Install latest version from PyPI
-pip install mcp-memory-service
-
-# Or with uv (faster)
-uv pip install mcp-memory-service
-```
-
-**Then configure Claude Desktop** by adding to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or equivalent:
-```json
-{
-  "mcpServers": {
-    "memory": {
-      "command": "memory",
-      "args": ["server"],
-      "env": {
-        "MCP_MEMORY_STORAGE_BACKEND": "hybrid"
-      }
-    }
-  }
-}
-```
-
-For advanced configuration with the interactive installer, clone the repo and run `python scripts/installation/install.py`.
-
-### Developer Setup (Contributing)
-
-**For development and contributing**, use editable install to ensure source code changes take effect immediately:
-
-```bash
-# Clone repository
 git clone https://github.com/doobidoo/mcp-memory-service.git
 cd mcp-memory-service
-
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# CRITICAL: Editable install (code changes take effect immediately)
-pip install -e .
-
-# Verify editable mode (should show source directory, not site-packages)
-pip show mcp-memory-service | grep Location
-# Expected: Location: /path/to/mcp-memory-service/src
-
-# Start development server
-uv run memory server
+pip install -e .  # Editable install
+pytest tests/      # Run test suite
 ```
 
-**⚠️ Important**: Editable install (`-e` flag) ensures MCP servers load from source code, not stale `site-packages`. Without this, source changes won't be reflected until you reinstall the package.
+---
 
-**Version Mismatch Check:**
-```bash
-# Verify installed version matches source code
-python scripts/validation/check_dev_setup.py
-```
+## ⭐ Support
 
-See [CLAUDE.md](CLAUDE.md#development-setup-critical) for complete development guidelines.
+If this saves you time, give us a star! ⭐
 
-### Traditional Setup Options
+- **Issues**: [GitHub Issues](https://github.com/doobidoo/mcp-memory-service/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/doobidoo/mcp-memory-service/discussions)
+- **Wiki**: [Documentation Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)
 
-**Universal Installer (Most Compatible):**
-```bash
-# Clone and install with automatic platform detection
-git clone https://github.com/doobidoo/mcp-memory-service.git
-cd mcp-memory-service
+---
 
-# Lightweight installation (SQLite-vec with ONNX embeddings - recommended)
-python install.py
+## 📄 License
 
-# Add full ML capabilities (torch + sentence-transformers for advanced features)
-python install.py --with-ml
+Apache 2.0 – See [LICENSE](LICENSE) for details.
 
-# Install with hybrid backend (SQLite-vec + Cloudflare sync)
-python install.py --storage-backend hybrid
-```
+---
 
-**📝 Installation Options Explained:**
-- **Default (recommended)**: Lightweight SQLite-vec with ONNX embeddings - fast, works offline, <100MB dependencies
-- **`--with-ml`**: Adds PyTorch + sentence-transformers for advanced ML features - heavier but more capable
-- **`--storage-backend hybrid`**: Hybrid backend with SQLite-vec + Cloudflare sync - best for multi-device access
-
-**Docker (Fastest):**
-```bash
-# For MCP protocol (Claude Desktop)
-docker-compose up -d
-
-# For HTTP API + OAuth (Team Collaboration)
-docker-compose -f docker-compose.http.yml up -d
-```
-
-**Smithery (Claude Desktop):**
-```bash
-# Auto-install for Claude Desktop
-npx -y @smithery/cli install @doobidoo/mcp-memory-service --client claude
-```
+<p align="center">
+  <strong>Never explain your project to AI twice.</strong><br/>
+  Start using MCP Memory Service today.
+</p>
 
 ## ⚠️ v6.17.0+ Script Migration Notice
 
