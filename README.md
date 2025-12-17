@@ -9,6 +9,10 @@
 
 ## Stop Re-Explaining Your Project to AI Every Session
 
+<p align="center">
+  <img width="240" alt="MCP Memory Service" src="https://github.com/user-attachments/assets/eab1f341-ca54-445c-905e-273cd9e89555" />
+</p>
+
 Your AI assistant forgets everything when you start a new chat. After 50 tool uses, context explodes to 500k+ tokens—Claude slows down, you restart, and now it remembers nothing. You spend 10 minutes re-explaining your architecture. **Again.**
 
 **MCP Memory Service solves this.**
@@ -17,7 +21,13 @@ It automatically captures your project context, architecture decisions, and code
 
 ### ⚡ Works With Your Favorite AI Tools
 
-**Claude Desktop** · **VS Code** · **Cursor** · **Continue** · **Windsurf** · **Zed** · **Sourcegraph Cody** · **Raycast** · **JetBrains** · and 8+ more
+#### 🖥️ CLI & Terminal AI
+**Claude Code** · **Gemini Code Assist** · **Aider** · **GitHub Copilot CLI** · **Amp** · **Continue** · **Zed** · **Cody**
+
+#### 🎨 Desktop & IDE
+**Claude Desktop** · **VS Code** · **Cursor** · **Windsurf** · **Raycast** · **JetBrains** · **Sourcegraph** · **Qodo**
+
+**Works seamlessly with any MCP-compatible client** - whether you code in the terminal, IDE, or browser.
 
 ---
 
@@ -190,6 +200,7 @@ Choose from:
 - **[Troubleshooting](docs/troubleshooting/)** – Common issues and solutions
 - **[API Reference](docs/api.md)** – Programmatic usage
 - **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** – Complete documentation
+- [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/doobidoo/mcp-memory-service) – AI-powered documentation assistant
 
 ---
 
