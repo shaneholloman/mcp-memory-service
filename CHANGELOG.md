@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.52.1] - 2025-12-17
+
+### Fixed
+- **Windows Embedding Fallback**: Added `_HashEmbeddingModel` pure-Python fallback for DLL initialization failures
+  - Treats `OSError` like `ImportError` in system hardware detection
+  - Critical fix for Windows users experiencing WinError 1114 (DLL init failure)
+  - Ensures embedding model always available even with missing dependencies
+  - PR #281, commit 99cb72a
+
+- **start_http_server.sh Portability**: Improved shell script compatibility and flexibility
+  - Uses `MCP_HTTP_PORT` environment variable instead of hardcoded port 8889
+  - Flexible Python detection with fallback (python3 → python)
+  - Auto-loads `.env` file if present in working directory
+  - Commit f620041
+
 ## [8.52.0] - 2025-12-16
 
 ### Added

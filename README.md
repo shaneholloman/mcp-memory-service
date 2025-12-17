@@ -23,18 +23,17 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-### 🆕 Latest Release: **v8.52.0** (Dec 16, 2025)
+### 🆕 Latest Release: **v8.52.1** (Dec 17, 2025)
 
-**Time-of-Day Emoji Icons - Visual Memory Timeline**
+**Critical Bug Fixes - Windows & Script Portability**
 
-- 🕐 **8 Time-Segment Icons** - Visual indicators for 3-hour periods (🌙🌅☕💻🍽️⛅🍷🛏️)
-- 📍 **Universal Placement** - Appears on memory cards, document groups, and detail modals
-- 🌓 **Dark Mode Support** - Optimized opacity and grayscale for night viewing
-- 🌍 **Automatic Timezone** - Uses browser local time for accurate display
-- ⚡ **Zero Performance Impact** - Pure CSS + simple JS (~0.1ms per memory)
-- ♿ **Accessibility** - Tooltips show time period labels on hover
+- 🪟 **Windows Embedding Fallback** - Pure-Python fallback for DLL initialization failures (WinError 1114)
+- 🔧 **Script Portability** - start_http_server.sh now uses MCP_HTTP_PORT env var, flexible Python detection
+- 🛡️ **Reliability** - Ensures embedding model always available even with missing dependencies
+- 🌐 **Auto-Configuration** - Automatic .env file loading for streamlined setup
 
 **Previous Releases**:
+- **v8.52.0** - Time-of-Day Emoji Icons (8 time-segment indicators, dark mode support, automatic timezone)
 - **v8.51.0** - Graph Database Architecture (30x query performance, 97% storage reduction for associations)
 - **v8.50.1** - Critical Bug Fixes (MCP_EMBEDDING_MODEL fix, installation script backend support, i18n quality analytics complete)
 - **v8.50.0** - Fallback Quality Scoring (DeBERTa + MS-MARCO hybrid, technical content rescue, 20/20 tests passing)
