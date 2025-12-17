@@ -114,9 +114,9 @@ Choose from:
 
 ## ✨ Key Features
 
-🧠 **Automatic Memory** – Captures context without manual intervention
-🔍 **Semantic Search** – Finds relevant context using AI embeddings
-⚡ **5ms Retrieval** – Instant context injection, no latency
+🧠 **Persistent Memory** – Context survives across sessions with semantic search
+🔍 **Smart Retrieval** – Finds relevant context automatically using AI embeddings
+⚡ **5ms Speed** – Instant context injection, no latency
 🔄 **Multi-Client** – Works across 13+ AI applications
 ☁️ **Cloud Sync** – Optional Cloudflare backend for team collaboration
 🔒 **Privacy-First** – Local-first, you control your data
