@@ -371,18 +371,50 @@ class MemoryClient {
             // For MCP, fall back to time-based query (tag filtering not yet supported)
             return this.mcpClient.queryMemoriesByTime(timeQuery, limit);
         } else if (this.activeProtocol === 'http') {
-            // HTTP API: use time-based search, then filter by tags client-side
-            const timeResults = await this.queryMemoriesByTimeHTTP(timeQuery, limit * 2, semanticQuery);
+            try {
+                // HTTP API: Query by tag FIRST to get project-specific memories, then filter by time client-side
+                // This is more efficient than time-first when tags are highly selective (e.g., project names)
+                const tagPayload = {
+                    tags: Array.isArray(tags) ? tags : [tags],
+                    limit: limit * 4  // Over-fetch to ensure we have enough after time filtering
+                };
 
-            // Filter results by tags
-            const tagSet = new Set(Array.isArray(tags) ? tags : [tags]);
-            const filtered = timeResults.filter(memory => {
-                const memoryTags = memory.tags || memory.metadata?.tags || [];
-                const memoryTagsArray = Array.isArray(memoryTags) ? memoryTags : memoryTags.split(',').map(t => t.trim());
-                return memoryTagsArray.some(tag => tagSet.has(tag));
-            });
+                // Add semantic query if provided
+                if (semanticQuery) {
+                    tagPayload.query = semanticQuery;
+                }
 
-            return filtered.slice(0, limit);
+                const tagResults = await this._performApiPost('/api/search/by-tag', tagPayload);
+                const memories = tagResults.results ? tagResults.results.map(r => r.memory) : tagResults;
+
+                // Filter by time window client-side
+                const now = new Date();
+                const filtered = memories.filter(memory => {
+                    const createdAt = new Date(memory.created_at_iso || memory.created_at * 1000);
+                    const daysDiff = (now - createdAt) / (1000 * 60 * 60 * 24);
+
+                    // Parse time query (simplified - supports common patterns)
+                    if (timeQuery.includes('last week') || timeQuery.includes('last-week')) {
+                        return daysDiff <= 7;
+                    } else if (timeQuery.includes('last 2 weeks') || timeQuery.includes('last-2-weeks')) {
+                        return daysDiff <= 14;
+                    } else if (timeQuery.includes('last month') || timeQuery.includes('last-month')) {
+                        return daysDiff <= 30;
+                    } else if (timeQuery.includes('yesterday')) {
+                        return daysDiff <= 1;
+                    } else {
+                        // Default to last month if query not recognized
+                        return daysDiff <= 30;
+                    }
+                });
+
+                console.log(`[Memory Client] Tag-first filter: ${memories.length} tagged → ${filtered.length} within ${timeQuery}`);
+                return filtered.slice(0, limit);
+            } catch (error) {
+                // If tag search fails, fall back to time-only search
+                console.warn('[Memory Client] Tag search failed, falling back to time-only search:', error.message);
+                return this.queryMemoriesByTimeHTTP(timeQuery, limit, semanticQuery);
+            }
         } else {
             throw new Error('No active connection available');
         }
