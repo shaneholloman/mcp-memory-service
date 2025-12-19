@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.52.0**: **Time-of-Day Emoji Icons** - Visual indicators on all memory timestamps with 8 emoji icons for 3-hour segments (🌙🌅☕💻🍽️⛅🍷🛏️). Features: tooltips, dark mode support, automatic timezone detection, negligible performance impact (~0.1ms per memory). See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.52.2**: **Hybrid Association Cleanup Script** - New maintenance script for hybrid backend users with multi-PC setups. Removes association memories from BOTH Cloudflare D1 AND local SQLite to prevent drift-sync restoration. Features: `--skip-vectorize`, `--cloudflare-only`, `--local-only` modes with robust error handling. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

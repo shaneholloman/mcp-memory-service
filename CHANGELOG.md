@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.52.2] - 2025-12-19
+
 ### Added
 - **Hybrid Association Cleanup Script** (`cleanup_association_memories_hybrid.py`)
   - New maintenance script for hybrid backend users with multi-PC setups

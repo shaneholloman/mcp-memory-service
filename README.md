@@ -124,16 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.52.1** (Dec 17, 2025)
+## 🆕 Latest Release: **v8.52.2** (Dec 19, 2025)
 
-**Critical Bug Fixes - Windows & Script Portability**
+**Hybrid Backend Maintenance Enhancement**
 
-- 🪟 **Windows Embedding Fallback** - Pure-Python fallback for DLL initialization failures (WinError 1114)
-- 🔧 **Script Portability** - start_http_server.sh now uses MCP_HTTP_PORT env var, flexible Python detection
-- 🛡️ **Reliability** - Ensures embedding model always available even with missing dependencies
-- 🌐 **Auto-Configuration** - Automatic .env file loading for streamlined setup
+- 🧹 **Hybrid Association Cleanup Script** - New maintenance script for multi-PC setups with hybrid backend
+- 🔄 **Drift Prevention** - Removes association memories from BOTH Cloudflare D1 AND local SQLite
+- 🛡️ **Robust Error Handling** - Graceful Vectorize API error handling (JSON decode errors, network timeouts)
+- 🎯 **Flexible Modes** - `--skip-vectorize`, `--cloudflare-only`, `--local-only` options with dry-run support
 
 **Previous Releases**:
+- **v8.52.1** - Windows Embedding Fallback & Script Portability (DLL init failure fix, MCP_HTTP_PORT support)
 - **v8.52.0** - Time-of-Day Emoji Icons (8 time-segment indicators, dark mode support, automatic timezone)
 - **v8.51.0** - Graph Database Architecture (30x query performance, 97% storage reduction for associations)
 - **v8.50.1** - Critical Bug Fixes (MCP_EMBEDDING_MODEL fix, installation script backend support, i18n quality analytics complete)
