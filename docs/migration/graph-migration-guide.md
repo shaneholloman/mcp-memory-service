@@ -305,6 +305,53 @@ Processing batch 2/2: ████████████████ 138 memor
    Storage: Optimized
 ```
 
+### Step 7b: Hybrid Backend Cleanup (Multi-PC) 🆕
+
+**⚠️ IMPORTANT**: If you use the **hybrid backend** with multiple PCs, you MUST use the hybrid cleanup script instead. The standard cleanup script only deletes local associations - Cloudflare drift-sync will restore them!
+
+**The Problem**:
+```
+┌─────────────┐     sync      ┌─────────────┐     sync      ┌─────────────┐
+│  Windows PC │ ◄──────────► │  Cloudflare │ ◄──────────► │  Linux PC   │
+│ deleted 1441│              │  D1 still   │              │  restored!  │
+│ associations│              │  has them   │              │             │
+└─────────────┘              └─────────────┘              └─────────────┘
+```
+
+**The Solution**: Use `cleanup_association_memories_hybrid.py` to clean Cloudflare D1 FIRST:
+
+```bash
+# Preview (always start with dry-run)
+python scripts/maintenance/cleanup_association_memories_hybrid.py --dry-run
+
+# Execute full cleanup (cleans Cloudflare + local)
+python scripts/maintenance/cleanup_association_memories_hybrid.py --apply
+
+# Skip Vectorize if it causes errors (orphaned vectors are harmless)
+python scripts/maintenance/cleanup_association_memories_hybrid.py --apply --skip-vectorize
+```
+
+**How It Works**:
+1. Deletes from Cloudflare D1 first (prevents sync restoration)
+2. Optionally deletes from Cloudflare Vectorize (orphaned vectors harmless)
+3. Deletes from local SQLite
+4. Other PCs automatically sync the deletion
+
+**Prerequisites**:
+- Cloudflare credentials configured (`CLOUDFLARE_API_TOKEN`, etc.)
+- Graph table populated (`backfill_graph_table.py` completed)
+- `MCP_GRAPH_STORAGE_MODE=graph_only` set in environment
+
+**Which Script to Use?**
+
+| Backend | Script | Multi-PC |
+|---------|--------|----------|
+| SQLite-vec only | `cleanup_association_memories.py` | N/A |
+| Hybrid (single PC) | Either script works | N/A |
+| Hybrid (multi-PC) | `cleanup_association_memories_hybrid.py` | ✅ Required |
+
+See [scripts/maintenance/README.md](../../scripts/maintenance/README.md) for detailed documentation.
+
 ## Verification
 
 ### Test Graph Queries

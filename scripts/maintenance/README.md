@@ -15,6 +15,9 @@ This directory contains maintenance and diagnostic scripts for the MCP Memory Se
 | [`repair_sqlite_vec_embeddings.py`](#repair_sqlite_vec_embeddingspy) | Fix embedding corruption | Varies | Repair corrupted embeddings |
 | [`repair_zero_embeddings.py`](#repair_zero_embeddingspy) | Fix zero-valued embeddings | Varies | Repair zero embeddings |
 | [`cleanup_corrupted_encoding.py`](#cleanup_corrupted_encodingpy) | Fix encoding issues | Varies | Repair encoding corruption |
+| [`cleanup_association_memories.py`](#cleanup_association_memoriespy) | Remove association memories (local) | <5s | After graph migration (SQLite backend) |
+| [`cleanup_association_memories_hybrid.py`](#cleanup_association_memories_hybridpy-new) | Remove association memories (hybrid) | ~30s | After graph migration (hybrid backend, multi-PC) |
+| [`backfill_graph_table.py`](#backfill_graph_tablepy) | Migrate associations to graph | <10s | Graph database migration |
 
 ## Detailed Documentation
 
@@ -335,6 +338,77 @@ Total memories after cleanup: 1601
 **Usage**:
 ```bash
 /home/hkr/repositories/mcp-memory-service/venv/bin/python scripts/maintenance/cleanup_corrupted_encoding.py
+```
+
+---
+
+### `cleanup_association_memories_hybrid.py` 🆕
+
+**Purpose**: Removes association memories from BOTH Cloudflare D1 AND local SQLite. Essential for hybrid backend with multi-PC setups where drift-sync can restore deleted associations.
+
+**When to Use**:
+- After graph migration (`backfill_graph_table.py`) when using **hybrid backend**
+- When `MCP_GRAPH_STORAGE_MODE=graph_only` is set
+- Multi-PC environments where associations were deleted on one PC but restored via Cloudflare sync
+- When `cleanup_association_memories.py` (local-only) doesn't prevent restoration
+
+**The Multi-PC Problem**:
+```
+┌─────────────┐     sync      ┌─────────────┐     sync      ┌─────────────┐
+│  Windows PC │ ◄──────────► │  Cloudflare │ ◄──────────► │  Linux PC   │
+│ deleted 1441│              │  D1 still   │              │  restored!  │
+│ associations│              │  has them   │              │             │
+└─────────────┘              └─────────────┘              └─────────────┘
+```
+
+**The Solution**: Clean Cloudflare D1 FIRST, then local. Other PCs auto-sync the deletion.
+
+**Usage**:
+```bash
+# Preview (always start with dry-run)
+python scripts/maintenance/cleanup_association_memories_hybrid.py --dry-run
+
+# Execute full cleanup
+python scripts/maintenance/cleanup_association_memories_hybrid.py --apply
+
+# Skip Vectorize cleanup (optional - orphaned vectors are harmless)
+python scripts/maintenance/cleanup_association_memories_hybrid.py --apply --skip-vectorize
+
+# Only clean Cloudflare (useful from any PC)
+python scripts/maintenance/cleanup_association_memories_hybrid.py --apply --cloudflare-only
+
+# Only clean local (if Cloudflare already cleaned)
+python scripts/maintenance/cleanup_association_memories_hybrid.py --apply --local-only
+```
+
+**Performance**: ~30 seconds for 1,400 associations (Cloudflare API batching)
+
+**Safety Features**:
+- ✅ Dry-run mode with detailed preview
+- ✅ Automatic local database backup before deletion
+- ✅ Confirmation prompt before destructive operations
+- ✅ Graph table verification (aborts if graph missing)
+- ✅ Cloudflare D1 cleaned first (prevents sync restoration)
+- ✅ Robust Vectorize error handling (non-fatal errors)
+
+**Prerequisites**:
+1. Graph table must exist: Run `backfill_graph_table.py` first
+2. Set `MCP_GRAPH_STORAGE_MODE=graph_only` in environment
+3. Cloudflare credentials configured (API token, account ID, D1 database ID)
+
+**Comparison with `cleanup_association_memories.py`**:
+
+| Script | Backend | Cleans | Multi-PC Safe |
+|--------|---------|--------|---------------|
+| `cleanup_association_memories.py` | SQLite-vec | Local only | ❌ No |
+| `cleanup_association_memories_hybrid.py` | Hybrid | Cloudflare + Local | ✅ Yes |
+
+**Typical Results** (from production, Dec 2025):
+```
+Cloudflare D1:        1,441 memories deleted
+Cloudflare Vectorize: 1,441 vectors deleted (or skipped)
+Local SQLite:         1,441 memories deleted
+Space reclaimed:      ~2.5 MB
 ```
 
 ---

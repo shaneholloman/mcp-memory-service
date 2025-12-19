@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **Hybrid Association Cleanup Script** (`cleanup_association_memories_hybrid.py`)
+  - New maintenance script for hybrid backend users with multi-PC setups
+  - Removes association memories from BOTH Cloudflare D1 AND local SQLite
+  - Prevents drift-sync from restoring deleted associations across PCs
+  - Features: `--skip-vectorize` flag (orphaned vectors are harmless), `--cloudflare-only`, `--local-only` modes
+  - Robust Vectorize API error handling (JSON decode errors, network timeouts)
+  - Automatic backup, confirmation prompts, and dry-run support
+  - Documentation in `scripts/maintenance/README.md` and `docs/migration/graph-migration-guide.md`
+
 ## [8.52.1] - 2025-12-17
 
 ### Fixed
