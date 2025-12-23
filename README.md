@@ -124,18 +124,19 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.53.0** (Dec 23, 2025)
+## 🆕 Latest Release: **v8.54.0** (Dec 23, 2025)
 
-**Windows Service Management**
+**Smart Auto-Capture System**
 
-- 🪟 **Windows Task Scheduler Support** - Production-ready HTTP server automation for Windows
-- ⚡ **Automatic Startup** - Runs at user login with skip-if-running logic
-- 🔁 **Watchdog Monitoring** - Health checks every 5 minutes with automatic restart
-- 📊 **Service Management CLI** - Status, start, stop, restart, logs, health commands
-- 📝 **Structured Logging** - All activity logged to `%LOCALAPPDATA%\mcp-memory\logs\`
-- 🛠️ **819 Lines of PowerShell** - Complete automation addressing Windows service gap (no systemd/launchd equivalent)
+- 🧠 **Intelligent Pattern Detection** - Automatically captures memories after Edit/Write/Bash operations
+- 🎯 **6 Memory Types** - Decision, Error, Learning, Implementation, Important, Code
+- 🌍 **Bilingual Support** - English + German keyword recognition
+- 🎮 **User Control** - Override with `#remember` / `#skip` markers
+- 💻 **Cross-Platform** - Node.js (primary) + PowerShell (Windows fallback)
+- ⚙️ **Configurable** - Fine-tune via `claude-hooks/config.json` autoCapture section
 
 **Previous Releases**:
+- **v8.53.0** - Windows Service Management (Task Scheduler support, auto-startup, watchdog monitoring, 819 lines PowerShell automation)
 - **v8.52.2** - Hybrid Backend Maintenance Enhancement (multi-PC association cleanup, drift prevention, Vectorize error handling)
 - **v8.52.1** - Windows Embedding Fallback & Script Portability (DLL init failure fix, MCP_HTTP_PORT support)
 - **v8.52.0** - Time-of-Day Emoji Icons (8 time-segment indicators, dark mode support, automatic timezone)

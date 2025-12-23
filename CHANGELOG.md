@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.54.0] - 2025-12-23
+
+### Added
+- **Smart Auto-Capture System** - Intelligent automatic memory capture after Edit/Write/Bash operations (#282)
+  - Pattern detection for 6 memory types: Decision, Error, Learning, Implementation, Important, Code
+  - Bilingual support with English + German keyword recognition
+  - User override markers: `#remember` / `#skip` for manual control
+  - Cross-platform implementation: Node.js (primary) + PowerShell (Windows fallback)
+  - Configurable via `claude-hooks/config.json` autoCapture section
+  - Files: `auto-capture-patterns.js`, `auto-capture-hook.js`, `auto-capture-hook.ps1`, `README-AUTO-CAPTURE.md`
+  - Installation: `python install_hooks.py --auto-capture`
+  - Automatically detects important decisions, errors, learnings, implementations, and code changes
+  - Reduces manual memory tagging burden while maintaining user control
+
 ### Fixed
 - **Documentation**: Corrected incorrect `--http` CLI flag and port 8888 references (#283)
   - Removed non-existent `--http` flag from all documentation
