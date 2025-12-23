@@ -656,6 +656,48 @@ class HookInstaller:
             self.error(f"Failed to install basic hooks: {e}")
             return False
 
+    def install_auto_capture(self) -> bool:
+        """Install Smart Auto-Capture hooks for automatic memory capture."""
+        self.info("Installing Smart Auto-Capture hooks...")
+
+        try:
+            # Ensure directories exist
+            (self.claude_hooks_dir / "core").mkdir(parents=True, exist_ok=True)
+            (self.claude_hooks_dir / "utilities").mkdir(parents=True, exist_ok=True)
+
+            # Auto-capture pattern definitions (shared utility)
+            patterns_src = self.script_dir / "utilities" / "auto-capture-patterns.js"
+            if patterns_src.exists():
+                shutil.copy2(patterns_src, self.claude_hooks_dir / "utilities" / "auto-capture-patterns.js")
+                self.success("Installed auto-capture-patterns.js")
+            else:
+                self.warn("auto-capture-patterns.js not found")
+                return False
+
+            # Auto-capture hook (Node.js version - primary)
+            hook_js_src = self.script_dir / "core" / "auto-capture-hook.js"
+            if hook_js_src.exists():
+                shutil.copy2(hook_js_src, self.claude_hooks_dir / "core" / "auto-capture-hook.js")
+                self.success("Installed auto-capture-hook.js (Node.js)")
+            else:
+                self.warn("auto-capture-hook.js not found")
+                return False
+
+            # Auto-capture hook (PowerShell version - Windows alternative)
+            hook_ps1_src = self.script_dir / "core" / "auto-capture-hook.ps1"
+            if hook_ps1_src.exists():
+                shutil.copy2(hook_ps1_src, self.claude_hooks_dir / "core" / "auto-capture-hook.ps1")
+                self.success("Installed auto-capture-hook.ps1 (PowerShell)")
+            else:
+                self.warn("auto-capture-hook.ps1 not found (optional for Windows)")
+
+            self.success("Smart Auto-Capture hooks installed successfully")
+            return True
+
+        except Exception as e:
+            self.error(f"Failed to install Smart Auto-Capture hooks: {e}")
+            return False
+
     def install_natural_triggers(self) -> bool:
         """Install Natural Memory Triggers v7.1.3 components."""
         self.info("Installing Natural Memory Triggers v7.1.3...")
@@ -792,7 +834,7 @@ class HookInstaller:
             self.error(f"Failed to install configuration: {e}")
             return False
 
-    def configure_claude_settings(self, install_mid_conversation: bool = False) -> bool:
+    def configure_claude_settings(self, install_mid_conversation: bool = False, install_auto_capture: bool = False) -> bool:
         """Configure Claude Code settings.json for hook integration."""
         self.info("Configuring Claude Code settings...")
 
@@ -862,6 +904,28 @@ class HookInstaller:
                         ]
                     }
                 ]
+
+            # Add PostToolUse hook for auto-capture if enabled
+            if install_auto_capture:
+                # Use PowerShell on Windows, Node.js elsewhere
+                if self.platform_name == 'windows':
+                    auto_capture_command = f'powershell -ExecutionPolicy Bypass -File "{self.claude_hooks_dir}/core/auto-capture-hook.ps1"'
+                else:
+                    auto_capture_command = f'node "{self.claude_hooks_dir}/core/auto-capture-hook.js"'
+
+                hook_config["hooks"]["PostToolUse"] = [
+                    {
+                        "matchers": ["Edit", "Write", "Bash"],
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": auto_capture_command,
+                                "timeout": 5
+                            }
+                        ]
+                    }
+                ]
+                self.success("Added PostToolUse hook for Smart Auto-Capture (Edit, Write, Bash)")
 
             # Add statusLine configuration for v8.5.7+ (Unix/Linux/macOS only - requires bash)
             statusline_script = self.claude_hooks_dir / 'statusline.sh'
@@ -1148,6 +1212,7 @@ Examples:
   python install_hooks.py                    # Install all features (default)
   python install_hooks.py --basic            # Basic hooks only
   python install_hooks.py --natural-triggers # Natural Memory Triggers only
+  python install_hooks.py --auto-capture     # Smart Auto-Capture only
   python install_hooks.py --test             # Run tests only
   python install_hooks.py --uninstall        # Remove hooks
 
@@ -1155,6 +1220,8 @@ Features:
   Basic: Session-start and session-end hooks for memory awareness
   Natural Triggers: v7.1.3 intelligent automatic memory awareness with
                    pattern detection, performance optimization, and CLI tools
+  Auto-Capture: Intelligent automatic memory capture after Edit/Write/Bash
+                operations with pattern detection (Decision/Error/Learning/etc.)
         """
     )
 
@@ -1162,6 +1229,8 @@ Features:
                         help='Install basic memory awareness hooks only')
     parser.add_argument('--natural-triggers', action='store_true',
                         help='Install Natural Memory Triggers v7.1.3 only')
+    parser.add_argument('--auto-capture', action='store_true',
+                        help='Install Smart Auto-Capture hooks only')
     parser.add_argument('--all', action='store_true',
                         help='Install all features (default behavior)')
     parser.add_argument('--test', action='store_true',
@@ -1237,13 +1306,15 @@ Features:
     env_type = installer.detect_environment_type()
 
     # Determine what to install
-    install_all = not (args.basic or args.natural_triggers) or args.all
+    install_all = not (args.basic or args.natural_triggers or args.auto_capture) or args.all
     install_basic = args.basic or install_all
     install_natural_triggers = args.natural_triggers or install_all
+    install_auto_capture = args.auto_capture or install_all
 
     installer.info(f"Installation plan:")
     installer.info(f"  Basic hooks: {'Yes' if install_basic else 'No'}")
     installer.info(f"  Natural Memory Triggers: {'Yes' if install_natural_triggers else 'No'}")
+    installer.info(f"  Smart Auto-Capture: {'Yes' if install_auto_capture else 'No'}")
 
     if args.dry_run:
         installer.info("DRY RUN - No changes will be made")
@@ -1256,6 +1327,10 @@ Features:
             installer.info("  - Mid-conversation hooks")
             installer.info("  - Performance optimization utilities")
             installer.info("  - CLI management tools")
+        if install_auto_capture:
+            installer.info("  - Smart Auto-Capture hooks")
+            installer.info("  - Pattern detection for Decision/Error/Learning/Implementation")
+            installer.info("  - PostToolUse hook (Edit, Write, Bash)")
         return
 
     # Create backup
@@ -1273,6 +1348,10 @@ Features:
         if not installer.install_natural_triggers():
             overall_success = False
 
+    if install_auto_capture:
+        if not installer.install_auto_capture():
+            overall_success = False
+
     # Install configuration (always needed) with MCP awareness
     if not installer.install_configuration(install_natural_triggers=install_natural_triggers,
                                          detected_mcp=detected_mcp if use_existing_mcp else None,
@@ -1280,7 +1359,8 @@ Features:
         overall_success = False
 
     # Configure Claude Code settings
-    if not installer.configure_claude_settings(install_mid_conversation=install_natural_triggers):
+    if not installer.configure_claude_settings(install_mid_conversation=install_natural_triggers,
+                                              install_auto_capture=install_auto_capture):
         overall_success = False
 
     # Run tests to verify installation
@@ -1289,17 +1369,37 @@ Features:
         if installer.run_tests(test_natural_triggers=install_natural_triggers):
             installer.header("Installation Complete!")
 
-            if install_basic and install_natural_triggers:
+            if install_basic and install_natural_triggers and install_auto_capture:
                 installer.success("Complete Claude Code memory awareness system installed")
                 installer.info("Features available:")
                 installer.info("  ✅ Session-start and session-end hooks")
                 installer.info("  ✅ Natural Memory Triggers with intelligent pattern detection")
                 installer.info("  ✅ Mid-conversation memory injection")
+                installer.info("  ✅ Smart Auto-Capture (PostToolUse for Edit/Write/Bash)")
                 installer.info("  ✅ Performance optimization and CLI management")
                 installer.info("")
                 installer.info("CLI Management:")
                 installer.info(f"  node {installer.claude_hooks_dir}/memory-mode-controller.js status")
                 installer.info(f"  node {installer.claude_hooks_dir}/memory-mode-controller.js profile balanced")
+                installer.info("")
+                installer.info("Auto-Capture User Overrides:")
+                installer.info("  #remember - Force capture this conversation")
+                installer.info("  #skip     - Skip auto-capture for this message")
+            elif install_basic and install_natural_triggers:
+                installer.success("Memory awareness system installed (without auto-capture)")
+                installer.info("Features available:")
+                installer.info("  ✅ Session-start and session-end hooks")
+                installer.info("  ✅ Natural Memory Triggers with intelligent pattern detection")
+                installer.info("  ✅ Mid-conversation memory injection")
+                installer.info("  ✅ Performance optimization and CLI management")
+            elif install_auto_capture:
+                installer.success("Smart Auto-Capture hooks installed")
+                installer.info("Auto-capture enabled for Edit/Write/Bash operations")
+                installer.info("Pattern detection: Decision/Error/Learning/Implementation/Important/Code")
+                installer.info("")
+                installer.info("User Overrides:")
+                installer.info("  #remember - Force capture this conversation")
+                installer.info("  #skip     - Skip auto-capture for this message")
             elif install_natural_triggers:
                 installer.success("Natural Memory Triggers v7.1.3 installed")
                 installer.info("Advanced memory awareness features available")

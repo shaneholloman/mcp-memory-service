@@ -88,6 +88,17 @@
     "minSessionLength": 100,
     "minConfidence": 0.1
   },
+  "autoCapture": {
+    "enabled": true,
+    "minLength": 300,
+    "maxLength": 4000,
+    "patterns": ["decision", "error", "learning", "implementation", "important", "code"],
+    "debugMode": false,
+    "userOverrides": {
+      "forceRemember": "#remember",
+      "forceSkip": "#skip"
+    }
+  },
   "hooks": {
     "sessionStart": {
       "enabled": true,
