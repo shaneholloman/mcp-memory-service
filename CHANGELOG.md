@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation**: Corrected incorrect `--http` CLI flag and port 8888 references (#283)
+  - Removed non-existent `--http` flag from all documentation
+  - Clarified that HTTP dashboard is a separate server (`uv run python scripts/server/run_http_server.py`)
+  - Standardized port to 8000 (was incorrectly 8888 in `.env.example`)
+  - Updated README, oauth-setup.md, regression-tests.md, and other docs
+
 ## [8.53.0] - 2025-12-23
 
 ### Added
