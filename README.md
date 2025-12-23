@@ -124,16 +124,19 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.52.2** (Dec 19, 2025)
+## 🆕 Latest Release: **v8.53.0** (Dec 23, 2025)
 
-**Hybrid Backend Maintenance Enhancement**
+**Windows Service Management**
 
-- 🧹 **Hybrid Association Cleanup Script** - New maintenance script for multi-PC setups with hybrid backend
-- 🔄 **Drift Prevention** - Removes association memories from BOTH Cloudflare D1 AND local SQLite
-- 🛡️ **Robust Error Handling** - Graceful Vectorize API error handling (JSON decode errors, network timeouts)
-- 🎯 **Flexible Modes** - `--skip-vectorize`, `--cloudflare-only`, `--local-only` options with dry-run support
+- 🪟 **Windows Task Scheduler Support** - Production-ready HTTP server automation for Windows
+- ⚡ **Automatic Startup** - Runs at user login with skip-if-running logic
+- 🔁 **Watchdog Monitoring** - Health checks every 5 minutes with automatic restart
+- 📊 **Service Management CLI** - Status, start, stop, restart, logs, health commands
+- 📝 **Structured Logging** - All activity logged to `%LOCALAPPDATA%\mcp-memory\logs\`
+- 🛠️ **819 Lines of PowerShell** - Complete automation addressing Windows service gap (no systemd/launchd equivalent)
 
 **Previous Releases**:
+- **v8.52.2** - Hybrid Backend Maintenance Enhancement (multi-PC association cleanup, drift prevention, Vectorize error handling)
 - **v8.52.1** - Windows Embedding Fallback & Script Portability (DLL init failure fix, MCP_HTTP_PORT support)
 - **v8.52.0** - Time-of-Day Emoji Icons (8 time-segment indicators, dark mode support, automatic timezone)
 - **v8.51.0** - Graph Database Architecture (30x query performance, 97% storage reduction for associations)

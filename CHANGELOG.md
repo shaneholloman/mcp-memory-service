@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.53.0] - 2025-12-23
+
+### Added
+- **Windows Task Scheduler Support** for HTTP server (`scripts/service/windows/`)
+  - `install_scheduled_task.ps1`: Creates scheduled task that runs at user login
+  - `uninstall_scheduled_task.ps1`: Removes scheduled task cleanly
+  - `manage_service.ps1`: Status, start, stop, restart, logs, health commands
+  - `run_http_server_background.ps1`: Wrapper with logging and automatic restart logic
+  - `add_watchdog_trigger.ps1`: Adds repeating trigger (every N minutes, default 5)
+  - Automatic startup at user login with skip-if-running logic
+  - Watchdog trigger checks every 5 minutes (configurable)
+  - Structured logging to `%LOCALAPPDATA%\mcp-memory\logs\`
+  - PID file tracking for process management
+  - Health endpoint verification
+  - 819 lines of PowerShell automation for production-ready Windows service management
+  - Addresses Windows service management gap (no native systemd/launchd equivalent)
+
 ## [8.52.2] - 2025-12-19
 
 ### Added

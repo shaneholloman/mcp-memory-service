@@ -1,3 +1,3 @@
 """Version information for MCP Memory Service."""
 
-__version__ = "8.52.2"
+__version__ = "8.53.0"
