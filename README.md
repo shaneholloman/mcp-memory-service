@@ -404,34 +404,34 @@ These warnings disappear after the first successful run. The service is working 
 - **Service installation** - Auto-start background operation
 - **HTTPS/SSL** - Secure connections with OAuth 2.1
 - **Docker support** - Easy deployment with team collaboration
-- **Interactive Dashboard** - Web UI at http://127.0.0.1:8888/ for complete management
+- **Interactive Dashboard** - Web UI at http://127.0.0.1:8000/ for complete management
 
 ## 💡 Basic Usage
 
 ### 📄 **Document Ingestion** (v8.6.0+)
 ```bash
-# Start server with web interface
-uv run memory server --http
+# Start HTTP dashboard server (separate from MCP server)
+uv run python scripts/server/run_http_server.py
 
 # Access interactive dashboard
-open http://127.0.0.1:8888/
+open http://127.0.0.1:8000/
 
 # Upload documents via CLI
-curl -X POST http://127.0.0.1:8888/api/documents/upload \
+curl -X POST http://127.0.0.1:8000/api/documents/upload \
   -F "file=@document.pdf" \
   -F "tags=documentation,reference"
 
 # Search document content
-curl -X POST http://127.0.0.1:8888/api/search \
+curl -X POST http://127.0.0.1:8000/api/search \
   -H "Content-Type: application/json" \
   -d '{"query": "authentication flow", "limit": 10}'
 ```
 
 ### 🔗 **Team Collaboration with OAuth** (v7.0.0+)
 ```bash
-# Start OAuth-enabled server for team collaboration
+# Start OAuth-enabled HTTP server for team collaboration
 export MCP_OAUTH_ENABLED=true
-uv run memory server --http
+uv run python scripts/server/run_http_server.py
 
 # Claude Code team members connect via HTTP transport
 claude mcp add --transport http memory-service http://your-server:8000/mcp
@@ -543,7 +543,7 @@ export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=15000,cache_size=20000"
 │ • Cursor        │    │ • Semantic      │    │ • Cloudflare    │
 │ • 13+ AI Apps   │    │   Search        │    │                 │
 │ • Web Dashboard │    │ • Doc Ingestion │    │ Zero DB Locks ✅│
-│   (Port 8888)   │    │ • Zero DB Locks │    │ Auto-Config ✅  │
+│   (Port 8000)   │    │ • Zero DB Locks │    │ Auto-Config ✅  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 

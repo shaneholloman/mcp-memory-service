@@ -145,7 +145,7 @@ For UI investigation and debugging:
 
 ```bash
 # Navigate to dashboard
-mcp__browsermcp__browser_navigate http://127.0.0.1:8888/
+mcp__browsermcp__browser_navigate http://127.0.0.1:8000/
 
 # Take screenshot
 mcp__browsermcp__browser_screenshot

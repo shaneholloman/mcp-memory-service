@@ -25,13 +25,13 @@ export MCP_OAUTH_ENABLED=true
 
 ```bash
 # Start with OAuth enabled
-uv run memory server --http
+uv run python scripts/server/run_http_server.py
 
 # Or with HTTPS (recommended for production)
 export MCP_HTTPS_ENABLED=true
 export MCP_SSL_CERT_FILE=/path/to/cert.pem
 export MCP_SSL_KEY_FILE=/path/to/key.pem
-uv run memory server --http
+uv run python scripts/server/run_http_server.py
 ```
 
 ### 3. Test OAuth Endpoints

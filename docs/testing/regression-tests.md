@@ -74,7 +74,7 @@ sqlite3 ~/Library/Application\ Support/mcp-memory/sqlite_vec.db "PRAGMA journal_
 **Context:** Test simultaneous read/write operations from multiple clients
 
 **Setup:**
-1. Start HTTP server: `uv run memory server --http`
+1. Start HTTP server: `uv run python scripts/server/run_http_server.py`
 2. Verify server is healthy: `curl http://127.0.0.1:8000/api/health`
 
 **Execution:**
@@ -148,7 +148,7 @@ tail -100 ~/Library/Logs/Claude/mcp-server-memory.log | grep -i error
    CLOUDFLARE_VECTORIZE_INDEX=mcp-memory-index
    ```
 2. Clear Cloudflare backend: `python scripts/database/clear_cloudflare.py --confirm`
-3. Start server: `uv run memory server --http`
+3. Start server: `uv run python scripts/server/run_http_server.py`
 
 **Execution:**
 1. Store 10 test memories via API:
@@ -209,7 +209,7 @@ python scripts/sync/check_cloudflare_sync.py --tag hybrid-test --verify-hashes
 1. **SQLite-vec phase:**
    ```bash
    export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec
-   uv run memory server --http &
+   uv run python scripts/server/run_http_server.py &
    SERVER_PID=$!
 
    # Store 20 memories
@@ -227,7 +227,7 @@ python scripts/sync/check_cloudflare_sync.py --tag hybrid-test --verify-hashes
    export MCP_MEMORY_STORAGE_BACKEND=hybrid
    export MCP_HYBRID_SYNC_INTERVAL=10
    # Set Cloudflare credentials...
-   uv run memory server --http &
+   uv run python scripts/server/run_http_server.py &
    SERVER_PID=$!
 
    # Wait for startup
@@ -263,7 +263,7 @@ python scripts/sync/check_cloudflare_sync.py --tag hybrid-test --verify-hashes
 
 **Setup:**
 1. Database with 1000+ memories
-2. HTTP server running: `uv run memory server --http`
+2. HTTP server running: `uv run python scripts/server/run_http_server.py`
 3. Dashboard at `http://127.0.0.1:8000/`
 
 **Execution:**
