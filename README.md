@@ -124,16 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.54.2** (Dec 25, 2025)
+## 🆕 Latest Release: **v8.54.3** (Dec 25, 2025)
 
-**Offline Mode Fix**
+**Chunked Storage Error Reporting Fix**
 
-- 🔧 **First-Time Install Support** - Offline mode changed from always-on to opt-in
-- 📦 **Model Download Enabled** - Fixes "outgoing traffic has been disabled" error during fresh installs
-- ⚙️ **Explicit Configuration** - Offline mode only activates with `MCP_MEMORY_OFFLINE=1`
-- ✅ **Cache Path Preservation** - Automatic cache configuration still works
+- 🔧 **Accurate Error Messages** - Fixed confusing "Successfully stored 0 memory chunks" when all chunks fail
+- ✅ **Proper Failure Handling** - Returns `success: False` when no chunks can be stored (e.g., duplicates)
+- 📊 **Partial Success Tracking** - Added `failed_chunks` counter for transparency in mixed outcomes
+- 🐛 **Comprehensive Testing** - 2 new regression tests ensure bug won't reoccur
 
 **Previous Releases**:
+- **v8.54.2** - Offline Mode Fix (opt-in offline mode, first-time install support)
 - **v8.54.1** - UV Virtual Environment Support (installer compatibility fix)
 - **v8.54.0** - Smart Auto-Capture System (intelligent pattern detection, 6 memory types, bilingual support)
 - **v8.53.0** - Windows Service Management (Task Scheduler support, auto-startup, watchdog monitoring, 819 lines PowerShell automation)
