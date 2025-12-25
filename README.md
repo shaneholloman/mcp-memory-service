@@ -124,15 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.54.1** (Dec 25, 2025)
+## 🆕 Latest Release: **v8.54.2** (Dec 25, 2025)
 
-**Installation Compatibility Fix**
+**Offline Mode Fix**
 
-- 🛠️ **UV Virtual Environment Support** - Installer now works with `uv` venvs that don't include `pip`
-- 🔄 **Automatic Fallback** - Gracefully falls back to `uv pip` when `pip` is unavailable
-- ✅ **Enhanced Reliability** - Fixes installation failures in UV-created environments
+- 🔧 **First-Time Install Support** - Offline mode changed from always-on to opt-in
+- 📦 **Model Download Enabled** - Fixes "outgoing traffic has been disabled" error during fresh installs
+- ⚙️ **Explicit Configuration** - Offline mode only activates with `MCP_MEMORY_OFFLINE=1`
+- ✅ **Cache Path Preservation** - Automatic cache configuration still works
 
 **Previous Releases**:
+- **v8.54.1** - UV Virtual Environment Support (installer compatibility fix)
 - **v8.54.0** - Smart Auto-Capture System (intelligent pattern detection, 6 memory types, bilingual support)
 - **v8.53.0** - Windows Service Management (Task Scheduler support, auto-startup, watchdog monitoring, 819 lines PowerShell automation)
 - **v8.52.2** - Hybrid Backend Maintenance Enhancement (multi-PC association cleanup, drift prevention, Vectorize error handling)
