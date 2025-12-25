@@ -9,8 +9,11 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [8.54.1] - 2025-12-25
+
 ### Fixed
-- Installer now supports `uv` virtual environments that don’t include `pip` by falling back to `uv pip` (targeting the active interpreter).
+- Installer now supports `uv` virtual environments that don't include `pip` by falling back to `uv pip` (targeting the active interpreter).
 
 ## [8.54.0] - 2025-12-23
 

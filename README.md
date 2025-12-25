@@ -124,18 +124,16 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.54.0** (Dec 23, 2025)
+## 🆕 Latest Release: **v8.54.1** (Dec 25, 2025)
 
-**Smart Auto-Capture System**
+**Installation Compatibility Fix**
 
-- 🧠 **Intelligent Pattern Detection** - Automatically captures memories after Edit/Write/Bash operations
-- 🎯 **6 Memory Types** - Decision, Error, Learning, Implementation, Important, Code
-- 🌍 **Bilingual Support** - English + German keyword recognition
-- 🎮 **User Control** - Override with `#remember` / `#skip` markers
-- 💻 **Cross-Platform** - Node.js (primary) + PowerShell (Windows fallback)
-- ⚙️ **Configurable** - Fine-tune via `claude-hooks/config.json` autoCapture section
+- 🛠️ **UV Virtual Environment Support** - Installer now works with `uv` venvs that don't include `pip`
+- 🔄 **Automatic Fallback** - Gracefully falls back to `uv pip` when `pip` is unavailable
+- ✅ **Enhanced Reliability** - Fixes installation failures in UV-created environments
 
 **Previous Releases**:
+- **v8.54.0** - Smart Auto-Capture System (intelligent pattern detection, 6 memory types, bilingual support)
 - **v8.53.0** - Windows Service Management (Task Scheduler support, auto-startup, watchdog monitoring, 819 lines PowerShell automation)
 - **v8.52.2** - Hybrid Backend Maintenance Enhancement (multi-PC association cleanup, drift prevention, Vectorize error handling)
 - **v8.52.1** - Windows Embedding Fallback & Script Portability (DLL init failure fix, MCP_HTTP_PORT support)
