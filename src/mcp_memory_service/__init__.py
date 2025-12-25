@@ -20,12 +20,15 @@ import platform
 
 # Force offline mode for HuggingFace models - this MUST be done before any ML library imports
 def setup_offline_mode():
-    """Setup offline mode environment variables to prevent model downloads."""
-    # Set offline environment variables
-    os.environ['HF_HUB_OFFLINE'] = '1'
-    os.environ['TRANSFORMERS_OFFLINE'] = '1'
-    
-    # Configure cache paths
+    """Setup offline mode environment variables to prevent model downloads.
+
+    Offline mode is only enabled if:
+    1. User explicitly sets MCP_MEMORY_OFFLINE=1, OR
+    2. User has already set HF_HUB_OFFLINE or TRANSFORMERS_OFFLINE
+
+    This allows first-time installations to download models when needed.
+    """
+    # Configure cache paths first (always needed)
     username = os.environ.get('USERNAME', os.environ.get('USER', ''))
     if platform.system() == "Windows" and username:
         default_hf_home = f"C:\\Users\\{username}\\.cache\\huggingface"
@@ -35,7 +38,7 @@ def setup_offline_mode():
         default_hf_home = os.path.expanduser("~/.cache/huggingface")
         default_transformers_cache = os.path.expanduser("~/.cache/huggingface/transformers")
         default_sentence_transformers_home = os.path.expanduser("~/.cache/torch/sentence_transformers")
-    
+
     # Set cache paths if not already set
     if 'HF_HOME' not in os.environ:
         os.environ['HF_HOME'] = default_hf_home
@@ -44,7 +47,19 @@ def setup_offline_mode():
     if 'SENTENCE_TRANSFORMERS_HOME' not in os.environ:
         os.environ['SENTENCE_TRANSFORMERS_HOME'] = default_sentence_transformers_home
 
-# Setup offline mode immediately when this module is imported
+    # Only set offline mode if explicitly requested
+    # This allows first-time installations to download models when network is available
+    offline_requested = os.environ.get('MCP_MEMORY_OFFLINE', '').lower() in ('1', 'true', 'yes')
+    already_offline = (
+        os.environ.get('HF_HUB_OFFLINE', '').lower() in ('1', 'true', 'yes') or
+        os.environ.get('TRANSFORMERS_OFFLINE', '').lower() in ('1', 'true', 'yes')
+    )
+
+    if offline_requested or already_offline:
+        os.environ['HF_HUB_OFFLINE'] = '1'
+        os.environ['TRANSFORMERS_OFFLINE'] = '1'
+
+# Setup offline mode (conditionally) when this module is imported
 setup_offline_mode()
 
 # Import version from separate file to avoid loading heavy dependencies

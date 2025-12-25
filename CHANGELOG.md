@@ -9,6 +9,12 @@ For older releases, see [CHANGELOG-HISTORIC.md](./CHANGELOG-HISTORIC.md).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- **Offline Mode**: Changed from always-on to opt-in to allow first-time installations to download models (#286)
+  - Offline mode now only activates when `MCP_MEMORY_OFFLINE=1` is explicitly set
+  - Or when user has already set `HF_HUB_OFFLINE` or `TRANSFORMERS_OFFLINE`
+  - Cache paths are still configured automatically
+  - Fixes "outgoing traffic has been disabled" error during fresh installs
 
 ## [8.54.1] - 2025-12-25
 
