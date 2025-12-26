@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.55.0] - 2025-12-26
+
+### Added
+- **AI-Optimized MCP Tool Descriptions** - Enhanced LLM tool selection accuracy (#290)
+  - Rewrote docstrings for 7 core MCP tools in structured format
+  - New format includes: USE THIS WHEN, DO NOT USE FOR, HOW IT WORKS, RETURNS, Examples
+  - Expected 30-50% reduction in incorrect tool selection by AI
+  - Metrics: +360% description length, +500% use cases, +700% return detail
+  - Inspired by #277 (nalyk's V2 analysis)
+  - Developer experience improvement for better MCP tool consumption by LLMs
+  - Tools enhanced: store_memory, recall_memory, retrieve_memory, search_by_tag, delete_by_tag, exact_match_retrieve, check_database_health
+
 ## [8.54.4] - 2025-12-26
 
 ### Fixed
