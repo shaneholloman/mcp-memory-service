@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.57.1] - 2025-12-26
+
+### Fixed
+- **CI/CD**: Added `server/__main__.py` to fix `python -m` execution
+  - Resolves GitHub Actions failures in Docker and uvx tests
+  - Regression from v8.56.0 server refactoring (server.py → server/ package)
+  - Implements --version and --help flag handling
+  - Properly exits after flag processing (no server startup hang)
+
 ## [8.57.0] - 2025-12-26
 
 ### Fixed

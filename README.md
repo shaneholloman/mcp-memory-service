@@ -124,18 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.57.0** (Dec 26, 2025)
+## 🆕 Latest Release: **v8.57.1** (Dec 26, 2025)
 
-**Test Infrastructure Improvements - Major Stability Boost**
+**Hotfix: Python -m Execution Support for CI/CD**
 
-- ✅ **+6% Pass Rate** - Test suite improved from 84% → 90% (395/471 → 398/442 passing tests)
-- 🔧 **32 Tests Fixed** - 42% error reduction across critical test suites
-- 🎯 **Critical Systems 100%** - Memory Service (36/36), mDNS (50/50), Storage (100%)
-- 🐛 **Bug-Fixes** - Missing imports, MemoryQueryResult type flow, AsyncMock configuration
-- 🧪 **Test Isolation** - New unique_content() fixture eliminates duplicate content errors
-- 📊 **Phase 1-3 Completion** - Server imports, mDNS async mocks, API test isolation
+- 🔧 **CI/CD Fix** - Added server/__main__.py to restore python -m execution
+- 🐛 **Bug Resolution** - Fixes GitHub Actions failures in Docker and uvx tests
+- 🔄 **Regression Fix** - Addresses v8.56.0 server refactoring side effect (server.py → server/ package)
+- ⚡ **Flag Handling** - Implements --version and --help with proper exit behavior
 
 **Previous Releases**:
+- **v8.57.0** - Test Infrastructure Improvements - Major Stability Boost (+6% pass rate, 32 tests fixed)
 - **v8.56.0** - Server Architecture Refactoring - Phase 1 (4 focused modules, -7% lines, backward compatible)
 - **v8.55.0** - AI-Optimized MCP Tool Descriptions (30-50% reduction in incorrect tool selection)
 - **v8.54.4** - Critical MCP Tool Bugfix (check_database_health method call correction)
