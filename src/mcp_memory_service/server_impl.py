@@ -17,163 +17,50 @@ MCP Memory Service
 Copyright (c) 2024 Heinrich Krupp
 Licensed under the MIT License. See LICENSE file in the project root for full license text.
 """
+# Standard library imports
 import sys
 import os
-import socket
-import time
-import logging
-import psutil
-
-# Client detection for environment-aware behavior
-def detect_mcp_client():
-    """Detect which MCP client is running this server."""
-    try:
-        # Get the parent process (the MCP client)
-        current_process = psutil.Process()
-        parent = current_process.parent()
-        
-        if parent:
-            parent_name = parent.name().lower()
-            parent_exe = parent.exe() if hasattr(parent, 'exe') else ""
-            
-            # Check for Claude Desktop
-            if 'claude' in parent_name or 'claude' in parent_exe.lower():
-                return 'claude_desktop'
-            
-            # Check for LM Studio
-            if 'lmstudio' in parent_name or 'lm-studio' in parent_name or 'lmstudio' in parent_exe.lower():
-                return 'lm_studio'
-            
-            # Check command line for additional clues
-            try:
-                cmdline = parent.cmdline()
-                cmdline_str = ' '.join(cmdline).lower()
-                
-                if 'claude' in cmdline_str:
-                    return 'claude_desktop'
-                if 'lmstudio' in cmdline_str or 'lm-studio' in cmdline_str:
-                    return 'lm_studio'
-            except (OSError, IndexError, AttributeError) as e:
-                logger.debug(f"Could not detect client from process: {e}")
-                pass
-        
-        # Fallback: check environment variables
-        if os.getenv('CLAUDE_DESKTOP'):
-            return 'claude_desktop'
-        if os.getenv('LM_STUDIO'):
-            return 'lm_studio'
-            
-        # Default to Claude Desktop for strict JSON compliance
-        return 'claude_desktop'
-        
-    except Exception:
-        # If detection fails, default to Claude Desktop (strict mode)
-        return 'claude_desktop'
-
-# Detect the current MCP client
-MCP_CLIENT = detect_mcp_client()
-
-# Custom logging handler that routes INFO/DEBUG to stdout, WARNING/ERROR to stderr
-class DualStreamHandler(logging.Handler):
-    """Client-aware handler that adjusts logging behavior based on MCP client."""
-    
-    def __init__(self, client_type='claude_desktop'):
-        super().__init__()
-        self.client_type = client_type
-        self.stdout_handler = logging.StreamHandler(sys.stdout)
-        self.stderr_handler = logging.StreamHandler(sys.stderr)
-        
-        # Set the same formatter for both handlers
-        formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-        self.stdout_handler.setFormatter(formatter)
-        self.stderr_handler.setFormatter(formatter)
-    
-    def emit(self, record):
-        """Route log records based on client type and level."""
-        # For Claude Desktop: strict JSON mode - suppress most output, route everything to stderr
-        if self.client_type == 'claude_desktop':
-            # Only emit WARNING and above to stderr to maintain JSON protocol
-            if record.levelno >= logging.WARNING:
-                self.stderr_handler.emit(record)
-            # Suppress INFO/DEBUG for Claude Desktop to prevent JSON parsing errors
-            return
-        
-        # For LM Studio: enhanced mode with dual-stream
-        if record.levelno >= logging.WARNING:  # WARNING, ERROR, CRITICAL
-            self.stderr_handler.emit(record)
-        else:  # DEBUG, INFO
-            self.stdout_handler.emit(record)
-
-# Configure logging with client-aware handler BEFORE any imports that use logging
-log_level = os.getenv('LOG_LEVEL', 'WARNING').upper()  # Default to WARNING for performance
-root_logger = logging.getLogger()
-root_logger.setLevel(getattr(logging, log_level, logging.WARNING))
-
-# Remove any existing handlers to avoid duplicates
-for handler in root_logger.handlers[:]:
-    root_logger.removeHandler(handler)
-
-# Add our custom client-aware handler
-client_aware_handler = DualStreamHandler(client_type=MCP_CLIENT)
-root_logger.addHandler(client_aware_handler)
-
-logger = logging.getLogger(__name__)
-
-# Enhanced path detection for Claude Desktop compatibility
-def setup_python_paths():
-    """Setup Python paths for dependency access."""
-    current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    
-    # Check for virtual environment
-    potential_venv_paths = [
-        os.path.join(current_dir, 'venv', 'Lib', 'site-packages'),  # Windows venv
-        os.path.join(current_dir, 'venv', 'lib', 'python3.11', 'site-packages'),  # Linux/Mac venv
-        os.path.join(current_dir, '.venv', 'Lib', 'site-packages'),  # Windows .venv
-        os.path.join(current_dir, '.venv', 'lib', 'python3.11', 'site-packages'),  # Linux/Mac .venv
-    ]
-    
-    for venv_path in potential_venv_paths:
-        if os.path.exists(venv_path):
-            sys.path.insert(0, venv_path)
-            logger.debug(f"Added venv path: {venv_path}")
-            break
-    
-    # For Claude Desktop: also check if we can access global site-packages
-    try:
-        import site
-        global_paths = site.getsitepackages()
-        user_path = site.getusersitepackages()
-        
-        # Add user site-packages if not blocked by PYTHONNOUSERSITE
-        if not os.environ.get('PYTHONNOUSERSITE') and user_path not in sys.path:
-            sys.path.append(user_path)
-            logger.debug(f"Added user site-packages: {user_path}")
-        
-        # Add global site-packages if available
-        for path in global_paths:
-            if path not in sys.path:
-                sys.path.append(path)
-                logger.debug(f"Added global site-packages: {path}")
-                
-    except Exception as e:
-        logger.warning(f"Could not access site-packages: {e}")
-
-# Setup paths before other imports
-setup_python_paths()
 import asyncio
 import traceback
 import json
 import platform
+import logging
 from collections import deque
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 
+# Import from server package modules
+from .server import (
+    # Client Detection
+    MCP_CLIENT,
+    detect_mcp_client,
+    # Logging
+    DualStreamHandler,
+    logger,
+    # Environment
+    setup_python_paths,
+    check_uv_environment,
+    check_version_consistency,
+    configure_environment,
+    configure_performance_environment,
+    # Cache
+    _STORAGE_CACHE,
+    _MEMORY_SERVICE_CACHE,
+    _CACHE_LOCK,
+    _CACHE_STATS,
+    _get_cache_lock,
+    _get_or_create_memory_service,
+    _log_cache_performance
+)
+
+# MCP protocol imports
 from mcp.server.models import InitializationOptions
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
 import mcp.server.stdio
 from mcp.types import Resource, Prompt
 
+# Package imports
 from . import __version__
 from .lm_studio_compat import patch_mcp_for_lm_studio, add_windows_timeout_handling
 from .dependency_check import run_dependency_check, get_recommended_timeout
@@ -221,220 +108,13 @@ if CONSOLIDATION_ENABLED:
     from .consolidation.consolidator import DreamInspiredConsolidator
     from .consolidation.scheduler import ConsolidationScheduler
 
-# Note: Logging is already configured at the top of the file with dual-stream handler
+# Note: Logging is already configured in server.logging_config module
 
 # Configure performance-critical module logging
 if not os.getenv('DEBUG_MODE'):
     # Set higher log levels for performance-critical modules
     for module_name in ['sentence_transformers', 'transformers', 'torch', 'numpy']:
         logging.getLogger(module_name).setLevel(logging.WARNING)
-
-# Check if UV is being used
-def check_uv_environment():
-    """Check if UV is being used and provide recommendations if not."""
-    running_with_uv = 'UV_ACTIVE' in os.environ or any('uv' in arg.lower() for arg in sys.argv)
-
-    if not running_with_uv:
-        logger.info("Memory server is running without UV. For better performance and dependency management, consider using UV:")
-        logger.info("  pip install uv")
-        logger.info("  uv run memory")
-    else:
-        logger.info("Memory server is running with UV")
-
-def check_version_consistency():
-    """
-    Check if installed package version matches source code version.
-
-    Warns if version mismatch detected (common "stale venv" issue).
-    This helps catch the scenario where source code is updated but
-    the package wasn't reinstalled with 'pip install -e .'.
-    """
-    try:
-        # Get source code version (from __init__.py)
-        source_version = __version__
-
-        # Get installed package version (from package metadata)
-        try:
-            import pkg_resources
-            installed_version = pkg_resources.get_distribution("mcp-memory-service").version
-        except:
-            # If pkg_resources fails, try importlib.metadata (Python 3.8+)
-            try:
-                from importlib import metadata
-                installed_version = metadata.version("mcp-memory-service")
-            except:
-                # Can't determine installed version - skip check
-                return
-
-        # Compare versions
-        if installed_version != source_version:
-            logger.warning("=" * 70)
-            logger.warning("⚠️  VERSION MISMATCH DETECTED!")
-            logger.warning(f"   Source code: v{source_version}")
-            logger.warning(f"   Installed:   v{installed_version}")
-            logger.warning("")
-            logger.warning("   This usually means you need to run:")
-            logger.warning("   pip install -e . --force-reinstall")
-            logger.warning("")
-            logger.warning("   Then restart the MCP server:")
-            logger.warning("   - In Claude Code: Run /mcp")
-            logger.warning("   - In Claude Desktop: Restart the application")
-            logger.warning("=" * 70)
-        else:
-            logger.debug(f"Version check OK: v{source_version}")
-
-    except Exception as e:
-        # Don't fail server startup on version check errors
-        logger.debug(f"Version check failed (non-critical): {e}")
-
-# Configure environment variables based on detected system
-def configure_environment():
-    """Configure environment variables based on detected system."""
-    system_info = get_system_info()
-    
-    # Log system information
-    logger.info(f"Detected system: {system_info.os_name} {system_info.architecture}")
-    logger.info(f"Memory: {system_info.memory_gb:.2f} GB")
-    logger.info(f"Accelerator: {system_info.accelerator}")
-    
-    # Set environment variables for better cross-platform compatibility
-    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-    
-    # For Apple Silicon, ensure we use MPS when available
-    if system_info.architecture == "arm64" and system_info.os_name == "darwin":
-        logger.info("Configuring for Apple Silicon")
-        os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
-    
-    # For Windows with limited GPU memory, use smaller chunks
-    if system_info.os_name == "windows" and system_info.accelerator == AcceleratorType.CUDA:
-        logger.info("Configuring for Windows with CUDA")
-        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
-    
-    # For Linux with ROCm, ensure we use the right backend
-    if system_info.os_name == "linux" and system_info.accelerator == AcceleratorType.ROCm:
-        logger.info("Configuring for Linux with ROCm")
-        os.environ["HSA_OVERRIDE_GFX_VERSION"] = "10.3.0"
-    
-    # For systems with limited memory, reduce cache sizes
-    if system_info.memory_gb < 8:
-        logger.info("Configuring for low-memory system")
-        # Use BACKUPS_PATH parent directory for model caches
-        cache_base = os.path.dirname(BACKUPS_PATH)
-        os.environ["TRANSFORMERS_CACHE"] = os.path.join(cache_base, "model_cache")
-        os.environ["HF_HOME"] = os.path.join(cache_base, "hf_cache")
-        os.environ["SENTENCE_TRANSFORMERS_HOME"] = os.path.join(cache_base, "st_cache")
-
-# Configure environment before any imports that might use it
-configure_environment()
-
-# Performance optimization environment variables
-def configure_performance_environment():
-    """Configure environment variables for optimal performance."""
-    # PyTorch optimizations
-    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128,garbage_collection_threshold:0.6"
-    
-    # CPU optimizations
-    os.environ["OMP_NUM_THREADS"] = str(min(8, os.cpu_count() or 1))
-    os.environ["MKL_NUM_THREADS"] = str(min(8, os.cpu_count() or 1))
-    
-    # Disable unnecessary features for performance
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
-    
-    # Async CUDA operations
-    os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
-
-# Apply performance optimizations
-configure_performance_environment()
-
-# =============================================================================
-# GLOBAL CACHING FOR MCP SERVER PERFORMANCE OPTIMIZATION
-# =============================================================================
-# Module-level caches to persist storage/service instances across MCP tool calls.
-# This reduces initialization overhead from ~1,810ms to <400ms on cache hits.
-#
-# Cache Keys:
-# - Storage: "{backend_type}:{db_path}" (e.g., "sqlite_vec:/path/to/db")
-# - MemoryService: storage instance ID (id(storage))
-#
-# Thread Safety:
-# - Uses asyncio.Lock to prevent race conditions during concurrent access
-#
-# Lifecycle:
-# - Cached instances persist for the lifetime of the Python process
-# - NOT cleared between MCP tool calls (intentional for performance)
-# - Cleaned up on process shutdown
-
-_STORAGE_CACHE: Dict[str, Any] = {}  # Storage instances keyed by "{backend}:{path}"
-_MEMORY_SERVICE_CACHE: Dict[int, Any] = {}  # MemoryService instances keyed by storage ID
-_CACHE_LOCK: Optional[asyncio.Lock] = None  # Initialized on first use to avoid event loop issues
-_CACHE_STATS = {
-    "storage_hits": 0,
-    "storage_misses": 0,
-    "service_hits": 0,
-    "service_misses": 0,
-    "total_calls": 0,
-    "initialization_times": []  # Track initialization durations for cache misses
-}
-
-def _get_cache_lock() -> asyncio.Lock:
-    """Get or create the global cache lock (lazy initialization to avoid event loop issues)."""
-    global _CACHE_LOCK
-    if _CACHE_LOCK is None:
-        _CACHE_LOCK = asyncio.Lock()
-    return _CACHE_LOCK
-
-def _get_or_create_memory_service(storage: Any) -> Any:
-    """
-    Get cached MemoryService or create new one.
-
-    Args:
-        storage: Storage instance to use as cache key
-
-    Returns:
-        MemoryService instance (cached or newly created)
-    """
-    from .services.memory import MemoryService
-
-    storage_id = id(storage)
-    if storage_id in _MEMORY_SERVICE_CACHE:
-        memory_service = _MEMORY_SERVICE_CACHE[storage_id]
-        _CACHE_STATS["service_hits"] += 1
-        logger.info(f"✅ MemoryService Cache HIT - Reusing service instance (storage_id: {storage_id})")
-    else:
-        _CACHE_STATS["service_misses"] += 1
-        logger.info(f"❌ MemoryService Cache MISS - Creating new service instance...")
-
-        # Initialize memory service with shared business logic
-        memory_service = MemoryService(storage)
-
-        # Cache the memory service instance
-        _MEMORY_SERVICE_CACHE[storage_id] = memory_service
-        logger.info(f"💾 Cached MemoryService instance (storage_id: {storage_id})")
-
-    return memory_service
-
-def _log_cache_performance(start_time: float) -> None:
-    """
-    Log comprehensive cache performance statistics.
-
-    Args:
-        start_time: Timer start time to calculate total elapsed time
-    """
-    total_time = (time.time() - start_time) * 1000
-    cache_hit_rate = (
-        (_CACHE_STATS["storage_hits"] + _CACHE_STATS["service_hits"]) /
-        (_CACHE_STATS["total_calls"] * 2)  # 2 caches per call
-    ) * 100
-
-    logger.info(
-        f"📊 Cache Stats - "
-        f"Hit Rate: {cache_hit_rate:.1f}% | "
-        f"Storage: {_CACHE_STATS['storage_hits']}H/{_CACHE_STATS['storage_misses']}M | "
-        f"Service: {_CACHE_STATS['service_hits']}H/{_CACHE_STATS['service_misses']}M | "
-        f"Total Time: {total_time:.1f}ms"
-    )
 
 class MemoryServer:
     def __init__(self):
