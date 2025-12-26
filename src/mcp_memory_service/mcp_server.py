@@ -281,43 +281,56 @@ async def store_memory(
     metadata: Optional[Dict[str, Any]] = None,
     client_hostname: Optional[str] = None
 ) -> Union[StoreMemorySuccess, StoreMemorySplitSuccess, StoreMemoryFailure]:
-    """
-    Store a new memory with content and optional metadata.
+    """Store new information in persistent memory with semantic search capabilities and optional categorization.
 
-    **IMPORTANT - Content Length Limits:**
-    - Cloudflare backend: 800 characters max (BGE model 512 token limit)
-    - SQLite-vec backend: No limit (local storage)
-    - Hybrid backend: 800 characters max (constrained by Cloudflare sync)
+USE THIS WHEN:
+- User provides information to remember for future sessions (decisions, preferences, facts, code snippets)
+- Capturing important context from current conversation ("remember this for later")
+- User explicitly says "remember", "save", "store", "keep this", "note that"
+- Documenting technical decisions, API patterns, project architecture, user preferences
+- Creating knowledge base entries, documentation snippets, troubleshooting notes
 
-    If content exceeds the backend's limit, it will be automatically split into
-    multiple linked memory chunks with preserved context (50-char overlap).
-    The splitting respects natural boundaries: paragraphs → sentences → words.
+THIS IS THE PRIMARY STORAGE TOOL - use it whenever information should persist beyond the current session.
 
-    Args:
-        content: The content to store as memory
-        tags: Optional tags to categorize the memory (accepts array or comma-separated string)
-        memory_type: Type of memory (note, decision, task, reference)
-        metadata: Additional metadata for the memory
-        client_hostname: Client machine hostname for source tracking
+DO NOT USE FOR:
+- Temporary conversation context (use native conversation history instead)
+- Information already stored (check first with retrieve_memory to avoid duplicates)
+- Streaming or real-time data that changes frequently
 
-    **Tag Formats - All Formats Supported:**
-    Both the tags parameter AND metadata.tags accept ALL formats:
-    - ✅ Array format: tags=["tag1", "tag2", "tag3"]
-    - ✅ Comma-separated string: tags="tag1,tag2,tag3"
-    - ✅ Single string: tags="single-tag"
-    - ✅ In metadata: metadata={"tags": "tag1,tag2", "type": "note"}
-    - ✅ In metadata (array): metadata={"tags": ["tag1", "tag2"], "type": "note"}
+CONTENT LENGTH LIMITS:
+- Cloudflare/Hybrid backends: 800 characters max (auto-splits into chunks if exceeded)
+- SQLite-vec backend: No limit
+- Auto-chunking preserves context with 50-character overlap at natural boundaries
 
-    All formats are automatically normalized internally. If tags are provided in both
-    the tags parameter and metadata.tags, they will be merged (duplicates removed).
+TAG FORMATS (all supported):
+- Array: ["tag1", "tag2"]
+- String: "tag1,tag2"
+- Single: "single-tag"
+- Both tags parameter AND metadata.tags are merged automatically
 
-    Returns:
-        Dictionary with:
-        - success: Boolean indicating if storage succeeded
-        - message: Status message
-        - content_hash: Hash of original content (for single memory)
-        - chunks_created: Number of chunks (if content was split)
-        - chunk_hashes: List of content hashes (if content was split)
+RETURNS:
+- success: Boolean indicating storage status
+- message: Status message
+- content_hash: Unique identifier for retrieval/deletion (single memory)
+- chunks_created: Number of chunks (if content was split)
+- chunk_hashes: Array of hashes (if content was split)
+
+Examples:
+{
+    "content": "User prefers async/await over callbacks in Python projects",
+    "metadata": {
+        "tags": ["coding-style", "python", "preferences"],
+        "type": "preference"
+    }
+}
+
+{
+    "content": "API endpoint /api/v1/users requires JWT token in Authorization header",
+    "metadata": {
+        "tags": "api-documentation,authentication",
+        "type": "reference"
+    }
+}
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
@@ -360,15 +373,52 @@ async def retrieve_memory(
     ctx: Context,
     n_results: int = 5
 ) -> Dict[str, Any]:
-    """
-    Retrieve memories based on semantic similarity to a query.
+    """Search stored memories using semantic similarity - finds conceptually related content even if exact words differ.
 
-    Args:
-        query: Search query for semantic similarity
-        n_results: Maximum number of results to return
+USE THIS WHEN:
+- User asks "what do you remember about X", "do we have info on Y", "recall Z"
+- Looking for past decisions, preferences, or context from previous sessions
+- Need to retrieve related information without exact wording (semantic search)
+- General memory lookup where time frame is NOT specified
+- User references "last time we discussed", "you should know", "I told you before"
 
-    Returns:
-        Dictionary with retrieved memories and metadata
+THIS IS THE PRIMARY SEARCH TOOL - use it for most memory lookups.
+
+DO NOT USE FOR:
+- Time-based queries ("yesterday", "last week") - use recall_memory instead
+- Exact content matching - use exact_match_retrieve instead
+- Tag-based filtering - use search_by_tag instead
+- Browsing all memories - use list_memories instead (if available in mcp_server.py)
+
+HOW IT WORKS:
+- Converts query to vector embedding using the same model as stored memories
+- Finds top N most similar memories using cosine similarity
+- Returns ranked by relevance score (0.0-1.0, higher is more similar)
+- Works across sessions - retrieves memories from any time period
+
+RETURNS:
+- Array of matching memories with:
+  - content: The stored text
+  - content_hash: Unique identifier
+  - similarity_score: Relevance score (0.0-1.0)
+  - metadata: Tags, type, timestamp, etc.
+  - created_at: When memory was stored
+
+Examples:
+{
+    "query": "python async patterns we discussed",
+    "n_results": 5
+}
+
+{
+    "query": "database connection settings",
+    "n_results": 10
+}
+
+{
+    "query": "user authentication workflow preferences",
+    "n_results": 3
+}
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
@@ -383,15 +433,50 @@ async def search_by_tag(
     ctx: Context,
     match_all: bool = False
 ) -> Dict[str, Any]:
-    """
-    Search memories by tags.
+    """Search memories by exact tag matching - retrieves all memories categorized with specific tags (OR logic by default).
 
-    Args:
-        tags: Tag or list of tags to search for
-        match_all: If True, memory must have ALL tags; if False, ANY tag
+USE THIS WHEN:
+- User asks to filter by category ("show me all 'api-docs' memories", "find 'important' notes")
+- Need to retrieve memories of a specific type without semantic search
+- User wants to browse a category ("what do we have tagged 'python'")
+- Looking for all memories with a particular classification
+- User says "show me everything about X" where X is a known tag
 
-    Returns:
-        Dictionary with matching memories
+DO NOT USE FOR:
+- Semantic search - use retrieve_memory instead
+- Time-based queries - use recall_memory instead
+- Finding specific content - use exact_match_retrieve instead
+
+HOW IT WORKS:
+- Exact string matching on memory tags (case-sensitive)
+- Returns memories matching ANY of the specified tags (OR logic)
+- No semantic search - purely categorical filtering
+- No similarity scoring - all results are equally relevant
+
+TAG FORMATS (all supported):
+- Array: ["tag1", "tag2"]
+- String: "tag1,tag2"
+
+RETURNS:
+- Array of all memories with matching tags:
+  - content: The stored text
+  - tags: Array of tags (will include at least one from search)
+  - content_hash: Unique identifier
+  - metadata: Additional memory metadata
+  - No similarity score (categorical match, not semantic)
+
+Examples:
+{
+    "tags": ["important", "reference"]
+}
+
+{
+    "tags": "python,async,best-practices"
+}
+
+{
+    "tags": ["api-documentation"]
+}
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
@@ -405,14 +490,44 @@ async def delete_memory(
     content_hash: str,
     ctx: Context
 ) -> Dict[str, Union[bool, str]]:
-    """
-    Delete a specific memory by its content hash.
+    """Delete a specific memory by its unique content hash identifier - permanent removal of a single memory entry.
 
-    Args:
-        content_hash: Hash of the memory content to delete
+USE THIS WHEN:
+- User explicitly requests deletion of a specific memory ("delete that", "remove the memory about X")
+- After showing user a memory and they want it removed
+- Correcting mistakenly stored information
+- User says "forget about X", "delete the note about Y", "remove that memory"
+- Have the content_hash from a previous retrieve/search operation
 
-    Returns:
-        Dictionary with success status and message
+DO NOT USE FOR:
+- Deleting multiple memories - use delete_by_tag, delete_by_tags, or delete_by_all_tags instead
+- Deleting by content without hash - search first with retrieve_memory to get the hash
+- Bulk cleanup - use cleanup_duplicates or delete_by_tag instead
+- Time-based deletion - use delete_by_timeframe or delete_before_date instead
+
+IMPORTANT:
+- This is a PERMANENT operation - memory cannot be recovered after deletion
+- You must have the exact content_hash (obtained from search/retrieve operations)
+- Only deletes the single memory matching the hash
+
+HOW TO GET content_hash:
+1. First search for the memory using retrieve_memory, recall_memory, or search_by_tag
+2. Memory results include "content_hash" field
+3. Use that hash in this delete operation
+
+RETURNS:
+- success: Boolean indicating if deletion succeeded
+- message: Status message (e.g., "Memory deleted successfully" or error details)
+
+Examples:
+# Step 1: Find the memory
+retrieve_memory(query: "outdated API documentation")
+# Returns: [{content_hash: "a1b2c3d4e5f6...", content: "...", ...}]
+
+# Step 2: Delete it
+{
+    "content_hash": "a1b2c3d4e5f6..."
+}
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
@@ -420,11 +535,45 @@ async def delete_memory(
 
 @mcp.tool()
 async def check_database_health(ctx: Context) -> Dict[str, Any]:
-    """
-    Check the health and status of the memory database.
+    """Check database health, storage backend status, and retrieve comprehensive memory service statistics.
 
-    Returns:
-        Dictionary with health status and statistics
+USE THIS WHEN:
+- User asks "how many memories are stored", "is the database working", "memory service status"
+- Diagnosing performance issues or connection problems
+- User wants to know storage backend configuration (SQLite/Cloudflare/Hybrid)
+- Checking if memory service is functioning correctly
+- Need to verify successful initialization or troubleshoot errors
+- User asks "what storage backend are we using"
+
+DO NOT USE FOR:
+- Searching or retrieving specific memories - use retrieve_memory instead
+- Getting cache performance stats - use get_cache_stats instead (if available)
+- Listing actual memory content - this only returns counts and status
+
+WHAT IT CHECKS:
+- Database connectivity and responsiveness
+- Storage backend type (sqlite_vec, cloudflare, hybrid)
+- Total memory count in database
+- Database file size and location (for SQLite backends)
+- Sync status (for hybrid backend)
+- Configuration details (embedding model, index names, etc.)
+
+RETURNS:
+- status: "healthy" or error status
+- backend: Storage backend type (sqlite_vec/cloudflare/hybrid)
+- total_memories: Count of stored memories
+- database_info: Path, size, configuration details
+- timestamp: When health check was performed
+- Any error messages or warnings
+
+Examples:
+No parameters required - just call it:
+{}
+
+Common use cases:
+- User: "How many memories do I have?" → check_database_health()
+- User: "Is the memory service working?" → check_database_health()
+- User: "What backend are we using?" → check_database_health()
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
@@ -438,17 +587,55 @@ async def list_memories(
     tag: Optional[str] = None,
     memory_type: Optional[str] = None
 ) -> Dict[str, Any]:
-    """
-    List memories with pagination and optional filtering.
+    """List stored memories with pagination and optional filtering - browse all memories in pages rather than searching.
 
-    Args:
-        page: Page number (1-based)
-        page_size: Number of memories per page
-        tag: Filter by specific tag
-        memory_type: Filter by memory type
+USE THIS WHEN:
+- User wants to browse/explore all memories ("show me my memories", "list everything")
+- Need to paginate through large result sets
+- Filtering by tag OR memory type for categorical browsing
+- User asks "what do I have stored", "show me all notes", "browse my memories"
+- Want to see memories without searching for specific content
 
-    Returns:
-        Dictionary with memories and pagination info
+DO NOT USE FOR:
+- Searching for specific content - use retrieve_memory instead
+- Time-based queries - use recall_memory instead
+- Finding exact text - use exact_match_retrieve instead
+
+HOW IT WORKS:
+- Returns memories in pages (default 10 per page)
+- Optional filtering by single tag or memory type
+- Sorted by creation time (newest first)
+- Supports pagination through large datasets
+
+PAGINATION:
+- page: 1-based page number (default 1)
+- page_size: Number of results per page (default 10, max usually 100)
+- Returns total count and page info for navigation
+
+RETURNS:
+- memories: Array of memory objects for current page
+- total: Total count of matching memories
+- page: Current page number
+- page_size: Results per page
+- total_pages: Total pages available
+
+Examples:
+{
+    "page": 1,
+    "page_size": 10
+}
+
+{
+    "page": 2,
+    "page_size": 20,
+    "tag": "python"
+}
+
+{
+    "page": 1,
+    "page_size": 50,
+    "memory_type": "decision"
+}
     """
     # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
