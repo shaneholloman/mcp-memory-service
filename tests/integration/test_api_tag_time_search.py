@@ -107,9 +107,9 @@ async def test_api_search_by_tag_with_time_filter_recent(storage_with_test_data)
     data = response.json()
 
     # Should only return the recent task (not the 2-day-old task)
-    assert len(data["memories"]) == 1
-    assert "recent" in data["memories"][0]["tags"]
-    assert "Recent task from today" in data["memories"][0]["content"]
+    assert len(data["results"]) == 1
+    assert "recent" in data["results"][0]["memory"]["tags"]
+    assert "Recent task from today" in data["results"][0]["memory"]["content"]
 
 
 @pytest.mark.asyncio
@@ -138,7 +138,7 @@ async def test_api_search_by_tag_with_time_filter_excludes_old(storage_with_test
     data = response.json()
 
     # Should return empty (all "old" memories are from 2-3 days ago)
-    assert len(data["memories"]) == 0
+    assert len(data["results"]) == 0
 
 
 @pytest.mark.asyncio
@@ -163,8 +163,8 @@ async def test_api_search_by_tag_without_time_filter_backward_compat(storage_wit
     data = response.json()
 
     # Should return BOTH task memories (old and recent)
-    assert len(data["memories"]) == 2
-    tags_list = [tag for mem in data["memories"] for tag in mem["tags"]]
+    assert len(data["results"]) == 2
+    tags_list = [tag for mem in data["results"] for tag in mem["memory"]["tags"]]
     assert "old" in tags_list
     assert "recent" in tags_list
 
@@ -192,7 +192,7 @@ async def test_api_search_by_tag_with_empty_time_filter(storage_with_test_data):
     data = response.json()
 
     # Should return both task memories (empty filter ignored)
-    assert len(data["memories"]) == 2
+    assert len(data["results"]) == 2
 
 
 @pytest.mark.asyncio
@@ -218,8 +218,8 @@ async def test_api_search_by_tag_with_natural_language_time_filter(storage_with_
     data = response.json()
 
     # Should return only the recent task (created today, after yesterday)
-    assert len(data["memories"]) == 1
-    assert "recent" in data["memories"][0]["tags"]
+    assert len(data["results"]) == 1
+    assert "recent" in data["results"][0]["memory"]["tags"]
 
 
 @pytest.mark.asyncio
@@ -247,8 +247,8 @@ async def test_api_search_by_tag_time_filter_with_multiple_tags(storage_with_tes
     data = response.json()
 
     # Should return the recent task memory
-    assert len(data["memories"]) == 1
-    assert "recent" in data["memories"][0]["tags"]
+    assert len(data["results"]) == 1
+    assert "recent" in data["results"][0]["memory"]["tags"]
 
 
 @pytest.mark.asyncio
@@ -288,10 +288,10 @@ async def test_api_search_by_tag_time_filter_with_match_all(storage_with_test_da
     data = response.json()
 
     # Should return memories with BOTH tags that are recent
-    assert len(data["memories"]) >= 1
-    for mem in data["memories"]:
-        assert "task" in mem["tags"]
-        assert "recent" in mem["tags"]
+    assert len(data["results"]) >= 1
+    for mem in data["results"]:
+        assert "task" in mem["memory"]["tags"]
+        assert "recent" in mem["memory"]["tags"]
 
 
 @pytest.mark.asyncio
@@ -321,7 +321,7 @@ async def test_api_search_by_tag_invalid_time_filter_format(storage_with_test_da
     if response.status_code == 200:
         data = response.json()
         # If it returns 200, should return empty or all results
-        assert "memories" in data
+        assert "results" in data
 
 
 @pytest.mark.asyncio

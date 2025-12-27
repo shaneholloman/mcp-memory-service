@@ -662,7 +662,7 @@ async def test_http_api_search_endpoint(temp_db, unique_content):
         # Verify response
         assert response.status_code == 200
         data = response.json()
-        assert "memories" in data
+        assert "results" in data
         assert data["query"] == "python tutorial"
 
     finally:
@@ -707,8 +707,8 @@ async def test_http_api_search_by_tag_endpoint(temp_db, unique_content):
         # Verify response
         assert response.status_code == 200
         data = response.json()
-        assert len(data["memories"]) == 1
-        assert "important" in data["memories"][0]["tags"]
+        assert len(data["results"]) == 1
+        assert "important" in data["results"][0]["memory"]["tags"]
 
     finally:
         storage.close()
@@ -960,7 +960,7 @@ async def test_http_api_complete_crud_workflow(temp_db, unique_content):
             json={"query": "CRUD test", "limit": 5}
         )
         assert search_response.status_code == 200
-        assert len(search_response.json()["memories"]) > 0
+        assert len(search_response.json()["results"]) > 0
 
         # DELETE: Remove memory
         delete_response = client.delete(f"/api/memories/{content_hash}")

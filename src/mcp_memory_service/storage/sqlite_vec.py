@@ -408,7 +408,7 @@ SOLUTIONS:
         """Connect to database and load the sqlite-vec extension."""
         # Calculate timeout and connect
         timeout_seconds = self._get_connection_timeout()
-        self.conn = sqlite3.connect(self.db_path, timeout=timeout_seconds)
+        self.conn = sqlite3.connect(self.db_path, timeout=timeout_seconds, check_same_thread=False)
         
         # Load extension
         self._load_sqlite_vec_extension()
