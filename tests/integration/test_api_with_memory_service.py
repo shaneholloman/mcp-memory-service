@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from mcp_memory_service.web.dependencies import set_storage, get_memory_service
 from mcp_memory_service.services.memory_service import MemoryService
-from mcp_memory_service.models.memory import Memory
+from mcp_memory_service.models.memory import Memory, MemoryQueryResult
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 
 
@@ -260,7 +260,9 @@ async def test_api_list_memories_combined_filters(mock_storage):
 @pytest.mark.asyncio
 async def test_api_semantic_search_uses_service(mock_storage, sample_memory):
     """Test POST /api/search uses MemoryService."""
-    mock_storage.retrieve.return_value = [sample_memory]
+    mock_storage.retrieve.return_value = [
+        MemoryQueryResult(memory=sample_memory, relevance_score=0.9)
+    ]
 
     service = MemoryService(storage=mock_storage)
 
@@ -274,7 +276,7 @@ async def test_api_semantic_search_uses_service(mock_storage, sample_memory):
 @pytest.mark.asyncio
 async def test_api_tag_search_uses_service(mock_storage, sample_memory):
     """Test POST /api/search/by-tag uses MemoryService."""
-    mock_storage.search_by_tags.return_value = [sample_memory]
+    mock_storage.search_by_tag.return_value = [sample_memory]
 
     service = MemoryService(storage=mock_storage)
 
@@ -289,7 +291,9 @@ async def test_api_tag_search_uses_service(mock_storage, sample_memory):
 async def test_api_time_search_uses_service(mock_storage, sample_memory):
     """Test POST /api/search/by-time flow (if applicable)."""
     # Note: Time search might use retrieve_memories with time filters
-    mock_storage.retrieve.return_value = [sample_memory]
+    mock_storage.retrieve.return_value = [
+        MemoryQueryResult(memory=sample_memory, relevance_score=0.9)
+    ]
 
     service = MemoryService(storage=mock_storage)
 
@@ -304,7 +308,7 @@ async def test_api_time_search_uses_service(mock_storage, sample_memory):
 @pytest.mark.asyncio
 async def test_api_delete_memory_uses_service(mock_storage):
     """Test DELETE /api/memories/{hash} uses MemoryService."""
-    mock_storage.delete_memory.return_value = True
+    mock_storage.delete.return_value = (True, "Memory deleted successfully")
 
     service = MemoryService(storage=mock_storage)
 
@@ -312,7 +316,7 @@ async def test_api_delete_memory_uses_service(mock_storage):
 
     assert result["success"] is True
     assert result["content_hash"] == "test_hash_123"
-    mock_storage.delete_memory.assert_called_once_with("test_hash_123")
+    mock_storage.delete.assert_called_once_with("test_hash_123")
 
 
 @pytest.mark.asyncio
@@ -468,8 +472,10 @@ async def test_response_format_consistency(mock_storage, sample_memory):
     """Test that all service methods return consistently formatted responses."""
     mock_storage.get_all_memories.return_value = [sample_memory]
     mock_storage.count_all_memories.return_value = 1
-    mock_storage.retrieve.return_value = [sample_memory]
-    mock_storage.search_by_tags.return_value = [sample_memory]
+    mock_storage.retrieve.return_value = [
+        MemoryQueryResult(memory=sample_memory, relevance_score=0.9)
+    ]
+    mock_storage.search_by_tag.return_value = [sample_memory]
 
     service = MemoryService(storage=mock_storage)
 

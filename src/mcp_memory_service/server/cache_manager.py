@@ -68,7 +68,7 @@ def _get_or_create_memory_service(storage: Any) -> Any:
     Returns:
         MemoryService instance (cached or newly created)
     """
-    from ..services.memory import MemoryService
+    from ..services.memory_service import MemoryService
 
     storage_id = id(storage)
     if storage_id in _MEMORY_SERVICE_CACHE:
