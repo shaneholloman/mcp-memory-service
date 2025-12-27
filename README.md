@@ -124,18 +124,19 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.58.0** (Dec 27, 2025)
+## 🆕 Latest Release: **v8.59.0** (Dec 27, 2025)
 
-**Test Infrastructure Stabilization - 100% Pass Rate Achievement**
+**Server Architecture Refactoring - Phase 2 Complete**
 
-- ✅ **Complete Test Suite Stability** - 52 tests fixed across 5 commits (81.6% → 100% pass rate)
-- 🎯 **ONE-LINE FIX Impact** - check_same_thread=False in sqlite_vec.py fixed 21 tests
-- 🧵 **Thread-Safety** - SQLite async operations now compatible with FastAPI
-- 🔧 **Mock Consistency** - API format evolution tracked (memories → results)
-- 🧪 **Test Isolation** - unique_content() fixture prevents duplicate detection errors
-- 📊 **Config-Aware Testing** - Tests respect MCP_CHUNKED_STORAGE_ENABLED and optional features
+- 🏗️ **40% Code Reduction** - server_impl.py shrunk from 4,294 → 2,571 lines (-1,723 lines)
+- 📦 **29 Handlers Extracted** - 5 specialized modules (memory, consolidation, utility, documents, quality)
+- 🎯 **Single Responsibility** - Each handler file focuses on specific functionality
+- ✅ **100% Backward Compatible** - All existing imports work seamlessly
+- 🧪 **Quality Maintained** - Complexity A (3.02), health score ~85/100, 0 security issues, 62/62 tests passing
+- 🚀 **Developer Experience** - Easier navigation, maintenance, and future development
 
 **Previous Releases**:
+- **v8.58.0** - Test Infrastructure Stabilization - 100% Pass Rate Achievement (81.6% → 100%, 52 tests fixed)
 - **v8.57.1** - Hotfix: Python -m Execution Support for CI/CD (server/__main__.py, --version/--help flags)
 - **v8.57.0** - Test Infrastructure Improvements - Major Stability Boost (+6% pass rate, 32 tests fixed)
 - **v8.56.0** - Server Architecture Refactoring - Phase 1 (4 focused modules, -7% lines, backward compatible)

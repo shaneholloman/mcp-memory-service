@@ -10,6 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.59.0] - 2025-12-27
+
+### Changed
+- **Server Architecture Refactoring - Phase 2** - Extracted handler methods into modular files (#291, #296)
+  - Reduced server_impl.py from 4,294 → 2,571 lines (-40%, -1,723 lines)
+  - Extracted 29 handler methods into 5 specialized files:
+    - `handlers/memory.py` (806 lines): 11 memory CRUD operations
+    - `handlers/consolidation.py` (310 lines): 6 consolidation lifecycle handlers
+    - `handlers/utility.py` (355 lines): 6 system utility operations
+    - `handlers/documents.py` (295 lines): 3 document ingestion handlers
+    - `handlers/quality.py` (293 lines): 3 quality scoring handlers
+  - Improved code organization: Each handler file focuses on single responsibility
+  - Maintained full backward compatibility - all existing imports work via `server_impl.py`
+  - Quality metrics: Complexity A (3.02 average), health score ~85/100, 0 security issues
+  - All 62 tests passing (100% pass rate maintained)
+  - Developer experience improvement - easier navigation and maintenance
+  - Completes Phase 2 of 3-phase server refactoring plan (Phase 1: v8.56.0, Phase 3: planned)
+
 ## [8.58.0] - 2025-12-27
 
 ### Fixed
