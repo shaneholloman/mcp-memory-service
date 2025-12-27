@@ -304,10 +304,53 @@ node ~/.claude/hooks/memory-mode-controller.js profile balanced
 
 **Before Creating PR:**
 ```bash
-bash scripts/pr/pre_pr_check.sh  # MANDATORY - catches 20+ issues before review
+bash scripts/pr/pre_pr_check.sh  # MANDATORY - 9 comprehensive checks
 gh pr create --fill
 gh pr comment <PR> --body "/gemini review"
 ```
+
+**Refactoring Safety Checklist** ⚠️ **MANDATORY for all code moves/extractions:**
+
+When extracting, moving, or refactoring code (learned from Issues #299, #300):
+
+1. **✅ Import Path Validation**
+   - Validate relative imports: `..` vs `...` from new location
+   - Run `bash scripts/ci/validate_imports.sh` before commit
+   - No Mocks: Test actual imports, not mocked ones
+
+2. **✅ Response Format Compatibility**
+   - Handler must match Service response keys (`success`/`error`, not `message`)
+   - Test both success and error paths
+   - Check for KeyError risks in all code paths
+
+3. **✅ Integration Tests for ALL Extracted Functions**
+   - Create integration tests BEFORE committing refactoring
+   - 100% handler coverage required (17/17 handlers)
+   - Use `python scripts/validation/check_handler_coverage.py`
+
+4. **✅ Coverage Validation**
+   - Run tests with coverage: `pytest --cov=src/mcp_memory_service --cov-fail-under=80`
+   - Coverage must not decrease (delta ≥ 0%)
+   - Add tests for new code before committing
+
+5. **✅ Pre-Commit Validation**
+   ```bash
+   # Before every refactoring commit:
+   bash scripts/ci/validate_imports.sh          # Import validation
+   python scripts/validation/check_handler_coverage.py  # Handler coverage
+   pytest tests/ --cov=src --cov-fail-under=80  # Coverage gate
+   ```
+
+6. **✅ Commit Strategy**
+   - Commit incrementally (one extraction per commit)
+   - Each commit must have passing tests + coverage ≥80%
+   - Never batch multiple extractions in one commit
+
+**Why This Checklist?**
+- Issue #299: Import errors (`..services` → `...services`) undetected until production
+- Issue #300: Response format mismatch (`result["message"]` → `result["success"]`) undetected
+- Root cause: 82% of handlers had zero integration tests (3/17 tested)
+- Prevention: 9-check pre-PR validation + 100% handler coverage
 
 **Version Management:**
 - **ALWAYS** use github-release-manager agent (even for hotfixes)
@@ -321,8 +364,9 @@ gh pr comment <PR> --body "/gemini review"
 
 **Architecture & Testing:**
 - Storage backends implement abstract base class
-- All features require corresponding tests
+- All features require corresponding tests (100% handler coverage)
 - UI testing: page load <2s, operations <1s
+- Handler testing: Success + error paths, no mocks for import validation
 
 ## Code Quality Monitoring
 
