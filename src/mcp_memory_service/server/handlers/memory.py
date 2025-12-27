@@ -241,7 +241,7 @@ async def handle_retrieve_with_quality_boost(server, arguments: dict) -> List[ty
 
 
 async def handle_search_by_tag(server, arguments: dict) -> List[types.TextContent]:
-    from ..services.memory_service import normalize_tags
+    from ...services.memory_service import normalize_tags
 
     tags = normalize_tags(arguments.get("tags", []))
 
@@ -318,7 +318,7 @@ async def handle_delete_memory(server, arguments: dict) -> List[types.TextConten
 
 async def handle_delete_by_tag(server, arguments: dict) -> List[types.TextContent]:
     """Handler for deleting memories by tags."""
-    from ..services.memory_service import normalize_tags
+    from ...services.memory_service import normalize_tags
 
     tags = arguments.get("tags", [])
 
@@ -340,7 +340,7 @@ async def handle_delete_by_tag(server, arguments: dict) -> List[types.TextConten
 
 async def handle_delete_by_tags(server, arguments: dict) -> List[types.TextContent]:
     """Handler for explicit multiple tag deletion with progress tracking."""
-    from ..services.memory_service import normalize_tags
+    from ...services.memory_service import normalize_tags
 
     tags = normalize_tags(arguments.get("tags", []))
 
@@ -384,7 +384,7 @@ async def handle_delete_by_tags(server, arguments: dict) -> List[types.TextConte
 
 async def handle_delete_by_all_tags(server, arguments: dict) -> List[types.TextContent]:
     """Handler for deleting memories that contain ALL specified tags."""
-    from ..services.memory_service import normalize_tags
+    from ...services.memory_service import normalize_tags
 
     tags = normalize_tags(arguments.get("tags", []))
 
@@ -415,7 +415,7 @@ async def handle_cleanup_duplicates(server, arguments: dict) -> List[types.TextC
 async def handle_update_memory_metadata(server, arguments: dict) -> List[types.TextContent]:
     """Handle memory metadata update requests."""
     try:
-        from ..services.memory_service import normalize_tags
+        from ...services.memory_service import normalize_tags
 
         content_hash = arguments.get("content_hash")
         updates = arguments.get("updates")
