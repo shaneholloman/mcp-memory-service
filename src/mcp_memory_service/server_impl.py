@@ -2396,146 +2396,53 @@ class MemoryServer:
         return await quality_handlers.handle_analyze_quality_distribution(self, arguments)
 
 
+def _print_system_diagnostics(system_info: Any) -> None:
+    """Print system diagnostics for LM Studio."""
+    print("\n=== MCP Memory Service System Diagnostics ===", file=sys.stdout, flush=True)
+    print(f"OS: {system_info.os_name} {system_info.architecture}", file=sys.stdout, flush=True)
+    print(f"Python: {platform.python_version()}", file=sys.stdout, flush=True)
+    print(f"Hardware Acceleration: {system_info.accelerator}", file=sys.stdout, flush=True)
+    print(f"Memory: {system_info.memory_gb:.2f} GB", file=sys.stdout, flush=True)
+    print(f"Optimal Model: {system_info.get_optimal_model()}", file=sys.stdout, flush=True)
+    print(f"Optimal Batch Size: {system_info.get_optimal_batch_size()}", file=sys.stdout, flush=True)
+    print(f"Storage Backend: {STORAGE_BACKEND}", file=sys.stdout, flush=True)
+    print("================================================\n", file=sys.stdout, flush=True)
+
+
 async def async_main():
-    # Apply LM Studio compatibility patch before anything else
-    patch_mcp_for_lm_studio()
-    
-    # Add Windows-specific timeout handling
-    add_windows_timeout_handling()
-    
-    # Run dependency check before starting
-    run_dependency_check()
+    """Main async entry point for MCP Memory Service."""
+    from .utils.startup_orchestrator import (
+        StartupCheckOrchestrator,
+        InitializationRetryManager,
+        ServerRunManager
+    )
 
-    # Check if running with UV
-    check_uv_environment()
+    # Run all startup checks
+    StartupCheckOrchestrator.run_all_checks()
 
-    # Check for version mismatch (stale venv issue)
-    check_version_consistency()
-
-    # Debug logging is now handled by the CLI layer
-
-    # Print system diagnostics only for LM Studio (avoid JSON parsing errors in Claude Desktop)
+    # Print system diagnostics only for LM Studio
     system_info = get_system_info()
     if MCP_CLIENT == 'lm_studio':
-        print("\n=== MCP Memory Service System Diagnostics ===", file=sys.stdout, flush=True)
-        print(f"OS: {system_info.os_name} {system_info.architecture}", file=sys.stdout, flush=True)
-        print(f"Python: {platform.python_version()}", file=sys.stdout, flush=True)
-        print(f"Hardware Acceleration: {system_info.accelerator}", file=sys.stdout, flush=True)
-        print(f"Memory: {system_info.memory_gb:.2f} GB", file=sys.stdout, flush=True)
-        print(f"Optimal Model: {system_info.get_optimal_model()}", file=sys.stdout, flush=True)
-        print(f"Optimal Batch Size: {system_info.get_optimal_batch_size()}", file=sys.stdout, flush=True)
-        print(f"Storage Backend: {STORAGE_BACKEND}", file=sys.stdout, flush=True)
-        print("================================================\n", file=sys.stdout, flush=True)
+        _print_system_diagnostics(system_info)
 
     logger.info(f"Starting MCP Memory Service with storage backend: {STORAGE_BACKEND}")
-    
+
     try:
-        # Create server instance with hardware-aware configuration
+        # Create server instance
         memory_server = MemoryServer()
-        
-        # Set up async initialization with timeout and retry logic
-        max_retries = 2
-        retry_count = 0
-        init_success = False
-        
-        while retry_count <= max_retries and not init_success:
-            if retry_count > 0:
-                logger.warning(f"Retrying initialization (attempt {retry_count}/{max_retries})...")
-                
-            init_task = asyncio.create_task(memory_server.initialize())
-            try:
-                # 30 second timeout for initialization
-                init_success = await asyncio.wait_for(init_task, timeout=30.0)
-                if init_success:
-                    logger.info("Async initialization completed successfully")
-                else:
-                    logger.warning("Initialization returned failure status")
-                    retry_count += 1
-            except asyncio.TimeoutError:
-                logger.warning("Async initialization timed out. Continuing with server startup.")
-                # Don't cancel the task, let it complete in the background
-                break
-            except Exception as init_error:
-                logger.error(f"Initialization error: {str(init_error)}")
-                logger.error(traceback.format_exc())
-                retry_count += 1
-                
-                if retry_count <= max_retries:
-                    logger.info(f"Waiting 2 seconds before retry...")
-                    await asyncio.sleep(2)
-        
-        # Check if running in standalone mode (Docker without active client)
-        standalone_mode = os.environ.get('MCP_STANDALONE_MODE', '').lower() == '1'
-        running_in_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False)
-        
-        if standalone_mode:
-            logger.info("Running in standalone mode - keeping server alive without active client")
-            if MCP_CLIENT == 'lm_studio':
-                print("MCP Memory Service running in standalone mode", file=sys.stdout, flush=True)
-            
-            # Keep the server running indefinitely
-            try:
-                while True:
-                    await asyncio.sleep(60)  # Sleep for 60 seconds at a time
-                    logger.debug("Standalone server heartbeat")
-            except asyncio.CancelledError:
-                logger.info("Standalone server cancelled")
-                raise
+
+        # Initialize with retry logic
+        retry_manager = InitializationRetryManager(max_retries=2, timeout=30.0, retry_delay=2.0)
+        await retry_manager.initialize_with_retry(memory_server)
+
+        # Run server based on mode
+        run_manager = ServerRunManager(memory_server, system_info)
+
+        if ServerRunManager.is_standalone_mode():
+            await run_manager.run_standalone()
         else:
-            # Start the server with stdio
-            async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-                logger.info("Server started and ready to handle requests")
-                
-                if running_in_docker:
-                    logger.info("Detected Docker environment - ensuring proper stdio handling")
-                    if MCP_CLIENT == 'lm_studio':
-                        print("MCP Memory Service running in Docker container", file=sys.stdout, flush=True)
-                
-                try:
-                    await memory_server.server.run(
-                        read_stream,
-                        write_stream,
-                        InitializationOptions(
-                            server_name=SERVER_NAME,
-                            server_version=SERVER_VERSION,
-                            # Explicitly specify the protocol version that matches Claude's request
-                            # Use the latest protocol version to ensure compatibility with all clients
-                            protocol_version="2024-11-05",
-                            capabilities=memory_server.server.get_capabilities(
-                                notification_options=NotificationOptions(),
-                                experimental_capabilities={
-                                    "hardware_info": {
-                                        "architecture": system_info.architecture,
-                                        "accelerator": system_info.accelerator,
-                                        "memory_gb": system_info.memory_gb,
-                                        "cpu_count": system_info.cpu_count
-                                    }
-                                },
-                            ),
-                        ),
-                    )
-                except asyncio.CancelledError:
-                    logger.info("Server run cancelled")
-                    raise
-                except BaseException as e:
-                    # Handle ExceptionGroup specially (Python 3.11+)
-                    if type(e).__name__ == 'ExceptionGroup' or 'ExceptionGroup' in str(type(e)):
-                        error_str = str(e)
-                        # Check if this contains the LM Studio cancelled notification error
-                        if 'notifications/cancelled' in error_str or 'ValidationError' in error_str:
-                            logger.info("LM Studio sent a cancelled notification - this is expected behavior")
-                            logger.debug(f"Full error for debugging: {error_str}")
-                            # Don't re-raise - just continue gracefully
-                        else:
-                            logger.error(f"ExceptionGroup in server.run: {str(e)}")
-                            logger.error(traceback.format_exc())
-                            raise
-                    else:
-                        logger.error(f"Error in server.run: {str(e)}")
-                        logger.error(traceback.format_exc())
-                        raise
-                finally:
-                    logger.info("Server run completed")
+            await run_manager.run_stdio()
+
     except Exception as e:
         logger.error(f"Server error: {str(e)}")
         logger.error(traceback.format_exc())
