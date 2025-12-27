@@ -124,18 +124,19 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.61.1** (Dec 27, 2025)
+## 🆕 Latest Release: **v8.61.2** (Dec 27, 2025)
 
-**CRITICAL HOTFIX: Import Error Fix**
+**CRITICAL HOTFIX: delete_memory KeyError Fix**
 
-- 🚨 **Critical Bug Fix** - Fixed import error affecting 5 MCP tools in v8.61.0
-- 🔧 **Root Cause** - Phase 3 refactoring moved handlers but didn't update relative imports
-- ✅ **5 Tools Restored** - update_memory_metadata, search_by_tag, delete_by_tag, delete_by_tags, delete_by_all_tags
-- 📍 **Import Path Fix** - Changed `..services` to `...services` (3 dots) in server/handlers/memory.py
-- 🧪 **Validated** - Manual testing confirmed all imports resolve correctly
-- ⚡ **Immediate Impact** - All affected tools now working as expected
+- 🚨 **Critical Bug Fix** - Fixed KeyError when deleting memories via MCP tool
+- 🔧 **Root Cause** - Handler tried to access result["message"] but service returns result["success"]/result["error"]
+- ✅ **Response Parsing Fix** - Updated handle_delete_memory to check result["success"] and use correct keys
+- 📖 **Documentation Update** - Fixed MCP tool docstring to reflect actual return format
+- 🧪 **Validated** - Tested delete flow confirms fix works correctly
+- ⚡ **Immediate Impact** - delete_memory tool now working as expected
 
 **Previous Releases**:
+- **v8.61.1** - CRITICAL HOTFIX: Import Error Fix (5 MCP tools restored, relative import path correction)
 - **v8.61.0** - MILESTONE: Phase 3 Complete - Major Complexity Reduction Achievement (75% avg reduction, 4 design patterns, 896 lines utilities)
 - **v8.60.0** - Health Check Strategy Pattern Refactoring - Phase 3.1 (78% complexity reduction, Strategy pattern)
 - **v8.59.0** - Server Architecture Refactoring - Phase 2 (40% code reduction, 29 handlers extracted, 5 specialized modules)

@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.61.2] - 2025-12-27
+
+### Fixed
+- **CRITICAL: delete_memory KeyError** (#300)
+  - Fixed handler attempting to access non-existent 'message' key in response
+  - Root cause: Service returns {'success': bool, 'content_hash': str, 'error': str} but handler expected {'message': str}
+  - Solution: Updated handle_delete_memory to check result['success'] and use correct response keys
+  - Updated MCP tool docstring to document actual return format
+  - Validation: Tested delete flow confirms fix works correctly
+
 ## [8.61.1] - 2025-12-27
 
 ### Fixed
