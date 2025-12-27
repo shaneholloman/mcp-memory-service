@@ -14,12 +14,12 @@ class TestHandleStoreMemory:
     """Test suite for handle_store_memory MCP handler."""
 
     @pytest.mark.asyncio
-    async def test_store_memory_success(self):
+    async def test_store_memory_success(self, unique_content):
         """Test storing a valid memory returns success message with hash."""
         server = MemoryServer()
 
         result = await server.handle_store_memory({
-            "content": "Test memory content for integration test",
+            "content": unique_content("Test memory content for integration test"),
             "metadata": {
                 "tags": ["test", "integration"],
                 "type": "note"
@@ -38,12 +38,12 @@ class TestHandleStoreMemory:
         assert "..." in text  # Hash should be truncated
 
     @pytest.mark.asyncio
-    async def test_store_memory_chunked(self):
+    async def test_store_memory_chunked(self, unique_content):
         """Test storing long content creates multiple chunks."""
         server = MemoryServer()
 
         # Create content that will be auto-split (> 1500 chars)
-        long_content = "This is a very long memory content. " * 100
+        long_content = unique_content("This is a very long memory content. " * 100)
 
         result = await server.handle_store_memory({
             "content": long_content,
@@ -93,12 +93,12 @@ class TestHandleStoreMemory:
         assert "error" in text.lower()
 
     @pytest.mark.asyncio
-    async def test_store_memory_with_tags_string(self):
+    async def test_store_memory_with_tags_string(self, unique_content):
         """Test storing memory with tags as string (not array)."""
         server = MemoryServer()
 
         result = await server.handle_store_memory({
-            "content": "Test with string tags",
+            "content": unique_content("Test with string tags"),
             "metadata": {
                 "tags": "test,integration,string-tags",
                 "type": "note"
@@ -112,12 +112,12 @@ class TestHandleStoreMemory:
         assert "successfully" in text.lower()
 
     @pytest.mark.asyncio
-    async def test_store_memory_default_type(self):
+    async def test_store_memory_default_type(self, unique_content):
         """Test storing memory without explicit type uses default."""
         server = MemoryServer()
 
         result = await server.handle_store_memory({
-            "content": "Memory without explicit type",
+            "content": unique_content("Memory without explicit type"),
             "metadata": {"tags": ["test"]}
         })
 
@@ -132,13 +132,14 @@ class TestHandleRetrieveMemory:
     """Test suite for handle_retrieve_memory MCP handler."""
 
     @pytest.mark.asyncio
-    async def test_retrieve_memory_success(self):
+    async def test_retrieve_memory_success(self, unique_content):
         """Test retrieving memories with valid query."""
         server = MemoryServer()
 
         # First store a memory
+        content = unique_content("Searchable test memory for retrieval")
         await server.handle_store_memory({
-            "content": "Searchable test memory for retrieval",
+            "content": content,
             "metadata": {"tags": ["retrieval-test"], "type": "note"}
         })
 
@@ -178,13 +179,14 @@ class TestHandleSearchByTag:
     """Test suite for handle_search_by_tag MCP handler."""
 
     @pytest.mark.asyncio
-    async def test_search_by_tag_success(self):
+    async def test_search_by_tag_success(self, unique_content):
         """Test searching by tag returns matching memories."""
         server = MemoryServer()
 
         # Store a memory with specific tag
+        content = unique_content("Memory with unique tag for search")
         await server.handle_store_memory({
-            "content": "Memory with unique tag for search",
+            "content": content,
             "metadata": {"tags": ["unique-search-tag"], "type": "note"}
         })
 
@@ -222,13 +224,13 @@ class TestIssue198Regression:
     """Regression tests specifically for issue #198 - Response format bug."""
 
     @pytest.mark.asyncio
-    async def test_no_keyerror_on_store_success(self):
+    async def test_no_keyerror_on_store_success(self, unique_content):
         """Verify fix for issue #198: No KeyError on successful store."""
         server = MemoryServer()
 
         # This would previously raise KeyError: 'message'
         result = await server.handle_store_memory({
-            "content": "Test for issue 198 regression",
+            "content": unique_content("Test for issue 198 regression"),
             "metadata": {"tags": ["issue-198"], "type": "test"}
         })
 
