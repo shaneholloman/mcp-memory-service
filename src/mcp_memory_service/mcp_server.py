@@ -517,7 +517,8 @@ HOW TO GET content_hash:
 
 RETURNS:
 - success: Boolean indicating if deletion succeeded
-- message: Status message (e.g., "Memory deleted successfully" or error details)
+- content_hash: The hash of the deleted memory
+- error: Error message (only present if success is False)
 
 Examples:
 # Step 1: Find the memory

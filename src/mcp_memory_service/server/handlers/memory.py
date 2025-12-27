@@ -310,7 +310,11 @@ async def handle_delete_memory(server, arguments: dict) -> List[types.TextConten
         # Call shared MemoryService business logic
         result = await server.memory_service.delete_memory(content_hash)
 
-        return [types.TextContent(type="text", text=result["message"])]
+        # Handle response based on success/failure format
+        if result["success"]:
+            return [types.TextContent(type="text", text=f"Memory deleted successfully: {result['content_hash'][:16]}...")]
+        else:
+            return [types.TextContent(type="text", text=f"Failed to delete memory: {result.get('error', 'Unknown error')}")]
     except Exception as e:
         logger.error(f"Error deleting memory: {str(e)}\n{traceback.format_exc()}")
         return [types.TextContent(type="text", text=f"Error deleting memory: {str(e)}")]
