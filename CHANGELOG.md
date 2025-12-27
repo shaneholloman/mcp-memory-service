@@ -10,6 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.60.0] - 2025-12-27
+
+### Changed
+- **Health Check Strategy Pattern Refactoring - Phase 3.1** - Critical complexity reduction (#297)
+  - Implemented Strategy Pattern to isolate backend-specific health check logic
+  - Created `src/mcp_memory_service/utils/health_check.py` (262 lines):
+    - HealthCheckStrategy (abstract base class)
+    - SqliteHealthChecker (complexity 6)
+    - CloudflareHealthChecker (complexity 2)
+    - HybridHealthChecker (complexity 6)
+    - HealthCheckFactory (complexity 3)
+    - UnknownStorageChecker (complexity 1)
+  - Reduced `server/handlers/utility.py` from 356 to 174 lines (-51%, -182 lines)
+  - Reduced `handle_check_database_health` from 268 to 87 lines (-68%, -181 lines)
+  - **Complexity Reduction**: E (35) → B (7-8) - 78% reduction
+  - **Maintainability**: Each backend health check strategy independently testable
+  - **Quality Metrics**: 0 security vulnerabilities, no performance regression
+  - **Impact**: Significantly improved code organization and maintainability through separation of concerns
+  - Part of Phase 3 - Complexity Reduction (follows Phase 1: v8.56.0, Phase 2: v8.59.0)
+
 ## [8.59.0] - 2025-12-27
 
 ### Changed
