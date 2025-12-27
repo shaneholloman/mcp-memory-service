@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.61.1] - 2025-12-27
+
+### Fixed
+- **CRITICAL: Import Error Hotfix** (#299)
+  - Fixed import error in 5 MCP tools caused by Phase 3 refactoring
+  - Problem: Relative import `..services` resolved to wrong location after handlers moved to `server/handlers/`
+  - Solution: Changed to `...services` (3 dots) to correctly reach `mcp_memory_service/services/`
+  - **Affected Tools** (all broken in v8.61.0):
+    - update_memory_metadata
+    - search_by_tag
+    - delete_by_tag
+    - delete_by_tags
+    - delete_by_all_tags
+  - **Impact**: All 5 tools now working correctly
+  - **Files Changed**: `server/handlers/memory.py` (5 import locations updated)
+  - **Validation**: Manual testing confirmed all imports resolve correctly
+
 ## [8.61.0] - 2025-12-27
 
 ### Changed

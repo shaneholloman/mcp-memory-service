@@ -124,21 +124,19 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.61.0** (Dec 27, 2025)
+## 🆕 Latest Release: **v8.61.1** (Dec 27, 2025)
 
-**MILESTONE: Phase 3 Complete - Major Complexity Reduction Achievement**
+**CRITICAL HOTFIX: Import Error Fix**
 
-- 🏆 **75% Average Complexity Reduction** - ALL D/E-level functions refactored (4 phases complete)
-- 🎯 **Target Exceeded** - 75% now A-grade (complexity 4-5), 25% B-grade (7-8)
-- 🎨 **4 Design Patterns** - Strategy, Orchestrator, Processor, Analyzer patterns applied
-- 📁 **4 New Utility Modules** - 896 lines of well-structured, reusable code
-- 📊 **82.6% Best Achievement** - async_main: D (23) → A (4) using Orchestrator pattern
-- ✂️ **400+ Lines Reduced** - From handlers to focused, testable components
-- 🧪 **Independent Testing** - Each pattern component separately testable
-- ✅ **Zero Regression** - 0 new vulnerabilities, no performance impact
-- 🏗️ **4 Commits** - Strategy (78%), Orchestrator (82.6%), Processor (64%), Analyzer (76%)
+- 🚨 **Critical Bug Fix** - Fixed import error affecting 5 MCP tools in v8.61.0
+- 🔧 **Root Cause** - Phase 3 refactoring moved handlers but didn't update relative imports
+- ✅ **5 Tools Restored** - update_memory_metadata, search_by_tag, delete_by_tag, delete_by_tags, delete_by_all_tags
+- 📍 **Import Path Fix** - Changed `..services` to `...services` (3 dots) in server/handlers/memory.py
+- 🧪 **Validated** - Manual testing confirmed all imports resolve correctly
+- ⚡ **Immediate Impact** - All affected tools now working as expected
 
 **Previous Releases**:
+- **v8.61.0** - MILESTONE: Phase 3 Complete - Major Complexity Reduction Achievement (75% avg reduction, 4 design patterns, 896 lines utilities)
 - **v8.60.0** - Health Check Strategy Pattern Refactoring - Phase 3.1 (78% complexity reduction, Strategy pattern)
 - **v8.59.0** - Server Architecture Refactoring - Phase 2 (40% code reduction, 29 handlers extracted, 5 specialized modules)
 - **v8.58.0** - Test Infrastructure Stabilization - 100% Pass Rate Achievement (81.6% → 100%, 52 tests fixed)
