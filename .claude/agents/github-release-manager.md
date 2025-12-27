@@ -392,7 +392,14 @@ Alternatively, use the github-release-manager agent locally to complete the work
    - **Only After Validation**: Proceed to create tag in step 5 above
 
 7. **Post-Release Actions**:
-   - Verify GitHub Actions workflows (Docker Publish, Publish and Test, HTTP-MCP Bridge)
+   - **IMPORTANT**: PyPI publishing is handled **AUTOMATICALLY** by GitHub Actions workflow "Publish and Test (Tags)"
+   - **DO NOT** attempt manual `twine upload` - the CI/CD pipeline publishes to PyPI when tag is pushed
+   - Verify GitHub Actions workflows are running/completed:
+     - "Publish and Test (Tags)" - Handles PyPI upload automatically
+     - "Docker Publish (Tags)" - Publishes Docker images
+     - "HTTP-MCP Bridge Tests" - Validates release
+   - Monitor workflow status: `gh run list --limit 5`
+   - Wait for "Publish and Test (Tags)" workflow to complete before confirming PyPI publication
    - Retrieve related issues using memory service
    - Close resolved issues with grateful comments
    - Update project board/milestones
