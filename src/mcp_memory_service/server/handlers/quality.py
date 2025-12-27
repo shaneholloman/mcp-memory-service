@@ -182,6 +182,12 @@ async def handle_get_memory_quality(server, arguments: dict) -> List[types.TextC
 async def handle_analyze_quality_distribution(server, arguments: dict) -> List[types.TextContent]:
     """Handle request for system-wide quality analytics."""
     try:
+        from ...utils.quality_analytics import (
+            QualityDistributionAnalyzer,
+            QualityRankingProcessor,
+            QualityReportFormatter
+        )
+
         min_quality = arguments.get("min_quality", 0.0)
         max_quality = arguments.get("max_quality", 1.0)
 
@@ -198,93 +204,38 @@ async def handle_analyze_quality_distribution(server, arguments: dict) -> List[t
         if not all_memories:
             return [types.TextContent(type="text", text="No memories found in database")]
 
-        # Filter by quality range
-        memories = []
-        for memory in all_memories:
-            quality_score = memory.metadata.get('quality_score', 0.5)
-            if min_quality <= quality_score <= max_quality:
-                memories.append(memory)
+        # Analyze distribution
+        analyzer = QualityDistributionAnalyzer(all_memories, min_quality, max_quality)
+        stats = analyzer.get_statistics()
 
-        if not memories:
+        if not stats:
             return [types.TextContent(
                 type="text",
                 text=f"No memories found with quality score between {min_quality} and {max_quality}"
             )]
 
-        # Calculate distribution statistics
-        total_memories = len(memories)
-        quality_scores = [m.metadata.get('quality_score', 0.5) for m in memories]
+        # Get provider breakdown
+        provider_counts = analyzer.get_provider_breakdown()
 
-        high_quality = [m for m in memories if m.metadata.get('quality_score', 0.5) >= 0.7]
-        medium_quality = [m for m in memories if 0.5 <= m.metadata.get('quality_score', 0.5) < 0.7]
-        low_quality = [m for m in memories if m.metadata.get('quality_score', 0.5) < 0.5]
+        # Get top and bottom performers
+        top_10, bottom_10 = QualityRankingProcessor.get_top_and_bottom(
+            analyzer.filtered_memories,
+            top_n=10
+        )
 
-        average_score = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
-
-        # Provider breakdown
-        provider_counts = {}
-        for memory in memories:
-            provider = memory.metadata.get('quality_provider', 'implicit')
-            provider_counts[provider] = provider_counts.get(provider, 0) + 1
-
-        # Top and bottom performers
-        sorted_memories = sorted(memories, key=lambda m: m.metadata.get('quality_score', 0.5), reverse=True)
-        top_10 = sorted_memories[:10]
-        bottom_10 = sorted_memories[-10:]
-
-        # Format response
-        import json
-        response_lines = [
-            "📊 Quality Score Distribution Analysis",
-            "=" * 50,
-            f"Total Memories: {total_memories}",
-            f"Average Quality Score: {average_score:.3f}",
-            "",
-            "Distribution by Tier:",
-            f"  🟢 High Quality (≥0.7): {len(high_quality)} ({len(high_quality)/total_memories*100:.1f}%)",
-            f"  🟡 Medium Quality (0.5-0.7): {len(medium_quality)} ({len(medium_quality)/total_memories*100:.1f}%)",
-            f"  🔴 Low Quality (<0.5): {len(low_quality)} ({len(low_quality)/total_memories*100:.1f}%)",
-            "",
-            "Provider Breakdown:"
-        ]
-
-        for provider, count in sorted(provider_counts.items(), key=lambda x: x[1], reverse=True):
-            response_lines.append(f"  {provider}: {count} ({count/total_memories*100:.1f}%)")
-
-        response_lines.extend([
-            "",
-            "🏆 Top 10 Highest Quality Memories:"
-        ])
-        for i, memory in enumerate(top_10, 1):
-            score = memory.metadata.get('quality_score', 0.5)
-            content_preview = memory.content[:60] + "..." if len(memory.content) > 60 else memory.content
-            response_lines.append(f"  {i}. Score: {score:.3f} - {content_preview}")
-
-        response_lines.extend([
-            "",
-            "⚠️  Bottom 10 Lowest Quality Memories:"
-        ])
-        for i, memory in enumerate(bottom_10, 1):
-            score = memory.metadata.get('quality_score', 0.5)
-            content_preview = memory.content[:60] + "..." if len(memory.content) > 60 else memory.content
-            response_lines.append(f"  {i}. Score: {score:.3f} - {content_preview}")
-
-        # Add JSON summary
-        summary_data = {
-            "total_memories": total_memories,
-            "high_quality_count": len(high_quality),
-            "medium_quality_count": len(medium_quality),
-            "low_quality_count": len(low_quality),
-            "average_score": round(average_score, 3),
-            "provider_breakdown": provider_counts,
-            "quality_range": {"min": min_quality, "max": max_quality}
-        }
-
-        response_lines.extend([
-            "",
-            "📋 JSON Summary:",
-            json.dumps(summary_data, indent=2)
-        ])
+        # Format report
+        response_lines = QualityReportFormatter.format_distribution_report(
+            total_memories=stats["total_memories"],
+            average_score=stats["average_score"],
+            high_quality=stats["high_quality"],
+            medium_quality=stats["medium_quality"],
+            low_quality=stats["low_quality"],
+            provider_counts=provider_counts,
+            top_10=top_10,
+            bottom_10=bottom_10,
+            min_quality=min_quality,
+            max_quality=max_quality
+        )
 
         return [types.TextContent(type="text", text="\n".join(response_lines))]
 
