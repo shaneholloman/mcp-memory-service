@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 async def handle_check_database_health(server, arguments: dict) -> List[types.TextContent]:
     """Handle database health check requests with performance metrics."""
+    from ...utils.health_check import HealthCheckFactory
+
     logger.info("=== EXECUTING CHECK_DATABASE_HEALTH ===")
     try:
         # Initialize storage lazily when needed
@@ -66,190 +68,9 @@ async def handle_check_database_health(server, arguments: dict) -> List[types.Te
                 text=f"Database Health Check Results:\n{json.dumps(result, indent=2)}"
             )]
 
-        # Skip db_utils completely for health check - implement directly here
-        # Get storage type for backend-specific handling
-        storage_type = storage.__class__.__name__
-
-        # Direct health check implementation based on storage type
-        is_valid = False
-        message = ""
-        stats = {}
-
-        if storage_type == "SqliteVecMemoryStorage":
-            # Direct SQLite-vec validation
-            if not hasattr(storage, 'conn') or storage.conn is None:
-                is_valid = False
-                message = "SQLite database connection is not initialized"
-            else:
-                try:
-                    # Check for required tables
-                    cursor = storage.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memories'")
-                    if not cursor.fetchone():
-                        is_valid = False
-                        message = "SQLite database is missing required tables"
-                    else:
-                        # Count memories
-                        cursor = storage.conn.execute('SELECT COUNT(*) FROM memories')
-                        memory_count = cursor.fetchone()[0]
-
-                        # Check if embedding tables exist
-                        cursor = storage.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'")
-                        has_embeddings = cursor.fetchone() is not None
-
-                        # Check embedding model
-                        has_model = hasattr(storage, 'embedding_model') and storage.embedding_model is not None
-
-                        # Collect stats
-                        stats = {
-                            "status": "healthy",
-                            "backend": "sqlite-vec",
-                            "total_memories": memory_count,
-                            "has_embedding_tables": has_embeddings,
-                            "has_embedding_model": has_model,
-                            "embedding_model": storage.embedding_model_name if hasattr(storage, 'embedding_model_name') else "none"
-                        }
-
-                        # Get database file size
-                        db_path = storage.db_path if hasattr(storage, 'db_path') else None
-                        if db_path and os.path.exists(db_path):
-                            file_size = os.path.getsize(db_path)
-                            stats["database_size_bytes"] = file_size
-                            stats["database_size_mb"] = round(file_size / (1024 * 1024), 2)
-
-                        is_valid = True
-                        message = "SQLite-vec database validation successful"
-                except Exception as e:
-                    is_valid = False
-                    message = f"SQLite database validation error: {str(e)}"
-                    stats = {
-                        "status": "error",
-                        "error": str(e),
-                        "backend": "sqlite-vec"
-                    }
-
-        elif storage_type == "CloudflareStorage":
-            # Cloudflare storage validation
-            try:
-                # Check if storage is properly initialized
-                if not hasattr(storage, 'client') or storage.client is None:
-                    is_valid = False
-                    message = "Cloudflare storage client is not initialized"
-                    stats = {
-                        "status": "error",
-                        "error": "Cloudflare storage client is not initialized",
-                        "backend": "cloudflare"
-                    }
-                else:
-                    # Get storage stats
-                    storage_stats = await storage.get_stats()
-
-                    # Collect basic health info
-                    stats = {
-                        "status": "healthy",
-                        "backend": "cloudflare",
-                        "total_memories": storage_stats.get("total_memories", 0),
-                        "vectorize_index": storage.vectorize_index,
-                        "d1_database_id": storage.d1_database_id,
-                        "r2_bucket": storage.r2_bucket,
-                        "embedding_model": storage.embedding_model
-                    }
-
-                    # Add additional stats if available
-                    stats.update(storage_stats)
-
-                    is_valid = True
-                    message = "Cloudflare storage validation successful"
-
-            except Exception as e:
-                is_valid = False
-                message = f"Cloudflare storage validation error: {str(e)}"
-                stats = {
-                    "status": "error",
-                    "error": str(e),
-                    "backend": "cloudflare"
-                }
-
-        elif storage_type == "HybridMemoryStorage":
-            # Hybrid storage validation (SQLite-vec primary + Cloudflare secondary)
-            try:
-                if not hasattr(storage, 'primary') or storage.primary is None:
-                    is_valid = False
-                    message = "Hybrid storage primary backend is not initialized"
-                    stats = {
-                        "status": "error",
-                        "error": "Hybrid storage primary backend is not initialized",
-                        "backend": "hybrid"
-                    }
-                else:
-                    primary_storage = storage.primary
-                    # Validate primary storage (SQLite-vec)
-                    if not hasattr(primary_storage, 'conn') or primary_storage.conn is None:
-                        is_valid = False
-                        message = "Hybrid storage: SQLite connection is not initialized"
-                        stats = {
-                            "status": "error",
-                            "error": "SQLite connection is not initialized",
-                            "backend": "hybrid"
-                        }
-                    else:
-                        # Check for required tables
-                        cursor = primary_storage.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memories'")
-                        if not cursor.fetchone():
-                            is_valid = False
-                            message = "Hybrid storage: SQLite database is missing required tables"
-                            stats = {
-                                "status": "error",
-                                "error": "SQLite database is missing required tables",
-                                "backend": "hybrid"
-                            }
-                        else:
-                            # Count memories
-                            cursor = primary_storage.conn.execute('SELECT COUNT(*) FROM memories')
-                            memory_count = cursor.fetchone()[0]
-
-                            # Check if embedding tables exist
-                            cursor = primary_storage.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'")
-                            has_embeddings = cursor.fetchone() is not None
-
-                            # Check secondary (Cloudflare) status
-                            cloudflare_status = "not_configured"
-                            if hasattr(storage, 'secondary') and storage.secondary:
-                                sync_service = getattr(storage, 'sync_service', None)
-                                if sync_service and getattr(sync_service, 'is_running', False):
-                                    cloudflare_status = "syncing"
-                                else:
-                                    cloudflare_status = "configured"
-
-                            # Collect stats
-                            stats = {
-                                "status": "healthy",
-                                "backend": "hybrid",
-                                "total_memories": memory_count,
-                                "has_embeddings": has_embeddings,
-                                "database_path": getattr(primary_storage, 'db_path', SQLITE_VEC_PATH),
-                                "cloudflare_sync": cloudflare_status
-                            }
-
-                            is_valid = True
-                            message = f"Hybrid storage validation successful ({memory_count} memories, Cloudflare: {cloudflare_status})"
-
-            except Exception as e:
-                is_valid = False
-                message = f"Hybrid storage validation error: {str(e)}"
-                stats = {
-                    "status": "error",
-                    "error": str(e),
-                    "backend": "hybrid"
-                }
-
-        else:
-            is_valid = False
-            message = f"Unknown storage type: {storage_type}"
-            stats = {
-                "status": "error",
-                "error": f"Unknown storage type: {storage_type}",
-                "backend": "unknown"
-            }
+        # Use Strategy pattern to check backend-specific health
+        checker = HealthCheckFactory.create(storage)
+        is_valid, message, stats = await checker.check_health(storage)
 
         # Get performance stats from optimized storage
         performance_stats = {}
@@ -263,11 +84,9 @@ async def handle_check_database_health(server, arguments: dict) -> List[types.Te
         # Get server-level performance stats
         server_stats = {
             "average_query_time_ms": server.get_average_query_time(),
-            "total_queries": len(server.query_times)
+            "total_queries": len(server.query_times),
+            "storage_type": storage.__class__.__name__
         }
-
-        # Add storage type for debugging
-        server_stats["storage_type"] = storage_type
 
         # Add storage initialization status for debugging
         if hasattr(storage, 'get_initialization_status') and callable(storage.get_initialization_status):
