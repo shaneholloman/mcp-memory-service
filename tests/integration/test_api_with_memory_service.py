@@ -883,12 +883,25 @@ async def test_http_api_error_handling_invalid_json(temp_db):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_http_api_client_hostname_header(temp_db, unique_content):
+async def test_http_api_client_hostname_header(temp_db, unique_content, monkeypatch):
     """
     Test that X-Client-Hostname header is processed correctly.
 
     Verifies hostname tagging works through real HTTP request.
+    NOTE: Requires MCP_MEMORY_INCLUDE_HOSTNAME=true for hostname tagging to be enabled.
     """
+    # Enable hostname tagging for this test
+    monkeypatch.setenv('MCP_MEMORY_INCLUDE_HOSTNAME', 'true')
+
+    # Must reload config module to pick up new env var
+    import importlib
+    from mcp_memory_service import config
+    importlib.reload(config)
+
+    # Also patch the already-imported INCLUDE_HOSTNAME in memories.py
+    from mcp_memory_service.web.api import memories
+    monkeypatch.setattr(memories, 'INCLUDE_HOSTNAME', True)
+
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
 
