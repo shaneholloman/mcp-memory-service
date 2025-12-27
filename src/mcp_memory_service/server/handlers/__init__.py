@@ -19,6 +19,6 @@ Extracted from monolithic server_impl.py for better maintainability.
 Each module contains related handler functions for specific functionality.
 """
 
-from . import memory, consolidation, utility
+from . import memory, consolidation, utility, documents, quality
 
-__all__ = ['memory', 'consolidation', 'utility']
+__all__ = ['memory', 'consolidation', 'utility', 'documents', 'quality']
