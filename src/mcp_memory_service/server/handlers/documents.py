@@ -145,16 +145,18 @@ async def handle_ingest_directory(server, arguments: dict) -> List[types.TextCon
     """Handle directory ingestion requests."""
     try:
         from pathlib import Path
-        from ...ingestion import get_loader_for_file, is_supported_file
-        from ...models.memory import Memory
-        from ...utils import generate_content_hash
         import time
+        from ...services.memory_service import normalize_tags
+        from ...utils.directory_ingestion import (
+            DirectoryFileDiscovery,
+            FileIngestionProcessor,
+            IngestionResultFormatter
+        )
 
         # Initialize storage lazily when needed
         storage = await server._ensure_storage_initialized()
 
-        from ...services.memory_service import normalize_tags
-
+        # Parse arguments
         directory_path = Path(arguments["directory_path"])
         tags = normalize_tags(arguments.get("tags", []))
         recursive = arguments.get("recursive", True)
@@ -162,6 +164,7 @@ async def handle_ingest_directory(server, arguments: dict) -> List[types.TextCon
         chunk_size = arguments.get("chunk_size", 1000)
         max_files = arguments.get("max_files", 100)
 
+        # Validate directory
         if not directory_path.exists() or not directory_path.is_dir():
             return [types.TextContent(
                 type="text",
@@ -171,28 +174,14 @@ async def handle_ingest_directory(server, arguments: dict) -> List[types.TextCon
         logger.info(f"Starting directory ingestion: {directory_path}")
         start_time = time.time()
 
-        # Find all supported files
-        pattern = "**/*" if recursive else "*"
-        all_files = []
-
-        for ext in file_extensions:
-            ext_pattern = f"*.{ext.lstrip('.')}"
-            if recursive:
-                files = list(directory_path.rglob(ext_pattern))
-            else:
-                files = list(directory_path.glob(ext_pattern))
-            all_files.extend(files)
-
-        # Remove duplicates and filter supported files
-        unique_files = []
-        seen = set()
-        for file_path in all_files:
-            if file_path not in seen and is_supported_file(file_path):
-                unique_files.append(file_path)
-                seen.add(file_path)
-
-        # Limit number of files
-        files_to_process = unique_files[:max_files]
+        # Discover files
+        discovery = DirectoryFileDiscovery(
+            directory_path=directory_path,
+            file_extensions=file_extensions,
+            recursive=recursive,
+            max_files=max_files
+        )
+        files_to_process = discovery.discover_files()
 
         if not files_to_process:
             return [types.TextContent(
@@ -200,91 +189,37 @@ async def handle_ingest_directory(server, arguments: dict) -> List[types.TextCon
                 text=f"No supported files found in directory: {directory_path}"
             )]
 
-        total_chunks_processed = 0
-        total_chunks_stored = 0
-        files_processed = 0
-        files_failed = 0
-        all_errors = []
+        # Process files
+        processor = FileIngestionProcessor(
+            storage=storage,
+            chunk_size=chunk_size,
+            base_tags=tags
+        )
 
-        # Process each file
-        for file_path in files_to_process:
-            try:
-                logger.info(f"Processing file {files_processed + 1}/{len(files_to_process)}: {file_path.name}")
+        for index, file_path in enumerate(files_to_process, start=1):
+            await processor.process_file(
+                file_path=file_path,
+                file_index=index,
+                total_files=len(files_to_process),
+                directory_name=directory_path.name
+            )
 
-                # Get appropriate document loader
-                loader = get_loader_for_file(file_path)
-                if loader is None:
-                    all_errors.append(f"{file_path.name}: Unsupported format")
-                    files_failed += 1
-                    continue
-
-                # Configure loader
-                loader.chunk_size = chunk_size
-
-                file_chunks_processed = 0
-                file_chunks_stored = 0
-
-                # Import helper function
-                from ...utils.document_processing import _process_and_store_chunk
-
-                # Extract and store chunks from this file
-                async for chunk in loader.extract_chunks(file_path):
-                    file_chunks_processed += 1
-                    total_chunks_processed += 1
-
-                    # Process and store the chunk
-                    success, error = await _process_and_store_chunk(
-                        chunk,
-                        storage,
-                        file_path.name,
-                        base_tags=tags.copy(),
-                        context_tags={
-                            "source_dir": directory_path.name,
-                            "file_type": file_path.suffix.lstrip('.')
-                        }
-                    )
-
-                    if success:
-                        file_chunks_stored += 1
-                        total_chunks_stored += 1
-                    else:
-                        all_errors.append(error)
-
-                if file_chunks_stored > 0:
-                    files_processed += 1
-                else:
-                    files_failed += 1
-
-            except Exception as e:
-                files_failed += 1
-                all_errors.append(f"{file_path.name}: {str(e)}")
-
+        # Format results
         processing_time = time.time() - start_time
-        success_rate = (total_chunks_stored / total_chunks_processed * 100) if total_chunks_processed > 0 else 0
+        stats = processor.get_statistics()
 
-        # Prepare result message
-        result_lines = [
-            f"✅ Directory ingestion completed: {directory_path.name}",
-            f"📁 Files processed: {files_processed}/{len(files_to_process)}",
-            f"📄 Total chunks processed: {total_chunks_processed}",
-            f"💾 Total chunks stored: {total_chunks_stored}",
-            f"⚡ Success rate: {success_rate:.1f}%",
-            f"⏱️  Processing time: {processing_time:.2f} seconds"
-        ]
+        result_lines = IngestionResultFormatter.format_result(
+            directory_name=directory_path.name,
+            files_processed=stats["files_processed"],
+            total_files=len(files_to_process),
+            total_chunks_processed=stats["total_chunks_processed"],
+            total_chunks_stored=stats["total_chunks_stored"],
+            files_failed=stats["files_failed"],
+            all_errors=stats["all_errors"],
+            processing_time=processing_time
+        )
 
-        if files_failed > 0:
-            result_lines.append(f"❌ Files failed: {files_failed}")
-
-        if all_errors:
-            result_lines.append(f"⚠️  Total errors: {len(all_errors)}")
-            # Show first few errors
-            error_limit = 5
-            for error in all_errors[:error_limit]:
-                result_lines.append(f"   - {error}")
-            if len(all_errors) > error_limit:
-                result_lines.append(f"   ... and {len(all_errors) - error_limit} more errors")
-
-        logger.info(f"Directory ingestion completed: {total_chunks_stored}/{total_chunks_processed} chunks from {files_processed} files")
+        logger.info(f"Directory ingestion completed: {stats['total_chunks_stored']}/{stats['total_chunks_processed']} chunks from {stats['files_processed']} files")
         return [types.TextContent(type="text", text="\n".join(result_lines))]
 
     except Exception as e:
