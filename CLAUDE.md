@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.57.0**: **Test Infrastructure Improvements** - Major test suite stabilization with +6% pass rate (84% → 90%), 32 tests fixed, 42% error reduction. Critical systems now at 100%: Memory Service (36/36), mDNS (50/50), Storage. Fixed missing imports, MemoryQueryResult type flow, AsyncMock configuration. New unique_content() fixture eliminates duplicate content errors. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.58.0**: **Test Infrastructure Stabilization - Phase 4** - Achieved 100% test pass rate (81.6% → 100%), 52 tests fixed across 5 commits. ONE-LINE FIX: check_same_thread=False in sqlite_vec.py resolved 21 thread-safety tests. Key achievements: SQLite async compatibility with FastAPI, API format evolution tracking (memories → results), unique_content() fixture for test isolation, config-aware testing infrastructure. Complete test suite stability milestone. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

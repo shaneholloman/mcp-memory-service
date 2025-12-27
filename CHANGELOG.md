@@ -10,6 +10,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.58.0] - 2025-12-27
+
+### Fixed
+- **Test Infrastructure Stabilization - Phase 4** - Achieved 100% test pass rate (52 tests fixed across 5 commits)
+  - **Phase 4.1: Content Uniqueness & Timeouts** (11 tests fixed)
+    - Added unique_content() fixture to prevent duplicate content detection errors
+    - Fixed test_operations.py: 6 tests now use unique content per test
+    - Fixed test_api_with_memory_service.py: 5 tests use unique content
+  - **Phase 4.2 Part 1: Thread-Safety & API Format** (32 tests fixed)
+    - **ONE-LINE FIX**: Added `check_same_thread=False` in sqlite_vec.py for FastAPI async operations
+    - Fixed 21 thread-safety tests in test_server_handlers.py
+    - Fixed 11 API format tests: Updated mocks from "memories" to "results" key
+  - **Phase 4.2 Part 2: Mock Setup** (4 tests fixed)
+    - Fixed test_api_tag_time_search.py: Mock type consistency (Memory vs MemoryQueryResult)
+    - Fixed test_memory_service.py: Proper MemoryQueryResult wrapper usage
+  - **Phase 4.3: Flaky Integration Tests** (3 tests fixed)
+    - Fixed test_api_with_memory_service.py: Config-aware testing for chunking and hostname tagging
+    - Tests now respect MCP_CHUNKED_STORAGE_ENABLED environment variable
+  - **Phase 4.4: Pre-Existing Failures** (2 tests fixed)
+    - Fixed cache_manager.py import in test_server_handlers.py
+    - Addressed pre-existing failures unrelated to Phase 4 work
+  - **Results**: 231/283 → 283/283 tests passing (81.6% → 100% pass rate)
+  - **Technical Achievements**:
+    - SQLite thread-safety for FastAPI async operations (single-line fix with major impact)
+    - API response format evolution tracking: "memories" → "results"
+    - Mock type consistency: Memory vs MemoryQueryResult properly handled
+    - Config-aware testing infrastructure for optional features
+
 ## [8.57.1] - 2025-12-26
 
 ### Fixed

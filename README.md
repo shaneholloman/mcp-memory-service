@@ -124,16 +124,19 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.57.1** (Dec 26, 2025)
+## 🆕 Latest Release: **v8.58.0** (Dec 27, 2025)
 
-**Hotfix: Python -m Execution Support for CI/CD**
+**Test Infrastructure Stabilization - 100% Pass Rate Achievement**
 
-- 🔧 **CI/CD Fix** - Added server/__main__.py to restore python -m execution
-- 🐛 **Bug Resolution** - Fixes GitHub Actions failures in Docker and uvx tests
-- 🔄 **Regression Fix** - Addresses v8.56.0 server refactoring side effect (server.py → server/ package)
-- ⚡ **Flag Handling** - Implements --version and --help with proper exit behavior
+- ✅ **Complete Test Suite Stability** - 52 tests fixed across 5 commits (81.6% → 100% pass rate)
+- 🎯 **ONE-LINE FIX Impact** - check_same_thread=False in sqlite_vec.py fixed 21 tests
+- 🧵 **Thread-Safety** - SQLite async operations now compatible with FastAPI
+- 🔧 **Mock Consistency** - API format evolution tracked (memories → results)
+- 🧪 **Test Isolation** - unique_content() fixture prevents duplicate detection errors
+- 📊 **Config-Aware Testing** - Tests respect MCP_CHUNKED_STORAGE_ENABLED and optional features
 
 **Previous Releases**:
+- **v8.57.1** - Hotfix: Python -m Execution Support for CI/CD (server/__main__.py, --version/--help flags)
 - **v8.57.0** - Test Infrastructure Improvements - Major Stability Boost (+6% pass rate, 32 tests fixed)
 - **v8.56.0** - Server Architecture Refactoring - Phase 1 (4 focused modules, -7% lines, backward compatible)
 - **v8.55.0** - AI-Optimized MCP Tool Descriptions (30-50% reduction in incorrect tool selection)
