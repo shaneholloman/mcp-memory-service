@@ -124,21 +124,21 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.0** (Dec 27, 2025)
+## 🆕 Latest Release: **v8.62.1** (Dec 28, 2025)
 
-**MAJOR: Comprehensive Test Coverage Infrastructure - 100% Handler Coverage Achievement**
+**CRITICAL BUG FIX: SessionEnd Hook Now Reads Real Conversation Data**
 
-- 🎯 **100% Handler Coverage** - All 17 memory handlers now have comprehensive integration tests (+470% coverage increase)
-- 🧪 **35 New Integration Tests** - 800+ lines of validation for response formats, imports, and error paths
-- 🛡️ **CI/CD Coverage Gate** - 80% minimum threshold enforced, blocks insufficient testing
-- 🔍 **Pre-PR Enhancement** - 7 to 9 validation checks (coverage, handler tests, import validation)
-- 🚀 **Prevention Guarantees** - Catches import errors (Issue #299) and response bugs (Issue #300) before merge
-- ✅ **Quality Metrics** - 4.96 avg complexity, 0 vulnerabilities, 2.1:1 error-to-success test ratio
+- 🐛 **Critical Fix** - SessionEnd hook was using hardcoded mock data instead of actual conversation transcript
+- 📝 **Real Transcript Parsing** - Now reads stdin from Claude Code and parses JSONL transcript files correctly
+- 🔧 **Robust Handling** - Supports both string and array content formats, handles malformed JSON gracefully
+- 🧪 **4 New Integration Tests** - Comprehensive validation of transcript parsing edge cases
+- 🎯 **Topic Limit Removed** - All relevant topics now captured in session summaries (was artificially limited to 5)
+- 🙏 **External Contribution** - Thanks to @channingwalton for discovering and fixing this bug (PR #301)
 
 **Previous Releases**:
+- **v8.62.0** - Comprehensive Test Coverage Infrastructure - 100% Handler Coverage Achievement (35 tests, 800+ lines, CI/CD gate)
 - **v8.61.2** - CRITICAL HOTFIX: delete_memory KeyError Fix (response parsing, validated delete flow)
 - **v8.61.1** - CRITICAL HOTFIX: Import Error Fix (5 MCP tools restored, relative import path correction)
-- **v8.61.0** - MILESTONE: Phase 3 Complete - Major Complexity Reduction Achievement (75% avg reduction, 4 design patterns, 896 lines utilities)
 - **v8.60.0** - Health Check Strategy Pattern Refactoring - Phase 3.1 (78% complexity reduction, Strategy pattern)
 - **v8.59.0** - Server Architecture Refactoring - Phase 2 (40% code reduction, 29 handlers extracted, 5 specialized modules)
 - **v8.58.0** - Test Infrastructure Stabilization - 100% Pass Rate Achievement (81.6% → 100%, 52 tests fixed)
