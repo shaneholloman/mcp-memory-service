@@ -1092,10 +1092,10 @@ function formatMemoriesForContext(memories, projectContext, options = {}) {
 function formatSessionConsolidation(sessionData, projectContext) {
     try {
         const timestamp = new Date().toISOString();
-        
+
         let consolidation = `# Session Summary - ${projectContext.name}\n`;
         consolidation += `**Project**: ${projectContext.name} (${projectContext.language})\n\n`;
-        
+
         if (sessionData.topics && sessionData.topics.length > 0) {
             consolidation += `## 🎯 Topics Discussed\n`;
             sessionData.topics.forEach(topic => {

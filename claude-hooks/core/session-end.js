@@ -85,7 +85,7 @@ function analyzeConversation(conversationData) {
                 analysis.topics.push(topic);
             }
         });
-        
+
         // Extract decisions (look for decision language)
         const decisionPatterns = [
             /decided to|decision to|chose to|choosing|will use|going with/g,
@@ -184,7 +184,7 @@ function analyzeConversation(conversationData) {
         analysis.confidence = Math.min(1.0, totalExtracted / 10); // Max confidence at 10+ items
         
         // Limit arrays to prevent overwhelming output
-        analysis.topics = analysis.topics.slice(0, 5);
+        // Topics: no limit needed (max 10 possible keywords)
         analysis.decisions = analysis.decisions.slice(0, 3);
         analysis.insights = analysis.insights.slice(0, 3);
         analysis.codeChanges = analysis.codeChanges.slice(0, 4);
@@ -447,40 +447,178 @@ module.exports = {
         async: true,
         timeout: 15000, // 15 second timeout
         priority: 'normal'
+    },
+    // Exported for testing
+    _internal: {
+        parseTranscript: null,  // Will be set after function definition
+        analyzeConversation
     }
 };
 
-// Direct execution support for testing
-if (require.main === module) {
-    // Test the hook with mock context
-    const mockConversation = {
-        messages: [
-            {
-                role: 'user',
-                content: 'I need to implement a memory awareness system for Claude Code'
-            },
-            {
-                role: 'assistant',
-                content: 'I\'ll help you create a memory awareness system. We decided to use hooks for session management and implement automatic context injection.'
-            },
-            {
-                role: 'user', 
-                content: 'Great! I learned that we need project detection and memory scoring algorithms.'
-            },
-            {
-                role: 'assistant',
-                content: 'Exactly. I implemented the project detector in project-detector.js and created scoring algorithms. Next we need to test the complete system.'
+/**
+ * Read JSON context from stdin (provided by Claude Code)
+ * Returns: { transcript_path, reason, cwd, session_id, ... }
+ */
+async function readStdinContext() {
+    return new Promise((resolve, reject) => {
+        let data = '';
+
+        // Set a timeout in case stdin is empty or never closes
+        const timeout = setTimeout(() => {
+            resolve(null); // No stdin data - likely manual test run
+        }, 100);
+
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('readable', () => {
+            let chunk;
+            while ((chunk = process.stdin.read()) !== null) {
+                data += chunk;
             }
-        ]
-    };
-    
-    const mockContext = {
-        workingDirectory: process.cwd(),
-        sessionId: 'test-session',
-        conversation: mockConversation
-    };
-    
-    onSessionEnd(mockContext)
-        .then(() => console.log('Session end hook test completed'))
-        .catch(error => console.error('Session end hook test failed:', error));
+        });
+
+        process.stdin.on('end', () => {
+            clearTimeout(timeout);
+            if (data.trim()) {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (error) {
+                    console.error('[Memory Hook] Failed to parse stdin JSON:', error.message);
+                    reject(error);
+                }
+            } else {
+                resolve(null);
+            }
+        });
+
+        process.stdin.on('error', (error) => {
+            clearTimeout(timeout);
+            console.error('[Memory Hook] Stdin error:', error.message);
+            reject(error);
+        });
+    });
+}
+
+/**
+ * Parse JSONL transcript file to extract conversation messages
+ * @param {string} transcriptPath - Path to the .jsonl transcript file
+ * @returns {Object} - { messages: Array<{role, content}> }
+ */
+async function parseTranscript(transcriptPath) {
+    try {
+        const content = await fs.readFile(transcriptPath, 'utf8');
+        const lines = content.trim().split('\n');
+        const messages = [];
+
+        for (const line of lines) {
+            if (!line.trim()) continue;
+
+            try {
+                const entry = JSON.parse(line);
+
+                // Only process user and assistant messages
+                if (entry.type === 'user' || entry.type === 'assistant') {
+                    const msg = entry.message;
+                    if (msg && msg.role && msg.content) {
+                        // Handle content that can be string or array of content blocks
+                        let contentText = '';
+                        if (typeof msg.content === 'string') {
+                            contentText = msg.content;
+                        } else if (Array.isArray(msg.content)) {
+                            // Extract text from content blocks
+                            contentText = msg.content
+                                .filter(block => block.type === 'text')
+                                .map(block => block.text)
+                                .join('\n');
+                        }
+
+                        if (contentText) {
+                            messages.push({
+                                role: msg.role,
+                                content: contentText
+                            });
+                        }
+                    }
+                }
+            } catch (parseError) {
+                // Skip malformed lines
+                continue;
+            }
+        }
+
+        return { messages };
+    } catch (error) {
+        console.error('[Memory Hook] Failed to parse transcript:', error.message);
+        return { messages: [] };
+    }
+}
+
+// Set parseTranscript on exports for testing (after function is defined)
+module.exports._internal.parseTranscript = parseTranscript;
+
+/**
+ * Mock conversation for manual testing (when no stdin/transcript available)
+ */
+const mockConversation = {
+    messages: [
+        {
+            role: 'user',
+            content: 'I need to implement a memory awareness system for Claude Code'
+        },
+        {
+            role: 'assistant',
+            content: 'I\'ll help you create a memory awareness system. We decided to use hooks for session management and implement automatic context injection.'
+        },
+        {
+            role: 'user',
+            content: 'Great! I learned that we need project detection and memory scoring algorithms.'
+        },
+        {
+            role: 'assistant',
+            content: 'Exactly. I implemented the project detector in project-detector.js and created scoring algorithms. Next we need to test the complete system.'
+        }
+    ]
+};
+
+// Direct execution - reads stdin context from Claude Code
+if (require.main === module) {
+    (async () => {
+        try {
+            // Read context from stdin (Claude Code provides this)
+            const stdinContext = await readStdinContext();
+
+            let context;
+
+            if (stdinContext && stdinContext.transcript_path) {
+                // Real execution: parse transcript file
+                console.log(`[Memory Hook] Reading transcript: ${stdinContext.transcript_path}`);
+                console.log(`[Memory Hook] Session end reason: ${stdinContext.reason || 'unknown'}`);
+
+                const conversation = await parseTranscript(stdinContext.transcript_path);
+
+                context = {
+                    workingDirectory: stdinContext.cwd || process.cwd(),
+                    sessionId: stdinContext.session_id || 'unknown',
+                    reason: stdinContext.reason,
+                    conversation: conversation
+                };
+
+                console.log(`[Memory Hook] Parsed ${conversation.messages.length} messages from transcript`);
+            } else {
+                // Manual test: use mock data
+                console.log('[Memory Hook] No stdin context - using mock data for testing');
+                context = {
+                    workingDirectory: process.cwd(),
+                    sessionId: 'test-session',
+                    conversation: mockConversation
+                };
+            }
+
+            await onSessionEnd(context);
+            console.log('Session end hook completed');
+
+        } catch (error) {
+            console.error('Session end hook failed:', error);
+            process.exit(1);
+        }
+    })();
 }

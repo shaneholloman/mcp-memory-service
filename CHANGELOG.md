@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **SessionEnd Hook: Read actual conversation from transcript** (claude-hooks)
+  - Fixed hook using hardcoded mock conversation data instead of real session transcript
+  - Root cause: Main execution block always used mock data, never read stdin from Claude Code
+  - Solution: Added `readStdinContext()` and `parseTranscript()` to read actual conversation
+  - Hook now reads `{transcript_path, reason, cwd}` from stdin and parses JSONL transcript
+  - Mock data preserved as fallback for manual testing only
+  - **Impact**: Session consolidation memories now contain actual conversation content
+  - **Files Changed**: `claude-hooks/core/session-end.js`
+
+- **SessionEnd Hook: Remove arbitrary 5-topic limit** (claude-hooks)
+  - Fixed `analyzeConversation()` dropping relevant topics due to 5-topic limit
+  - Root cause: Topics were limited to 5, but order-dependent matching meant specific topics (e.g., "database") were dropped when generic keywords matched first
+  - Solution: Removed the `.slice(0, 5)` limit (only 10 possible topics anyway)
+  - **Impact**: All matching topics are now captured in session summaries
+  - **Files Changed**: `claude-hooks/core/session-end.js`
+
 ## [8.62.0] - 2025-12-27
 
 ### Added
