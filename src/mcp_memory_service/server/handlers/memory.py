@@ -600,7 +600,7 @@ async def handle_recall_memory(server, arguments: dict) -> List[types.TextConten
     This handler parses natural language time expressions from the query,
     extracts time ranges, and combines them with optional semantic search.
     """
-    from ..utils.time_utils import extract_time_expression, parse_time_expression
+    from ...utils.time_parser import extract_time_expression, parse_time_expression
 
     query = arguments.get("query", "")
     n_results = arguments.get("n_results", 5)
