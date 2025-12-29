@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.62.3**: **CRITICAL HOTFIX - Memory Recall Import Error** - Fixed incorrect import path in `handle_recall_memory` handler (was importing from non-existent `time_utils`, corrected to `time_parser`). Restores recall_memory tool functionality with time expressions. All tests pass (99% pass rate). See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.62.4**: **CRITICAL HOTFIX - SQLite-Vec KNN Syntax Error** - Fixed semantic search completely broken on sqlite-vec/hybrid backends (affects majority of users). Updated KNN queries to use `k = ?` parameter syntax required by SQLite-Vec v0.1.0+ (was using deprecated `LIMIT ?`). Added integration tests for regression prevention. Thanks to @feroult for the fix. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

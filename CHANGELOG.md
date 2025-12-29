@@ -10,6 +10,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.4] - 2025-12-29
+
+### Fixed
+- **Critical SQLite-Vec KNN Syntax Error** - Fixed semantic search queries failing with OperationalError (PR #308)
+  - Issue: `sqlite3.OperationalError: A LIMIT or 'k = ?' constraint is required on vec0 knn queries`
+  - Root cause: SQLite-Vec v0.1.0+ requires `k = ?` parameter syntax instead of `LIMIT ?` for KNN queries
+  - Impact: Complete failure of semantic search operations (retrieve_memory, recall_memory) on sqlite-vec backend
+  - Fix: Updated `SqliteVecMemoryStorage.retrieve()` and `SqliteVecMemoryStorage.recall()` to use `k = ?` parameter
+  - Files changed: `src/mcp_memory_service/storage/sqlite_vec_memory_storage.py` (lines 245, 340)
+  - Contributor: @feroult (Fernando Ultremare)
+
+### Added
+- **Integration Tests for KNN Syntax** - Regression prevention for sqlite-vec query syntax (commit 29c7d7e)
+  - New test: `test_retrieve_knn_syntax` - Validates `k = ?` parameter in retrieve() queries
+  - New test: `test_recall_knn_syntax` - Validates `k = ?` parameter in recall() queries with time expressions
+  - Coverage: Explicit SQL query validation to prevent future syntax regressions
+  - Files: `tests/integration/test_sqlite_vec_storage.py`
+
+### Impact
+- **Severity**: Critical (P0) - Completely broke semantic search functionality
+- **Affected Users**: All users on sqlite-vec or hybrid backends (majority of installations)
+- **Regression Risk**: Low - Integration tests now validate KNN syntax explicitly
+- **Upgrade Note**: No action required - fix is backward compatible
+
+### Related
+- **PR #308**: Fix sqlite-vec KNN syntax error (merged)
+- **Issue #309**: Documentation and CHANGELOG updates (this release)
+- **SQLite-Vec v0.1.0**: Breaking change introduced `k = ?` requirement
+
 ## [8.62.3] - 2025-12-29
 
 ### Fixed

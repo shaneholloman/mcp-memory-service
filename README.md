@@ -124,15 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.3** (Dec 29, 2025)
+## 🆕 Latest Release: **v8.62.4** (Dec 29, 2025)
 
-**CRITICAL BUGFIX: Memory Recall Handler Import Error**
+**CRITICAL BUGFIX: SQLite-Vec KNN Syntax Error (Semantic Search Failure)**
 
-- 🐛 **Fixed ImportError** - Corrected import path in `handle_recall_memory` handler (was importing from non-existent `time_utils`, fixed to `time_parser`)
-- ✅ **Restore Functionality** - Memory recall with time expressions now works correctly
-- 🔧 **Zero Regression** - All 87 tests pass (99% pass rate maintained)
+- 🔴 **Critical Fix** - Semantic search completely broken on sqlite-vec/hybrid backends (affects majority of users)
+- 🛠️ **KNN Syntax** - Fixed `k = ?` parameter requirement for SQLite-Vec v0.1.0+ (was using deprecated `LIMIT ?`)
+- ✅ **Regression Tests** - Added integration tests to prevent future KNN syntax errors
+- 🙏 **Thanks** - @feroult (Fernando Ultremare) for the critical fix
 
 **Previous Releases**:
+- **v8.62.3** - CRITICAL BUGFIX: Memory Recall Handler Import Error (time_parser import path correction)
 - **v8.62.2** - Test Infrastructure Improvements (5 test failures resolved, consolidation & performance suite stability)
 - **v8.62.1** - Critical Bug Fix: SessionEnd Hook Real Conversation Data (hardcoded mock data fix, robust transcript parsing)
 - **v8.62.0** - Comprehensive Test Coverage Infrastructure - 100% Handler Coverage Achievement (35 tests, 800+ lines, CI/CD gate)
