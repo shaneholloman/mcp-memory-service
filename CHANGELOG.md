@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.3] - 2025-12-29
+
+### Fixed
+- **Critical Import Error in handle_recall_memory** - Fixed incorrect import path causing tool failure
+  - Issue: Handler imported from non-existent `..utils.time_utils` module
+  - Fix: Corrected to import from `...utils.time_parser` (actual module location)
+  - Impact: Restored recall_memory tool functionality with time expressions
+  - Functions affected: `extract_time_expression`, `parse_time_expression`
+  - All tests pass (87/88 - 99% pass rate maintained)
+
 ## [8.62.2] - 2025-12-28
 
 ### Fixed

@@ -124,17 +124,16 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.2** (Dec 28, 2025)
+## 🆕 Latest Release: **v8.62.3** (Dec 29, 2025)
 
-**TEST INFRASTRUCTURE: Consolidation & Performance Test Stability**
+**CRITICAL BUGFIX: Memory Recall Handler Import Error**
 
-- ✅ **5 Test Failures Resolved** - Fixed consolidation suite (4 tests) and performance suite (1 test) from Issue #295
-- 🔧 **Async/Await Fix** - Corrected TypeErrors in hybrid storage cleanup with proper None-checks and exception handling
-- 🧪 **pytest-asyncio** - Added asyncio_mode = auto configuration to eliminate deprecation warnings
-- 🔐 **HTTP API Tests** - Disabled authentication in test fixtures for proper isolation (partial fix for Issue #303)
-- 📊 **Quality Metrics** - Maintained 75% A-grade complexity, zero security regressions, no performance impact
+- 🐛 **Fixed ImportError** - Corrected import path in `handle_recall_memory` handler (was importing from non-existent `time_utils`, fixed to `time_parser`)
+- ✅ **Restore Functionality** - Memory recall with time expressions now works correctly
+- 🔧 **Zero Regression** - All 87 tests pass (99% pass rate maintained)
 
 **Previous Releases**:
+- **v8.62.2** - Test Infrastructure Improvements (5 test failures resolved, consolidation & performance suite stability)
 - **v8.62.1** - Critical Bug Fix: SessionEnd Hook Real Conversation Data (hardcoded mock data fix, robust transcript parsing)
 - **v8.62.0** - Comprehensive Test Coverage Infrastructure - 100% Handler Coverage Achievement (35 tests, 800+ lines, CI/CD gate)
 - **v8.61.2** - CRITICAL HOTFIX: delete_memory KeyError Fix (response parsing, validated delete flow)

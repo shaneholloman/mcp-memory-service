@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.62.1**: **CRITICAL BUG FIX - SessionEnd Hook Now Reads Real Conversation Data** - Fixed hook using hardcoded mock data instead of actual session transcript. Now correctly reads stdin from Claude Code and parses JSONL transcript files (supports string/array content formats). 4 new integration tests added. Removed arbitrary 5-topic limit. Thanks to @channingwalton for contribution (PR #301). See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.62.3**: **CRITICAL HOTFIX - Memory Recall Import Error** - Fixed incorrect import path in `handle_recall_memory` handler (was importing from non-existent `time_utils`, corrected to `time_parser`). Restores recall_memory tool functionality with time expressions. All tests pass (99% pass rate). See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
