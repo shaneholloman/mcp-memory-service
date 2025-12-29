@@ -137,7 +137,71 @@ class TestSqliteVecStorage:
         """Test retrieving when no memories match."""
         results = await storage.retrieve("nonexistent query", n_results=5)
         assert len(results) == 0
-    
+
+    @pytest.mark.asyncio
+    async def test_retrieve_knn_syntax(self, storage):
+        """Test retrieve() uses k=? syntax correctly (PR #308 fix).
+
+        This test verifies that the KNN query doesn't throw:
+        sqlite3.OperationalError: A LIMIT or 'k = ?' constraint is required on vec0 knn queries.
+        """
+        # Store multiple memories for KNN search
+        memories = []
+        for i in range(5):
+            content = f"Test memory {i} for KNN parameter validation"
+            memory = Memory(
+                content=content,
+                content_hash=generate_content_hash(content),
+                tags=[f"knn-test-{i}"]
+            )
+            memories.append(memory)
+            await storage.store(memory)
+
+        # Test with various n_results values to ensure k=? works
+        for n in [1, 3, 5, 10]:
+            try:
+                results = await storage.retrieve("KNN parameter validation", n_results=n)
+                # Should not raise OperationalError
+                assert isinstance(results, list), f"Expected list for n_results={n}"
+                assert len(results) <= n, f"Should return at most {n} results"
+                assert len(results) <= len(memories), "Cannot return more than stored"
+            except Exception as e:
+                # Fail if we get the specific k=? constraint error
+                if "LIMIT or 'k = ?' constraint is required" in str(e):
+                    pytest.fail(f"KNN syntax error with n_results={n}: {e}")
+                raise  # Re-raise other errors
+
+    @pytest.mark.asyncio
+    async def test_recall_knn_syntax(self, storage):
+        """Test recall() uses k=? syntax correctly (PR #308 fix).
+
+        This test verifies that recall() with semantic search uses the correct
+        k=? parameter syntax and doesn't throw OperationalError.
+        """
+        # Store test memories
+        memories = []
+        for i in range(3):
+            content = f"Recall test memory {i} with semantic search capability"
+            memory = Memory(
+                content=content,
+                content_hash=generate_content_hash(content),
+                tags=["recall-knn-test"]
+            )
+            memories.append(memory)
+            await storage.store(memory)
+
+        # Test recall with semantic query (uses k=? in subquery)
+        try:
+            results = await storage.recall("semantic search", n_results=2)
+            # Should not raise OperationalError
+            assert isinstance(results, list), "Expected list from recall()"
+            assert len(results) <= 2, "Should respect n_results limit"
+        except Exception as e:
+            # Fail if we get the specific k=? constraint error
+            if "LIMIT or 'k = ?' constraint is required" in str(e):
+                pytest.fail(f"Recall KNN syntax error: {e}")
+            raise  # Re-raise other errors
+
     @pytest.mark.asyncio
     async def test_search_by_tag(self, storage, sample_memory):
         """Test searching memories by tags."""
