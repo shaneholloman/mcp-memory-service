@@ -155,8 +155,8 @@ class TestVectorCountLimits:
     @pytest.mark.asyncio
     async def test_vector_limit_detection(self, hybrid_with_limits):
         """Test detection when approaching vector count limit."""
-        # Simulate high vector count
-        hybrid_with_limits.sync_service.cloudflare_stats['vector_count'] = 95
+        # Simulate high vector count in the mock Cloudflare backend
+        hybrid_with_limits.sync_service.secondary.vector_count = 95
 
         # Check capacity should detect we're at 95% (critical)
         capacity = await hybrid_with_limits.sync_service.check_cloudflare_capacity()
@@ -254,19 +254,19 @@ class TestCapacityMonitoring:
         service = hybrid_with_limits.sync_service
 
         # Test 50% - no warning
-        service.cloudflare_stats['vector_count'] = 50
+        service.secondary.vector_count = 50
         capacity = await service.check_cloudflare_capacity()
         assert not capacity['approaching_limits']
         assert len(capacity['warnings']) == 0
 
         # Test 80% - warning
-        service.cloudflare_stats['vector_count'] = 80
+        service.secondary.vector_count = 80
         capacity = await service.check_cloudflare_capacity()
         assert capacity['approaching_limits']
         assert "WARNING" in capacity['warnings'][0]
 
         # Test 95% - critical
-        service.cloudflare_stats['vector_count'] = 95
+        service.secondary.vector_count = 95
         capacity = await service.check_cloudflare_capacity()
         assert capacity['approaching_limits']
         assert "CRITICAL" in capacity['warnings'][0]
@@ -326,14 +326,8 @@ class TestIntegrationScenarios:
     @pytest.mark.asyncio
     async def test_periodic_capacity_check(self, hybrid_with_limits):
         """Test that periodic sync checks capacity."""
-        # Set up near-limit scenario
-        hybrid_with_limits.sync_service.cloudflare_stats['vector_count'] = 85
-
-        # Mock the secondary's get_stats
-        async def mock_get_stats():
-            return {"total_memories": 85}
-
-        hybrid_with_limits.sync_service.secondary.get_stats = mock_get_stats
+        # Set up near-limit scenario in the mock backend
+        hybrid_with_limits.sync_service.secondary.vector_count = 85
 
         # Run periodic sync
         await hybrid_with_limits.sync_service._periodic_sync()

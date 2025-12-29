@@ -329,6 +329,7 @@ class BackgroundSyncService:
             'is_running': self.is_running,
             'is_paused': not self.is_running,
             'pending_operations': queue_size,
+            'queue_size': queue_size,
             'failed_operations': len(self.failed_operations),
             'last_sync_time': self.last_sync_time,
             'consecutive_failures': self.consecutive_failures,

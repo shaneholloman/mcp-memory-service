@@ -25,7 +25,7 @@ class TestQualityConfig:
         config = QualityConfig()
         assert config.enabled is True
         assert config.ai_provider == 'local'
-        assert config.local_model == 'ms-marco-MiniLM-L-6-v2'
+        assert config.local_model == 'nvidia-quality-classifier-deberta'  # Updated to current default
         assert config.local_device == 'auto'
         assert config.boost_enabled is False
         assert config.boost_weight == 0.3

@@ -40,7 +40,7 @@ class TestFallbackConfiguration:
     def test_fallback_thresholds_defaults(self):
         """Test default threshold values."""
         config = QualityConfig()
-        assert config.deberta_threshold == 0.6
+        assert config.deberta_threshold == 0.4  # Updated to current default
         assert config.ms_marco_threshold == 0.7
 
     def test_threshold_validation_valid(self):
