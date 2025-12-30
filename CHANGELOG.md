@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.6] - 2025-12-30
+
+### Fixed
+- **CRITICAL PRODUCTION HOTFIX: SQLite Pragmas Container Restart Bug** (#310)
+  - **Problem**: SQLite pragmas (especially `busy_timeout`) were only applied during initial DB creation, causing "database is locked" errors after container restarts
+  - **Solution**: Moved pragma application from `initialize()` to `_connect_and_load_extension()` so it runs on every connection
+  - **Impact**: Fixes critical production locking errors in containerized deployments (Docker, Kubernetes)
+  - **Technical Details**:
+    - Pragmas are per-connection settings, not database-level settings
+    - Must be reapplied after every connection, not just first initialization
+    - Ensures `busy_timeout=10000` is set on every SQLite connection
+  - **Files Changed**: `src/mcp_memory_service/storage/sqlite_vec.py` (+28/-1)
+  - **Author**: @feroult (Fernando Ultremare)
+
 ## [8.62.5] - 2025-12-30
 
 ### Fixed
