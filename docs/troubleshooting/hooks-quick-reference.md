@@ -138,18 +138,20 @@ curl -sk "https://localhost:8000/api/search" \
 
 ## Windows SessionStart Hook Issue
 
-**CRITICAL BUG**: SessionStart hooks cause Claude Code to hang indefinitely on Windows ([#160](https://github.com/doobidoo/mcp-memory-service/issues/160))
+**✅ RESOLVED** (Claude Code 2.0.76+): This bug has been fixed. SessionStart hooks now work correctly on Windows.
 
-### Symptoms
+### Historical Issue (Pre-2.0.76)
+SessionStart hooks caused Claude Code to hang indefinitely on Windows ([#160](https://github.com/doobidoo/mcp-memory-service/issues/160) - CLOSED)
+
+**Symptoms** (no longer occur):
 - Claude Code unresponsive on startup
 - Cannot enter prompts or cancel with Ctrl+C
 - Must force-close terminal
 
-### Workarounds
+### Solution
+Update to Claude Code 2.0.76 or later. No workaround needed.
 
-1. **Use `/session-start` slash command** (recommended)
-2. **Disable SessionStart hooks** in configuration
-3. **Use UserPromptSubmit hooks instead**
+**Note**: The `/session-start` slash command remains available as a manual fallback if needed.
 
 ## Hook Configuration Synchronization
 

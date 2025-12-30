@@ -94,14 +94,13 @@ mcp context optimize                # Get optimization suggestions
 - **Release Workflow**: `how to release`, `PR workflow`, `version bump procedure`
 - **Issue Management**: `review open issues`, `what issues fixed`, `can we close`
 
-### Windows SessionStart Hook Issue 🚨
+### Windows SessionStart Hook ✅
 
-**CRITICAL - Windows Users**: SessionStart hooks with `matchers: ["*"]` cause Claude Code to hang indefinitely on Windows.
+**FIXED** (Claude Code 2.0.76+, December 2025): SessionStart hooks now work correctly on Windows.
 
-**Workaround**:
-- Disable SessionStart hooks on Windows
-- Use UserPromptSubmit hooks instead
-- See [Issue #160](https://github.com/doobidoo/mcp-memory-service/issues/160)
+The subprocess lifecycle bug ([Issue #160](https://github.com/doobidoo/mcp-memory-service/issues/160) - CLOSED) was fixed in Claude Code core.
+
+**No workaround needed** - SessionStart hooks can be enabled normally on Windows.
 
 ### Hook Configuration
 

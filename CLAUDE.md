@@ -251,7 +251,7 @@ export MCP_API_KEY="$(openssl rand -base64 32)" # Generate secure API key
 
 ## Claude Code Hooks Configuration 🆕
 
-> **🚨 CRITICAL - Windows Users**: SessionStart hooks cause Claude Code to hang on Windows (#160). **Workaround**: Use `/session-start` slash command or UserPromptSubmit hooks instead.
+> **✅ Windows SessionStart Fixed** (Claude Code 2.0.76+): SessionStart hooks now work correctly on Windows. The subprocess lifecycle bug (#160) was fixed in Claude Code core. No workaround needed.
 
 **Natural Memory Triggers v7.1.3** - 85%+ trigger accuracy, multi-tier processing (50ms → 150ms → 500ms)
 
@@ -413,9 +413,9 @@ See [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-q
 - Require 100+ characters, confidence > 0.1
 - Memory creation: topics, decisions, insights, code changes
 
-**Windows SessionStart Issue (#160):**
-- CRITICAL: SessionStart hooks hang Claude Code on Windows
-- Workaround: Use `/session-start` slash command or UserPromptSubmit hooks
+**Windows SessionStart (Fixed in Claude Code 2.0.76+):**
+- ✅ SessionStart hooks now work correctly on Windows
+- The subprocess lifecycle bug (#160) was fixed in Claude Code core
 
 See [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-quick-reference.md) for full troubleshooting guide.
 
