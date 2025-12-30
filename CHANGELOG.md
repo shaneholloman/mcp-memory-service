@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.8] - 2025-12-30
+
+### Fixed
+- **Environment Configuration Loading Bug** (commit 626d7e8)
+  - **Problem**: HTTP server wasn't loading .env configuration properly, defaulting to wrong settings (OAuth enabled, sqlite_vec backend instead of configured hybrid backend)
+  - **Root Causes**:
+    - `python-dotenv` was missing from dependencies in pyproject.toml, causing import failures
+    - .env loading only checked single location (relative to config file), failing for source installs and different deployment scenarios
+  - **Solution**:
+    - Added `python-dotenv>=1.0.0` to dependencies
+    - Implemented `_find_and_load_dotenv()` function with multi-location search strategy:
+      1. Current working directory (highest priority)
+      2. Relative to config file (for source installs)
+      3. Project root markers (searches for pyproject.toml)
+      4. Common Windows project paths
+      5. User home directory (~/.mcp-memory/.env)
+    - Uses `override=False` to respect existing environment variables
+  - **Impact**: Fixes critical configuration loading issues across all deployment scenarios (development, source installs, Docker, Windows)
+  - **Files Changed**:
+    - `src/mcp_memory_service/config.py` - Added _find_and_load_dotenv() with comprehensive search logic
+    - `pyproject.toml` - Added python-dotenv dependency
+
 ## [8.62.7] - 2025-12-30
 
 ### Fixed
