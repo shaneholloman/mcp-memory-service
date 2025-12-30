@@ -124,16 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.8** (Dec 30, 2025)
+## 🆕 Latest Release: **v8.62.9** (Dec 30, 2025)
 
-**Environment Configuration Loading Bug Fixed**
+**CI Race Condition & TypeError Fixed in Hybrid Backend**
 
-- 🐛 **Critical Configuration Fix** - HTTP server now properly loads .env configuration across all deployment scenarios
-- 📦 **Dependency Fix** - Added missing python-dotenv dependency to pyproject.toml
-- 🔍 **Multi-Location Search** - Comprehensive .env file discovery (CWD, project root, Windows paths, user home)
-- ⚙️ **Deployment Impact** - Fixes OAuth/backend defaults across development, source installs, Docker, Windows
+- 🐛 **Race Condition Fix** - Eliminates "Task was destroyed but pending" warnings in GitHub Actions CI
+- 🔧 **TypeError Fix** - Handles None values in total_memories stats (not just missing keys)
+- ✅ **Test Stability** - Fixes spurious CI failures on Linux (passed locally on Windows)
+- 🚀 **Robustness** - Proper background task cleanup during shutdown, improved edge case handling
 
 **Previous Releases**:
+- **v8.62.8** - Environment Configuration Loading Bug Fixed (.env discovery, python-dotenv dependency)
 - **v8.62.7** - Windows SessionStart Hook Bug Fixed in Claude Code 2.0.76+ (no more Windows hanging)
 - **v8.62.6** - CRITICAL PRODUCTION HOTFIX: SQLite Pragmas Container Restart Bug (database locking errors after container restarts)
 - **v8.62.5** - Test Suite Stability: 40 Tests Fixed (99% pass rate, 68% → 99% improvement)

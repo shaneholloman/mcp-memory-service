@@ -379,8 +379,8 @@ class BackgroundSyncService:
             # Get current stats from Cloudflare
             cf_stats = await self.secondary.get_stats()
 
-            # Update our tracking
-            self.cloudflare_stats['vector_count'] = cf_stats.get('total_memories', 0)
+            # Update our tracking (use 'or 0' to handle None values - v8.62.9)
+            self.cloudflare_stats['vector_count'] = cf_stats.get('total_memories') or 0
             self.cloudflare_stats['last_capacity_check'] = time.time()
 
             # Calculate usage percentages
@@ -835,6 +835,9 @@ class HybridMemoryStorage(MemoryStorage):
         # Pause state tracking (v8.47.1 - fix consolidation hang)
         self._sync_paused = False
 
+        # Track background tasks for proper cleanup (v8.62.9 - fix CI race condition)
+        self._initial_sync_task: Optional[asyncio.Task] = None
+
     async def initialize(self) -> None:
         """Initialize the hybrid storage system."""
         logger.info("Initializing hybrid memory storage...")
@@ -861,7 +864,7 @@ class HybridMemoryStorage(MemoryStorage):
 
                 # Schedule initial sync to run after server startup (non-blocking)
                 if HYBRID_SYNC_ON_STARTUP:
-                    asyncio.create_task(self._perform_initial_sync_after_startup())
+                    self._initial_sync_task = asyncio.create_task(self._perform_initial_sync_after_startup())
                     logger.info("Initial sync scheduled to run after server startup")
 
             except Exception as e:
@@ -911,8 +914,9 @@ class HybridMemoryStorage(MemoryStorage):
             primary_stats = await self.primary.get_stats()
             secondary_stats = await self.secondary.get_stats()
 
-            primary_count = primary_stats.get('total_memories', 0)
-            secondary_count = secondary_stats.get('total_memories', 0)
+            # Use 'or 0' to handle both missing keys AND None values (v8.62.9 - fix CI TypeError)
+            primary_count = primary_stats.get('total_memories') or 0
+            secondary_count = secondary_stats.get('total_memories') or 0
 
             logger.info(f"{sync_type.capitalize()} sync: Local={primary_count}, Cloudflare={secondary_count}")
 
@@ -1138,8 +1142,9 @@ class HybridMemoryStorage(MemoryStorage):
             # Set initial_sync_total before calling the shared helper
             primary_stats = await self.primary.get_stats()
             secondary_stats = await self.secondary.get_stats()
-            primary_count = primary_stats.get('total_memories', 0)
-            secondary_count = secondary_stats.get('total_memories', 0)
+            # Use 'or 0' to handle both missing keys AND None values (v8.62.9 - fix CI TypeError)
+            primary_count = primary_stats.get('total_memories') or 0
+            secondary_count = secondary_stats.get('total_memories') or 0
 
             if secondary_count > primary_count:
                 self.initial_sync_total = secondary_count - primary_count
@@ -1450,6 +1455,16 @@ class HybridMemoryStorage(MemoryStorage):
     async def close(self):
         """Clean shutdown of hybrid storage system."""
         logger.info("Shutting down hybrid memory storage...")
+
+        # Cancel initial sync task if still running (v8.62.9 - fix CI race condition)
+        if self._initial_sync_task and not self._initial_sync_task.done():
+            self._initial_sync_task.cancel()
+            try:
+                await self._initial_sync_task
+            except asyncio.CancelledError:
+                logger.debug("Initial sync task cancelled during shutdown")
+            except Exception as e:
+                logger.debug(f"Initial sync task error during shutdown: {e}")
 
         # Stop sync service first
         if self.sync_service:

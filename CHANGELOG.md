@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.9] - 2025-12-30
+
+### Fixed
+- **CI Race Condition & TypeError in Hybrid Backend** (hybrid.py)
+  - **Problem 1: CI Race Condition** - "Task was destroyed but pending" warnings in GitHub Actions Linux CI (passes locally on Windows)
+    - Initial sync task wasn't tracked, causing incomplete cleanup during shutdown
+    - Tests would sometimes finish before background sync task was properly cancelled
+  - **Problem 2: TypeError in Stats Comparison** - `.get('total_memories', 0)` fails when `total_memories` is explicitly None (not just missing)
+    - Cloudflare backend can return `{'total_memories': None}` in edge cases
+    - Default value `0` only applies to missing keys, not None values
+  - **Solutions**:
+    - Track `_initial_sync_task` reference and cancel/await during `close()` for proper cleanup
+    - Change `.get('total_memories', 0)` to `.get('total_memories') or 0` to handle both missing keys AND None values
+  - **Impact**: Eliminates spurious CI test failures on Linux, improves hybrid backend robustness
+  - **Files Changed**:
+    - `src/mcp_memory_service/storage/hybrid.py` - Added task tracking, fixed stats comparison (5 locations)
+
 ## [8.62.8] - 2025-12-30
 
 ### Fixed
