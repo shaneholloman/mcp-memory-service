@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.7] - 2025-12-30
+
+### Fixed
+- **Windows SessionStart Hook Bug Fixed in Claude Code 2.0.76+** (#160)
+  - **Problem**: SessionStart hooks caused Claude Code to hang indefinitely on Windows (issue #160)
+  - **Resolution**: Anthropic fixed the underlying bug in Claude Code version 2.0.76+
+  - **Impact**: Windows users can now use SessionStart hooks without workarounds or manual invocation
+  - **Documentation Updated**:
+    - `.claude/directives/hooks-configuration.md` - Removed Windows SessionStart bug warning, updated status to FIXED
+    - `CLAUDE.md` - Updated SessionStart hook references to reflect fix
+    - `claude-hooks/WINDOWS-SESSIONSTART-BUG.md` - Added fix notice and version requirements
+    - `docs/troubleshooting/hooks-quick-reference.md` - Updated Windows troubleshooting section
+  - **User Action Required**: Upgrade to Claude Code 2.0.76+ to use SessionStart hooks on Windows
+  - **Commit**: 5b0bb52 - "docs: update Windows SessionStart hook bug status - FIXED in Claude Code 2.0.76+"
+
 ## [8.62.6] - 2025-12-30
 
 ### Fixed

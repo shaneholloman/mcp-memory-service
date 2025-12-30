@@ -124,16 +124,16 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.6** (Dec 30, 2025)
+## 🆕 Latest Release: **v8.62.7** (Dec 30, 2025)
 
-**CRITICAL PRODUCTION HOTFIX: SQLite Pragmas Container Restart Bug**
+**Windows SessionStart Hook Bug Fixed in Claude Code 2.0.76+**
 
-- 🔴 **Critical Fix** - SQLite pragmas (especially busy_timeout) now applied on every connection, not just initialization
-- 🐛 **Issue Resolved** - "database is locked" errors after container restarts completely eliminated
-- 🚀 **Production Impact** - Fixes critical locking errors in containerized deployments (Docker, Kubernetes)
-- 🔧 **Technical Details** - Moved pragma application from initialize() to _connect_and_load_extension() (#310)
+- ✅ **Major Windows Fix** - SessionStart hooks no longer cause Claude Code to hang on Windows (Claude Code 2.0.76+)
+- 📝 **Documentation Updated** - All Windows SessionStart bug references updated to reflect fix status
+- 🎯 **User Impact** - Windows users can now use SessionStart hooks without workarounds
 
 **Previous Releases**:
+- **v8.62.6** - CRITICAL PRODUCTION HOTFIX: SQLite Pragmas Container Restart Bug (database locking errors after container restarts)
 - **v8.62.5** - Test Suite Stability: 40 Tests Fixed (99% pass rate, 68% → 99% improvement)
 - **v8.62.4** - CRITICAL BUGFIX: SQLite-Vec KNN Syntax Error (semantic search completely broken on sqlite-vec/hybrid backends)
 - **v8.62.3** - CRITICAL BUGFIX: Memory Recall Handler Import Error (time_parser import path correction)
