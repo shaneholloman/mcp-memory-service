@@ -32,15 +32,43 @@ import time
 import logging
 
 # Load environment variables from .env file if it exists
-try:
-    from dotenv import load_dotenv
-    env_file = Path(__file__).parent.parent.parent / ".env"
-    if env_file.exists():
-        load_dotenv(env_file)
-        logging.getLogger(__name__).info(f"Loaded environment from {env_file}")
-except ImportError:
-    # dotenv not available, skip loading
-    pass
+# Search multiple locations to handle both development and installed scenarios
+def _find_and_load_dotenv():
+    """Find and load .env file from multiple possible locations."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        # dotenv not available, skip loading
+        return None
+
+    # Possible .env locations (in priority order):
+    env_candidates = [
+        # 1. Current working directory (highest priority)
+        Path.cwd() / ".env",
+        # 2. Relative to this config file (for source installs)
+        Path(__file__).parent.parent.parent / ".env",
+        # 3. Project root markers (look for pyproject.toml)
+        *[p.parent / ".env" for p in Path(__file__).parents if (p / "pyproject.toml").exists()],
+        # 4. Common Windows project paths
+        Path("C:/REPOSITORIES/personal/mcp-memory-service/.env"),
+        Path("C:/REPOSITORIES/mcp-memory-service/.env"),
+        # 5. User home directory
+        Path.home() / ".mcp-memory" / ".env",
+    ]
+
+    for env_file in env_candidates:
+        try:
+            if env_file.exists():
+                load_dotenv(env_file, override=False)  # Don't override existing env vars
+                return env_file
+        except (OSError, PermissionError):
+            continue
+
+    return None
+
+_loaded_env_file = _find_and_load_dotenv()
+if _loaded_env_file:
+    logging.getLogger(__name__).info(f"Loaded environment from {_loaded_env_file}")
 
 logger = logging.getLogger(__name__)
 
