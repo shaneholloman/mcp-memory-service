@@ -124,16 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.9** (Dec 30, 2025)
+## 🆕 Latest Release: **v8.62.10** (Dec 31, 2025)
 
-**CI Race Condition & TypeError Fixed in Hybrid Backend**
+**Document Ingestion Bug Fixed - Missing Import**
 
-- 🐛 **Race Condition Fix** - Eliminates "Task was destroyed but pending" warnings in GitHub Actions CI
-- 🔧 **TypeError Fix** - Handles None values in total_memories stats (not just missing keys)
-- ✅ **Test Stability** - Fixes spurious CI failures on Linux (passed locally on Windows)
-- 🚀 **Robustness** - Proper background task cleanup during shutdown, improved edge case handling
+- 🐛 **NameError Fix** - Resolves `generate_content_hash` not defined error in web console document ingestion
+- 📄 **Web Interface** - Fixes PDF, DOCX, PPTX, TXT/MD ingestion via web dashboard
+- 🔧 **Circular Import Prevention** - Improved import structure in document processing
+- ✅ **Production Ready** - Document ingestion now works reliably through all interfaces
 
 **Previous Releases**:
+- **v8.62.9** - CI Race Condition & TypeError Fixed (hybrid backend task cleanup, None value handling)
 - **v8.62.8** - Environment Configuration Loading Bug Fixed (.env discovery, python-dotenv dependency)
 - **v8.62.7** - Windows SessionStart Hook Bug Fixed in Claude Code 2.0.76+ (no more Windows hanging)
 - **v8.62.6** - CRITICAL PRODUCTION HOTFIX: SQLite Pragmas Container Restart Bug (database locking errors after container restarts)

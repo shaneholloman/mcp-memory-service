@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.10] - 2025-12-31
+
+### Fixed
+- **Document Ingestion Bug - Missing Import** (PR #312 by @feroult)
+  - **Problem**: `NameError: name 'generate_content_hash' is not defined` when ingesting documents via web console
+    - `generate_content_hash` was used in `web/api/documents.py` but never imported
+    - Runtime error occurred when attempting document ingestion through the web interface
+  - **Root Cause**: Missing import statement in documents.py API handler
+  - **Solution**:
+    - Added `from ...utils.hashing import generate_content_hash` to `web/api/documents.py`
+    - Changed import in `document_processing.py` from `from . import generate_content_hash` to `from .hashing import generate_content_hash` to prevent circular imports
+  - **Impact**: Fixes document ingestion via web console (PDF, DOCX, PPTX, TXT/MD files)
+  - **Files Changed**:
+    - `src/mcp_memory_service/web/api/documents.py` - Added missing import
+    - `src/mcp_memory_service/utils/document_processing.py` - Fixed import to prevent circular dependency
+
 ## [8.62.9] - 2025-12-30
 
 ### Fixed
