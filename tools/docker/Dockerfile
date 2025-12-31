@@ -4,7 +4,6 @@ FROM python:3.12-slim
 
 # Build arguments for conditional features
 ARG SKIP_MODEL_DOWNLOAD=false
-ARG PLATFORM=linux/amd64
 ARG INSTALL_EXTRA="[sqlite]"
 ARG FORCE_CPU_PYTORCH=false
 

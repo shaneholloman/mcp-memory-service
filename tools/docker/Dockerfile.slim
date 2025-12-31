@@ -4,7 +4,6 @@ FROM python:3.10-slim
 
 # Build arguments for conditional features
 ARG SKIP_MODEL_DOWNLOAD=false
-ARG PLATFORM=linux/amd64
 
 # Set environment variables for optimized configuration
 ENV PYTHONUNBUFFERED=1 \
