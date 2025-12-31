@@ -756,6 +756,14 @@ class TestQualityAPILayer:
                     assert "average_score" in data
                     assert len(data["top_memories"]) <= 10
                     assert len(data["bottom_memories"]) <= 10
+
+                    # Verify memory objects include required fields for UI display
+                    for memory_list_key in ["top_memories", "bottom_memories"]:
+                        for memory in data[memory_list_key]:
+                            assert "content_hash" in memory, "content_hash required for ID display"
+                            assert "created_at" in memory, "created_at required for date display"
+                            assert "memory_type" in memory, "memory_type required for type display"
+                            assert "quality_score" in memory
             finally:
                 # Clean up dependency override
                 app.dependency_overrides.clear()

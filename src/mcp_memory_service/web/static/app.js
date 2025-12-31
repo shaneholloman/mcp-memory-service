@@ -4712,6 +4712,17 @@ class MemoryDashboard {
     }
 
     /**
+     * Attach click handlers to memory preview elements
+     * @param {HTMLElement} container - Container with .memory-preview elements
+     * @param {Array} memories - Array of memory objects corresponding to preview elements
+     */
+    _attachMemoryClickHandlers(container, memories) {
+        container.querySelectorAll('.memory-preview').forEach((el, index) => {
+            el.addEventListener('click', () => this.handleMemoryClick(memories[index]));
+        });
+    }
+
+    /**
      * Render top quality memories list
      */
     renderTopQualityMemories(memories) {
@@ -4724,7 +4735,7 @@ class MemoryDashboard {
         }
 
         const html = memories.map(memory => `
-            <div class="memory-preview" onclick="window.app.handleMemoryClick('${memory.content_hash}')">
+            <div class="memory-preview" data-content-hash="${memory.content_hash}">
                 <div class="quality-badge quality-tier-high">
                     <span class="quality-star">★</span>
                     <span class="quality-score">${memory.quality_score.toFixed(2)}</span>
@@ -4734,6 +4745,7 @@ class MemoryDashboard {
         `).join('');
 
         container.innerHTML = html;
+        this._attachMemoryClickHandlers(container, memories);
     }
 
     /**
@@ -4749,7 +4761,7 @@ class MemoryDashboard {
         }
 
         const html = memories.map(memory => `
-            <div class="memory-preview" onclick="window.app.handleMemoryClick('${memory.content_hash}')">
+            <div class="memory-preview" data-content-hash="${memory.content_hash}">
                 <div class="quality-badge quality-tier-low">
                     <span class="quality-star">★</span>
                     <span class="quality-score">${memory.quality_score.toFixed(2)}</span>
@@ -4759,6 +4771,7 @@ class MemoryDashboard {
         `).join('');
 
         container.innerHTML = html;
+        this._attachMemoryClickHandlers(container, memories);
     }
 
     /**
