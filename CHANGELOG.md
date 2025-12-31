@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.11] - 2025-12-31
+
+### Fixed
+- **Apple Silicon Docker Build Fix** (Issue #313 by @jwcolby)
+  - **Problem**: Docker build fails on Apple Silicon (M1/M2/M3/M4) with sqlite-vec ELFCLASS32 mismatch
+    - `ARG PLATFORM=linux/amd64` in Dockerfiles was never used but prevented proper architecture detection
+    - Docker couldn't auto-detect host architecture on Apple Silicon Macs
+  - **Root Cause**: Unused PLATFORM build argument in both Dockerfile and Dockerfile.slim
+  - **Solution**: Removed unused `ARG PLATFORM=linux/amd64` from both Docker files
+    - Allows Docker to properly detect and use host architecture (arm64 on Apple Silicon)
+    - Maintains compatibility with all platforms through Docker's native architecture detection
+  - **Impact**: Docker builds now work correctly on Apple Silicon Macs without architecture mismatches
+  - **Files Changed**:
+    - `tools/docker/Dockerfile` - Removed unused PLATFORM arg
+    - `tools/docker/Dockerfile.slim` - Removed unused PLATFORM arg
+
 ## [8.62.10] - 2025-12-31
 
 ### Fixed

@@ -124,16 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.10** (Dec 31, 2025)
+## 🆕 Latest Release: **v8.62.11** (Dec 31, 2025)
 
-**Document Ingestion Bug Fixed - Missing Import**
+**Apple Silicon Docker Build Fixed - Architecture Detection**
 
-- 🐛 **NameError Fix** - Resolves `generate_content_hash` not defined error in web console document ingestion
-- 📄 **Web Interface** - Fixes PDF, DOCX, PPTX, TXT/MD ingestion via web dashboard
-- 🔧 **Circular Import Prevention** - Improved import structure in document processing
-- ✅ **Production Ready** - Document ingestion now works reliably through all interfaces
+- 🍎 **Apple Silicon Support** - Docker builds now work correctly on M1/M2/M3/M4 Macs
+- 🐳 **Architecture Auto-Detection** - Removed unused PLATFORM arg allowing Docker to detect host architecture
+- 🔧 **ELFCLASS32 Fix** - Resolves sqlite-vec architecture mismatch on Apple Silicon
+- ✅ **Production Ready** - Docker deployment now works seamlessly across all platforms (Intel/ARM/Apple Silicon)
 
 **Previous Releases**:
+- **v8.62.10** - Document Ingestion Bug Fixed (NameError in web console, circular import prevention)
 - **v8.62.9** - CI Race Condition & TypeError Fixed (hybrid backend task cleanup, None value handling)
 - **v8.62.8** - Environment Configuration Loading Bug Fixed (.env discovery, python-dotenv dependency)
 - **v8.62.7** - Windows SessionStart Hook Bug Fixed in Claude Code 2.0.76+ (no more Windows hanging)
