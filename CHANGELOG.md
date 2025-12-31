@@ -10,9 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.12] - 2026-01-01
+
 ### Fixed
-- **Quality Analytics "Invalid Date" and "ID: undefined" Fix**
+- **Quality Analytics "Invalid Date" and "ID: undefined" Fix** (PR #314 by @channingwalton)
   - **Problem**: Clicking memories in Quality Analytics tab showed "Invalid Date" for created date and "undefined" for ID
+    - `quality.py:memory_to_dict()` didn't include `created_at` or `memory_type` fields
+    - `app.js` click handlers passed hash string instead of memory object
+  - **Root Cause**: Missing fields in API response and incorrect event handler implementation
+  - **Solution**:
+    - Added `created_at` and `memory_type` to quality distribution API response (`quality.py`)
+    - Fixed click handlers to pass memory objects instead of hash strings (`app.js`)
+    - Added validation tests for required UI display fields (`test_quality_system.py`)
+  - **Impact**: Quality Analytics modal now correctly displays memory metadata (creation date, type, ID)
+  - **Files Changed**:
+    - `src/mcp_memory_service/web/api/quality.py` (+2)
+    - `src/mcp_memory_service/web/static/app.js` (+15/-2)
+    - `tests/test_quality_system.py` (+8)
+    - `CHANGELOG.md` (+4)
 
 ## [8.62.11] - 2025-12-31
 
