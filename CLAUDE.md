@@ -309,6 +309,15 @@ gh pr create --fill
 gh pr comment <PR> --body "/gemini review"
 ```
 
+**PR Review Best Practice:**
+```bash
+# gh pr review produces NO OUTPUT on success - always verify:
+gh pr review <PR> --approve --body "Review message"
+gh pr view <PR> --json reviews --jq '.reviews[-1]'  # Verify review was added
+
+# NEVER retry gh pr review without checking - causes duplicate reviews
+```
+
 **Refactoring Safety Checklist** ⚠️ **MANDATORY for all code moves/extractions:**
 
 When extracting, moving, or refactoring code (learned from Issues #299, #300):
