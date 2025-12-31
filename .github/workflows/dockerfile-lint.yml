@@ -1,0 +1,39 @@
+name: Dockerfile Lint
+
+on:
+  push:
+    paths:
+      - 'tools/docker/Dockerfile*'
+      - '.github/workflows/dockerfile-lint.yml'
+  pull_request:
+    paths:
+      - 'tools/docker/Dockerfile*'
+      - '.github/workflows/dockerfile-lint.yml'
+
+jobs:
+  hadolint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile (main)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: tools/docker/Dockerfile
+          failure-threshold: warning
+
+      - name: Lint Dockerfile.slim
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: tools/docker/Dockerfile.slim
+          failure-threshold: warning
+
+  unused-args:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for unused Docker ARGs
+        run: bash scripts/ci/check_dockerfile_args.sh
