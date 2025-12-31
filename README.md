@@ -124,14 +124,14 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.11** (Dec 31, 2025)
+## 🆕 Latest Release: **v8.62.12** (Jan 1, 2026)
 
-**Apple Silicon Docker Build Fixed - Architecture Detection**
+**Quality Analytics UI Bug Fix - "Invalid Date" and "ID: undefined"**
 
-- 🍎 **Apple Silicon Support** - Docker builds now work correctly on M1/M2/M3/M4 Macs
-- 🐳 **Architecture Auto-Detection** - Removed unused PLATFORM arg allowing Docker to detect host architecture
-- 🔧 **ELFCLASS32 Fix** - Resolves sqlite-vec architecture mismatch on Apple Silicon
-- ✅ **Production Ready** - Docker deployment now works seamlessly across all platforms (Intel/ARM/Apple Silicon)
+- 🐛 **Quality Analytics Fixed** - Modal now correctly displays memory metadata (creation date, type, ID)
+- 📊 **API Enhancement** - Added `created_at` and `memory_type` fields to quality distribution endpoint
+- 🖱️ **Click Handler Fix** - Fixed event handlers to pass complete memory objects instead of hash strings
+- ✅ **Test Coverage** - Added validation tests for required UI display fields
 
 **Previous Releases**:
 - **v8.62.10** - Document Ingestion Bug Fixed (NameError in web console, circular import prevention)
