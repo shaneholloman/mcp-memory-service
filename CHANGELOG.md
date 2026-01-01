@@ -10,6 +10,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **CI Test Infrastructure Improvements** (Issue #316)
+  - **test_month_names Year Boundary Fix** (Commit 1a819b7)
+    - **Problem**: Test failing on January 1, 2026 with assertion `2026 == 2025`
+      - Test logic: `expected_year = current_year if current_month > 1 else current_year - 1`
+      - Implementation logic: `year = current_year if month_num <= current_month else current_year - 1`
+      - Mismatch when querying "january" in January (test excluded current month, implementation included it)
+    - **Root Cause**: Test checked `current_month > 1` (excludes January), implementation checks `month_num <= current_month` (includes January)
+    - **Solution**: Changed test logic from `current_month > 1` to `1 <= current_month` to match implementation
+    - **Impact**: Time parser tests now pass on year boundaries
+    - **Files Changed**: `tests/test_time_parser.py:112`
+
+  - **Defensive None Checks for Cloudflare Vector Count** (Commit 52071f9)
+    - **Problem**: 14 tests failing in CI with `TypeError: '<=' not supported between instances of 'NoneType' and 'int'`
+      - All failures in hybrid storage and Cloudflare limits tests
+      - Tests passed locally but failed in GitHub Actions
+      - MockCloudflareStorage.get_stats() only returned 'total_memories' field
+      - hybrid.py expected 'vector_count' field and accessed it without None checks
+    - **Root Cause**: Mock object incomplete (missing vector_count field) + unsafe dictionary access without defensive coding
+    - **Solution**:
+      - Enhanced MockCloudflareStorage.get_stats() to return vector_count and total_vectors fields
+      - Added multi-field fallback chain: `vector_count` → `total_vectors` → `total_memories` → 0
+      - Replaced unsafe `dict['key']` with defensive `.get('key', default)` in 5 critical paths
+      - Added complete field set to exception handler return values
+    - **Impact**: Fixed 14/18 CI test failures (83% improvement)
+      - All 19 hybrid storage tests now passing
+      - All 11 Cloudflare limits tests now passing
+      - test_background_sync_with_mock now passing
+    - **Files Changed**:
+      - `tests/test_hybrid_storage.py:74-82` - Enhanced mock compatibility
+      - `src/mcp_memory_service/storage/hybrid.py:369-429` - Defensive dict access
+
 ## [8.62.13] - 2026-01-01
 
 ### Fixed
