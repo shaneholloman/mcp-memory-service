@@ -106,9 +106,10 @@ class TestTimeParser:
         # Test a past month
         start_ts, end_ts = parse_time_expression("january")
         start_dt = datetime.fromtimestamp(start_ts)
-        
-        # Should be this year's January if we're past January, otherwise last year's
-        expected_year = current_year if current_month > 1 else current_year - 1
+
+        # Should be this year's January if we're in/past January, otherwise last year's
+        # Matches implementation logic: month_num <= current_month
+        expected_year = current_year if 1 <= current_month else current_year - 1
         assert start_dt.month == 1
         assert start_dt.year == expected_year
     
