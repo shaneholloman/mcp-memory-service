@@ -211,6 +211,95 @@ class Memory:
         """Get timestamp of last access (Unix timestamp)."""
         return self.metadata.get('last_accessed_at')
 
+    # SHODH Unified API Spec - Source & Trust fields
+    @property
+    def source_type(self) -> str:
+        """Get source type (user, system, api, file, web, ai_generated, inferred)."""
+        return self.metadata.get('source_type', 'user')
+
+    @source_type.setter
+    def source_type(self, value: str):
+        """Set source type."""
+        self.metadata['source_type'] = value
+
+    @property
+    def credibility(self) -> float:
+        """Get credibility score (0.0-1.0)."""
+        return self.metadata.get('credibility', 1.0)
+
+    @credibility.setter
+    def credibility(self, value: float):
+        """Set credibility score."""
+        self.metadata['credibility'] = min(max(value, 0.0), 1.0)
+
+    # SHODH Unified API Spec - Emotional Metadata fields
+    @property
+    def emotion(self) -> Optional[str]:
+        """Get emotion label (joy, frustration, surprise, relief, etc.)."""
+        return self.metadata.get('emotion')
+
+    @emotion.setter
+    def emotion(self, value: Optional[str]):
+        """Set emotion label."""
+        self.metadata['emotion'] = value
+
+    @property
+    def emotional_valence(self) -> Optional[float]:
+        """Get emotional valence (-1.0 to 1.0, negative to positive sentiment)."""
+        return self.metadata.get('emotional_valence')
+
+    @emotional_valence.setter
+    def emotional_valence(self, value: Optional[float]):
+        """Set emotional valence."""
+        if value is not None:
+            self.metadata['emotional_valence'] = min(max(value, -1.0), 1.0)
+        else:
+            self.metadata['emotional_valence'] = None
+
+    @property
+    def emotional_arousal(self) -> Optional[float]:
+        """Get emotional arousal (0.0 to 1.0, calm to aroused intensity)."""
+        return self.metadata.get('emotional_arousal')
+
+    @emotional_arousal.setter
+    def emotional_arousal(self, value: Optional[float]):
+        """Set emotional arousal."""
+        if value is not None:
+            self.metadata['emotional_arousal'] = min(max(value, 0.0), 1.0)
+        else:
+            self.metadata['emotional_arousal'] = None
+
+    # SHODH Unified API Spec - Episodic Memory fields
+    @property
+    def episode_id(self) -> Optional[str]:
+        """Get episode ID (groups related memories into coherent episodes)."""
+        return self.metadata.get('episode_id')
+
+    @episode_id.setter
+    def episode_id(self, value: Optional[str]):
+        """Set episode ID."""
+        self.metadata['episode_id'] = value
+
+    @property
+    def sequence_number(self) -> Optional[int]:
+        """Get sequence number (order within an episode)."""
+        return self.metadata.get('sequence_number')
+
+    @sequence_number.setter
+    def sequence_number(self, value: Optional[int]):
+        """Set sequence number."""
+        self.metadata['sequence_number'] = value
+
+    @property
+    def preceding_memory_id(self) -> Optional[str]:
+        """Get preceding memory ID (for episodic threading)."""
+        return self.metadata.get('preceding_memory_id')
+
+    @preceding_memory_id.setter
+    def preceding_memory_id(self, value: Optional[str]):
+        """Set preceding memory ID."""
+        self.metadata['preceding_memory_id'] = value
+
     def record_access(self, query: Optional[str] = None):
         """
         Record memory access for implicit signals tracking.
