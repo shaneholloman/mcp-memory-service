@@ -76,7 +76,9 @@ class MockCloudflareStorage:
             raise Exception("Mock Cloudflare stats failed")
         return {
             "total_memories": len(self.stored_memories),
-            "storage_backend": "MockCloudflareStorage"
+            "storage_backend": "MockCloudflareStorage",
+            "vector_count": len(self.stored_memories),  # Add for hybrid storage compatibility
+            "total_vectors": len(self.stored_memories)   # Alternative field name
         }
 
     async def close(self):

@@ -365,8 +365,9 @@ class BackgroundSyncService:
             if metadata_size_kb > CLOUDFLARE_MAX_METADATA_SIZE_KB:
                 return False, f"Metadata size {metadata_size_kb:.2f}KB exceeds Cloudflare limit of {CLOUDFLARE_MAX_METADATA_SIZE_KB}KB"
 
-        # Check if we're approaching vector count limit
-        if self.cloudflare_stats['vector_count'] >= CLOUDFLARE_VECTORIZE_MAX_VECTORS:
+        # Check if we're approaching vector count limit (defensive None check)
+        vector_count = self.cloudflare_stats.get('vector_count') or 0
+        if vector_count >= CLOUDFLARE_VECTORIZE_MAX_VECTORS:
             return False, f"Cloudflare vector limit of {CLOUDFLARE_VECTORIZE_MAX_VECTORS} reached"
 
         return True, None
@@ -380,23 +381,28 @@ class BackgroundSyncService:
             cf_stats = await self.secondary.get_stats()
 
             # Update our tracking (use 'or 0' to handle None values - v8.62.9)
-            self.cloudflare_stats['vector_count'] = cf_stats.get('total_memories') or 0
+            # Try multiple field names for compatibility
+            vector_count = (cf_stats.get('vector_count') or
+                           cf_stats.get('total_vectors') or
+                           cf_stats.get('total_memories') or 0)
+            self.cloudflare_stats['vector_count'] = vector_count
             self.cloudflare_stats['last_capacity_check'] = time.time()
 
-            # Calculate usage percentages
-            vector_usage_percent = (self.cloudflare_stats['vector_count'] / CLOUDFLARE_VECTORIZE_MAX_VECTORS) * 100
+            # Calculate usage percentages (defensive None check)
+            vector_usage_percent = (self.cloudflare_stats.get('vector_count', 0) / CLOUDFLARE_VECTORIZE_MAX_VECTORS) * 100
 
             # Clear previous warnings
             self.cloudflare_stats['limit_warnings'] = []
 
             # Check vector count limits
+            current_vector_count = self.cloudflare_stats.get('vector_count', 0)
             if vector_usage_percent >= CLOUDFLARE_CRITICAL_THRESHOLD_PERCENT:
-                warning = f"CRITICAL: Vector usage at {vector_usage_percent:.1f}% ({self.cloudflare_stats['vector_count']:,}/{CLOUDFLARE_VECTORIZE_MAX_VECTORS:,})"
+                warning = f"CRITICAL: Vector usage at {vector_usage_percent:.1f}% ({current_vector_count:,}/{CLOUDFLARE_VECTORIZE_MAX_VECTORS:,})"
                 self.cloudflare_stats['limit_warnings'].append(warning)
                 logger.error(warning)
                 self.cloudflare_stats['approaching_limits'] = True
             elif vector_usage_percent >= CLOUDFLARE_WARNING_THRESHOLD_PERCENT:
-                warning = f"WARNING: Vector usage at {vector_usage_percent:.1f}% ({self.cloudflare_stats['vector_count']:,}/{CLOUDFLARE_VECTORIZE_MAX_VECTORS:,})"
+                warning = f"WARNING: Vector usage at {vector_usage_percent:.1f}% ({current_vector_count:,}/{CLOUDFLARE_VECTORIZE_MAX_VECTORS:,})"
                 self.cloudflare_stats['limit_warnings'].append(warning)
                 logger.warning(warning)
                 self.cloudflare_stats['approaching_limits'] = True
@@ -404,18 +410,22 @@ class BackgroundSyncService:
                 self.cloudflare_stats['approaching_limits'] = False
 
             return {
-                'vector_count': self.cloudflare_stats['vector_count'],
+                'vector_count': current_vector_count,
                 'vector_limit': CLOUDFLARE_VECTORIZE_MAX_VECTORS,
                 'vector_usage_percent': vector_usage_percent,
-                'approaching_limits': self.cloudflare_stats['approaching_limits'],
-                'warnings': self.cloudflare_stats['limit_warnings']
+                'approaching_limits': self.cloudflare_stats.get('approaching_limits', False),
+                'warnings': self.cloudflare_stats.get('limit_warnings', [])
             }
 
         except Exception as e:
             logger.error(f"Failed to check Cloudflare capacity: {e}")
             return {
                 'error': str(e),
-                'approaching_limits': False
+                'vector_count': self.cloudflare_stats.get('vector_count', 0),
+                'vector_limit': CLOUDFLARE_VECTORIZE_MAX_VECTORS,
+                'vector_usage_percent': 0,
+                'approaching_limits': False,
+                'warnings': []
             }
 
     async def _sync_loop(self):
