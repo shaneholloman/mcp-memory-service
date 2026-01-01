@@ -112,6 +112,31 @@ Choose from:
 
 ---
 
+## 🌐 SHODH Ecosystem Compatibility
+
+MCP Memory Service is **fully compatible** with the [SHODH Unified Memory API Specification v1.0.0](https://github.com/varun29ankuS/shodh-memory/blob/main/specs/openapi.yaml), enabling seamless interoperability across the SHODH ecosystem.
+
+### Compatible Implementations
+
+| Implementation | Backend | Embeddings | Use Case |
+|----------------|---------|------------|----------|
+| **[shodh-memory](https://github.com/varun29ankuS/shodh-memory)** | RocksDB | MiniLM-L6-v2 (ONNX) | Reference implementation |
+| **[shodh-cloudflare](https://github.com/doobidoo/shodh-cloudflare)** | Cloudflare Workers + Vectorize | Workers AI (bge-small) | Edge deployment, multi-device sync |
+| **mcp-memory-service** (this) | SQLite-vec / Hybrid | MiniLM-L6-v2 (ONNX) | Desktop AI assistants (MCP) |
+
+### Unified Schema Support
+
+All SHODH implementations share the same memory schema:
+- ✅ **Emotional Metadata**: `emotion`, `emotional_valence`, `emotional_arousal`
+- ✅ **Episodic Memory**: `episode_id`, `sequence_number`, `preceding_memory_id`
+- ✅ **Source Tracking**: `source_type`, `credibility`
+- ✅ **Quality Scoring**: `quality_score`, `access_count`, `last_accessed_at`
+
+**Interoperability Example:**
+Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync across devices → Full fidelity preservation of emotional_valence, episode_id, and all spec fields.
+
+---
+
 ## ✨ Key Features
 
 🧠 **Persistent Memory** – Context survives across sessions with semantic search
