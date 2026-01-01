@@ -10,6 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.62.13] - 2026-01-01
+
+### Fixed
+- **HTTP-MCP Bridge API Endpoint Fix** (Based on PR #315 by @timkjr)
+  - **Problem**: HTTP-MCP bridge completely broken with 405 Method Not Allowed errors
+    - Bridge was using old GET endpoints (`/search?q=...`, `/search/by-tag?tags=...`)
+    - Current API uses POST endpoints with JSON body payloads
+    - Remote deployments using the bridge were unable to search or retrieve memories
+  - **Root Cause**: Bridge code not updated when API migrated from GET to POST endpoints
+  - **Solution**:
+    - Updated `examples/http-mcp-bridge.js` to use POST `/search` and POST `/search/by-tag`
+    - Changed from query parameters to JSON request bodies
+    - Fixed response payload structure to match current API
+    - Updated integration tests to verify POST endpoints
+  - **Impact**: HTTP-MCP bridge now works correctly for remote MCP deployments
+  - **Files Changed**:
+    - `examples/http-mcp-bridge.js` (+34/-19 lines)
+    - `tests/integration/test_bridge_integration.js` (+6/-1 lines)
+  - **Testing**: All 9 integration tests passing (test_bridge_integration.js)
+
 ## [8.62.12] - 2026-01-01
 
 ### Fixed

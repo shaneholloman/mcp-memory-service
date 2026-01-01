@@ -124,16 +124,17 @@ Choose from:
 
 ---
 
-## 🆕 Latest Release: **v8.62.12** (Jan 1, 2026)
+## 🆕 Latest Release: **v8.62.13** (Jan 1, 2026)
 
-**Quality Analytics UI Bug Fix - "Invalid Date" and "ID: undefined"**
+**HTTP-MCP Bridge API Endpoint Fix - Remote Deployments Restored**
 
-- 🐛 **Quality Analytics Fixed** - Modal now correctly displays memory metadata (creation date, type, ID)
-- 📊 **API Enhancement** - Added `created_at` and `memory_type` fields to quality distribution endpoint
-- 🖱️ **Click Handler Fix** - Fixed event handlers to pass complete memory objects instead of hash strings
-- ✅ **Test Coverage** - Added validation tests for required UI display fields
+- 🔧 **Critical Bridge Fix** - HTTP-MCP bridge now works correctly with POST endpoints
+- 🌐 **Remote Deployment Support** - Fixed 405 Method Not Allowed errors blocking remote MCP clients
+- 📡 **API Compatibility** - Updated bridge from GET to POST `/search` and `/search/by-tag`
+- ✅ **Integration Tests** - All 9 bridge integration tests passing
 
 **Previous Releases**:
+- **v8.62.12** - Quality Analytics UI Fixed ("Invalid Date" and "ID: undefined" bugs)
 - **v8.62.10** - Document Ingestion Bug Fixed (NameError in web console, circular import prevention)
 - **v8.62.9** - CI Race Condition & TypeError Fixed (hybrid backend task cleanup, None value handling)
 - **v8.62.8** - Environment Configuration Loading Bug Fixed (.env discovery, python-dotenv dependency)
