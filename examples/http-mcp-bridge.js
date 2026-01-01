@@ -424,12 +424,11 @@ class HTTPMCPBridge {
      */
     async retrieveMemory(params) {
         try {
-            const queryParams = new URLSearchParams({
-                q: params.query,
-                n_results: params.n_results || 5
+            const response = await this.makeRequest('search', 'POST', {
+                query: params.query,
+                n_results: params.n_results || 5,
+                similarity_threshold: params.similarity_threshold || null
             });
-
-            const response = await this.makeRequest(`search?${queryParams}`, 'GET');
 
             if (response.statusCode === 200) {
                 return {
@@ -439,7 +438,7 @@ class HTTPMCPBridge {
                             tags: result.memory.tags,
                             type: result.memory.memory_type,
                             created_at: result.memory.created_at_iso,
-                            relevance_score: result.relevance_score
+                            relevance_score: result.relevance_score || result.similarity_score
                         }
                     }))
                 };
@@ -456,23 +455,22 @@ class HTTPMCPBridge {
      */
     async searchByTag(params) {
         try {
-            const queryParams = new URLSearchParams();
-            if (Array.isArray(params.tags)) {
-                params.tags.forEach(tag => queryParams.append('tags', tag));
-            } else if (typeof params.tags === 'string') {
-                queryParams.append('tags', params.tags);
-            }
+            const tags = Array.isArray(params.tags) ? params.tags : [params.tags];
 
-            const response = await this.makeRequest(`memories/search/tags?${queryParams}`, 'GET');
+            const response = await this.makeRequest('search/by-tag', 'POST', {
+                tags: tags,
+                match_all: params.match_all || false,
+                time_filter: params.time_filter || null
+            });
 
             if (response.statusCode === 200) {
                 return {
-                    memories: response.data.memories.map(memory => ({
-                        content: memory.content,
+                    memories: response.data.results.map(result => ({
+                        content: result.memory.content,
                         metadata: {
-                            tags: memory.tags,
-                            type: memory.memory_type,
-                            created_at: memory.created_at_iso
+                            tags: result.memory.tags,
+                            type: result.memory.memory_type,
+                            created_at: result.memory.created_at_iso
                         }
                     }))
                 };
