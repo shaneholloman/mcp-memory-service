@@ -21,22 +21,20 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Install minimal system dependencies (no build tools needed for ONNX)
+# hadolint ignore=DL3008
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy essential files
+# Copy essential files, install UV, and create directories
 COPY pyproject.toml .
 COPY uv.lock .
 COPY README.md .
 COPY scripts/installation/install_uv.py .
 
-# Install UV
-RUN python install_uv.py
-
-# Create directories for data persistence
-RUN mkdir -p /app/sqlite_db /app/backups
+RUN python install_uv.py && \
+    mkdir -p /app/sqlite_db /app/backups
 
 # Copy source code
 COPY src/ /app/src/

@@ -22,6 +22,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Minimal system packages with security updates
+# hadolint ignore=DL3008
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -30,17 +31,14 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy essential files
+# Copy essential files, install UV, and create directories
 COPY pyproject.toml .
 COPY uv.lock .
 COPY README.md .
 COPY scripts/installation/install_uv.py .
 
-# Install UV
-RUN python install_uv.py
-
-# Create directories for data persistence
-RUN mkdir -p /app/sqlite_db /app/backups
+RUN python install_uv.py && \
+    mkdir -p /app/sqlite_db /app/backups
 
 # Copy source code
 COPY src/ /app/src/
