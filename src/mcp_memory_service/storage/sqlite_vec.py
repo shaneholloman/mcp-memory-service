@@ -467,8 +467,24 @@ SOLUTIONS:
                 embeddings_table_exists = cursor.fetchone() is not None
 
                 if memories_table_exists and embeddings_table_exists:
-                    # Database is already initialized, just load the embedding model and mark as initialized
-                    logger.info("Database already initialized by another process, skipping DDL operations")
+                    # Database exists - run migrations for new columns, then skip full DDL
+                    logger.info("Database already initialized, checking for schema migrations...")
+
+                    # Migration v8.64.0: Add deleted_at column for soft-delete support
+                    try:
+                        cursor = self.conn.execute("PRAGMA table_info(memories)")
+                        columns = [row[1] for row in cursor.fetchall()]
+                        if 'deleted_at' not in columns:
+                            logger.info("Migrating database: Adding deleted_at column for soft-delete support...")
+                            self.conn.execute('ALTER TABLE memories ADD COLUMN deleted_at REAL DEFAULT NULL')
+                            self.conn.execute('CREATE INDEX IF NOT EXISTS idx_deleted_at ON memories(deleted_at)')
+                            self.conn.commit()
+                            logger.info("Migration complete: deleted_at column added")
+                        else:
+                            logger.debug("Migration check: deleted_at column already exists")
+                    except Exception as e:
+                        logger.warning(f"Migration check for deleted_at (non-fatal): {e}")
+
                     await self._initialize_embedding_model()
                     self._initialized = True
                     logger.info(f"SQLite-vec storage initialized successfully (existing database) with embedding dimension: {self.embedding_dimension}")
