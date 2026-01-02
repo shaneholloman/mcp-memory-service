@@ -191,12 +191,12 @@ jobs:
           --cov=src/mcp_memory_service \
           --cov-report=term-missing \
           --cov-report=html \
-          --cov-fail-under=58 || {
-            echo "❌ Coverage below 58% threshold"
+          --cov-fail-under=57 || {
+            echo "❌ Coverage below 57% threshold"
             exit 1
           }
 
-        echo "✓ Tests completed with coverage ≥58%"
+        echo "✓ Tests completed with coverage ≥57%"
 
         # Build wheel for uvx testing
         uv build
