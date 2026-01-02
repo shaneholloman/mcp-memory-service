@@ -45,15 +45,32 @@ except ImportError:
 from .. import config as app_config
 
 # Use getattr to provide fallbacks if attributes don't exist (prevents duplicate defaults)
-CLOUDFLARE_D1_MAX_SIZE_GB = getattr(app_config, 'CLOUDFLARE_D1_MAX_SIZE_GB', 10)
-CLOUDFLARE_VECTORIZE_MAX_VECTORS = getattr(app_config, 'CLOUDFLARE_VECTORIZE_MAX_VECTORS', 5_000_000)
-CLOUDFLARE_MAX_METADATA_SIZE_KB = getattr(app_config, 'CLOUDFLARE_MAX_METADATA_SIZE_KB', 10)
-CLOUDFLARE_WARNING_THRESHOLD_PERCENT = getattr(app_config, 'CLOUDFLARE_WARNING_THRESHOLD_PERCENT', 80)
-CLOUDFLARE_CRITICAL_THRESHOLD_PERCENT = getattr(app_config, 'CLOUDFLARE_CRITICAL_THRESHOLD_PERCENT', 95)
-HYBRID_SYNC_ON_STARTUP = getattr(app_config, 'HYBRID_SYNC_ON_STARTUP', True)
-HYBRID_MAX_CONTENT_LENGTH = getattr(app_config, 'HYBRID_MAX_CONTENT_LENGTH', 800)
-HYBRID_MAX_EMPTY_BATCHES = getattr(app_config, 'HYBRID_MAX_EMPTY_BATCHES', 20)
-HYBRID_MIN_CHECK_COUNT = getattr(app_config, 'HYBRID_MIN_CHECK_COUNT', 1000)
+# Defensive None checks to prevent comparison errors (Issue #316)
+_d1_max = getattr(app_config, 'CLOUDFLARE_D1_MAX_SIZE_GB', 10)
+CLOUDFLARE_D1_MAX_SIZE_GB = _d1_max if _d1_max is not None else 10
+
+_vec_max = getattr(app_config, 'CLOUDFLARE_VECTORIZE_MAX_VECTORS', 5_000_000)
+CLOUDFLARE_VECTORIZE_MAX_VECTORS = _vec_max if _vec_max is not None else 5_000_000
+
+_meta_max = getattr(app_config, 'CLOUDFLARE_MAX_METADATA_SIZE_KB', 10)
+CLOUDFLARE_MAX_METADATA_SIZE_KB = _meta_max if _meta_max is not None else 10
+
+_warn_thresh = getattr(app_config, 'CLOUDFLARE_WARNING_THRESHOLD_PERCENT', 80)
+CLOUDFLARE_WARNING_THRESHOLD_PERCENT = _warn_thresh if _warn_thresh is not None else 80
+
+_crit_thresh = getattr(app_config, 'CLOUDFLARE_CRITICAL_THRESHOLD_PERCENT', 95)
+CLOUDFLARE_CRITICAL_THRESHOLD_PERCENT = _crit_thresh if _crit_thresh is not None else 95
+_sync_startup = getattr(app_config, 'HYBRID_SYNC_ON_STARTUP', True)
+HYBRID_SYNC_ON_STARTUP = _sync_startup if _sync_startup is not None else True
+
+_max_len = getattr(app_config, 'HYBRID_MAX_CONTENT_LENGTH', 800)
+HYBRID_MAX_CONTENT_LENGTH = _max_len if _max_len is not None else 800
+
+_max_empty = getattr(app_config, 'HYBRID_MAX_EMPTY_BATCHES', 20)
+HYBRID_MAX_EMPTY_BATCHES = _max_empty if _max_empty is not None else 20
+
+_min_check = getattr(app_config, 'HYBRID_MIN_CHECK_COUNT', 1000)
+HYBRID_MIN_CHECK_COUNT = _min_check if _min_check is not None else 1000
 
 logger = logging.getLogger(__name__)
 
