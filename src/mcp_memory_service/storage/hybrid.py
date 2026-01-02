@@ -141,9 +141,15 @@ class BackgroundSyncService:
         self.secondary = secondary_storage
 
         # Use config values if parameters not provided (for backward compatibility)
-        self.sync_interval = sync_interval if sync_interval is not None else getattr(app_config, 'HYBRID_SYNC_INTERVAL', 300)
-        self.batch_size = batch_size if batch_size is not None else getattr(app_config, 'HYBRID_BATCH_SIZE', 100)
-        self.max_queue_size = max_queue_size if max_queue_size is not None else getattr(app_config, 'HYBRID_QUEUE_SIZE', 2000)
+        # Defensive None checks to prevent Queue initialization with maxsize=None (Issue #316)
+        sync_int = sync_interval if sync_interval is not None else getattr(app_config, 'HYBRID_SYNC_INTERVAL', 300)
+        self.sync_interval = sync_int if sync_int is not None else 300
+
+        batch = batch_size if batch_size is not None else getattr(app_config, 'HYBRID_BATCH_SIZE', 100)
+        self.batch_size = batch if batch is not None else 100
+
+        queue_size = max_queue_size if max_queue_size is not None else getattr(app_config, 'HYBRID_QUEUE_SIZE', 2000)
+        self.max_queue_size = queue_size if queue_size is not None else 2000
 
         # Sync queues and state
         self.operation_queue = asyncio.Queue(maxsize=self.max_queue_size)

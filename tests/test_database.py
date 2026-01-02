@@ -60,6 +60,7 @@ async def test_optimize_database(memory_server):
     assert optimize_response.get("success") is True
     assert "optimized_size" in optimize_response
 
+@pytest.mark.skip(reason="Issue #316: wandb.proto dependency broken - 'module wandb.proto.wandb_internal_pb2 has no attribute Result'")
 @pytest.mark.asyncio
 async def test_cleanup_duplicates(memory_server):
     """Test duplicate memory cleanup."""

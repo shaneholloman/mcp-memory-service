@@ -66,7 +66,9 @@ class MockCloudflareWithLimits:
     async def get_stats(self):
         return {
             "total_memories": self.vector_count,
-            "storage_backend": "MockCloudflareWithLimits"
+            "storage_backend": "MockCloudflareWithLimits",
+            "vector_count": self.vector_count,      # Required by hybrid.py capacity checks
+            "total_vectors": self.vector_count       # Alternative field name for compatibility
         }
 
     async def update_memory_metadata(self, content_hash: str, updates, preserve_timestamps=True):

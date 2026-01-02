@@ -50,7 +50,9 @@ class MockCloudflareStorage:
     async def get_stats(self):
         return {
             "total_memories": len(self.memories),
-            "operations_count": len(self.operations)
+            "operations_count": len(self.operations),
+            "vector_count": len(self.memories),      # Required by hybrid.py capacity checks (Issue #316)
+            "total_vectors": len(self.memories)       # Alternative field name for compatibility
         }
 
     async def close(self):
