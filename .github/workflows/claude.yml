@@ -36,6 +36,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+          # Enable sticky comments - Claude will post and update a comment on the issue/PR
+          use_sticky_comment: true
+
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
