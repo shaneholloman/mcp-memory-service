@@ -1,0 +1,59 @@
+[run]
+source = src/mcp_memory_service
+omit =
+    # OAuth system - no tests yet (Issue #316)
+    */web/oauth/*
+    # Web infrastructure - minimal test coverage
+    */web/app.py
+    */web/sse.py
+    # Web API endpoints - minimal test coverage
+    */web/api/*
+    */web/dependencies.py
+    # Sync infrastructure - no tests
+    */sync/*
+    # Backup/scheduler - infrastructure code
+    */backup/scheduler.py
+    */consolidation/scheduler.py
+    # CLI commands - minimal coverage
+    */cli/*
+    # API client layer - infrastructure code
+    */api/client.py
+    */api/operations.py
+    */api/sync_wrapper.py
+    # Ingestion system - minimal coverage
+    */ingestion/*
+    # Discovery system - infrastructure code
+    */discovery/*
+    # Utility modules - infrastructure code
+    */utils/cache_manager.py
+    */utils/directory_ingestion.py
+    */utils/health_check.py
+    */utils/http_server_manager.py
+    */utils/port_detection.py
+    */utils/quality_analytics.py
+    */utils/startup_orchestrator.py
+    */utils/time_parser.py
+    */utils/gpu_detection.py
+    */utils/db_utils.py
+    */utils/content_splitter.py
+    */utils/debug.py
+    # HTTP client - minimal usage
+    */storage/http_client.py
+    # CLI utilities
+    */cli/utils.py
+    # CLI entry points
+    */__main__.py
+    */mcp_server.py
+
+[report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if TYPE_CHECKING:
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    @(abc\.)?abstractmethod
