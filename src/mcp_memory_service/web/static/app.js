@@ -3903,12 +3903,20 @@ class MemoryDashboard {
             });
 
             const result = await response.json();
+
+            // Check HTTP status first (handles HTTPException responses with 'detail')
+            if (!response.ok) {
+                const errorMsg = result.detail || result.message || 'Unknown error';
+                this.showToast(errorMsg, 'error');
+                return;
+            }
+
             if (result.success) {
                 this.showToast(result.message, 'success');
                 await this.loadManageData(); // Refresh data
                 await this.loadDashboardData(); // Refresh dashboard stats
             } else {
-                this.showToast(result.message, 'error');
+                this.showToast(result.message || 'Operation failed', 'error');
             }
         } catch (error) {
             console.error('Bulk delete failed:', error);
@@ -3933,12 +3941,19 @@ class MemoryDashboard {
             });
 
             const result = await response.json();
+
+            if (!response.ok) {
+                const errorMsg = result.detail || result.message || 'Unknown error';
+                this.showToast(errorMsg, 'error');
+                return;
+            }
+
             if (result.success) {
                 this.showToast(result.message, 'success');
                 await this.loadManageData();
                 await this.loadDashboardData();
             } else {
-                this.showToast(result.message, 'error');
+                this.showToast(result.message || 'Operation failed', 'error');
             }
         } catch (error) {
             console.error('Cleanup duplicates failed:', error);
@@ -3975,12 +3990,19 @@ class MemoryDashboard {
             });
 
             const result = await response.json();
+
+            if (!response.ok) {
+                const errorMsg = result.detail || result.message || 'Unknown error';
+                this.showToast(errorMsg, 'error');
+                return;
+            }
+
             if (result.success) {
                 this.showToast(result.message, 'success');
                 await this.loadManageData();
                 await this.loadDashboardData();
             } else {
-                this.showToast(result.message, 'error');
+                this.showToast(result.message || 'Operation failed', 'error');
             }
         } catch (error) {
             console.error('Bulk delete by date failed:', error);

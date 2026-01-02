@@ -1584,11 +1584,13 @@ class CloudflareStorage(MemoryStorage):
                 where_conditions.append("memory_type = ?")
                 params.append(memory_type)
 
-            # Add tags filter if specified (using LIKE for tag matching)
+            # Add tags filter with GLOB for case-sensitive exact tag matching
+            # Pattern: (',' || tags || ',') GLOB '*,tag,*' matches exact tag in comma-separated list
             if tags and len(tags) > 0:
-                tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
+                stripped_tags = [tag.strip() for tag in tags]
+                tag_conditions = " OR ".join(["(',' || REPLACE(tags, ' ', '') || ',') GLOB ?" for _ in stripped_tags])
                 where_conditions.append(f"({tag_conditions})")
-                params.extend([f"%{tag}%" for tag in tags])
+                params.extend([f"*,{tag},*" for tag in stripped_tags])
 
             # Apply WHERE clause if we have any conditions
             if where_conditions:

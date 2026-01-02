@@ -1064,9 +1064,13 @@ SOLUTIONS:
             if not tags:
                 return []
 
-            # Build query for tag search (OR logic)
-            tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
-            tag_params = [f"%{tag}%" for tag in tags]
+            # Build query for tag search (OR logic) with EXACT tag matching
+            # Uses GLOB for case-sensitive matching (LIKE is case-insensitive in SQLite)
+            # Pattern: (',' || tags || ',') GLOB '*,tag,*' matches exact tag in comma-separated list
+            # Strip whitespace from tags to match get_all_tags_with_counts behavior
+            stripped_tags = [tag.strip() for tag in tags]
+            tag_conditions = " OR ".join(["(',' || REPLACE(tags, ' ', '') || ',') GLOB ?" for _ in stripped_tags])
+            tag_params = [f"*,{tag},*" for tag in stripped_tags]
 
             # Add time filter to WHERE clause if provided
             where_clause = f"WHERE ({tag_conditions})"
@@ -1139,9 +1143,13 @@ SOLUTIONS:
                 logger.warning("Unsupported tag operation %s; defaulting to AND", operation)
                 normalized_operation = "AND"
 
+            # Use GLOB for case-sensitive exact tag matching
+            # Pattern: (',' || tags || ',') GLOB '*,tag,*' matches exact tag in comma-separated list
+            # Strip whitespace from tags to match get_all_tags_with_counts behavior
+            stripped_tags = [tag.strip() for tag in tags]
             comparator = " AND " if normalized_operation == "AND" else " OR "
-            tag_conditions = comparator.join(["tags LIKE ?" for _ in tags])
-            tag_params = [f"%{tag}%" for tag in tags]
+            tag_conditions = comparator.join(["(',' || REPLACE(tags, ' ', '') || ',') GLOB ?" for _ in stripped_tags])
+            tag_params = [f"*,{tag},*" for tag in stripped_tags]
 
             where_conditions = [f"({tag_conditions})"] if tag_conditions else []
             if time_start is not None:
@@ -1220,8 +1228,11 @@ SOLUTIONS:
                 return []
 
             # Build query for tag search (OR logic) with database-level ordering and pagination
-            tag_conditions = " OR ".join(["tags LIKE ?" for _ in tags])
-            tag_params = [f"%{tag}%" for tag in tags]
+            # Use GLOB for case-sensitive exact tag matching
+            # Strip whitespace from tags to match get_all_tags_with_counts behavior
+            stripped_tags = [tag.strip() for tag in tags]
+            tag_conditions = " OR ".join(["(',' || REPLACE(tags, ' ', '') || ',') GLOB ?" for _ in stripped_tags])
+            tag_params = [f"*,{tag},*" for tag in stripped_tags]
 
             # Build pagination clauses
             limit_clause = f"LIMIT {limit}" if limit is not None else ""
@@ -1366,20 +1377,32 @@ SOLUTIONS:
             return set()
 
     async def delete_by_tag(self, tag: str) -> Tuple[int, str]:
-        """Delete memories by tag."""
+        """Delete memories by tag (exact match only)."""
         try:
             if not self.conn:
                 return 0, "Database not initialized"
-            
+
+            # Use GLOB for case-sensitive exact tag matching
+            # Pattern: (',' || tags || ',') GLOB '*,tag,*' matches exact tag in comma-separated list
+            # Strip whitespace to match get_all_tags_with_counts behavior
+            stripped_tag = tag.strip()
+            exact_match_pattern = f"*,{stripped_tag},*"
+
             # Get the ids first to delete corresponding embeddings
-            cursor = self.conn.execute('SELECT id FROM memories WHERE tags LIKE ?', (f"%{tag}%",))
+            cursor = self.conn.execute(
+                "SELECT id FROM memories WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ?",
+                (exact_match_pattern,)
+            )
             memory_ids = [row[0] for row in cursor.fetchall()]
-            
+
             # Delete from both tables
             for memory_id in memory_ids:
                 self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
-            
-            cursor = self.conn.execute('DELETE FROM memories WHERE tags LIKE ?', (f"%{tag}%",))
+
+            cursor = self.conn.execute(
+                "DELETE FROM memories WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ?",
+                (exact_match_pattern,)
+            )
             self.conn.commit()
             
             count = cursor.rowcount
@@ -1408,10 +1431,12 @@ SOLUTIONS:
             if not tags:
                 return 0, "No tags provided"
 
-            # Build OR condition for all tags
-            # Using LIKE for each tag to match partial tag strings (same as delete_by_tag)
-            conditions = " OR ".join(["tags LIKE ?" for _ in tags])
-            params = [f"%{tag}%" for tag in tags]
+            # Build OR condition with GLOB for case-sensitive exact tag matching
+            # Pattern: (',' || tags || ',') GLOB '*,tag,*' matches exact tag in comma-separated list
+            # Strip whitespace to match get_all_tags_with_counts behavior
+            stripped_tags = [tag.strip() for tag in tags]
+            conditions = " OR ".join(["(',' || REPLACE(tags, ' ', '') || ',') GLOB ?" for _ in stripped_tags])
+            params = [f"*,{tag},*" for tag in stripped_tags]
 
             # Get the ids first to delete corresponding embeddings
             query = f'SELECT id FROM memories WHERE {conditions}'
