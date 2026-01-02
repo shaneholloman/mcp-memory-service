@@ -229,21 +229,30 @@ class TestSqliteVecStorage:
     
     @pytest.mark.asyncio
     async def test_delete_memory(self, storage, sample_memory):
-        """Test deleting a memory by content hash."""
+        """Test deleting a memory by content hash (soft-delete)."""
         # Store the memory
         await storage.store(sample_memory)
-        
-        # Delete the memory
+
+        # Delete the memory (soft-delete)
         success, message = await storage.delete(sample_memory.content_hash)
         assert success
         assert sample_memory.content_hash in message
-        
-        # Verify memory was deleted
+
+        # Verify memory was soft-deleted (still in DB but deleted_at is set)
         cursor = storage.conn.execute(
-            'SELECT content_hash FROM memories WHERE content_hash = ?',
+            'SELECT content_hash, deleted_at FROM memories WHERE content_hash = ?',
             (sample_memory.content_hash,)
         )
-        assert cursor.fetchone() is None
+        row = cursor.fetchone()
+        assert row is not None, "Memory should still exist in DB as tombstone"
+        assert row[1] is not None, "deleted_at should be set"
+
+        # Verify is_deleted() returns True
+        assert await storage.is_deleted(sample_memory.content_hash)
+
+        # Verify memory is not returned by get_by_hash (excludes deleted)
+        memory = await storage.get_by_hash(sample_memory.content_hash)
+        assert memory is None, "Deleted memory should not be returned by get_by_hash"
     
     @pytest.mark.asyncio
     async def test_delete_nonexistent_memory(self, storage):
@@ -320,7 +329,7 @@ class TestSqliteVecStorage:
         # Drop original table
         storage.conn.execute('DROP TABLE memories')
 
-        # Recreate without unique constraint temporarily
+        # Recreate without unique constraint temporarily (include deleted_at for v8.64.0+)
         storage.conn.execute('''
             CREATE TABLE memories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -332,12 +341,19 @@ class TestSqliteVecStorage:
                 created_at REAL,
                 updated_at REAL,
                 created_at_iso TEXT,
-                updated_at_iso TEXT
+                updated_at_iso TEXT,
+                deleted_at REAL DEFAULT NULL
             )
         ''')
 
-        # Copy data back
-        storage.conn.execute('INSERT INTO memories SELECT * FROM memories_temp')
+        # Copy data back (explicitly list columns since temp table may not have deleted_at)
+        storage.conn.execute('''
+            INSERT INTO memories (id, content_hash, content, tags, memory_type,
+                metadata, created_at, updated_at, created_at_iso, updated_at_iso)
+            SELECT id, content_hash, content, tags, memory_type,
+                metadata, created_at, updated_at, created_at_iso, updated_at_iso
+            FROM memories_temp
+        ''')
         storage.conn.execute('DROP TABLE memories_temp')
 
         # Now insert the duplicate

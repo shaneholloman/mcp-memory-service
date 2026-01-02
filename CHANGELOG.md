@@ -10,6 +10,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.64.0] - 2026-01-02
+
+### Added
+- **Tombstone Support for Hybrid Sync** (Race Condition Fix)
+  - **Problem**: Memories deleted on one device reappeared after syncing from another device
+  - **Root Cause**: No tombstone records - deleted memories were pulled back from cloud as "missing"
+  - **Solution**: Soft-delete with `deleted_at` column instead of hard DELETE
+
+- **Soft-Delete Implementation** (`storage/sqlite_vec.py`)
+  - `delete()` now sets `deleted_at` timestamp instead of removing row
+  - `delete_by_tag()` and `delete_by_tags()` use soft-delete
+  - `is_deleted(content_hash)` checks if memory was soft-deleted
+  - `purge_deleted(older_than_days=30)` permanently removes old tombstones
+  - All SELECT queries updated to exclude deleted records (`WHERE deleted_at IS NULL`)
+
+- **Schema Migration** (`sqlite_vec.py:531-546`)
+  - Auto-adds `deleted_at REAL DEFAULT NULL` column on startup
+  - Creates `idx_deleted_at` index for fast exclusion queries
+  - Non-breaking: existing memories have NULL (not deleted)
+
+- **Tombstone Check in Hybrid Sync** (`hybrid.py:1015-1024`)
+  - Before syncing "missing" memory from cloud, checks `is_deleted()`
+  - If locally deleted, skips sync and propagates deletion to cloud
+  - Prevents race condition where delete and sync overlap
+
+- **Automatic Tombstone Purge** (`hybrid.py:508-526`)
+  - `BackgroundSyncService` runs daily purge of tombstones >30 days old
+  - Configurable via `TOMBSTONE_RETENTION_DAYS` environment variable
+  - Stats tracked in `sync_stats['tombstones_purged']`
+
+- **Base Class Updates** (`storage/base.py:251-287`)
+  - `is_deleted()` with default implementation returning False
+  - `purge_deleted()` with default implementation returning 0
+  - Backends without soft-delete support continue working unchanged
+
+### Fixed
+- **Sync Race Condition** - Memories deleted locally no longer reappear from cloud sync
+- **Multi-device Deletion** - Deletions properly propagate across all synced devices
+
 ## [8.63.1] - 2026-01-02
 
 ### Fixed

@@ -149,13 +149,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## 🆕 Latest Release: **v8.63.1** (Jan 2, 2026)
+## 🆕 Latest Release: **v8.64.0** (Jan 2, 2026)
 
-**Critical Bug Fix for Tag Deletion**
+**Hybrid Sync Race Condition Fix - Tombstone Support**
 
-- 🐛 **Tag Deletion API Fix** - Fixed handle_delete_by_tag calling storage.delete_by_tag (single tag) instead of storage.delete_by_tags (list), preventing CI test failures
+- 🔄 **Soft-Delete with Tombstones** - Deleted memories now keep tombstone records to prevent re-syncing from cloud
+- 🛡️ **Sync Race Condition Fixed** - Memories deleted on one device no longer reappear after syncing from another device
+- 🧹 **Automatic Tombstone Purge** - Old tombstones (>30 days) are automatically cleaned up by BackgroundSyncService
+- 📊 **Schema Migration** - New `deleted_at` column automatically added on startup
 
 **Previous Releases**:
+- **v8.63.1** - Critical Bug Fix for Tag Deletion API (delete_by_tag vs delete_by_tags)
 - **v8.63.0** - Dashboard Bulk Operations & SHODH Ecosystem Integration (Delete Untagged, SHODH API Spec v1.0.0, Tag Matching Fix)
 - **v8.62.13** - HTTP-MCP Bridge API Endpoint Fix (Remote deployments restored with POST endpoints)
 - **v8.62.12** - Quality Analytics UI Fixed ("Invalid Date" and "ID: undefined" bugs)

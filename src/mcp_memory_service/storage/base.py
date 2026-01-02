@@ -248,6 +248,44 @@ class MemoryStorage(ABC):
         """Delete a memory by its hash."""
         pass
 
+    async def is_deleted(self, content_hash: str) -> bool:
+        """
+        Check if a memory has been soft-deleted (tombstone exists).
+
+        Used by hybrid sync to prevent re-syncing memories that were
+        intentionally deleted on this device.
+
+        Args:
+            content_hash: The content hash of the memory to check
+
+        Returns:
+            True if the memory was soft-deleted, False otherwise
+
+        Note:
+            Default implementation returns False (no soft-delete support).
+            Override in backends that support tombstones (e.g., sqlite_vec).
+        """
+        return False
+
+    async def purge_deleted(self, older_than_days: int = 30) -> int:
+        """
+        Permanently delete tombstones older than specified days.
+
+        This should be called periodically to clean up old soft-deleted records
+        after they have been synced to all devices.
+
+        Args:
+            older_than_days: Delete tombstones older than this many days (default 30)
+
+        Returns:
+            Number of tombstones permanently deleted
+
+        Note:
+            Default implementation returns 0 (no soft-delete support).
+            Override in backends that support tombstones (e.g., sqlite_vec).
+        """
+        return 0
+
     @abstractmethod
     async def get_by_hash(self, content_hash: str) -> Optional[Memory]:
         """

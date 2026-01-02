@@ -528,9 +528,22 @@ SOLUTIONS:
                     created_at REAL,
                     updated_at REAL,
                     created_at_iso TEXT,
-                    updated_at_iso TEXT
+                    updated_at_iso TEXT,
+                    deleted_at REAL DEFAULT NULL
                 )
             ''')
+
+            # Migration: Add deleted_at column if table exists but column doesn't (v8.64.0)
+            try:
+                cursor = self.conn.execute("PRAGMA table_info(memories)")
+                columns = [row[1] for row in cursor.fetchall()]
+                if 'deleted_at' not in columns:
+                    logger.info("Migrating database: Adding deleted_at column for soft-delete support...")
+                    self.conn.execute('ALTER TABLE memories ADD COLUMN deleted_at REAL DEFAULT NULL')
+                    self.conn.commit()
+                    logger.info("Migration complete: deleted_at column added")
+            except Exception as e:
+                logger.warning(f"Migration check for deleted_at (non-fatal): {e}")
             
             # Initialize embedding model BEFORE creating vector table
             await self._initialize_embedding_model()
@@ -604,6 +617,7 @@ SOLUTIONS:
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_content_hash ON memories(content_hash)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_memory_type ON memories(memory_type)')
+            self.conn.execute('CREATE INDEX IF NOT EXISTS idx_deleted_at ON memories(deleted_at)')
 
             # Mark as initialized to prevent re-initialization
             self._initialized = True
@@ -858,9 +872,9 @@ SOLUTIONS:
             if not self.conn:
                 return False, "Database not initialized"
             
-            # Check for duplicates
+            # Check for duplicates (only active memories, not soft-deleted)
             cursor = self.conn.execute(
-                'SELECT content_hash FROM memories WHERE content_hash = ?',
+                'SELECT content_hash FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
                 (memory.content_hash,)
             )
             if cursor.fetchone():
@@ -974,6 +988,7 @@ SOLUTIONS:
                         FROM memory_embeddings
                         WHERE content_embedding MATCH ? AND k = ?
                     ) e ON m.id = e.rowid
+                    WHERE m.deleted_at IS NULL
                     ORDER BY e.distance
                 ''', (serialize_float32(query_embedding), n_results))
                 
@@ -1073,7 +1088,8 @@ SOLUTIONS:
             tag_params = [f"*,{tag},*" for tag in stripped_tags]
 
             # Add time filter to WHERE clause if provided
-            where_clause = f"WHERE ({tag_conditions})"
+            # Also exclude soft-deleted memories
+            where_clause = f"WHERE ({tag_conditions}) AND deleted_at IS NULL"
             if time_start is not None:
                 where_clause += " AND created_at >= ?"
                 tag_params.append(time_start)
@@ -1152,6 +1168,8 @@ SOLUTIONS:
             tag_params = [f"*,{tag},*" for tag in stripped_tags]
 
             where_conditions = [f"({tag_conditions})"] if tag_conditions else []
+            # Always exclude soft-deleted memories
+            where_conditions.append("deleted_at IS NULL")
             if time_start is not None:
                 where_conditions.append("created_at >= ?")
                 tag_params.append(time_start)
@@ -1285,34 +1303,93 @@ SOLUTIONS:
             return []
 
     async def delete(self, content_hash: str) -> Tuple[bool, str]:
-        """Delete a memory by its content hash."""
+        """
+        Soft-delete a memory by setting deleted_at timestamp.
+
+        The memory is marked as deleted but retained for sync conflict resolution.
+        Use purge_deleted() to permanently remove old tombstones.
+        """
         try:
             if not self.conn:
                 return False, "Database not initialized"
-            
+
             # Get the id first to delete corresponding embedding
-            cursor = self.conn.execute('SELECT id FROM memories WHERE content_hash = ?', (content_hash,))
+            cursor = self.conn.execute(
+                'SELECT id FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
+                (content_hash,)
+            )
             row = cursor.fetchone()
-            
+
             if row:
                 memory_id = row[0]
-                # Delete from both tables
+                # Delete embedding (won't be needed for search)
                 self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
-                cursor = self.conn.execute('DELETE FROM memories WHERE content_hash = ?', (content_hash,))
+                # Soft-delete: set deleted_at timestamp instead of DELETE
+                cursor = self.conn.execute(
+                    'UPDATE memories SET deleted_at = ? WHERE content_hash = ? AND deleted_at IS NULL',
+                    (time.time(), content_hash)
+                )
                 self.conn.commit()
             else:
                 return False, f"Memory with hash {content_hash} not found"
-            
+
             if cursor.rowcount > 0:
-                logger.info(f"Deleted memory: {content_hash}")
+                logger.info(f"Soft-deleted memory: {content_hash}")
                 return True, f"Successfully deleted memory {content_hash}"
             else:
                 return False, f"Memory with hash {content_hash} not found"
-                
+
         except Exception as e:
             error_msg = f"Failed to delete memory: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
+
+    async def is_deleted(self, content_hash: str) -> bool:
+        """
+        Check if a memory has been soft-deleted (tombstone exists).
+
+        Used by hybrid sync to prevent re-syncing deleted memories from cloud.
+        """
+        try:
+            if not self.conn:
+                return False
+
+            cursor = self.conn.execute(
+                'SELECT deleted_at FROM memories WHERE content_hash = ? AND deleted_at IS NOT NULL',
+                (content_hash,)
+            )
+            return cursor.fetchone() is not None
+
+        except Exception as e:
+            logger.error(f"Failed to check if memory is deleted: {str(e)}")
+            return False
+
+    async def purge_deleted(self, older_than_days: int = 30) -> int:
+        """
+        Permanently delete tombstones older than specified days.
+
+        This should be called periodically to clean up old soft-deleted records.
+        Default: 30 days retention to allow all devices to sync deletions.
+        """
+        try:
+            if not self.conn:
+                return 0
+
+            cutoff = time.time() - (older_than_days * 86400)
+            cursor = self.conn.execute(
+                'DELETE FROM memories WHERE deleted_at IS NOT NULL AND deleted_at < ?',
+                (cutoff,)
+            )
+            self.conn.commit()
+
+            count = cursor.rowcount
+            if count > 0:
+                logger.info(f"Purged {count} tombstones older than {older_than_days} days")
+            return count
+
+        except Exception as e:
+            logger.error(f"Failed to purge deleted memories: {str(e)}")
+            return 0
     
     async def get_by_hash(self, content_hash: str) -> Optional[Memory]:
         """Get a memory by its content hash."""
@@ -1323,7 +1400,7 @@ SOLUTIONS:
             cursor = self.conn.execute('''
                 SELECT content_hash, content, tags, memory_type, metadata,
                        created_at, updated_at, created_at_iso, updated_at_iso
-                FROM memories WHERE content_hash = ?
+                FROM memories WHERE content_hash = ? AND deleted_at IS NULL
             ''', (content_hash,))
             
             row = cursor.fetchone()
@@ -1355,12 +1432,15 @@ SOLUTIONS:
             logger.error(f"Failed to get memory by hash {content_hash}: {str(e)}")
             return None
 
-    async def get_all_content_hashes(self) -> Set[str]:
+    async def get_all_content_hashes(self, include_deleted: bool = False) -> Set[str]:
         """
         Get all content hashes in database for bulk existence checking.
 
         This is optimized for sync operations to avoid individual existence checks.
         Returns a set for O(1) lookup performance.
+
+        Args:
+            include_deleted: If True, includes soft-deleted memories. Default False.
 
         Returns:
             Set of all content_hash values currently in the database
@@ -1369,7 +1449,10 @@ SOLUTIONS:
             if not self.conn:
                 return set()
 
-            cursor = self.conn.execute('SELECT content_hash FROM memories')
+            if include_deleted:
+                cursor = self.conn.execute('SELECT content_hash FROM memories')
+            else:
+                cursor = self.conn.execute('SELECT content_hash FROM memories WHERE deleted_at IS NULL')
             return {row[0] for row in cursor.fetchall()}
 
         except Exception as e:
@@ -1377,7 +1460,7 @@ SOLUTIONS:
             return set()
 
     async def delete_by_tag(self, tag: str) -> Tuple[int, str]:
-        """Delete memories by tag (exact match only)."""
+        """Soft-delete memories by tag (exact match only)."""
         try:
             if not self.conn:
                 return 0, "Database not initialized"
@@ -1388,31 +1471,32 @@ SOLUTIONS:
             stripped_tag = tag.strip()
             exact_match_pattern = f"*,{stripped_tag},*"
 
-            # Get the ids first to delete corresponding embeddings
+            # Get the ids first to delete corresponding embeddings (only non-deleted)
             cursor = self.conn.execute(
-                "SELECT id FROM memories WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ?",
+                "SELECT id FROM memories WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ? AND deleted_at IS NULL",
                 (exact_match_pattern,)
             )
             memory_ids = [row[0] for row in cursor.fetchall()]
 
-            # Delete from both tables
+            # Delete embeddings (won't be needed for search)
             for memory_id in memory_ids:
                 self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
 
+            # Soft-delete: set deleted_at timestamp instead of DELETE
             cursor = self.conn.execute(
-                "DELETE FROM memories WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ?",
-                (exact_match_pattern,)
+                "UPDATE memories SET deleted_at = ? WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ? AND deleted_at IS NULL",
+                (time.time(), exact_match_pattern)
             )
             self.conn.commit()
-            
+
             count = cursor.rowcount
-            logger.info(f"Deleted {count} memories with tag: {tag}")
-            
+            logger.info(f"Soft-deleted {count} memories with tag: {tag}")
+
             if count > 0:
                 return count, f"Successfully deleted {count} memories with tag '{tag}'"
             else:
                 return 0, f"No memories found with tag '{tag}'"
-                
+
         except Exception as e:
             error_msg = f"Failed to delete by tag: {str(e)}"
             logger.error(error_msg)
@@ -1420,7 +1504,7 @@ SOLUTIONS:
 
     async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str]:
         """
-        Delete memories matching ANY of the given tags (optimized single-query version).
+        Soft-delete memories matching ANY of the given tags (optimized single-query version).
 
         Overrides base class implementation for better performance using OR conditions.
         """
@@ -1438,8 +1522,8 @@ SOLUTIONS:
             conditions = " OR ".join(["(',' || REPLACE(tags, ' ', '') || ',') GLOB ?" for _ in stripped_tags])
             params = [f"*,{tag},*" for tag in stripped_tags]
 
-            # Get the ids first to delete corresponding embeddings
-            query = f'SELECT id FROM memories WHERE {conditions}'
+            # Get the ids first to delete corresponding embeddings (only non-deleted)
+            query = f'SELECT id FROM memories WHERE ({conditions}) AND deleted_at IS NULL'
             cursor = self.conn.execute(query, params)
             memory_ids = [row[0] for row in cursor.fetchall()]
 
@@ -1448,13 +1532,13 @@ SOLUTIONS:
                 placeholders = ','.join('?' for _ in memory_ids)
                 self.conn.execute(f'DELETE FROM memory_embeddings WHERE rowid IN ({placeholders})', memory_ids)
 
-            # Delete from memories table
-            delete_query = f'DELETE FROM memories WHERE {conditions}'
-            cursor = self.conn.execute(delete_query, params)
+            # Soft-delete: set deleted_at timestamp instead of DELETE
+            update_query = f'UPDATE memories SET deleted_at = ? WHERE ({conditions}) AND deleted_at IS NULL'
+            cursor = self.conn.execute(update_query, [time.time()] + params)
             self.conn.commit()
 
             count = cursor.rowcount
-            logger.info(f"Deleted {count} memories matching tags: {tags}")
+            logger.info(f"Soft-deleted {count} memories matching tags: {tags}")
 
             if count > 0:
                 return count, f"Successfully deleted {count} memories matching {len(tags)} tag(s)"
@@ -1704,11 +1788,12 @@ SOLUTIONS:
             if not self.conn:
                 return {"error": "Database not initialized"}
 
-            cursor = self.conn.execute('SELECT COUNT(*) FROM memories')
+            # Exclude soft-deleted memories from all stats
+            cursor = self.conn.execute('SELECT COUNT(*) FROM memories WHERE deleted_at IS NULL')
             total_memories = cursor.fetchone()[0]
 
             # Count unique individual tags (not tag sets)
-            cursor = self.conn.execute('SELECT tags FROM memories WHERE tags IS NOT NULL AND tags != ""')
+            cursor = self.conn.execute('SELECT tags FROM memories WHERE tags IS NOT NULL AND tags != "" AND deleted_at IS NULL')
             unique_tags = len(set(
                 tag.strip()
                 for (tag_string,) in cursor
@@ -1720,7 +1805,7 @@ SOLUTIONS:
             # Count memories from this week (last 7 days)
             import time
             week_ago = time.time() - (7 * 24 * 60 * 60)
-            cursor = self.conn.execute('SELECT COUNT(*) FROM memories WHERE created_at >= ?', (week_ago,))
+            cursor = self.conn.execute('SELECT COUNT(*) FROM memories WHERE created_at >= ? AND deleted_at IS NULL', (week_ago,))
             memories_this_week = cursor.fetchone()[0]
 
             # Get database file size
@@ -2333,12 +2418,10 @@ SOLUTIONS:
                 for tag in tags:
                     params.append(f'%{tag}%')
 
-            # Build final query
-            if conditions:
-                query = 'SELECT COUNT(*) FROM memories WHERE ' + ' AND '.join(conditions)
-                cursor = self.conn.execute(query, tuple(params))
-            else:
-                cursor = self.conn.execute('SELECT COUNT(*) FROM memories')
+            # Build final query (always exclude soft-deleted)
+            conditions.append('deleted_at IS NULL')
+            query = 'SELECT COUNT(*) FROM memories WHERE ' + ' AND '.join(conditions)
+            cursor = self.conn.execute(query, tuple(params))
 
             result = cursor.fetchone()
             return result[0] if result else 0
@@ -2358,11 +2441,11 @@ SOLUTIONS:
             await self.initialize()
 
             # No explicit transaction needed - SQLite in WAL mode handles this automatically
-            # Get all tags from the database
+            # Get all tags from the database (exclude soft-deleted)
             cursor = self.conn.execute('''
                 SELECT tags
                 FROM memories
-                WHERE tags IS NOT NULL AND tags != ''
+                WHERE tags IS NOT NULL AND tags != '' AND deleted_at IS NULL
             ''')
 
             # Fetch all rows first to avoid holding cursor during processing

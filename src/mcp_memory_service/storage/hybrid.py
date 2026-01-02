@@ -180,6 +180,11 @@ class BackgroundSyncService:
         self.drift_check_enabled = getattr(app_config, 'HYBRID_SYNC_UPDATES', True)
         self.drift_check_interval = getattr(app_config, 'HYBRID_DRIFT_CHECK_INTERVAL', 3600)
 
+        # Tombstone purge state (v8.64.0+)
+        self.last_purge_time = 0
+        self.purge_interval = 86400  # Daily purge check (24 hours)
+        self.tombstone_retention_days = getattr(app_config, 'TOMBSTONE_RETENTION_DAYS', 30)
+
         self.sync_stats = {
             'operations_processed': 0,
             'operations_failed': 0,
@@ -466,6 +471,11 @@ class BackgroundSyncService:
                     await self._periodic_sync()
                     self.last_sync_time = current_time
 
+                # Daily tombstone purge (v8.64.0+)
+                if current_time - self.last_purge_time >= self.purge_interval:
+                    await self._purge_old_tombstones()
+                    self.last_purge_time = current_time
+
                 # Sleep before next iteration
                 await asyncio.sleep(5)  # Check every 5 seconds
 
@@ -494,6 +504,26 @@ class BackgroundSyncService:
 
         if operations:
             await self._process_operations_batch(operations)
+
+    async def _purge_old_tombstones(self):
+        """
+        Purge soft-deleted memories older than retention period.
+
+        This runs daily to clean up tombstones that have been synced to all devices.
+        Default retention: 30 days (configurable via TOMBSTONE_RETENTION_DAYS).
+        """
+        try:
+            if hasattr(self.primary, 'purge_deleted'):
+                purged_count = await self.primary.purge_deleted(
+                    older_than_days=self.tombstone_retention_days
+                )
+                if purged_count > 0:
+                    logger.info(f"Purged {purged_count} tombstones older than {self.tombstone_retention_days} days")
+                    self.sync_stats['tombstones_purged'] = self.sync_stats.get('tombstones_purged', 0) + purged_count
+            else:
+                logger.debug("Primary storage does not support tombstone purging")
+        except Exception as e:
+            logger.error(f"Error purging old tombstones: {e}")
 
     async def _process_operations_batch(self, operations: List[SyncOperation]):
         """Process a batch of sync operations."""
@@ -1013,6 +1043,16 @@ class HybridMemoryStorage(MemoryStorage):
                             try:
                                 # Fast O(1) existence check
                                 if cf_memory.content_hash not in local_hashes:
+                                    # Check if memory was soft-deleted locally (tombstone check)
+                                    # This prevents re-syncing memories that were intentionally deleted
+                                    if hasattr(self.primary, 'is_deleted') and await self.primary.is_deleted(cf_memory.content_hash):
+                                        logger.debug(f"Memory {cf_memory.content_hash[:8]} was deleted locally, skipping cloud sync")
+                                        # Propagate deletion to cloud if sync service available
+                                        if self.sync_service:
+                                            operation = SyncOperation(operation='delete', content_hash=cf_memory.content_hash)
+                                            await self.sync_service.enqueue_operation(operation)
+                                        return ('tombstone', cf_memory.content_hash)
+
                                     batch_missing += 1
                                     # Memory doesn't exist locally, sync it
                                     success, message = await self.primary.store(cf_memory)
