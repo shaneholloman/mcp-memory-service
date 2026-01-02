@@ -128,3 +128,30 @@ changelog_sections = [
     ["refactor", "Code Refactoring"],
     ["test", "Tests"]
 ]
+
+[tool.coverage.run]
+source = ["src/mcp_memory_service"]
+omit = [
+    # OAuth system - no tests yet (Issue #316)
+    "src/mcp_memory_service/web/oauth/*",
+    # Web infrastructure - minimal test coverage
+    "src/mcp_memory_service/web/app.py",
+    "src/mcp_memory_service/web/sse.py",
+    # CLI entry points
+    "src/mcp_memory_service/__main__.py",
+    "src/mcp_memory_service/mcp_server.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+]
