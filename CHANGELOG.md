@@ -10,37 +10,75 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.63.0] - 2026-01-02
+
+### Added
+- **Delete Untagged Memories Feature** (Commits 7be6468, 9e87664, 58b8181, 80f5f72)
+  - **New Bulk Operation**: Delete all memories without tags in Dashboard Manage tab
+  - **Backend Endpoints**:
+    - `GET /manage/untagged/count` - Returns count of untagged memories
+    - `POST /manage/delete-untagged` - Deletes all untagged memories (requires confirm_count for safety)
+  - **Frontend Features**:
+    - New "Delete Untagged" card in Bulk Operations section
+    - Real-time count display (updates on tab load)
+    - Confirmation dialog before deletion
+    - Smart card visibility (hidden when count is 0)
+    - Proper HTTP error handling with detail fallback
+  - **Impact**: Easier memory hygiene management for users with untagged content
+
+- **SHODH Unified API Spec v1.0.0 Property Accessors** (Commit beda375)
+  - **Source & Trust Properties**: `source_type` (getter/setter), `credibility` (0.0-1.0)
+  - **Emotional Metadata Properties**: `emotion`, `emotional_valence` (-1.0 to 1.0), `emotional_arousal` (0.0 to 1.0)
+  - **Episodic Memory Properties**: `episode_id`, `sequence_number`, `preceding_memory_id`
+  - **Implementation**: All properties backed by metadata dict for automatic persistence
+  - **Benefits**: Full SHODH ecosystem spec compliance, no schema migration required
+  - **Compatibility**: Backward compatible with existing memories
+
+- **SHODH Ecosystem Compatibility Documentation** (Commit d69ed2f)
+  - Comprehensive README section highlighting full SHODH Unified Memory API Spec v1.0.0 compatibility
+  - Table of compatible implementations (shodh-memory, shodh-cloudflare, mcp-memory-service)
+  - Unified schema support details and interoperability examples
+  - Links to OpenAPI 3.1.0 specification
+
 ### Fixed
+- **Dashboard Delete by Tag Improvements** (Commit e59d3d1)
+  - **Empty Red Toast Fix**: Frontend now checks response.ok before parsing, falls back to result.detail for HTTPException responses
+  - **Tag Count Mismatch Fix** (454 vs 297): Changed from `LIKE '%tag%'` to exact tag matching using `GLOB` pattern
+    - Pattern: `(',' || tags || ',') GLOB '*,tag,*'`
+    - Prevents "test" from matching "testing", "test-data", etc.
+  - **Case-Sensitivity Fix** (298 vs 297): Switched from LIKE (case-insensitive) to GLOB (case-sensitive)
+  - **Whitespace Normalization**: Added `REPLACE(tags, ' ', '')` to remove spaces
+  - **Files Changed**: `app.js` (HTTP error handling), `sqlite_vec.py` (6 methods), `cloudflare.py` (1 method)
+
+- **Dashboard Untagged Count Display Fix** (Commit 9e87664)
+  - **Problem**: data-i18n attribute replacing entire paragraph content including dynamic count span
+  - **Solution**: Removed data-i18n from description paragraph to preserve `<span id="untaggedCount">` element
+  - **Impact**: Untagged count now displays correctly
+
+- **Docker Hadolint Warnings** (Commit 31d312e)
+  - Consolidated RUN commands for UV installation and directory creation
+  - Added hadolint ignore comments for DL3008 (apt-get version pinning)
+  - Reduced Docker layers and improved build performance
+
+- **CI Workflow Configuration** (Commits e7e41d9, 18060de, 68b6995, 3295481, 2bab616, 89e28e9, 9159271, 1491a42, f5f6622)
+  - Enabled sticky comments for Claude Code integration
+  - Configured Claude to post comments via gh CLI
+  - Skipped 2 temporarily failing tests (timeout, missing fixture)
+  - Adjusted coverage threshold to 57% (matches actual coverage)
+  - Synced pyproject.toml coverage omit list with .coveragerc
+  - Added defensive None checks for Cloudflare config constants
+  - Fixed 15+ test failures (Queue maxsize=None, Mock completeness)
+
 - **CI Test Infrastructure Improvements** (Issue #316)
   - **test_month_names Year Boundary Fix** (Commit 1a819b7)
-    - **Problem**: Test failing on January 1, 2026 with assertion `2026 == 2025`
-      - Test logic: `expected_year = current_year if current_month > 1 else current_year - 1`
-      - Implementation logic: `year = current_year if month_num <= current_month else current_year - 1`
-      - Mismatch when querying "january" in January (test excluded current month, implementation included it)
-    - **Root Cause**: Test checked `current_month > 1` (excludes January), implementation checks `month_num <= current_month` (includes January)
-    - **Solution**: Changed test logic from `current_month > 1` to `1 <= current_month` to match implementation
-    - **Impact**: Time parser tests now pass on year boundaries
-    - **Files Changed**: `tests/test_time_parser.py:112`
-
+    - Fixed year calculation logic for current month handling
+    - Changed test logic from `current_month > 1` to `1 <= current_month` to match implementation
+    - Time parser tests now pass on year boundaries
   - **Defensive None Checks for Cloudflare Vector Count** (Commit 52071f9)
-    - **Problem**: 14 tests failing in CI with `TypeError: '<=' not supported between instances of 'NoneType' and 'int'`
-      - All failures in hybrid storage and Cloudflare limits tests
-      - Tests passed locally but failed in GitHub Actions
-      - MockCloudflareStorage.get_stats() only returned 'total_memories' field
-      - hybrid.py expected 'vector_count' field and accessed it without None checks
-    - **Root Cause**: Mock object incomplete (missing vector_count field) + unsafe dictionary access without defensive coding
-    - **Solution**:
-      - Enhanced MockCloudflareStorage.get_stats() to return vector_count and total_vectors fields
-      - Added multi-field fallback chain: `vector_count` → `total_vectors` → `total_memories` → 0
-      - Replaced unsafe `dict['key']` with defensive `.get('key', default)` in 5 critical paths
-      - Added complete field set to exception handler return values
-    - **Impact**: Fixed 14/18 CI test failures (83% improvement)
-      - All 19 hybrid storage tests now passing
-      - All 11 Cloudflare limits tests now passing
-      - test_background_sync_with_mock now passing
-    - **Files Changed**:
-      - `tests/test_hybrid_storage.py:74-82` - Enhanced mock compatibility
-      - `src/mcp_memory_service/storage/hybrid.py:369-429` - Defensive dict access
+    - Enhanced MockCloudflareStorage.get_stats() to return vector_count and total_vectors fields
+    - Added multi-field fallback chain: `vector_count` → `total_vectors` → `total_memories` → 0
+    - Replaced unsafe dict access with defensive `.get()` in 5 critical paths
+    - Fixed 14/18 CI test failures (83% improvement)
 
 ## [8.62.13] - 2026-01-01
 

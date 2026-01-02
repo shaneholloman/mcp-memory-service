@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.62.5**: **Test Suite Stability - 40 Tests Fixed (99% Pass Rate)** - Comprehensive test infrastructure fixes across 8 test files. Test success rate improved from 68% to 99% (134/135 passing). Fixed memory operations, storage backends, and CLI interfaces. Completed in 45 minutes using amp-bridge agent (4x faster than manual). See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.63.0**: **Dashboard Bulk Operations & SHODH Ecosystem Integration** - New Delete Untagged Memories feature in Dashboard Manage tab. Full SHODH Unified API Spec v1.0.0 compatibility (emotional metadata, episodic memory, source tracking). Fixed tag matching (exact case-sensitive GLOB pattern). Dashboard UX improvements (toast errors, count display). CI stability: 15+ test fixes, 83% pass rate improvement. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

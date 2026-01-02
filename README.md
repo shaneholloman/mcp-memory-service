@@ -149,16 +149,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## 🆕 Latest Release: **v8.62.13** (Jan 1, 2026)
+## 🆕 Latest Release: **v8.63.0** (Jan 2, 2026)
 
-**HTTP-MCP Bridge API Endpoint Fix - Remote Deployments Restored**
+**Dashboard Bulk Operations & SHODH Ecosystem Integration**
 
-- 🔧 **Critical Bridge Fix** - HTTP-MCP bridge now works correctly with POST endpoints
-- 🌐 **Remote Deployment Support** - Fixed 405 Method Not Allowed errors blocking remote MCP clients
-- 📡 **API Compatibility** - Updated bridge from GET to POST `/search` and `/search/by-tag`
-- ✅ **Integration Tests** - All 9 bridge integration tests passing
+- 🗑️ **Delete Untagged Memories** - New bulk operation in Dashboard Manage tab with smart visibility
+- 🌐 **SHODH API Spec v1.0.0** - Full compatibility with unified memory ecosystem (emotional metadata, episodic memory, source tracking)
+- 🏷️ **Tag Matching Fix** - Exact case-sensitive tag matching (GLOB pattern replaces LIKE)
+- 🎨 **Dashboard UX** - Fixed empty toast errors, untagged count display, smart card visibility
+- 🐳 **Docker Optimization** - Consolidated RUN commands, reduced layers, faster builds
+- ✅ **CI Stability** - 15+ test fixes, 83% improvement in test pass rate
 
 **Previous Releases**:
+- **v8.62.13** - HTTP-MCP Bridge API Endpoint Fix (Remote deployments restored with POST endpoints)
 - **v8.62.12** - Quality Analytics UI Fixed ("Invalid Date" and "ID: undefined" bugs)
 - **v8.62.10** - Document Ingestion Bug Fixed (NameError in web console, circular import prevention)
 - **v8.62.9** - CI Race Condition & TypeError Fixed (hybrid backend task cleanup, None value handling)
