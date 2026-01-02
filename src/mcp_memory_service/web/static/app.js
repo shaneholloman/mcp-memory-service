@@ -3785,13 +3785,21 @@ class MemoryDashboard {
      */
     async loadUntaggedCount() {
         try {
+            console.log('loadUntaggedCount: Fetching from', `${this.apiBase}/manage/untagged/count`);
             const response = await fetch(`${this.apiBase}/manage/untagged/count`);
-            if (!response.ok) return;
+            console.log('loadUntaggedCount: Response status', response.status);
+            if (!response.ok) {
+                console.error('loadUntaggedCount: Response not ok');
+                return;
+            }
 
             const data = await response.json();
+            console.log('loadUntaggedCount: Data received', data);
             const countSpan = document.getElementById('untaggedCount');
+            console.log('loadUntaggedCount: countSpan element', countSpan);
             if (countSpan) {
                 countSpan.textContent = data.count || 0;
+                console.log('loadUntaggedCount: Set count to', data.count);
             }
         } catch (error) {
             console.error('Failed to load untagged count:', error);
