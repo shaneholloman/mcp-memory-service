@@ -546,6 +546,7 @@ class MemoryDashboard {
         document.getElementById('deleteByTagBtn')?.addEventListener('click', this.handleBulkDeleteByTag.bind(this));
         document.getElementById('cleanupDuplicatesBtn')?.addEventListener('click', this.handleCleanupDuplicates.bind(this));
         document.getElementById('deleteByDateBtn')?.addEventListener('click', this.handleBulkDeleteByDate.bind(this));
+        document.getElementById('deleteUntaggedBtn')?.addEventListener('click', this.handleDeleteUntagged.bind(this));
         document.getElementById('optimizeDbBtn')?.addEventListener('click', this.handleOptimizeDatabase.bind(this));
         document.getElementById('rebuildIndexBtn')?.addEventListener('click', this.handleRebuildIndex.bind(this));
 
@@ -3772,9 +3773,28 @@ class MemoryDashboard {
             // Load tag statistics for bulk operations
             await this.loadTagSelectOptions();
             await this.loadTagManagementStats();
+            await this.loadUntaggedCount();
         } catch (error) {
             console.error('Failed to load manage data:', error);
             this.showToast(this.t('toast.loadManageFail', 'Failed to load management data'), 'error');
+        }
+    }
+
+    /**
+     * Load count of untagged memories
+     */
+    async loadUntaggedCount() {
+        try {
+            const response = await fetch(`${this.apiBase}/manage/untagged/count`);
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const countSpan = document.getElementById('untaggedCount');
+            if (countSpan) {
+                countSpan.textContent = data.count || 0;
+            }
+        } catch (error) {
+            console.error('Failed to load untagged count:', error);
         }
     }
 
@@ -4007,6 +4027,52 @@ class MemoryDashboard {
         } catch (error) {
             console.error('Bulk delete by date failed:', error);
             this.showToast(this.t('toast.bulkDeleteFailed', 'Bulk delete operation failed'), 'error');
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    /**
+     * Handle delete untagged memories
+     */
+    async handleDeleteUntagged() {
+        // Get current count
+        const countSpan = document.getElementById('untaggedCount');
+        const count = parseInt(countSpan?.textContent || '0', 10);
+
+        if (count === 0) {
+            this.showToast('No untagged memories to delete', 'info');
+            return;
+        }
+
+        if (!await this.confirmBulkOperation(`Delete ${count} memories without tags?`)) {
+            return;
+        }
+
+        this.setLoading(true);
+        try {
+            const response = await fetch(`${this.apiBase}/manage/delete-untagged?confirm_count=${count}`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                const errorMsg = result.detail || result.message || 'Unknown error';
+                this.showToast(errorMsg, 'error');
+                return;
+            }
+
+            if (result.success) {
+                this.showToast(result.message, 'success');
+                await this.loadManageData();
+                await this.loadDashboardData();
+            } else {
+                this.showToast(result.message || 'Operation failed', 'error');
+            }
+        } catch (error) {
+            console.error('Delete untagged failed:', error);
+            this.showToast('Delete untagged operation failed', 'error');
         } finally {
             this.setLoading(false);
         }

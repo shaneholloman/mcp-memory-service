@@ -212,6 +212,118 @@ async def cleanup_duplicates(
         raise HTTPException(status_code=500, detail=f"Duplicate cleanup failed: {str(e)}")
 
 
+@router.get("/untagged/count", tags=["management"])
+async def count_untagged_memories(
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """
+    Count memories without tags.
+
+    Returns the number of memories that have no tags assigned.
+    """
+    try:
+        if hasattr(storage, 'count_untagged_memories'):
+            count = await storage.count_untagged_memories()
+        else:
+            # Fallback: use raw SQL for SQLite-based backends
+            if hasattr(storage, 'conn'):
+                cursor = storage.conn.execute(
+                    "SELECT COUNT(*) FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+                )
+                count = cursor.fetchone()[0]
+            elif hasattr(storage, 'primary') and hasattr(storage.primary, 'conn'):
+                cursor = storage.primary.conn.execute(
+                    "SELECT COUNT(*) FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+                )
+                count = cursor.fetchone()[0]
+            else:
+                raise HTTPException(status_code=501, detail="Untagged count not supported by storage backend")
+
+        return {"count": count}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Count untagged failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Count untagged failed: {str(e)}")
+
+
+@router.post("/delete-untagged", response_model=BulkOperationResponse, tags=["management"])
+async def delete_untagged_memories(
+    confirm_count: int = None,
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """
+    Delete all memories without tags.
+
+    Removes memories that have no tags assigned (NULL, empty string, or whitespace only).
+    Requires confirm_count parameter matching the actual count for safety.
+    """
+    try:
+        # First count untagged memories
+        if hasattr(storage, 'conn'):
+            conn = storage.conn
+        elif hasattr(storage, 'primary') and hasattr(storage.primary, 'conn'):
+            conn = storage.primary.conn
+        else:
+            raise HTTPException(status_code=501, detail="Delete untagged not supported by storage backend")
+
+        cursor = conn.execute(
+            "SELECT COUNT(*) FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+        )
+        actual_count = cursor.fetchone()[0]
+
+        # Safety check
+        if confirm_count is not None and confirm_count != actual_count:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Confirmation count mismatch. Expected {actual_count}, got {confirm_count}"
+            )
+
+        if actual_count == 0:
+            return BulkOperationResponse(
+                success=True,
+                message="No untagged memories found",
+                affected_count=0,
+                operation="delete_untagged"
+            )
+
+        # Get IDs for embedding deletion
+        cursor = conn.execute(
+            "SELECT id FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+        )
+        memory_ids = [row[0] for row in cursor.fetchall()]
+
+        # Delete embeddings
+        if memory_ids:
+            placeholders = ','.join('?' for _ in memory_ids)
+            conn.execute(f'DELETE FROM memory_embeddings WHERE rowid IN ({placeholders})', memory_ids)
+
+        # Delete memories
+        cursor = conn.execute(
+            "DELETE FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+        )
+        conn.commit()
+
+        deleted_count = cursor.rowcount
+        logger.info(f"Deleted {deleted_count} untagged memories")
+
+        return BulkOperationResponse(
+            success=deleted_count > 0,
+            message=f"Successfully deleted {deleted_count} memories without tags",
+            affected_count=deleted_count,
+            operation="delete_untagged"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete untagged failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Delete untagged failed: {str(e)}")
+
+
 @router.get("/tags/stats", response_model=TagStatsListResponse, tags=["management"])
 async def get_tag_statistics(
     storage: MemoryStorage = Depends(get_storage),
