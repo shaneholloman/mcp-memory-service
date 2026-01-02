@@ -563,3 +563,281 @@ class TestCloudflareStorage:
 
         # Test with mixed types in list
         assert cloudflare_storage.sanitized([1, "tag2", 3.14]) == '["1", "tag2", "3.14"]'
+
+
+class TestCloudflareTimeBasedDeletion:
+    """Tests for time-based deletion methods added in v8.66.0."""
+
+    @pytest.mark.asyncio
+    async def test_delete_by_timeframe_d1_query(self, cloudflare_storage):
+        """Test delete_by_timeframe constructs correct D1 SQL query."""
+        from datetime import date
+
+        # Mock response with content hashes to delete
+        mock_find_response = Mock()
+        mock_find_response.json.return_value = {
+            "success": True,
+            "result": [{
+                "results": [
+                    {"content_hash": "hash1"},
+                    {"content_hash": "hash2"}
+                ]
+            }]
+        }
+
+        # Mock delete responses (one per memory)
+        mock_delete_response = Mock()
+        mock_delete_response.json.return_value = {
+            "success": True,
+            "result": [{"meta": {"changes": 1}}]
+        }
+
+        start = date(2025, 1, 1)
+        end = date(2025, 1, 31)
+
+        with patch.object(cloudflare_storage, '_retry_request', return_value=mock_find_response) as mock_request:
+            with patch.object(cloudflare_storage, 'delete', return_value=(True, "Deleted")) as mock_delete:
+                count, message = await cloudflare_storage.delete_by_timeframe(start, end)
+
+                # Verify SQL query structure
+                assert mock_request.called
+                sql_payload = mock_request.call_args.kwargs["json"]
+                assert "created_at >= ?" in sql_payload["sql"]
+                assert "created_at <= ?" in sql_payload["sql"]
+                assert "deleted_at IS NULL" in sql_payload["sql"]
+                assert len(sql_payload["params"]) == 2
+
+                # Verify deletion count
+                assert count == 2
+                assert "2 memories" in message
+                assert mock_delete.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_delete_by_timeframe_with_tag(self, cloudflare_storage):
+        """Test delete_by_timeframe includes tag filter in SQL."""
+        from datetime import date
+
+        mock_find_response = Mock()
+        mock_find_response.json.return_value = {
+            "success": True,
+            "result": [{
+                "results": [{"content_hash": "hash1"}]
+            }]
+        }
+
+        start = date(2025, 1, 1)
+        end = date(2025, 1, 31)
+        tag = "test-tag"
+
+        with patch.object(cloudflare_storage, '_retry_request', return_value=mock_find_response) as mock_request:
+            with patch.object(cloudflare_storage, 'delete', return_value=(True, "Deleted")):
+                count, message = await cloudflare_storage.delete_by_timeframe(start, end, tag=tag)
+
+                # Verify tag filter in SQL
+                sql_payload = mock_request.call_args.kwargs["json"]
+                assert "tags LIKE ?" in sql_payload["sql"]
+                assert len(sql_payload["params"]) == 6  # 2 timestamps + 4 tag patterns
+
+                # Verify tag patterns
+                params = sql_payload["params"]
+                assert params[2] == f"{tag},%"
+                assert params[3] == f"%,{tag},%"
+                assert params[4] == f"%,{tag}"
+                assert params[5] == tag
+
+                assert count == 1
+
+    @pytest.mark.asyncio
+    async def test_delete_by_timeframe_api_error(self, cloudflare_storage):
+        """Test delete_by_timeframe handles API errors gracefully."""
+        from datetime import date
+
+        start = date(2025, 1, 1)
+        end = date(2025, 1, 31)
+
+        # Mock _retry_request to raise exception
+        with patch.object(cloudflare_storage, '_retry_request', side_effect=Exception("API error")):
+            count, message = await cloudflare_storage.delete_by_timeframe(start, end)
+
+            # Verify error handling
+            assert count == 0
+            assert "Error" in message
+            assert "API error" in message
+
+    @pytest.mark.asyncio
+    async def test_delete_before_date_d1_query(self, cloudflare_storage):
+        """Test delete_before_date constructs correct D1 SQL query."""
+        from datetime import date
+
+        mock_find_response = Mock()
+        mock_find_response.json.return_value = {
+            "success": True,
+            "result": [{
+                "results": [
+                    {"content_hash": "old_hash1"},
+                    {"content_hash": "old_hash2"},
+                    {"content_hash": "old_hash3"}
+                ]
+            }]
+        }
+
+        before = date(2024, 12, 31)
+
+        with patch.object(cloudflare_storage, '_retry_request', return_value=mock_find_response) as mock_request:
+            with patch.object(cloudflare_storage, 'delete', return_value=(True, "Deleted")) as mock_delete:
+                count, message = await cloudflare_storage.delete_before_date(before)
+
+                # Verify SQL query structure
+                sql_payload = mock_request.call_args.kwargs["json"]
+                assert "created_at < ?" in sql_payload["sql"]
+                assert "deleted_at IS NULL" in sql_payload["sql"]
+                assert len(sql_payload["params"]) == 1
+
+                # Verify deletion count
+                assert count == 3
+                assert "3 memories" in message
+                assert mock_delete.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_delete_before_date_with_tag(self, cloudflare_storage):
+        """Test delete_before_date includes tag filter in SQL."""
+        from datetime import date
+
+        mock_find_response = Mock()
+        mock_find_response.json.return_value = {
+            "success": True,
+            "result": [{
+                "results": [{"content_hash": "tagged_old"}]
+            }]
+        }
+
+        before = date(2024, 12, 31)
+        tag = "archive"
+
+        with patch.object(cloudflare_storage, '_retry_request', return_value=mock_find_response) as mock_request:
+            with patch.object(cloudflare_storage, 'delete', return_value=(True, "Deleted")):
+                count, message = await cloudflare_storage.delete_before_date(before, tag=tag)
+
+                # Verify tag filter in SQL
+                sql_payload = mock_request.call_args.kwargs["json"]
+                assert "tags LIKE ?" in sql_payload["sql"]
+                assert len(sql_payload["params"]) == 5  # 1 timestamp + 4 tag patterns
+
+                # Verify tag patterns
+                params = sql_payload["params"]
+                assert params[1] == f"{tag},%"
+                assert params[2] == f"%,{tag},%"
+                assert params[3] == f"%,{tag}"
+                assert params[4] == tag
+
+                assert count == 1
+
+    @pytest.mark.asyncio
+    async def test_get_by_exact_content_d1_query(self, cloudflare_storage):
+        """Test get_by_exact_content constructs correct D1 SQL query."""
+        content = "Exact match test content"
+
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "success": True,
+            "result": [{
+                "results": [{
+                    "id": 1,
+                    "content_hash": generate_content_hash(content),
+                    "content": content,
+                    "memory_type": "standard",
+                    "created_at": 1234567890,
+                    "metadata_json": "{}"
+                }]
+            }]
+        }
+
+        # Mock tag loading
+        mock_tags_response = Mock()
+        mock_tags_response.json.return_value = {
+            "success": True,
+            "result": [{"results": [{"name": "test"}]}]
+        }
+
+        with patch.object(cloudflare_storage, '_retry_request') as mock_request:
+            mock_request.side_effect = [mock_response, mock_tags_response]
+
+            memories = await cloudflare_storage.get_by_exact_content(content)
+
+            # Verify SQL query structure
+            sql_payload = mock_request.call_args_list[0].kwargs["json"]
+            assert "content = ?" in sql_payload["sql"]
+            assert "deleted_at IS NULL" in sql_payload["sql"]
+            assert sql_payload["params"] == [content]
+
+            # Verify result
+            assert len(memories) == 1
+            assert memories[0].content == content
+
+    @pytest.mark.asyncio
+    async def test_get_by_exact_content_empty_result(self, cloudflare_storage):
+        """Test get_by_exact_content returns empty list when no matches."""
+        content = "Non-existent content"
+
+        # Mock empty response
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "success": True,
+            "result": [{"results": []}]
+        }
+
+        with patch.object(cloudflare_storage, '_retry_request', return_value=mock_response):
+            memories = await cloudflare_storage.get_by_exact_content(content)
+
+            assert memories == []
+
+    @pytest.mark.asyncio
+    async def test_get_by_exact_content_parse_rows(self, cloudflare_storage):
+        """Test get_by_exact_content properly parses multiple memory rows."""
+        content = "Shared content"
+
+        # Mock multiple results with same content
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "success": True,
+            "result": [{
+                "results": [
+                    {
+                        "id": 1,
+                        "content_hash": "hash1",
+                        "content": content,
+                        "memory_type": "standard",
+                        "created_at": 1234567890,
+                        "metadata_json": "{}"
+                    },
+                    {
+                        "id": 2,
+                        "content_hash": "hash2",
+                        "content": content,
+                        "memory_type": "reference",
+                        "created_at": 1234567900,
+                        "metadata_json": '{"source": "test"}'
+                    }
+                ]
+            }]
+        }
+
+        # Mock tag loading (called once per memory)
+        mock_tags_response = Mock()
+        mock_tags_response.json.return_value = {
+            "success": True,
+            "result": [{"results": [{"name": "duplicate"}]}]
+        }
+
+        with patch.object(cloudflare_storage, '_retry_request') as mock_request:
+            mock_request.side_effect = [mock_response, mock_tags_response, mock_tags_response]
+
+            memories = await cloudflare_storage.get_by_exact_content(content)
+
+            # Verify both memories parsed
+            assert len(memories) == 2
+            assert memories[0].content_hash == "hash1"
+            assert memories[0].memory_type == "standard"
+            assert memories[1].content_hash == "hash2"
+            assert memories[1].memory_type == "reference"
+            assert memories[1].metadata == {"source": "test"}

@@ -11,6 +11,7 @@ import shutil
 import json
 from unittest.mock import Mock, patch
 import time
+from datetime import date, datetime, timedelta
 
 # Skip tests if sqlite-vec is not available
 try:
@@ -835,6 +836,372 @@ class TestSqliteVecStorage:
         assert results[0].content == "Third"
         assert results[1].content == "Second"
         assert results[2].content == "First"
+
+
+class TestSqliteVecTimeBasedDeletion:
+    """Tests for time-based deletion methods added in v8.66.0."""
+
+    @pytest_asyncio.fixture
+    async def storage(self):
+        """Create a test storage instance."""
+        temp_dir = tempfile.mkdtemp()
+        db_path = os.path.join(temp_dir, "test_time_deletion.db")
+
+        storage = SqliteVecMemoryStorage(db_path)
+        await storage.initialize()
+
+        yield storage
+
+        # Cleanup
+        if storage.conn:
+            storage.conn.close()
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    # delete_by_timeframe tests
+
+    @pytest.mark.asyncio
+    async def test_delete_by_timeframe_success(self, storage):
+        """Test deleting memories within a date range."""
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+
+        # Store memories with specific dates
+        memory_yesterday = Memory(
+            content="Memory from yesterday",
+            content_hash=generate_content_hash("Memory from yesterday"),
+            tags=["timeframe-test"],
+            created_at=datetime.combine(yesterday, datetime.min.time()).timestamp()
+        )
+        memory_today = Memory(
+            content="Memory from today",
+            content_hash=generate_content_hash("Memory from today"),
+            tags=["timeframe-test"],
+            created_at=datetime.combine(today, datetime.min.time()).timestamp()
+        )
+        memory_tomorrow = Memory(
+            content="Memory from tomorrow",
+            content_hash=generate_content_hash("Memory from tomorrow"),
+            tags=["timeframe-test"],
+            created_at=datetime.combine(tomorrow, datetime.min.time()).timestamp()
+        )
+
+        await storage.store(memory_yesterday)
+        await storage.store(memory_today)
+        await storage.store(memory_tomorrow)
+
+        # Delete memories from yesterday to today (inclusive)
+        count, message = await storage.delete_by_timeframe(yesterday, today)
+
+        assert count == 2
+        assert "deleted 2 memories" in message.lower()
+        assert str(yesterday) in message
+        assert str(today) in message
+
+        # Verify only tomorrow's memory remains
+        remaining = await storage.search_by_tag(["timeframe-test"])
+        assert len(remaining) == 1
+        assert remaining[0].content == "Memory from tomorrow"
+
+    @pytest.mark.asyncio
+    async def test_delete_by_timeframe_with_tag_filter(self, storage):
+        """Test deleting memories within date range with tag filter."""
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        # Store memories with different tags
+        memory_with_tag = Memory(
+            content="Memory with specific tag",
+            content_hash=generate_content_hash("Memory with specific tag"),
+            tags=["timeframe-tag", "keep"],
+            created_at=datetime.combine(today, datetime.min.time()).timestamp()
+        )
+        memory_without_tag = Memory(
+            content="Memory without specific tag",
+            content_hash=generate_content_hash("Memory without specific tag"),
+            tags=["other-tag"],
+            created_at=datetime.combine(today, datetime.min.time()).timestamp()
+        )
+
+        await storage.store(memory_with_tag)
+        await storage.store(memory_without_tag)
+
+        # Delete only memories with specific tag
+        count, message = await storage.delete_by_timeframe(yesterday, today, tag="timeframe-tag")
+
+        assert count == 1
+        assert "timeframe-tag" in message
+
+        # Verify memory without tag still exists
+        remaining = await storage.search_by_tag(["other-tag"])
+        assert len(remaining) == 1
+
+    @pytest.mark.asyncio
+    async def test_delete_by_timeframe_empty_range(self, storage):
+        """Test deleting when no memories exist in timeframe."""
+        today = date.today()
+        far_past = today - timedelta(days=365)
+        past = today - timedelta(days=364)
+
+        # Store a recent memory
+        memory = Memory(
+            content="Recent memory",
+            content_hash=generate_content_hash("Recent memory"),
+            tags=["recent"],
+            created_at=datetime.combine(today, datetime.min.time()).timestamp()
+        )
+        await storage.store(memory)
+
+        # Try to delete from far past (no memories in that range)
+        count, message = await storage.delete_by_timeframe(far_past, past)
+
+        assert count == 0
+        assert "deleted 0 memories" in message.lower()
+
+        # Verify recent memory still exists
+        remaining = await storage.search_by_tag(["recent"])
+        assert len(remaining) == 1
+
+    @pytest.mark.asyncio
+    async def test_delete_by_timeframe_boundaries(self, storage):
+        """Test inclusive start/end boundaries of timeframe deletion."""
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        two_days_ago = today - timedelta(days=2)
+
+        # Store memories at exact boundaries
+        memory_before = Memory(
+            content="Before range",
+            content_hash=generate_content_hash("Before range"),
+            tags=["boundary-test"],
+            created_at=datetime.combine(two_days_ago, datetime.max.time()).timestamp()
+        )
+        memory_at_start = Memory(
+            content="At start boundary",
+            content_hash=generate_content_hash("At start boundary"),
+            tags=["boundary-test"],
+            created_at=datetime.combine(yesterday, datetime.min.time()).timestamp()
+        )
+        memory_at_end = Memory(
+            content="At end boundary",
+            content_hash=generate_content_hash("At end boundary"),
+            tags=["boundary-test"],
+            created_at=datetime.combine(today, datetime.max.time()).timestamp()
+        )
+        memory_after = Memory(
+            content="After range",
+            content_hash=generate_content_hash("After range"),
+            tags=["boundary-test"],
+            created_at=datetime.combine(tomorrow, datetime.min.time()).timestamp()
+        )
+
+        await storage.store(memory_before)
+        await storage.store(memory_at_start)
+        await storage.store(memory_at_end)
+        await storage.store(memory_after)
+
+        # Delete with inclusive boundaries
+        count, message = await storage.delete_by_timeframe(yesterday, today)
+
+        assert count == 2
+
+        # Verify memories at boundaries were deleted
+        remaining = await storage.search_by_tag(["boundary-test"])
+        assert len(remaining) == 2
+        contents = [m.content for m in remaining]
+        assert "Before range" in contents
+        assert "After range" in contents
+
+    # delete_before_date tests
+
+    @pytest.mark.asyncio
+    async def test_delete_before_date_success(self, storage):
+        """Test deleting all memories before a specific date."""
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        two_days_ago = today - timedelta(days=2)
+
+        # Store memories at different dates
+        memory_old = Memory(
+            content="Old memory",
+            content_hash=generate_content_hash("Old memory"),
+            tags=["before-test"],
+            created_at=datetime.combine(two_days_ago, datetime.min.time()).timestamp()
+        )
+        memory_yesterday = Memory(
+            content="Yesterday memory",
+            content_hash=generate_content_hash("Yesterday memory"),
+            tags=["before-test"],
+            created_at=datetime.combine(yesterday, datetime.min.time()).timestamp()
+        )
+        memory_today = Memory(
+            content="Today memory",
+            content_hash=generate_content_hash("Today memory"),
+            tags=["before-test"],
+            created_at=datetime.combine(today, datetime.min.time()).timestamp()
+        )
+
+        await storage.store(memory_old)
+        await storage.store(memory_yesterday)
+        await storage.store(memory_today)
+
+        # Delete all memories before today
+        count, message = await storage.delete_before_date(today)
+
+        assert count == 2
+        assert "deleted 2 memories" in message.lower()
+        assert str(today) in message
+
+        # Verify only today's memory remains
+        remaining = await storage.search_by_tag(["before-test"])
+        assert len(remaining) == 1
+        assert remaining[0].content == "Today memory"
+
+    @pytest.mark.asyncio
+    async def test_delete_before_date_with_tag_filter(self, storage):
+        """Test deleting memories before date with tag filter."""
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        # Store old memories with different tags
+        memory_with_tag = Memory(
+            content="Old memory with tag",
+            content_hash=generate_content_hash("Old memory with tag"),
+            tags=["before-tag"],
+            created_at=datetime.combine(yesterday, datetime.min.time()).timestamp()
+        )
+        memory_without_tag = Memory(
+            content="Old memory without tag",
+            content_hash=generate_content_hash("Old memory without tag"),
+            tags=["other"],
+            created_at=datetime.combine(yesterday, datetime.min.time()).timestamp()
+        )
+
+        await storage.store(memory_with_tag)
+        await storage.store(memory_without_tag)
+
+        # Delete only old memories with specific tag
+        count, message = await storage.delete_before_date(today, tag="before-tag")
+
+        assert count == 1
+        assert "before-tag" in message
+
+        # Verify memory without tag still exists
+        remaining = await storage.search_by_tag(["other"])
+        assert len(remaining) == 1
+
+    @pytest.mark.asyncio
+    async def test_delete_before_date_no_matches(self, storage):
+        """Test deleting when no memories exist before date."""
+        today = date.today()
+        tomorrow = today + timedelta(days=1)
+
+        # Store a recent memory
+        memory = Memory(
+            content="Recent memory",
+            content_hash=generate_content_hash("Recent memory"),
+            tags=["recent"],
+            created_at=datetime.combine(today, datetime.min.time()).timestamp()
+        )
+        await storage.store(memory)
+
+        # Try to delete before future date (should not match today's memory)
+        count, message = await storage.delete_before_date(today)
+
+        assert count == 0
+        assert "deleted 0 memories" in message.lower()
+
+        # Verify memory still exists
+        remaining = await storage.search_by_tag(["recent"])
+        assert len(remaining) == 1
+
+    # get_by_exact_content tests
+
+    @pytest.mark.asyncio
+    async def test_get_by_exact_content_found(self, storage):
+        """Test retrieving memory by exact content match."""
+        content = "Exact content for retrieval test"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["exact-test"]
+        )
+        await storage.store(memory)
+
+        # Retrieve by exact content
+        results = await storage.get_by_exact_content(content)
+
+        assert len(results) == 1
+        assert results[0].content == content
+        assert results[0].content_hash == memory.content_hash
+
+    @pytest.mark.asyncio
+    async def test_get_by_exact_content_not_found(self, storage):
+        """Test retrieving when no exact content match exists."""
+        # Store a memory
+        memory = Memory(
+            content="Some content",
+            content_hash=generate_content_hash("Some content"),
+            tags=["test"]
+        )
+        await storage.store(memory)
+
+        # Try to retrieve with different content
+        results = await storage.get_by_exact_content("Different content")
+
+        assert len(results) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_by_exact_content_multiple_matches(self, storage):
+        """Test behavior when multiple exact matches exist (should be prevented by unique constraint)."""
+        content = "Duplicate content test"
+
+        # Store first memory
+        memory1 = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["first"]
+        )
+        await storage.store(memory1)
+
+        # Try to store duplicate (should fail due to unique constraint)
+        memory2 = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["second"]
+        )
+        success, message = await storage.store(memory2)
+
+        # Should fail to store duplicate
+        assert not success
+        assert "duplicate" in message.lower()
+
+        # Verify only one memory exists
+        results = await storage.get_by_exact_content(content)
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_get_by_exact_content_excludes_deleted(self, storage):
+        """Test that soft-deleted memories are not returned."""
+        content = "Memory to be deleted"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["delete-test"]
+        )
+        await storage.store(memory)
+
+        # Verify memory exists
+        results = await storage.get_by_exact_content(content)
+        assert len(results) == 1
+
+        # Soft-delete the memory
+        await storage.delete(memory.content_hash)
+
+        # Verify deleted memory is not returned
+        results = await storage.get_by_exact_content(content)
+        assert len(results) == 0
 
 
 class TestSqliteVecStorageWithoutEmbeddings:
