@@ -36,8 +36,11 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # Enable sticky comments - Claude will post and update a comment on the issue/PR
+          # Enable sticky comments for PRs only
           use_sticky_comment: true
+
+          # Allow Claude to post comments on issues and PRs using gh CLI
+          claude_args: '--allowed-tools "Bash(gh issue comment:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh pr view:*)"'
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
@@ -47,6 +50,12 @@ jobs:
           # This triggers release workflow when Claude fixes issues on GitHub
           prompt: |
             ${{ github.event.comment.body || github.event.issue.body || github.event.review.body }}
+
+            IMPORTANT: After you complete the task, post your response using:
+            - For issues: Use `gh issue comment <issue_number> --body "your response"`
+            - For PRs: Use `gh pr comment <pr_number> --body "your response"`
+
+            The issue/PR number is available in the GitHub context.
 
             IMPORTANT: After completing the requested task, if you:
             1. Fixed a bug (modified src/ code)
