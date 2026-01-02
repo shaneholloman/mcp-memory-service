@@ -3789,9 +3789,15 @@ class MemoryDashboard {
             if (!response.ok) return;
 
             const data = await response.json();
+            const count = data.count || 0;
             const countSpan = document.getElementById('untaggedCount');
+            const card = document.getElementById('deleteUntaggedCard');
+
             if (countSpan) {
-                countSpan.textContent = data.count || 0;
+                countSpan.textContent = count;
+            }
+            if (card) {
+                card.style.display = count > 0 ? '' : 'none';
             }
         } catch (error) {
             console.error('Failed to load untagged count:', error);
