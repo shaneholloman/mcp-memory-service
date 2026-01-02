@@ -149,18 +149,14 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## 🆕 Latest Release: **v8.63.0** (Jan 2, 2026)
+## 🆕 Latest Release: **v8.63.1** (Jan 2, 2026)
 
-**Dashboard Bulk Operations & SHODH Ecosystem Integration**
+**Critical Bug Fix for Tag Deletion**
 
-- 🗑️ **Delete Untagged Memories** - New bulk operation in Dashboard Manage tab with smart visibility
-- 🌐 **SHODH API Spec v1.0.0** - Full compatibility with unified memory ecosystem (emotional metadata, episodic memory, source tracking)
-- 🏷️ **Tag Matching Fix** - Exact case-sensitive tag matching (GLOB pattern replaces LIKE)
-- 🎨 **Dashboard UX** - Fixed empty toast errors, untagged count display, smart card visibility
-- 🐳 **Docker Optimization** - Consolidated RUN commands, reduced layers, faster builds
-- ✅ **CI Stability** - 15+ test fixes, 83% improvement in test pass rate
+- 🐛 **Tag Deletion API Fix** - Fixed handle_delete_by_tag calling storage.delete_by_tag (single tag) instead of storage.delete_by_tags (list), preventing CI test failures
 
 **Previous Releases**:
+- **v8.63.0** - Dashboard Bulk Operations & SHODH Ecosystem Integration (Delete Untagged, SHODH API Spec v1.0.0, Tag Matching Fix)
 - **v8.62.13** - HTTP-MCP Bridge API Endpoint Fix (Remote deployments restored with POST endpoints)
 - **v8.62.12** - Quality Analytics UI Fixed ("Invalid Date" and "ID: undefined" bugs)
 - **v8.62.10** - Document Ingestion Bug Fixed (NameError in web console, circular import prevention)

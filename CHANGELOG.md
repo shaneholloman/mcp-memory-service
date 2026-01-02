@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.63.1] - 2026-01-02
+
+### Fixed
+- **Tag Deletion API Fix** (server/handlers/memory.py line 338)
+  - Changed `handle_delete_by_tag` to call `storage.delete_by_tags(tags)` instead of `storage.delete_by_tag(tags)`
+  - Issue: `delete_by_tag` expects a single string, but was receiving a list after `normalize_tags()`
+  - Error: `'list' object has no attribute 'strip'` in CI tests
+  - Impact: Tag deletion API now works correctly with normalized tag lists
+
 ## [8.63.0] - 2026-01-02
 
 ### Added

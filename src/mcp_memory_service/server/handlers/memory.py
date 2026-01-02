@@ -335,7 +335,8 @@ async def handle_delete_by_tag(server, arguments: dict) -> List[types.TextConten
     try:
         # Initialize storage lazily when needed
         storage = await server._ensure_storage_initialized()
-        count, message = await storage.delete_by_tag(tags)
+        # Use delete_by_tags (plural) since tags is a list after normalize_tags
+        count, message = await storage.delete_by_tags(tags)
         return [types.TextContent(type="text", text=message)]
     except Exception as e:
         logger.error(f"Error deleting by tag: {str(e)}\n{traceback.format_exc()}")
