@@ -10,6 +10,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.67.0] - 2026-01-03
+
+### Fixed
+- **CRITICAL: Hybrid Backend Memory Resurrection Bug**
+  - **Problem**: Deleted memories reappeared after sync in hybrid backend
+  - **Root Cause**: Hard DELETE statements in Cloudflare backend removed records locally but memories still existed in cloud → sync restored them
+  - **Fixes Implemented**:
+    1. **Cloudflare Backend** (`src/mcp_memory_service/storage/cloudflare.py`)
+       - Line 793: `delete()` method - Changed hard DELETE to soft UPDATE with `deleted_at` timestamp
+       - Line 1050: `cleanup_duplicates()` - Changed hard DELETE to soft UPDATE with `deleted_at`
+    2. **SQLite-vec Backend** (`src/mcp_memory_service/storage/sqlite_vec.py`)
+       - Line 2177: `get_all_memories()` - Added `WHERE deleted_at IS NULL` filter
+       - Line 2394: `get_all_memories()` with params - Added tombstone filtering
+       - Line 1698: `cleanup_duplicates()` - Changed hard DELETE to soft UPDATE
+    3. **Dashboard API** (`src/mcp_memory_service/web/api/manage.py`)
+       - Line 231: `count_untagged_memories()` - Added `AND deleted_at IS NULL` filter
+       - Line 264: `delete_untagged_memories()` - Changed from hard DELETE to soft UPDATE
+  - **Impact**:
+    - 100% soft delete compliance across all backends
+    - Dashboard shows consistent counts (no tombstone leakage)
+    - All delete operations create tombstones that properly sync across devices
+    - No more memory resurrections in hybrid backend
+  - **Testing**: Cleaned up 132 test memories (soft-deleted with tombstones)
+
 ## [8.66.0] - 2026-01-02
 
 ### Fixed

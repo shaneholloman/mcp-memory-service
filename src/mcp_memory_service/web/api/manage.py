@@ -226,15 +226,15 @@ async def count_untagged_memories(
         if hasattr(storage, 'count_untagged_memories'):
             count = await storage.count_untagged_memories()
         else:
-            # Fallback: use raw SQL for SQLite-based backends
+            # Fallback: use raw SQL for SQLite-based backends (exclude soft-deleted)
             if hasattr(storage, 'conn'):
                 cursor = storage.conn.execute(
-                    "SELECT COUNT(*) FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+                    "SELECT COUNT(*) FROM memories WHERE (tags IS NULL OR tags = '' OR length(trim(tags)) = 0) AND deleted_at IS NULL"
                 )
                 count = cursor.fetchone()[0]
             elif hasattr(storage, 'primary') and hasattr(storage.primary, 'conn'):
                 cursor = storage.primary.conn.execute(
-                    "SELECT COUNT(*) FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+                    "SELECT COUNT(*) FROM memories WHERE (tags IS NULL OR tags = '' OR length(trim(tags)) = 0) AND deleted_at IS NULL"
                 )
                 count = cursor.fetchone()[0]
             else:
@@ -262,7 +262,7 @@ async def delete_untagged_memories(
     Requires confirm_count parameter matching the actual count for safety.
     """
     try:
-        # First count untagged memories
+        # First count untagged memories (exclude already soft-deleted)
         if hasattr(storage, 'conn'):
             conn = storage.conn
         elif hasattr(storage, 'primary') and hasattr(storage.primary, 'conn'):
@@ -271,7 +271,7 @@ async def delete_untagged_memories(
             raise HTTPException(status_code=501, detail="Delete untagged not supported by storage backend")
 
         cursor = conn.execute(
-            "SELECT COUNT(*) FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+            "SELECT COUNT(*) FROM memories WHERE (tags IS NULL OR tags = '' OR length(trim(tags)) = 0) AND deleted_at IS NULL"
         )
         actual_count = cursor.fetchone()[0]
 
@@ -290,29 +290,22 @@ async def delete_untagged_memories(
                 operation="delete_untagged"
             )
 
-        # Get IDs for embedding deletion
-        cursor = conn.execute(
-            "SELECT id FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
-        )
-        memory_ids = [row[0] for row in cursor.fetchall()]
+        # Soft delete memories by setting deleted_at timestamp
+        import time
+        deleted_at = time.time()
 
-        # Delete embeddings
-        if memory_ids:
-            placeholders = ','.join('?' for _ in memory_ids)
-            conn.execute(f'DELETE FROM memory_embeddings WHERE rowid IN ({placeholders})', memory_ids)
-
-        # Delete memories
         cursor = conn.execute(
-            "DELETE FROM memories WHERE tags IS NULL OR tags = '' OR length(trim(tags)) = 0"
+            "UPDATE memories SET deleted_at = ? WHERE (tags IS NULL OR tags = '' OR length(trim(tags)) = 0) AND deleted_at IS NULL",
+            (deleted_at,)
         )
         conn.commit()
 
         deleted_count = cursor.rowcount
-        logger.info(f"Deleted {deleted_count} untagged memories")
+        logger.info(f"Soft-deleted {deleted_count} untagged memories (tombstones created)")
 
         return BulkOperationResponse(
             success=deleted_count > 0,
-            message=f"Successfully deleted {deleted_count} memories without tags",
+            message=f"Successfully soft-deleted {deleted_count} memories without tags (tombstones created for multi-PC sync)",
             affected_count=deleted_count,
             operation="delete_untagged"
         )

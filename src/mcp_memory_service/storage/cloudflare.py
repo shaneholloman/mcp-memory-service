@@ -789,9 +789,9 @@ class CloudflareStorage(MemoryStorage):
             if r2_key:
                 await self._delete_r2_content(r2_key)
             
-            # Delete from D1 (tags will be cascade deleted)
-            delete_sql = "DELETE FROM memories WHERE id = ?"
-            payload = {"sql": delete_sql, "params": [memory_id]}
+            # Soft-delete from D1: set deleted_at timestamp instead of DELETE
+            delete_sql = "UPDATE memories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL"
+            payload = {"sql": delete_sql, "params": [time.time(), memory_id]}
             response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
             result = response.json()
             
@@ -1046,9 +1046,9 @@ class CloudflareStorage(MemoryStorage):
                 content_hash = group["content_hash"]
                 keep_id = group["keep_id"]
                 
-                # Delete all except the first one
-                delete_sql = "DELETE FROM memories WHERE content_hash = ? AND id != ?"
-                payload = {"sql": delete_sql, "params": [content_hash, keep_id]}
+                # Soft delete all except the first one
+                delete_sql = "UPDATE memories SET deleted_at = ? WHERE content_hash = ? AND id != ? AND deleted_at IS NULL"
+                payload = {"sql": delete_sql, "params": [time.time(), content_hash, keep_id]}
                 response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
                 result = response.json()
                 

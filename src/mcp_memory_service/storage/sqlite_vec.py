@@ -1688,27 +1688,30 @@ SOLUTIONS:
             return []
 
     async def cleanup_duplicates(self) -> Tuple[int, str]:
-        """Remove duplicate memories based on content hash."""
+        """Soft-delete duplicate memories based on content hash."""
         try:
             if not self.conn:
                 return 0, "Database not initialized"
-            
-            # Find duplicates (keep the first occurrence)
+
+            # Soft delete duplicates (keep the first occurrence by rowid)
             cursor = self.conn.execute('''
-                DELETE FROM memories 
+                UPDATE memories
+                SET deleted_at = ?
                 WHERE rowid NOT IN (
-                    SELECT MIN(rowid) 
-                    FROM memories 
+                    SELECT MIN(rowid)
+                    FROM memories
+                    WHERE deleted_at IS NULL
                     GROUP BY content_hash
                 )
-            ''')
+                AND deleted_at IS NULL
+            ''', (time.time(),))
             self.conn.commit()
-            
+
             count = cursor.rowcount
-            logger.info(f"Cleaned up {count} duplicate memories")
-            
+            logger.info(f"Soft-deleted {count} duplicate memories")
+
             if count > 0:
-                return count, f"Successfully removed {count} duplicate memories"
+                return count, f"Successfully soft-deleted {count} duplicate memories"
             else:
                 return 0, "No duplicate memories found"
                 
@@ -2174,6 +2177,7 @@ SOLUTIONS:
                        e.content_embedding
                 FROM memories m
                 LEFT JOIN memory_embeddings e ON m.id = e.rowid
+                WHERE m.deleted_at IS NULL
                 ORDER BY m.created_at DESC
             ''')
 
@@ -2383,6 +2387,9 @@ SOLUTIONS:
             params = []
             where_conditions = []
 
+            # Always exclude soft-deleted memories
+            where_conditions.append('m.deleted_at IS NULL')
+
             # Add memory_type filter if specified
             if memory_type is not None:
                 where_conditions.append('m.memory_type = ?')
@@ -2394,9 +2401,8 @@ SOLUTIONS:
                 where_conditions.append(f"({tag_conditions})")
                 params.extend([f"%{tag}%" for tag in tags])
 
-            # Apply WHERE clause if we have any conditions
-            if where_conditions:
-                query += ' WHERE ' + ' AND '.join(where_conditions)
+            # Apply WHERE clause
+            query += ' WHERE ' + ' AND '.join(where_conditions)
 
             query += ' ORDER BY m.created_at DESC'
 

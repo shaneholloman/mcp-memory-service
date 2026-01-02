@@ -149,16 +149,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## 🆕 Latest Release: **v8.66.0** (Jan 2, 2026)
+## 🆕 Latest Release: **v8.67.0** (Jan 3, 2026)
 
-**Critical Bug Fixes for Storage Backend & Quality System**
+**Critical Soft Delete Fixes - Memory Resurrection Bug Resolved**
 
-- 🔧 **Quality System Fix** - User ratings now persist correctly to database (Issue #325)
-- 🗄️ **Storage Backend Methods** - Added time-based deletion methods to all backends (Issue #323)
-- 🔍 **Debug Tool Fix** - Made exact_match_retrieve work across all storage backends (Issue #324)
-- ✅ **Full Backend Coverage** - All three storage backends (SQLite-vec, Cloudflare, Hybrid) now support complete API
+- 🐛 **Memory Resurrection Fixed** - Deleted memories no longer reappear after hybrid backend sync
+- 🔄 **100% Soft Delete Compliance** - All delete operations now create tombstones with deleted_at timestamps
+- ✅ **Dashboard Consistency** - Fixed count mismatches (184 tombstone difference resolved)
+- 🗑️ **7 Critical Fixes** - Updated delete(), cleanup_duplicates(), get_all_memories(), count/delete untagged across all backends
 
 **Previous Releases**:
+- **v8.66.0** - Critical Bug Fixes for Storage Backend & Quality System (user ratings persistence, time-based deletion methods, exact_match_retrieve)
 - **v8.65.0** - Memory Maintenance Tools & Hybrid Sync Performance (5 new maintenance scripts, 5x faster hybrid sync)
 - **v8.64.0** - Hybrid Sync Race Condition Fix (Tombstone Support for soft-delete, automatic purge)
 - **v8.63.1** - Critical Bug Fix for Tag Deletion API (delete_by_tag vs delete_by_tags)
