@@ -149,22 +149,22 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## 🆕 Latest Release: **v8.64.0** (Jan 2, 2026)
+## 🆕 Latest Release: **v8.65.0** (Jan 2, 2026)
 
-**Hybrid Sync Race Condition Fix - Tombstone Support**
+**Memory Maintenance Tools & Hybrid Sync Performance**
 
-- 🔄 **Soft-Delete with Tombstones** - Deleted memories now keep tombstone records to prevent re-syncing from cloud
-- 🛡️ **Sync Race Condition Fixed** - Memories deleted on one device no longer reappear after syncing from another device
-- 🧹 **Automatic Tombstone Purge** - Old tombstones (>30 days) are automatically cleaned up by BackgroundSyncService
-- 📊 **Schema Migration** - New `deleted_at` column automatically added on startup
+- 🧹 **5 New Maintenance Scripts** - Auto-retagging, bulk deletion, and memory classification utilities
+- ⚡ **5x Faster Hybrid Sync** - Removed hard-coded batch-size limit, now respects .env configuration (10 → 50 concurrent)
+- 🔧 **Schema Migration Fix** - `deleted_at` column now auto-migrates on existing databases
+- 📚 **Enhanced Documentation** - New maintenance workflows in README and AGENTS.md
 
 **Previous Releases**:
+- **v8.64.0** - Hybrid Sync Race Condition Fix (Tombstone Support for soft-delete, automatic purge)
 - **v8.63.1** - Critical Bug Fix for Tag Deletion API (delete_by_tag vs delete_by_tags)
-- **v8.63.0** - Dashboard Bulk Operations & SHODH Ecosystem Integration (Delete Untagged, SHODH API Spec v1.0.0, Tag Matching Fix)
+- **v8.63.0** - Dashboard Bulk Operations & SHODH Ecosystem Integration (Delete Untagged, SHODH API Spec v1.0.0)
 - **v8.62.13** - HTTP-MCP Bridge API Endpoint Fix (Remote deployments restored with POST endpoints)
 - **v8.62.12** - Quality Analytics UI Fixed ("Invalid Date" and "ID: undefined" bugs)
 - **v8.62.10** - Document Ingestion Bug Fixed (NameError in web console, circular import prevention)
-- **v8.62.9** - CI Race Condition & TypeError Fixed (hybrid backend task cleanup, None value handling)
 - **v8.62.8** - Environment Configuration Loading Bug Fixed (.env discovery, python-dotenv dependency)
 - **v8.62.7** - Windows SessionStart Hook Bug Fixed in Claude Code 2.0.76+ (no more Windows hanging)
 - **v8.62.6** - CRITICAL PRODUCTION HOTFIX: SQLite Pragmas Container Restart Bug (database locking errors after container restarts)

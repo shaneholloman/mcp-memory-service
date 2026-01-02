@@ -10,6 +10,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.65.0] - 2026-01-02
+
+### Added
+- **Memory Maintenance Scripts** (5 new utilities in `scripts/maintenance/`)
+  - `auto_retag_memory.py` - Auto-tag single memory with complete tag replacement
+  - `auto_retag_memory_merge.py` - Auto-tag with merge (preserves specific tags)
+  - `delete_test_memories.py` - Bulk delete test memories with confirmation
+  - `retag_valuable_memories.py` - Bulk retag valuable untagged memories
+  - `cleanup_memories.py` - Rewritten classifier for test vs valuable memories (HTTP-API based)
+  - **Impact**: Easier memory hygiene workflows for large datasets
+
+- **Documentation Updates**
+  - `AGENTS.md` - New server management and cleanup commands reference
+  - `README.md` - New "Memory Maintenance & Cleanup" section with workflows
+  - **Impact**: Better discoverability of maintenance capabilities
+
+### Fixed
+- **Hybrid Sync Performance** (5x speedup)
+  - **Issue**: Hard-coded `batch_size=10` limit in `hybrid.py` ignored `.env` configuration
+  - **Fix**: Removed override, now respects `MCP_HYBRID_BATCH_SIZE` (default: 50)
+  - **Impact**: 5x faster bulk operations (50 vs 10 concurrent requests)
+  - **Real-world**: Resolved stuck sync with 746 deletion queue
+  - **File**: `src/mcp_memory_service/storage/hybrid.py:1036`
+
+- **Schema Migration on Existing Databases**
+  - **Issue**: `deleted_at` column migration only ran on fresh installs
+  - **Fix**: Migration now runs unconditionally on startup for all databases
+  - **Impact**: Ensures tombstone support works on existing installations
+  - **File**: `src/mcp_memory_service/storage/sqlite_vec.py`
+
+### Changed
+- **Test Infrastructure**
+  - Added `.coveragerc` with exclusions for infrastructure code
+  - Improved coverage reporting accuracy
+
 ## [8.64.0] - 2026-01-02
 
 ### Added
