@@ -664,3 +664,86 @@ Apache License 2.0 - see [LICENSE](LICENSE) for details.
 👉 **[Start with our Installation Guide](https://github.com/doobidoo/mcp-memory-service/wiki/01-Installation-Guide)** or explore the **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** for comprehensive documentation.
 
 *Transform your AI conversations into persistent, searchable knowledge that grows with you.*
+---
+
+## Memory Maintenance & Cleanup
+
+### Quick Reference
+
+| Task | Method | Time | Notes |
+|------|--------|------|-------|
+| Retag single memory | Dashboard UI | 30s | Click memory → Edit → Save |
+| Retag 10+ memories | Dashboard bulk | 5m | Edit each individually |
+| Retag 100+ memories | `retag_valuable_memories.py` | 2m | Automatic, semantic tagging |
+| Delete test data | `delete_test_memories.py` | 1m | Bulk deletion with confirmation |
+
+### Workflow: Clean Up Untagged Memories
+
+After experiencing sync issues (like hybrid Cloudflare race conditions), untagged memories may accumulate:
+
+```bash
+# 1. Start dashboard
+./start_all_servers.sh
+
+# 2. Retag valuable memories automatically
+python3 retag_valuable_memories.py
+# → 340+ memories retagged
+# → 0 failures
+```
+
+```bash
+# 3. Delete remaining test data
+python3 delete_test_memories.py
+# → 209 test memories deleted
+# → Database reduced from 5359 → 5150 memories
+```
+
+### Dashboard Memory Edit
+
+Open http://127.0.0.1:8000
+
+**To edit a single memory:**
+1. Find memory (search or filter)
+2. Click to view details
+3. Click "Edit Memory"
+4. Modify tags (comma-separated)
+5. Click "Update Memory"
+
+**Example:**
+```
+Before: "needs-categorization"
+After:  "release, v8.64, bug-fix, sync"
+```
+
+### Automatic Tag Suggestions
+
+The `retag_valuable_memories.py` script uses intelligent pattern matching:
+
+**Keywords detected:**
+- Versions: `release`, `v8`, `v1`
+- Technologies: `api`, `cloudflare`, `sync`
+- Document types: `documentation`, `setup-guide`, `tutorial`
+- Projects: `shodh`, `secondbrain`, `mcp-memory-service`
+- Status: `important`, `needs-categorization`
+
+**Content analysis:**
+- Content > 500 chars → `important`
+- Recognizes: release notes, API docs, setup guides, session summaries
+
+### Preventing Future Cleanup Issues
+
+**Version 8.64.0+:**
+- ✅ Soft-delete with tombstone support (v8.64.0)
+- ✅ Bidirectional sync race condition fix (v8.64.0)
+- ✅ Cloudflare hybrid sync validation (v8.64.1)
+
+**Best practices:**
+1. Use meaningful tags from the start
+2. Review untagged memories regularly
+3. Run cleanup scripts after major changes
+4. Verify tags in Dashboard before deletion
+
+### See Also
+- [AGENTS.md](AGENTS.md) - Memory cleanup commands reference
+- Scripts in `scripts/maintenance/` - Auto-retagging and cleanup tools
+

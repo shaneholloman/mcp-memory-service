@@ -310,7 +310,7 @@ class BackgroundSyncService:
             failed_count = 0
 
             # Process in batches to avoid overwhelming the system
-            batch_size = min(self.batch_size, 10)  # Limit concurrent operations
+            batch_size = self.batch_size  # Use configured batch size
             for i in range(0, len(primary_memories), batch_size):
                 batch = primary_memories[i:i + batch_size]
                 results = await asyncio.gather(*[sync_memory(m) for m in batch], return_exceptions=True)

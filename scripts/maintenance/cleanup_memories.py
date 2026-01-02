@@ -1,153 +1,243 @@
 #!/usr/bin/env python3
-# Copyright 2024 Heinrich Krupp
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
+MCP Memory Service - Cleanup Script
+Separates test memories from valuable ones, retags valuable ones, exports obsolete for deletion.
+"""
 
-"""
-Script to clean up erroneous memory entries from ChromaDB.
-"""
+import requests
+import json
 import sys
-import os
-import asyncio
-import logging
-import argparse
-from pathlib import Path
+from typing import List, Tuple
+from datetime import datetime
 
-# Add parent directory to path so we can import from the src directory
-sys.path.insert(0, str(Path(__file__).parent.parent))
+API_URL = "http://127.0.0.1:8000/api"
+HEADERS = {"Content-Type": "application/json"}
 
-from src.mcp_memory_service.storage.chroma import ChromaMemoryStorage
-from src.mcp_memory_service.config import CHROMA_PATH
+# Patterns that indicate test data
+TEST_PATTERNS = [
+    "test content",
+    "test memory",
+    "test for",
+    "test hash",
+    "backup test",
+    "[",  # UUID patterns in brackets
+]
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-)
-logger = logging.getLogger("memory_cleanup")
+VALUABLE_KEYWORDS = [
+    "release",
+    "api",
+    "feature",
+    "documentation",
+    "guide",
+    "tutorial",
+    "implementation",
+    "architecture",
+    "fix",
+    "session",
+]
 
-def parse_args():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description="Clean up erroneous memory entries")
-    parser.add_argument("--error-text", help="Text pattern found in erroneous entries", type=str)
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be deleted without actually deleting")
-    parser.add_argument("--reset", action="store_true", help="Completely reset the database (use with caution!)")
-    return parser.parse_args()
 
-async def cleanup_memories(error_text=None, dry_run=False, reset=False):
-    """
-    Clean up erroneous memory entries from ChromaDB.
+def is_test_memory(content: str) -> bool:
+    """Determine if memory is test data."""
+    content_lower = content.lower()
     
-    Args:
-        error_text: Text pattern found in erroneous entries
-        dry_run: If True, only show what would be deleted without actually deleting
-        reset: If True, completely reset the database
-    """
-    logger.info(f"Initializing ChromaDB storage at {CHROMA_PATH}")
-    storage = ChromaMemoryStorage(CHROMA_PATH)
+    # Check test patterns
+    for pattern in TEST_PATTERNS:
+        if pattern.lower() in content_lower:
+            return True
     
-    if reset:
-        if dry_run:
-            logger.warning("[DRY RUN] Would reset the entire database")
-        else:
-            logger.warning("Resetting the entire database")
-            try:
-                storage.client.delete_collection("memory_collection")
-                logger.info("Deleted existing collection")
-                
-                # Reinitialize collection
-                storage.collection = storage.client.create_collection(
-                    name="memory_collection",
-                    metadata={"hnsw:space": "cosine"},
-                    embedding_function=storage.embedding_function
-                )
-                logger.info("Created new empty collection")
-            except Exception as e:
-                logger.error(f"Error resetting collection: {str(e)}")
-        return
+    return False
+
+
+def should_keep(content: str) -> bool:
+    """Determine if memory should be kept and retagged."""
+    content_lower = content.lower()
     
-    # Get all memory entries
+    # Check valuable keywords
+    for keyword in VALUABLE_KEYWORDS:
+        if keyword in content_lower:
+            return True
+    
+    # Check content length - likely valuable if substantial
+    if len(content) > 500:
+        return True
+    
+    return False
+
+
+def get_suggested_tags(content: str) -> List[str]:
+    """Suggest tags based on content."""
+    tags = []
+    content_lower = content.lower()
+    
+    # Auto-detect tags
+    if "release" in content_lower or "v8" in content_lower or "v1" in content_lower:
+        tags.append("release")
+    if "api" in content_lower:
+        tags.append("api")
+    if "cloudflare" in content_lower:
+        tags.append("cloudflare")
+    if "session" in content_lower or "summary" in content_lower:
+        tags.append("session-summary")
+    if "ketchup" in content_lower or "tcr" in content_lower:
+        tags.append("workflow")
+    if "sync" in content_lower or "race" in content_lower:
+        tags.append("sync")
+    if "secondary" in content_lower or "secondbrain" in content_lower.replace("-", ""):
+        tags.append("secondbrain")
+    
+    # Add cleanup-related tag if none found
+    if not tags:
+        tags.append("cleanup-needed")
+    
+    return tags
+
+
+def get_all_untagged_memories() -> List[dict]:
+    """Fetch all untagged memories."""
+    untagged = []
+    page = 1
+    
+    print("Fetching untagged memories...")
+    
+    while True:
+        response = requests.get(
+            f"{API_URL}/memories",
+            params={"page": page, "page_size": 100}
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data.get("memories"):
+            break
+        
+        for memory in data["memories"]:
+            if not memory.get("tags") or len(memory["tags"]) == 0:
+                untagged.append(memory)
+        
+        print(f"  Page {page}: {len(data['memories'])} memories, "
+              f"{len([m for m in data['memories'] if not m.get('tags') or len(m['tags']) == 0])} untagged")
+        
+        if not data.get("has_more"):
+            break
+        
+        page += 1
+    
+    return untagged
+
+
+def tag_memory(memory_id: str, tags: List[str]) -> bool:
+    """Tag a single memory."""
     try:
-        # Query all entries
-        result = storage.collection.get()
-        total_memories = len(result['ids']) if 'ids' in result else 0
-        logger.info(f"Found {total_memories} total memories in the database")
+        response = requests.patch(
+            f"{API_URL}/memories/{memory_id}",
+            json={"tags": tags},
+            headers=HEADERS
+        )
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"Error tagging {memory_id}: {e}")
+        return False
+
+
+def main():
+    """Main cleanup workflow."""
+    print("=" * 70)
+    print("MCP Memory Service - Memory Cleanup")
+    print("=" * 70)
+    print()
+    
+    # Fetch all untagged
+    untagged = get_all_untagged_memories()
+    print(f"\nTotal untagged memories: {len(untagged)}\n")
+    
+    # Classify
+    test_memories = []
+    valuable_memories = []
+    questionable_memories = []
+    
+    for memory in untagged:
+        content = memory.get("content", "")
         
-        if total_memories == 0:
-            logger.info("No memories found in the database")
-            return
-        
-        # Find erroneous entries
-        error_ids = []
-        
-        if error_text:
-            logger.info(f"Searching for entries containing text pattern: '{error_text}'")
-            for i, doc in enumerate(result['documents']):
-                if error_text in doc:
-                    error_ids.append(result['ids'][i])
-                    if len(error_ids) <= 5:  # Show a few examples
-                        logger.info(f"Found erroneous entry: {doc[:100]}...")
-        
-        # If no specific error text, look for common error patterns
-        if not error_text and not error_ids:
-            logger.info("No specific error text provided, looking for common error patterns")
-            for i, doc in enumerate(result['documents']):
-                # Look for very short documents (likely errors)
-                if len(doc.strip()) < 10:
-                    error_ids.append(result['ids'][i])
-                    logger.info(f"Found suspiciously short entry: '{doc}'")
-                # Look for error messages
-                elif any(err in doc.lower() for err in ['error', 'exception', 'failed', 'invalid']):
-                    error_ids.append(result['ids'][i])
-                    if len(error_ids) <= 5:  # Show a few examples
-                        logger.info(f"Found likely error entry: {doc[:100]}...")
-        
-        if not error_ids:
-            logger.info("No erroneous entries found")
-            return
-        
-        logger.info(f"Found {len(error_ids)} erroneous entries")
-        
-        # Delete erroneous entries
-        if dry_run:
-            logger.info(f"[DRY RUN] Would delete {len(error_ids)} erroneous entries")
+        if is_test_memory(content):
+            test_memories.append(memory)
+        elif should_keep(content):
+            valuable_memories.append(memory)
         else:
-            logger.info(f"Deleting {len(error_ids)} erroneous entries")
-            # Process in batches to avoid overwhelming the database
-            batch_size = 100
-            for i in range(0, len(error_ids), batch_size):
-                batch = error_ids[i:i+batch_size]
-                logger.info(f"Deleting batch {i//batch_size + 1}/{(len(error_ids)-1)//batch_size + 1}")
-                storage.collection.delete(ids=batch)
+            questionable_memories.append(memory)
+    
+    print(f"Classification:")
+    print(f"  ✗ Test memories: {len(test_memories)}")
+    print(f"  ✓ Valuable (to retag): {len(valuable_memories)}")
+    print(f"  ? Questionable: {len(questionable_memories)}")
+    print()
+    
+    # Show questionable for manual review
+    if questionable_memories:
+        print("Questionable memories (manual review needed):")
+        for i, mem in enumerate(questionable_memories[:10], 1):
+            print(f"  {i}. {mem['content'][:70]}...")
+        if len(questionable_memories) > 10:
+            print(f"  ... and {len(questionable_memories) - 10} more")
+        print()
+    
+    # Retag valuable ones
+    if valuable_memories:
+        print("Retagging valuable memories...")
+        retagged = 0
+        for memory in valuable_memories:
+            content = memory.get("content", "")
+            tags = get_suggested_tags(content)
             
-            logger.info("Deletion completed")
+            if tag_memory(memory.get("content_hash"), tags):
+                retagged += 1
+                print(f"  ✓ Tagged with {tags}")
         
-    except Exception as e:
-        logger.error(f"Error cleaning up memories: {str(e)}")
-        raise
+        print(f"\nRetagged {retagged}/{len(valuable_memories)} memories\n")
+    
+    # Export deletion list
+    deletion_candidates = test_memories + questionable_memories
+    
+    if deletion_candidates:
+        # Save to file for manual review
+        export_file = "memories_for_deletion.json"
+        with open(export_file, "w") as f:
+            json.dump({
+                "count": len(deletion_candidates),
+                "generated_at": datetime.now().isoformat(),
+                "memories": [
+                    {
+                        "content_hash": m.get("content_hash"),
+                        "content": m.get("content")[:100],
+                        "type": m.get("memory_type"),
+                        "created": m.get("created_at_iso")
+                    }
+                    for m in deletion_candidates[:20]  # First 20 for preview
+                ]
+            }, f, indent=2)
+        
+        print(f"Export for deletion: {export_file}")
+        print(f"  Memories to delete: {len(deletion_candidates)}")
+        print(f"    - Test: {len(test_memories)}")
+        print(f"    - Questionable: {len(questionable_memories)}")
+        print()
+        print("Next steps:")
+        print("  1. Review memories_for_deletion.json")
+        print("  2. Use Dashboard UI to delete remaining untagged memories")
+        print("  3. Or use: DELETE /api/memories/{content_hash}")
+    
+    print("\n" + "=" * 70)
+    print("Cleanup summary complete!")
+    print("=" * 70)
 
-async def main():
-    """Main function to run the cleanup."""
-    args = parse_args()
-    
-    logger.info("=== Starting memory cleanup ===")
-    
-    try:
-        await cleanup_memories(args.error_text, args.dry_run, args.reset)
-        logger.info("=== Cleanup completed successfully ===")
-    except Exception as e:
-        logger.error(f"Cleanup failed: {str(e)}")
-        sys.exit(1)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nCleanup cancelled")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)

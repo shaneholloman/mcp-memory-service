@@ -25,8 +25,50 @@
 - **Run single test**: `pytest tests/test_filename.py::test_function_name -v`
 - **Run specific test class**: `pytest tests/test_filename.py::TestClass -v`
 - **Run with markers**: `pytest -m "unit or integration"`
-- **Server startup**: `uv run memory server`
+- **MCP Server startup**: `uv run memory server`
+- **HTTP Dashboard startup**: `python run_server.py` or `./start_all_servers.sh`
 - **Install dependencies**: `python scripts/installation/install.py`
+
+## Server Management Commands
+- **Start all servers**: `./start_all_servers.sh` (both MCP + HTTP Dashboard)
+- **Stop all servers**: `./stop_all_servers.sh`
+- **Check server status**: `./status_servers.sh`
+- **View HTTP logs**: `tail -f http_server.log`
+- **View MCP logs**: `tail -f mcp_server.log`
+
+## Memory Cleanup & Auto-Tagging Commands
+
+### Individual Memory Auto-Tagging
+- **Auto-retag single memory (replace)**: `python3 auto_retag_memory.py --search "query"` or `python3 auto_retag_memory.py {hash}`
+  - Analyzes content, generates tags, replaces all old tags
+  - Best for untagged memories
+  
+- **Auto-retag single memory (merge)**: `python3 auto_retag_memory_merge.py --search "query"` or `python3 auto_retag_memory_merge.py {hash}` ⭐ **RECOMMENDED**
+  - Analyzes content, generates tags, merges with existing (preserves v8.x, project names, tech-specific)
+  - Best for memories with some existing tags
+  - Shows diff before applying
+
+### Bulk Memory Operations
+- **Bulk retag valuable untagged memories**: `python3 retag_valuable_memories.py`
+  - Analyzes content, identifies valuable vs. test, applies semantic tags
+  - Skips test data automatically
+  - ~340+ memories retagged, ~0 failures per run
+  
+- **Bulk delete test memories**: `python3 delete_test_memories.py`
+  - Identifies test data by pattern matching
+  - Shows samples before deletion
+  - Requires confirmation
+  - ~209 test memories deleted per run
+
+### Manual Editing
+- **Dashboard UI retagging**: http://127.0.0.1:8000
+  - Click memory → Edit Memory → Modify tags → Save
+  - Perfect for 1-3 memories per session
+  - Full manual control
+
+### See Also
+- Scripts located in `scripts/maintenance/` directory
+- Dashboard UI at http://127.0.0.1:8000 for manual editing
 
 ## Architecture & Codebase Structure
 - **Main package**: `src/mcp_memory_service/` - Core MCP server implementation
