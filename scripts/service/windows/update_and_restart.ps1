@@ -85,12 +85,12 @@ function Get-ServerVersion {
 function Initialize-GitSsh {
     # Windows OpenSSH path (use forward slashes for git compatibility)
     $WindowsSsh = "C:/Windows/System32/OpenSSH/ssh.exe"
+    $WindowsSshAdd = "C:/Windows/System32/OpenSSH/ssh-add.exe"
 
     if (Test-Path $WindowsSsh) {
         # Set GIT_SSH_COMMAND to use Windows OpenSSH
         # This allows git to use the Windows SSH agent
         $env:GIT_SSH_COMMAND = "`"$WindowsSsh`""
-        Write-InfoLog "Using Windows OpenSSH for git operations"
     }
 
     # Ensure Windows SSH agent service is running
@@ -101,6 +101,17 @@ function Initialize-GitSsh {
             Write-InfoLog "Started Windows SSH agent service"
         } catch {
             Write-WarningLog "Could not start SSH agent service"
+        }
+    }
+
+    # Check if SSH keys are loaded
+    if (Test-Path $WindowsSshAdd) {
+        $KeyCheck = & $WindowsSshAdd -l 2>&1
+        if ($LASTEXITCODE -ne 0 -or $KeyCheck -match "no identities") {
+            Write-WarningLog "No SSH keys loaded in Windows SSH agent!"
+            Write-WarningLog "Run this command manually to add your key:"
+            Write-Host '  & "C:/Windows/System32/OpenSSH/ssh-add.exe" "$env:USERPROFILE\.ssh\id_ed25519"' -ForegroundColor Yellow
+            Write-Host ""
         }
     }
 }
