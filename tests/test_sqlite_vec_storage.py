@@ -396,11 +396,18 @@ class TestSqliteVecStorage:
         # Clean up duplicates
         count, message = await storage.cleanup_duplicates()
         assert count == 1
-        assert "removed 1 duplicate" in message.lower()
+        assert "1 duplicate" in message.lower()
 
-        # Verify only one copy remains
+        # Verify only one active copy remains (soft-delete keeps both rows but marks one as deleted)
         cursor = storage.conn.execute(
-            'SELECT COUNT(*) FROM memories WHERE content_hash = ?',
+            'SELECT COUNT(*) FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
+            (memory.content_hash,)
+        )
+        assert cursor.fetchone()[0] == 1
+
+        # Verify one copy is soft-deleted
+        cursor = storage.conn.execute(
+            'SELECT COUNT(*) FROM memories WHERE content_hash = ? AND deleted_at IS NOT NULL',
             (memory.content_hash,)
         )
         assert cursor.fetchone()[0] == 1
