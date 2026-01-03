@@ -83,13 +83,13 @@ function Get-ServerVersion {
 
 # Configure Git to use Windows OpenSSH (connects to Windows SSH agent)
 function Initialize-GitSsh {
-    # Windows OpenSSH path
-    $WindowsSsh = "C:\Windows\System32\OpenSSH\ssh.exe"
+    # Windows OpenSSH path (use forward slashes for git compatibility)
+    $WindowsSsh = "C:/Windows/System32/OpenSSH/ssh.exe"
 
     if (Test-Path $WindowsSsh) {
         # Set GIT_SSH_COMMAND to use Windows OpenSSH
         # This allows git to use the Windows SSH agent
-        $env:GIT_SSH_COMMAND = $WindowsSsh
+        $env:GIT_SSH_COMMAND = "`"$WindowsSsh`""
         Write-InfoLog "Using Windows OpenSSH for git operations"
     }
 
