@@ -154,23 +154,92 @@ fi
 # Step 5: Install dependencies (editable mode)
 log_step "Installing dependencies (editable mode)..."
 
-if command -v uv &> /dev/null; then
-    log_info "Using uv for faster installation..."
-    uv pip install -e . --quiet
+# Determine Python executable and version
+VENV_DIR="$PROJECT_DIR/venv"
+VENV_PIP="$VENV_DIR/bin/pip"
+VENV_PYTHON="$VENV_DIR/bin/python"
+
+# Check if venv exists and get its Python version
+if [ -f "$VENV_PYTHON" ]; then
+    VENV_PY_VERSION=$("$VENV_PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "unknown")
+    log_info "Existing venv Python version: ${VENV_PY_VERSION}"
 else
-    log_info "Using pip for installation..."
-    pip install -e . --quiet
+    VENV_PY_VERSION="none"
+fi
+
+# Find best Python (prefer 3.12 or 3.13, avoid 3.14+)
+find_compatible_python() {
+    for py in python3.12 python3.13 python3.11 python3.10; do
+        if command -v "$py" &> /dev/null; then
+            local version=$("$py" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+            local minor=$(echo "$version" | cut -d. -f2)
+            if [ "$minor" -lt 14 ] 2>/dev/null; then
+                echo "$py"
+                return 0
+            fi
+        fi
+    done
+    # Fallback to python3 if nothing else found
+    echo "python3"
+}
+
+# Check system Python version
+SYS_PY_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "3.12")
+SYS_PY_MINOR=$(echo "$SYS_PY_VERSION" | cut -d. -f2)
+
+# Recreate venv if Python 3.14+ detected or venv missing/broken
+NEEDS_VENV_RECREATE=false
+if [ "$VENV_PY_VERSION" = "none" ]; then
+    log_warning "No venv found, creating..."
+    NEEDS_VENV_RECREATE=true
+elif [ "$SYS_PY_MINOR" -ge 14 ] 2>/dev/null && [ ! -f "$VENV_DIR/.python312_compat" ]; then
+    # System Python is 3.14+, check if venv was created with compatible Python
+    VENV_MINOR=$(echo "$VENV_PY_VERSION" | cut -d. -f2)
+    if [ "$VENV_MINOR" -ge 14 ] 2>/dev/null; then
+        log_warning "Venv uses Python ${VENV_PY_VERSION} (incompatible with some packages)"
+        log_info "Recreating venv with compatible Python..."
+        NEEDS_VENV_RECREATE=true
+    fi
+fi
+
+if [ "$NEEDS_VENV_RECREATE" = true ]; then
+    COMPAT_PYTHON=$(find_compatible_python)
+    COMPAT_VERSION=$("$COMPAT_PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "unknown")
+
+    log_info "Using ${COMPAT_PYTHON} (Python ${COMPAT_VERSION}) for venv..."
+
+    # Backup old venv if exists
+    if [ -d "$VENV_DIR" ]; then
+        rm -rf "$VENV_DIR.bak" 2>/dev/null || true
+        mv "$VENV_DIR" "$VENV_DIR.bak"
+    fi
+
+    # Create new venv with compatible Python
+    "$COMPAT_PYTHON" -m venv "$VENV_DIR"
+    "$VENV_PIP" install --upgrade pip --quiet
+
+    # Mark as compatible
+    touch "$VENV_DIR/.python312_compat"
+
+    log_success "Venv created with Python ${COMPAT_VERSION}"
+fi
+
+# Always use venv pip for installation (avoids system Python 3.14 issues)
+log_info "Installing with venv pip..."
+if ! "$VENV_PIP" install -e . --quiet 2>&1; then
+    log_warning "Quiet install failed, retrying with verbose output..."
+    "$VENV_PIP" install -e .
 fi
 
 log_success "Dependencies installed"
 
 # Verify installation
-INSTALLED_VERSION=$(pip show mcp-memory-service 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "unknown")
+INSTALLED_VERSION=$("$VENV_PIP" show mcp-memory-service 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "unknown")
 if [ "$INSTALLED_VERSION" != "$NEW_VERSION" ]; then
     log_warning "Installation version mismatch! Expected: ${NEW_VERSION}, Got: ${INSTALLED_VERSION}"
     log_warning "Retrying installation..."
-    pip install -e . --force-reinstall --quiet
-    INSTALLED_VERSION=$(pip show mcp-memory-service 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "unknown")
+    "$VENV_PIP" install -e . --force-reinstall --quiet
+    INSTALLED_VERSION=$("$VENV_PIP" show mcp-memory-service 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "unknown")
 fi
 
 log_info "Installed version: ${INSTALLED_VERSION}"
@@ -185,10 +254,10 @@ else
         log_error "HTTP manager not found or not executable: $HTTP_MANAGER"
         log_info "Starting server manually..."
 
-        # Fallback: manual start
+        # Fallback: manual start using venv python
         pkill -f "run_http_server.py" 2>/dev/null || true
         sleep 2
-        nohup python scripts/server/run_http_server.py > /tmp/mcp-memory-update.log 2>&1 &
+        nohup "$VENV_PYTHON" scripts/server/run_http_server.py > /tmp/mcp-memory-update.log 2>&1 &
         sleep 8
     else
         # Use http_server_manager for smart restart
@@ -206,7 +275,7 @@ else
         if curl -s --max-time 2 "$HEALTH_URL" > /dev/null 2>&1; then
             # Get health data
             HEALTH_DATA=$(curl -s --max-time 2 "$HEALTH_URL")
-            SERVER_VERSION=$(echo "$HEALTH_DATA" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('version', 'unknown'))" 2>/dev/null || echo "unknown")
+            SERVER_VERSION=$(echo "$HEALTH_DATA" | "$VENV_PYTHON" -c "import sys, json; data=json.load(sys.stdin); print(data.get('version', 'unknown'))" 2>/dev/null || echo "unknown")
 
             if [ "$SERVER_VERSION" = "$NEW_VERSION" ]; then
                 log_success "Server healthy and running version ${SERVER_VERSION}"

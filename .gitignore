@@ -190,3 +190,6 @@ data/
 
 # Social media posts
 social-media/
+
+# Python version compatibility marker
+venv/.python312_compat
