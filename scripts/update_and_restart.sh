@@ -225,10 +225,35 @@ if [ "$NEEDS_VENV_RECREATE" = true ]; then
 fi
 
 # Always use venv pip for installation (avoids system Python 3.14 issues)
-log_info "Installing with venv pip..."
-if ! "$VENV_PIP" install -e . --quiet 2>&1; then
-    log_warning "Quiet install failed, retrying with verbose output..."
-    "$VENV_PIP" install -e .
+log_info "Installing with venv pip (this may take 1-2 minutes)..."
+
+# Detect platform and use CPU-only PyTorch on non-CUDA systems to avoid downloading 700+ MB CUDA packages
+PLATFORM=$(uname -s)
+if [ "$PLATFORM" = "Darwin" ]; then
+    log_info "macOS detected - using CPU-only PyTorch (no CUDA downloads)"
+    EXTRA_INDEX="--extra-index-url https://download.pytorch.org/whl/cpu"
+else
+    # Check if NVIDIA GPU is available on Linux
+    if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
+        log_info "NVIDIA GPU detected - using default PyTorch with CUDA"
+        EXTRA_INDEX=""
+    else
+        log_info "No NVIDIA GPU detected - using CPU-only PyTorch"
+        EXTRA_INDEX="--extra-index-url https://download.pytorch.org/whl/cpu"
+    fi
+fi
+
+"$VENV_PIP" install -e . $EXTRA_INDEX 2>&1 | while IFS= read -r line; do
+    # Show progress for key actions only
+    if echo "$line" | grep -qE "Processing|Installing|Collecting|Successfully|ERROR|WARNING"; then
+        echo "  $line"
+    fi
+done
+
+# Fallback if filtered output fails
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    log_warning "Install had issues, retrying with full output..."
+    "$VENV_PIP" install -e . $EXTRA_INDEX
 fi
 
 log_success "Dependencies installed"
