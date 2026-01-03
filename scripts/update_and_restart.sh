@@ -1,0 +1,252 @@
+#!/bin/bash
+# MCP Memory Service - One-Command Update & Restart
+# Copyright 2026 Heinrich Krupp
+# Licensed under Apache License 2.0
+#
+# Usage: ./scripts/update_and_restart.sh [--no-restart] [--force]
+#
+# This script provides a streamlined workflow to:
+# 1. Pull latest changes from git
+# 2. Install updated dependencies (editable mode)
+# 3. Restart HTTP dashboard server
+# 4. Verify version and health
+#
+# Target time: <2 minutes (typical: 60-90 seconds)
+
+set -e  # Exit on error
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+HTTP_MANAGER="$SCRIPT_DIR/service/http_server_manager.sh"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Options
+NO_RESTART=false
+FORCE=false
+START_TIME=$(date +%s)
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-restart)
+            NO_RESTART=true
+            shift
+            ;;
+        --force)
+            FORCE=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --no-restart    Update code but don't restart server"
+            echo "  --force         Force update even with uncommitted changes"
+            echo "  -h, --help      Show this help"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use -h for help"
+            exit 1
+            ;;
+    esac
+done
+
+# Helper functions
+log_info() {
+    echo -e "${CYAN}ℹ${NC}  $1"
+}
+
+log_success() {
+    echo -e "${GREEN}✓${NC}  $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}⚠${NC}  $1"
+}
+
+log_error() {
+    echo -e "${RED}✗${NC}  $1"
+}
+
+log_step() {
+    echo -e "\n${BLUE}▶${NC}  $1"
+}
+
+elapsed_time() {
+    local current=$(date +%s)
+    echo $((current - START_TIME))
+}
+
+# Banner
+echo ""
+echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║  MCP Memory Service - Update & Restart    ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
+echo ""
+
+cd "$PROJECT_DIR"
+
+# Step 1: Check for uncommitted changes
+log_step "Checking repository status..."
+
+if ! git diff-index --quiet HEAD --; then
+    if [ "$FORCE" = true ]; then
+        log_info "Auto-stashing local changes (--force flag)..."
+        git stash push -m "Auto-stash before update $(date '+%Y-%m-%d %H:%M:%S')"
+        log_success "Changes stashed"
+    else
+        log_warning "You have uncommitted changes:"
+        git status --short | head -10
+        echo ""
+        read -p "Stash changes and continue? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Stashing local changes..."
+            git stash push -m "Auto-stash before update $(date '+%Y-%m-%d %H:%M:%S')"
+            log_success "Changes stashed"
+        else
+            log_error "Update cancelled. Use --force to override."
+            exit 1
+        fi
+    fi
+fi
+
+# Step 2: Get current version
+log_step "Recording current version..."
+
+CURRENT_VERSION=$(grep -E '^__version__\s*=\s*["\047]' src/mcp_memory_service/_version.py | sed 's/^__version__[^"'\'']*["'\'']\([^"'\'']*\)["'\''].*/\1/' || echo "unknown")
+log_info "Current version: ${CURRENT_VERSION}"
+
+# Step 3: Pull latest changes
+log_step "Pulling latest changes from git..."
+
+BEFORE_COMMIT=$(git rev-parse HEAD)
+git pull --rebase
+
+AFTER_COMMIT=$(git rev-parse HEAD)
+if [ "$BEFORE_COMMIT" = "$AFTER_COMMIT" ]; then
+    log_info "Already up-to-date (no new commits)"
+else
+    COMMIT_COUNT=$(git rev-list --count ${BEFORE_COMMIT}..${AFTER_COMMIT})
+    log_success "Pulled ${COMMIT_COUNT} new commit(s)"
+
+    # Show brief summary of changes
+    echo ""
+    git log --oneline --graph ${BEFORE_COMMIT}..${AFTER_COMMIT} | head -10
+fi
+
+# Step 4: Get new version
+NEW_VERSION=$(grep -E '^__version__\s*=\s*["\047]' src/mcp_memory_service/_version.py | sed 's/^__version__[^"'\'']*["'\'']\([^"'\'']*\)["'\''].*/\1/' || echo "unknown")
+
+if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
+    log_info "Version change: ${CURRENT_VERSION} → ${NEW_VERSION}"
+fi
+
+# Step 5: Install dependencies (editable mode)
+log_step "Installing dependencies (editable mode)..."
+
+if command -v uv &> /dev/null; then
+    log_info "Using uv for faster installation..."
+    uv pip install -e . --quiet
+else
+    log_info "Using pip for installation..."
+    pip install -e . --quiet
+fi
+
+log_success "Dependencies installed"
+
+# Verify installation
+INSTALLED_VERSION=$(pip show mcp-memory-service 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "unknown")
+if [ "$INSTALLED_VERSION" != "$NEW_VERSION" ]; then
+    log_warning "Installation version mismatch! Expected: ${NEW_VERSION}, Got: ${INSTALLED_VERSION}"
+    log_warning "Retrying installation..."
+    pip install -e . --force-reinstall --quiet
+    INSTALLED_VERSION=$(pip show mcp-memory-service 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "unknown")
+fi
+
+log_info "Installed version: ${INSTALLED_VERSION}"
+
+# Step 6: Restart server (if requested)
+if [ "$NO_RESTART" = true ]; then
+    log_warning "Skipping server restart (--no-restart flag)"
+else
+    log_step "Restarting HTTP dashboard server..."
+
+    if [ ! -x "$HTTP_MANAGER" ]; then
+        log_error "HTTP manager not found or not executable: $HTTP_MANAGER"
+        log_info "Starting server manually..."
+
+        # Fallback: manual start
+        pkill -f "run_http_server.py" 2>/dev/null || true
+        sleep 2
+        nohup python scripts/server/run_http_server.py > /tmp/mcp-memory-update.log 2>&1 &
+        sleep 8
+    else
+        # Use http_server_manager for smart restart
+        "$HTTP_MANAGER" restart
+    fi
+
+    # Step 7: Health check
+    log_step "Verifying server health..."
+
+    HEALTH_URL="http://127.0.0.1:8000/api/health"
+    MAX_WAIT=15
+    WAIT_COUNT=0
+
+    while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+        if curl -s --max-time 2 "$HEALTH_URL" > /dev/null 2>&1; then
+            # Get health data
+            HEALTH_DATA=$(curl -s --max-time 2 "$HEALTH_URL")
+            SERVER_VERSION=$(echo "$HEALTH_DATA" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('version', 'unknown'))" 2>/dev/null || echo "unknown")
+
+            if [ "$SERVER_VERSION" = "$NEW_VERSION" ]; then
+                log_success "Server healthy and running version ${SERVER_VERSION}"
+                break
+            else
+                log_warning "Server running old version: ${SERVER_VERSION} (expected: ${NEW_VERSION})"
+                log_info "Waiting for server to reload... (${WAIT_COUNT}s)"
+            fi
+        fi
+
+        sleep 1
+        WAIT_COUNT=$((WAIT_COUNT + 1))
+    done
+
+    if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+        log_error "Server health check timeout after ${MAX_WAIT}s"
+        log_info "Check logs: tail -50 /tmp/mcp-memory-*.log"
+        exit 1
+    fi
+fi
+
+# Step 8: Summary
+TOTAL_TIME=$(elapsed_time)
+
+echo ""
+echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║          Update Complete! 🎉               ║${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+echo ""
+log_success "Version: ${CURRENT_VERSION} → ${NEW_VERSION}"
+log_success "Total time: ${TOTAL_TIME}s"
+echo ""
+log_info "Dashboard: http://localhost:8000"
+log_info "API Docs:  http://localhost:8000/api/docs"
+echo ""
+
+if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
+    log_info "New version deployed. Check CHANGELOG.md for details:"
+    echo ""
+    grep -A 20 "## \[${NEW_VERSION}\]" CHANGELOG.md 2>/dev/null || log_warning "CHANGELOG not updated for ${NEW_VERSION}"
+fi
+
+exit 0

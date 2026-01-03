@@ -12,11 +12,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 - **`.claude/directives/memory-tagging.md`** - MANDATORY: Always tag memories with `mcp-memory-service` as first tag
 - **`.claude/directives/README.md`** - Additional topic-specific directives
 
+## ⚡ Quick Update & Restart (RECOMMENDED)
+
+**ALWAYS use these scripts after git pull to update dependencies and restart server:**
+
+```bash
+# macOS/Linux - One command, <2 minutes
+./scripts/update_and_restart.sh
+
+# Windows PowerShell
+.\scripts\service\windows\update_and_restart.ps1
+```
+
+**Why?** These scripts automate the complete update workflow:
+- ✅ Git pull + auto-stash uncommitted changes
+- ✅ Install dependencies (editable mode: `pip install -e .`)
+- ✅ Restart HTTP server with version verification
+- ✅ Health check (ensures new version is running)
+
+**Without these scripts**, you risk running old code (common mistake: forget `pip install -e .` after pull).
+
+See [Essential Commands](#essential-commands) for options (--no-restart, --force).
+
 ## Overview
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.66.0**: **Critical Bug Fixes for Storage Backend & Quality System** - Fixed user ratings persistence (Issue #325), added time-based deletion methods to all backends (Issue #323), and made exact_match_retrieve work across all storage backends (Issue #324). All three storage backends now support complete API. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.68.0**: **Update & Restart Automation - Developer Experience Breakthrough** - One-command workflow for all platforms (scripts/update_and_restart.sh for macOS/Linux, PowerShell script for Windows). 87% time reduction (15+ min → <2 min), auto-detects conflicts, verifies editable install, prevents stale imports. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

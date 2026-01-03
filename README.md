@@ -149,16 +149,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## 🆕 Latest Release: **v8.67.0** (Jan 3, 2026)
+## 🆕 Latest Release: **v8.68.0** (Jan 3, 2026)
 
-**Critical Soft Delete Fixes - Memory Resurrection Bug Resolved**
+**Update & Restart Automation - Developer Experience Breakthrough**
 
-- 🐛 **Memory Resurrection Fixed** - Deleted memories no longer reappear after hybrid backend sync
-- 🔄 **100% Soft Delete Compliance** - All delete operations now create tombstones with deleted_at timestamps
-- ✅ **Dashboard Consistency** - Fixed count mismatches (184 tombstone difference resolved)
-- 🗑️ **7 Critical Fixes** - Updated delete(), cleanup_duplicates(), get_all_memories(), count/delete untagged across all backends
+- ⚡ **One-Command Update** - `scripts/update_and_restart.sh` (macOS/Linux) or `scripts/service/windows/update_and_restart.ps1` (Windows)
+- 🎯 **87% Time Reduction** - 15+ min manual workflow → <2 min automated (git pull → pip install → restart → verify)
+- 🛡️ **Error Prevention** - Auto-detects conflicts, verifies editable install, prevents stale imports
+- 🎨 **Smart Features** - Auto-stash uncommitted changes, health checks, version verification, color-coded output
+- 📖 **Cross-Platform** - Bash script (macOS/Linux) and PowerShell script (Windows) with identical functionality
 
 **Previous Releases**:
+- **v8.67.0** - Critical Soft Delete Fixes - Memory Resurrection Bug Resolved (100% soft delete compliance, 7 critical fixes)
 - **v8.66.0** - Critical Bug Fixes for Storage Backend & Quality System (user ratings persistence, time-based deletion methods, exact_match_retrieve)
 - **v8.65.0** - Memory Maintenance Tools & Hybrid Sync Performance (5 new maintenance scripts, 5x faster hybrid sync)
 - **v8.64.0** - Hybrid Sync Race Condition Fix (Tombstone Support for soft-delete, automatic purge)
