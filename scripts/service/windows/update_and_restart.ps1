@@ -48,7 +48,25 @@ $StartTime = Get-Date
 # Configuration
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $ManageServiceScript = Join-Path $PSScriptRoot "manage_service.ps1"
-$HealthUrl = "http://127.0.0.1:8000/api/health"
+# HTTPS is enabled by default - use https and skip certificate validation for self-signed certs
+$HealthUrl = "https://127.0.0.1:8000/api/health"
+
+# Skip SSL certificate validation for self-signed certificates
+if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy').Type) {
+    Add-Type @"
+    using System.Net;
+    using System.Security.Cryptography.X509Certificates;
+    public class TrustAllCertsPolicy : ICertificatePolicy {
+        public bool CheckValidationResult(
+            ServicePoint srvPoint, X509Certificate certificate,
+            WebRequest request, int certificateProblem) {
+            return true;
+        }
+    }
+"@
+}
+[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
 # Color helpers
 function Write-InfoLog { param($Message) Write-Host "[i] $Message" -ForegroundColor Cyan }

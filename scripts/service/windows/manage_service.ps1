@@ -45,7 +45,25 @@ $ErrorActionPreference = "Stop"
 $TaskName = "MCPMemoryHTTPServer"
 $LogFile = Join-Path $env:LOCALAPPDATA "mcp-memory\logs\http-server.log"
 $PidFile = Join-Path $env:LOCALAPPDATA "mcp-memory\http-server.pid"
-$HealthUrl = "http://127.0.0.1:8000/api/health"
+# HTTPS is enabled by default
+$HealthUrl = "https://127.0.0.1:8000/api/health"
+
+# Skip SSL certificate validation for self-signed certificates
+if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy').Type) {
+    Add-Type @"
+    using System.Net;
+    using System.Security.Cryptography.X509Certificates;
+    public class TrustAllCertsPolicy : ICertificatePolicy {
+        public bool CheckValidationResult(
+            ServicePoint srvPoint, X509Certificate certificate,
+            WebRequest request, int certificateProblem) {
+            return true;
+        }
+    }
+"@
+}
+[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
 function Show-Help {
     Write-Host ""
@@ -163,7 +181,7 @@ function Show-Status {
     if ($Status.HttpHealthy) {
         Write-Host "  Status:  " -NoNewline
         Write-Host "HEALTHY" -ForegroundColor Green
-        Write-Host "  URL:     http://127.0.0.1:8000/"
+        Write-Host "  URL:     https://127.0.0.1:8000/"
         if ($Status.HealthResponse) {
             Write-Host "  Version: $($Status.HealthResponse.version)"
             Write-Host "  Backend: $($Status.HealthResponse.storage_backend)"
@@ -211,7 +229,7 @@ function Start-Server {
             $Response = Invoke-WebRequest -Uri $HealthUrl -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue
             if ($Response.StatusCode -eq 200) {
                 Write-Host "[SUCCESS] Server started successfully!" -ForegroundColor Green
-                Write-Host "Dashboard: http://127.0.0.1:8000/" -ForegroundColor Cyan
+                Write-Host "Dashboard: https://127.0.0.1:8000/" -ForegroundColor Cyan
                 return
             }
         } catch {
