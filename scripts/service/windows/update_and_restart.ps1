@@ -51,11 +51,11 @@ $ManageServiceScript = Join-Path $PSScriptRoot "manage_service.ps1"
 $HealthUrl = "http://127.0.0.1:8000/api/health"
 
 # Color helpers
-function Write-InfoLog { param($Message) Write-Host "ℹ  $Message" -ForegroundColor Cyan }
-function Write-SuccessLog { param($Message) Write-Host "✓  $Message" -ForegroundColor Green }
-function Write-WarningLog { param($Message) Write-Host "⚠  $Message" -ForegroundColor Yellow }
-function Write-ErrorLog { param($Message) Write-Host "✗  $Message" -ForegroundColor Red }
-function Write-StepLog { param($Message) Write-Host "`n▶  $Message" -ForegroundColor Blue }
+function Write-InfoLog { param($Message) Write-Host "[i] $Message" -ForegroundColor Cyan }
+function Write-SuccessLog { param($Message) Write-Host "[+] $Message" -ForegroundColor Green }
+function Write-WarningLog { param($Message) Write-Host "[!] $Message" -ForegroundColor Yellow }
+function Write-ErrorLog { param($Message) Write-Host "[x] $Message" -ForegroundColor Red }
+function Write-StepLog { param($Message) Write-Host "`n>>> $Message" -ForegroundColor Blue }
 
 function Get-ElapsedSeconds {
     return [int]((Get-Date) - $StartTime).TotalSeconds
@@ -65,7 +65,7 @@ function Get-CurrentVersion {
     $VersionFile = Join-Path $ProjectRoot "src\mcp_memory_service\_version.py"
     if (Test-Path $VersionFile) {
         $Content = Get-Content $VersionFile -Raw
-        if ($Content -match '__version__\s*=\s*["\047]([^"\047]+)["\047]') {
+        if ($Content -match '__version__\s*=\s*["\x27]([^"\x27]+)["\x27]') {
             return $Matches[1]
         }
     }
@@ -83,9 +83,9 @@ function Get-ServerVersion {
 
 # Banner
 Write-Host ""
-Write-Host "╔════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  MCP Memory Service - Update & Restart    ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  MCP Memory Service - Update & Restart    " -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 Set-Location $ProjectRoot
@@ -138,7 +138,7 @@ if ($BeforeCommit -eq $AfterCommit) {
 $NewVersion = Get-CurrentVersion
 
 if ($CurrentVersion -ne $NewVersion) {
-    Write-InfoLog "Version change: $CurrentVersion → $NewVersion"
+    Write-InfoLog "Version change: $CurrentVersion -> $NewVersion"
 }
 
 # Step 5: Install dependencies (editable mode)
@@ -249,11 +249,11 @@ if ($NoRestart) {
 $TotalTime = Get-ElapsedSeconds
 
 Write-Host ""
-Write-Host "╔════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║          Update Complete! 🎉               ║" -ForegroundColor Green
-Write-Host "╚════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
+Write-Host "          Update Complete!                 " -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
 Write-Host ""
-Write-SuccessLog "Version: $CurrentVersion → $NewVersion"
+Write-SuccessLog "Version: $CurrentVersion -> $NewVersion"
 Write-SuccessLog "Total time: ${TotalTime}s"
 Write-Host ""
 Write-InfoLog "Dashboard: http://localhost:8000"
@@ -267,8 +267,15 @@ if ($CurrentVersion -ne $NewVersion) {
     $ChangelogPath = Join-Path $ProjectRoot "CHANGELOG.md"
     if (Test-Path $ChangelogPath) {
         $ChangelogContent = Get-Content $ChangelogPath -Raw
-        if ($ChangelogContent -match "(?s)## \[$NewVersion\].*?(?=## \[|\z)") {
-            $Matches[0] -split "`n" | Select-Object -First 20 | ForEach-Object { Write-Host $_ }
+        # Build pattern separately to avoid parser confusion
+        $EscapedVersion = [regex]::Escape($NewVersion)
+        $Pattern = '(?s)## \[' + $EscapedVersion + '\].*?(?=## \[|$)'
+
+        if ($ChangelogContent -match $Pattern) {
+            $ChangelogLines = $Matches[0] -split "`n" | Select-Object -First 20
+            foreach ($Line in $ChangelogLines) {
+                Write-Host $Line
+            }
         } else {
             Write-WarningLog "CHANGELOG not updated for $NewVersion"
         }
