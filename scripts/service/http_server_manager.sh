@@ -134,12 +134,19 @@ start_server() {
 
     cd "$PROJECT_DIR"
 
+    # Use venv Python directly (avoids uv/.venv vs venv mismatch with Python 3.14)
+    local VENV_PYTHON="$PROJECT_DIR/venv/bin/python"
+    if [ ! -f "$VENV_PYTHON" ]; then
+        echo "Warning: venv not found at $VENV_PYTHON, falling back to uv run"
+        VENV_PYTHON="uv run python"
+    fi
+
     if [ "$mode" = "foreground" ]; then
         echo "Starting HTTP server in foreground..."
-        uv run python "$HTTP_SERVER_SCRIPT"
+        $VENV_PYTHON "$HTTP_SERVER_SCRIPT"
     else
         echo "Starting HTTP server in background..."
-        nohup uv run python "$HTTP_SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
+        nohup $VENV_PYTHON "$HTTP_SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
         local pid=$!
         echo "$pid" > "$PID_FILE"
         date +%s > "$START_TIME_FILE"
