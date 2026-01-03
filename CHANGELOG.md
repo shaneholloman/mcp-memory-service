@@ -63,6 +63,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Prevents Common Errors**: Forgotten `pip install -e .`, wrong server mode, stale imports
   - **Documentation**: Added prominent "Quick Update & Restart" sections to CLAUDE.md and README.md
 
+  ![Update & Restart Script Demo](docs/images/update-restart-demo.png)
+  *One-command update workflow: git pull → dependency install → version verification in 16 seconds*
+
 ### Changed
 - **CLAUDE.md**: Added "Quick Update & Restart" section with cross-platform automation scripts (RECOMMENDED workflow)
 - **README.md**: Added "Quick Commands" section under Setup & Installation highlighting automation scripts
