@@ -1077,6 +1077,15 @@ class HybridMemoryStorage(MemoryStorage):
                             try:
                                 # Fast O(1) existence check
                                 if cf_memory.content_hash not in local_hashes:
+                                    # Defense-in-depth: Skip if Cloudflare record itself is soft-deleted
+                                    # (should not happen if queries filter correctly, but prevents edge cases)
+                                    cf_deleted_at = getattr(cf_memory, 'deleted_at', None)
+                                    if cf_deleted_at is None and cf_memory.metadata:
+                                        cf_deleted_at = cf_memory.metadata.get('deleted_at')
+                                    if cf_deleted_at is not None:
+                                        logger.debug(f"Memory {cf_memory.content_hash[:8]} is soft-deleted in Cloudflare, skipping")
+                                        return ('skipped_deleted', cf_memory.content_hash)
+
                                     # Check if memory was soft-deleted locally (tombstone check)
                                     # This prevents re-syncing memories that were intentionally deleted
                                     if hasattr(self.primary, 'is_deleted') and await self.primary.is_deleted(cf_memory.content_hash):

@@ -1545,6 +1545,9 @@ class CloudflareStorage(MemoryStorage):
             where_conditions = []
             params: List[Any] = []
 
+            # Always filter out soft-deleted records
+            where_conditions.append("m.deleted_at IS NULL")
+
             if memory_type is not None:
                 where_conditions.append("m.memory_type = ?")
                 params.append(memory_type)
@@ -1649,7 +1652,7 @@ class CloudflareStorage(MemoryStorage):
         Returns:
             List of Memory objects ordered by created_at DESC
         """
-        query = "SELECT * FROM memories ORDER BY created_at DESC"
+        query = "SELECT * FROM memories WHERE deleted_at IS NULL ORDER BY created_at DESC"
         payload = {"sql": query}
         response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
         result = response.json()
@@ -1691,6 +1694,9 @@ class CloudflareStorage(MemoryStorage):
             sql = "SELECT * FROM memories"
             params = []
             where_conditions = []
+
+            # Always filter out soft-deleted records
+            where_conditions.append("deleted_at IS NULL")
 
             # Add cursor condition (timestamp-based pagination)
             if cursor is not None:
@@ -1763,6 +1769,7 @@ class CloudflareStorage(MemoryStorage):
             SELECT *
             FROM memories
             WHERE updated_at > ?
+              AND deleted_at IS NULL
             ORDER BY updated_at DESC
             LIMIT ?
             """
@@ -1817,6 +1824,7 @@ class CloudflareStorage(MemoryStorage):
                 SELECT m.*
                 FROM memories m
                 WHERE m.created_at BETWEEN ? AND ?
+                  AND m.deleted_at IS NULL
                 ORDER BY m.created_at DESC
             """
 
