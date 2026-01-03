@@ -81,6 +81,30 @@ function Get-ServerVersion {
     }
 }
 
+# Configure Git to use Windows OpenSSH (connects to Windows SSH agent)
+function Initialize-GitSsh {
+    # Windows OpenSSH path
+    $WindowsSsh = "C:\Windows\System32\OpenSSH\ssh.exe"
+
+    if (Test-Path $WindowsSsh) {
+        # Set GIT_SSH_COMMAND to use Windows OpenSSH
+        # This allows git to use the Windows SSH agent
+        $env:GIT_SSH_COMMAND = $WindowsSsh
+        Write-InfoLog "Using Windows OpenSSH for git operations"
+    }
+
+    # Ensure Windows SSH agent service is running
+    $Service = Get-Service ssh-agent -ErrorAction SilentlyContinue
+    if ($Service -and $Service.Status -ne 'Running') {
+        try {
+            Start-Service ssh-agent -ErrorAction Stop
+            Write-InfoLog "Started Windows SSH agent service"
+        } catch {
+            Write-WarningLog "Could not start SSH agent service"
+        }
+    }
+}
+
 # Banner
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
@@ -89,6 +113,9 @@ Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 Set-Location $ProjectRoot
+
+# Configure SSH for git operations
+Initialize-GitSsh
 
 # Step 1: Check for uncommitted changes
 Write-StepLog "Checking repository status..."
