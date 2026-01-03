@@ -149,23 +149,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## 🆕 Latest Release: **v8.68.0** (Jan 3, 2026)
 
-**Update & Restart Automation - Developer Experience Breakthrough**
+## 🆕 Latest Release: **v8.68.1** (Jan 3, 2026)
 
-- ⚡ **One-Command Update** - `scripts/update_and_restart.sh` (macOS/Linux) or `scripts/service/windows/update_and_restart.ps1` (Windows)
-- 🎯 **87% Time Reduction** - 15+ min manual workflow → <2 min automated (git pull → pip install → restart → verify)
-- 🛡️ **Error Prevention** - Auto-detects conflicts, verifies editable install, prevents stale imports
-- 🎨 **Smart Features** - Auto-stash uncommitted changes, health checks, version verification, color-coded output
-- 📖 **Cross-Platform** - Bash script (macOS/Linux) and PowerShell script (Windows) with identical functionality
+**Critical Data Integrity Bug Fix - Hybrid Backend**
+
+- 🔴 **CRITICAL FIX** - Soft-deleted memories from Cloudflare no longer sync back to SQLite databases
+- 🛡️ **Data Integrity** - Defense-in-depth validation prevents ghost memories in hybrid backend
+- 🔧 **5 Method Fixes** - Added `deleted_at IS NULL` filter to all Cloudflare query methods
+- ✅ **Test Updates** - Fixed `test_cleanup_duplicates` to verify soft-delete behavior
+- ⚡ **Script Improvements** - HTTPS support, better UX, SSH agent integration (PowerShell)
 
 **Previous Releases**:
-- **v8.67.0** - Critical Soft Delete Fixes - Memory Resurrection Bug Resolved (100% soft delete compliance, 7 critical fixes)
-- **v8.66.0** - Critical Bug Fixes for Storage Backend & Quality System (user ratings persistence, time-based deletion methods, exact_match_retrieve)
-- **v8.65.0** - Memory Maintenance Tools & Hybrid Sync Performance (5 new maintenance scripts, 5x faster hybrid sync)
-- **v8.64.0** - Hybrid Sync Race Condition Fix (Tombstone Support for soft-delete, automatic purge)
-- **v8.63.1** - Critical Bug Fix for Tag Deletion API (delete_by_tag vs delete_by_tags)
-- **v8.63.0** - Dashboard Bulk Operations & SHODH Ecosystem Integration (Delete Untagged, SHODH API Spec v1.0.0)
+- **v8.68.0** - Update & Restart Automation (87% time reduction, <2 min workflow, cross-platform scripts)
 - **v8.62.13** - HTTP-MCP Bridge API Endpoint Fix (Remote deployments restored with POST endpoints)
 - **v8.62.12** - Quality Analytics UI Fixed ("Invalid Date" and "ID: undefined" bugs)
 - **v8.62.10** - Document Ingestion Bug Fixed (NameError in web console, circular import prevention)

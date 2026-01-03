@@ -10,6 +10,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.68.1] - 2026-01-03
+
+### Fixed
+- **🔴 CRITICAL: Soft-Deleted Memories Syncing from Cloudflare** (Hybrid Backend Data Integrity Issue)
+  - **Problem**: Soft-deleted memories from Cloudflare were incorrectly syncing back to local SQLite databases
+  - **Impact**: Hybrid backend users experienced "ghost memories" that should have been deleted
+  - **Root Cause**: 5 Cloudflare methods (`search_memories`, `search_by_tag`, `search_by_timeframe`, `list_memories`, `get_all_memories`) were missing `deleted_at IS NULL` filter
+  - **Solution**:
+    - Added `deleted_at IS NULL` filter to all 5 Cloudflare query methods
+    - Defense-in-depth check in `hybrid.py` sync logic to filter soft-deleted records
+  - **Files Changed**: `cloudflare.py` (5 methods), `hybrid.py` (sync validation)
+  - **Test Updates**: Fixed `test_cleanup_duplicates` to verify soft-delete behavior
+- **Update Script Improvements** (`scripts/update_and_restart.sh`, `update_and_restart.ps1`)
+  - Support HTTPS in health check verification
+  - Improved UX with better progress messages
+  - Prevent unnecessary CUDA package downloads
+- **PowerShell Script Enhancements** (`update_and_restart.ps1`)
+  - SSH agent integration for Git authentication
+  - Unicode to ASCII conversion for compatibility
+  - Better error handling for network operations
+
 ### Added
 - **Database Transfer & Migration Troubleshooting Guide** (`docs/troubleshooting/database-transfer-migration.md`)
   - **SQLite-vec Corruption During Transfer**: Comprehensive guide for handling "database disk image is malformed" errors
