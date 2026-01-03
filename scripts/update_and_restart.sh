@@ -89,7 +89,7 @@ elapsed_time() {
 # Banner
 echo ""
 echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║  MCP Memory Service - Update & Restart    ║${NC}"
+echo -e "${CYAN}║  MCP Memory Service - Update & Restart     ║${NC}"
 echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -292,14 +292,27 @@ else
     # Step 7: Health check
     log_step "Verifying server health..."
 
-    HEALTH_URL="http://127.0.0.1:8000/api/health"
+    # Try both HTTP and HTTPS (server may use either)
+    HEALTH_URL_HTTP="http://127.0.0.1:8000/api/health"
+    HEALTH_URL_HTTPS="https://127.0.0.1:8000/api/health"
     MAX_WAIT=15
     WAIT_COUNT=0
 
     while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-        if curl -s --max-time 2 "$HEALTH_URL" > /dev/null 2>&1; then
+        # Try HTTPS first (most common), then HTTP
+        if curl -sk --max-time 2 "$HEALTH_URL_HTTPS" > /dev/null 2>&1; then
             # Get health data
-            HEALTH_DATA=$(curl -s --max-time 2 "$HEALTH_URL")
+            HEALTH_DATA=$(curl -sk --max-time 2 "$HEALTH_URL_HTTPS")
+            HEALTH_URL="$HEALTH_URL_HTTPS"
+        elif curl -s --max-time 2 "$HEALTH_URL_HTTP" > /dev/null 2>&1; then
+            # Get health data
+            HEALTH_DATA=$(curl -s --max-time 2 "$HEALTH_URL_HTTP")
+            HEALTH_URL="$HEALTH_URL_HTTP"
+        else
+            HEALTH_DATA=""
+        fi
+
+        if [ -n "$HEALTH_DATA" ]; then
             SERVER_VERSION=$(echo "$HEALTH_DATA" | "$VENV_PYTHON" -c "import sys, json; data=json.load(sys.stdin); print(data.get('version', 'unknown'))" 2>/dev/null || echo "unknown")
 
             if [ "$SERVER_VERSION" = "$NEW_VERSION" ]; then
@@ -333,8 +346,16 @@ echo ""
 log_success "Version: ${CURRENT_VERSION} → ${NEW_VERSION}"
 log_success "Total time: ${TOTAL_TIME}s"
 echo ""
-log_info "Dashboard: http://localhost:8000"
-log_info "API Docs:  http://localhost:8000/api/docs"
+
+# Show correct protocol based on health check result
+if [ "$NO_RESTART" = false ] && [ -n "${HEALTH_URL:-}" ]; then
+    PROTOCOL=$(echo "$HEALTH_URL" | grep -o "^https\?")
+    log_info "Dashboard: ${PROTOCOL}://localhost:8000"
+    log_info "API Docs:  ${PROTOCOL}://localhost:8000/api/docs"
+else
+    log_info "Dashboard: https://localhost:8000 (or http://localhost:8000)"
+    log_info "API Docs:  https://localhost:8000/api/docs"
+fi
 echo ""
 
 if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
