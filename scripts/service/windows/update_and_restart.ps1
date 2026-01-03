@@ -104,14 +104,27 @@ function Initialize-GitSsh {
         }
     }
 
-    # Check if SSH keys are loaded
+    # Check if SSH keys are loaded (with timeout to prevent hanging)
     if (Test-Path $WindowsSshAdd) {
-        $KeyCheck = & $WindowsSshAdd -l 2>&1
-        if ($LASTEXITCODE -ne 0 -or $KeyCheck -match "no identities") {
-            Write-WarningLog "No SSH keys loaded in Windows SSH agent!"
-            Write-WarningLog "Run this command manually to add your key:"
-            Write-Host '  & "C:/Windows/System32/OpenSSH/ssh-add.exe" "$env:USERPROFILE\.ssh\id_ed25519"' -ForegroundColor Yellow
-            Write-Host ""
+        try {
+            $Job = Start-Job -ScriptBlock { & "C:/Windows/System32/OpenSSH/ssh-add.exe" -l 2>&1 }
+            $Completed = Wait-Job $Job -Timeout 3
+            if ($Completed) {
+                $KeyCheck = Receive-Job $Job
+                Remove-Job $Job -Force
+                if ($KeyCheck -match "no identities" -or $KeyCheck -match "error") {
+                    Write-WarningLog "No SSH keys loaded in Windows SSH agent!"
+                    Write-WarningLog "Run this command manually to add your key:"
+                    Write-Host '  & "C:/Windows/System32/OpenSSH/ssh-add.exe" "$env:USERPROFILE\.ssh\id_ed25519"' -ForegroundColor Yellow
+                    Write-Host ""
+                }
+            } else {
+                Stop-Job $Job
+                Remove-Job $Job -Force
+                Write-WarningLog "SSH agent check timed out - agent may not be responding"
+            }
+        } catch {
+            # Silently continue if SSH check fails
         }
     }
 }
