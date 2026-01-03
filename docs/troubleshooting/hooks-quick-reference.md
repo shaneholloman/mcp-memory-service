@@ -229,4 +229,5 @@ tail -50 ~/Library/Logs/Claude/mcp-server-memory.log | grep -E "(🚀|☁️|✅
 For comprehensive troubleshooting with diagnosis checklists and technical details, see:
 - `docs/troubleshooting/session-end-hooks.md`
 - `docs/troubleshooting/pr162-schema-caching-issue.md`
+- `docs/troubleshooting/database-transfer-migration.md` - Database corruption, transfer issues, schema migration
 - `docs/http-server-management.md`

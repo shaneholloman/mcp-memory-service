@@ -72,6 +72,7 @@ MCP Memory Service is a Model Context Protocol server providing semantic memory 
 | **Backup** | `curl -X POST http://127.0.0.1:8000/api/backup/now` | Trigger manual backup (v8.29.0+) |
 | | `curl http://127.0.0.1:8000/api/backup/status` | Check backup status and schedule |
 | | `curl http://127.0.0.1:8000/api/backup/list` | List available backups |
+| | **⚠️ Use tar for cross-platform transfers** | `tar czf backup.tar.gz sqlite_vec.db*` then `scp` - See [Database Transfer Guide](docs/troubleshooting/database-transfer-migration.md#sqlite-vec-database-corruption-during-transfer) |
 | **Sync Controls** | `curl -X POST http://127.0.0.1:8000/api/sync/pause` | Pause hybrid backend sync (v8.29.0+) |
 | | `curl -X POST http://127.0.0.1:8000/api/sync/resume` | Resume hybrid backend sync |
 | **Service** | `systemctl --user status mcp-memory-http.service` | Check HTTP service status (Linux) |

@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **Database Transfer & Migration Troubleshooting Guide** (`docs/troubleshooting/database-transfer-migration.md`)
+  - **SQLite-vec Corruption During Transfer**: Comprehensive guide for handling "database disk image is malformed" errors
+    - **Root Cause**: sqlite-vec extension binary format incompatibility during SCP/rsync transfers
+    - **Solution**: Use tar+gzip for all cross-platform transfers
+    - **Detailed Steps**: Source archive creation → transfer → extraction → verification
+  - **Web Dashboard vs CLI Export Format Incompatibility**
+    - Documents two export formats: Web Dashboard (`export_date`) vs CLI (`export_metadata`)
+    - Import script now auto-detects and normalizes both formats (as of v8.68.0)
+  - **Schema Migration Verification**
+    - Diagnosis for "no such column: m.tags" errors
+    - Manual migration scripts for tags column from metadata
+  - **Backup Best Practices**: Verification checklist and cross-platform transfer protocols
+
+### Changed
+- **Import Script Enhanced Format Detection** (`scripts/sync/import_memories.py`)
+  - Now accepts both Web Dashboard and CLI export formats
+  - Auto-normalizes Web Dashboard format to CLI format for processing
+  - Maintains backward compatibility with existing CLI exports
+- **CLAUDE.md**: Added backup transfer warning in Essential Commands table with link to troubleshooting guide
+- **hooks-quick-reference.md**: Added cross-reference to database transfer troubleshooting guide
+
 ### Fixed
 - **Python 3.14 Compatibility in Update Script** (`scripts/update_and_restart.sh`)
   - **Problem**: Script failed on systems with Python 3.14 as default (PyO3/tokenizers incompatibility)

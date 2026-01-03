@@ -72,13 +72,37 @@ async def import_memories(
             logger.error(f"JSON file not found: {json_file}")
             return False
         
-        # Quick validation of JSON format
+        # Quick validation of JSON format (support both CLI and Web Dashboard formats)
         try:
             with open(json_file, 'r') as f:
                 data = json.load(f)
-                if "export_metadata" not in data or "memories" not in data:
+
+                # Check for CLI export format (with export_metadata)
+                has_cli_format = "export_metadata" in data and "memories" in data
+
+                # Check for Web Dashboard export format (with export_date)
+                has_web_format = "export_date" in data and "memories" in data
+
+                if not (has_cli_format or has_web_format):
                     logger.error(f"Invalid export format in {json_file}")
+                    logger.error(f"Expected either CLI format (export_metadata) or Web Dashboard format (export_date)")
                     return False
+
+                # Normalize Web Dashboard format to CLI format for processing
+                if has_web_format and not has_cli_format:
+                    logger.info(f"Detected Web Dashboard export format in {json_file}")
+                    # Add minimal export_metadata for compatibility
+                    data["export_metadata"] = {
+                        "export_timestamp": data.get("export_date", ""),
+                        "total_memories": data.get("total_memories", len(data["memories"])),
+                        "source_machine": "web-dashboard-export",
+                        "exporter_version": "web-dashboard"
+                    }
+                    # Write normalized data back for processing
+                    with open(json_file, 'w') as out_f:
+                        json.dump(data, out_f, indent=2)
+                    logger.info(f"Normalized {json_file} to CLI export format")
+
         except Exception as e:
             logger.error(f"Error reading {json_file}: {str(e)}")
             return False
