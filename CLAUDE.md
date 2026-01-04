@@ -38,7 +38,7 @@ See [Essential Commands](#essential-commands) for options (--no-restart, --force
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.68.2**: **Platform Detection Improvements - Hardware Acceleration** - Apple Silicon M1/M2/M3 now use Metal Performance Shaders (MPS) instead of CPU-only PyTorch. Comprehensive detection for MPS, CUDA, ROCm, DirectML. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.69.0**: **MCP Tool Annotations** - Added readOnlyHint/destructiveHint to all 24 tools (contributed by @triepod-ai). Auto-approval for read-only ops, safety prompts for destructive actions. MCP SDK bumped to >=1.8.0. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

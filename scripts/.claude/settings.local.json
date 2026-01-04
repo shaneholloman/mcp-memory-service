@@ -4,7 +4,15 @@
       "mcp__code-context__index_codebase",
       "Bash(git commit:*)",
       "Bash(gh pr edit:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(cat:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr view:*)",
+      "Bash(uv lock:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

@@ -150,16 +150,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v8.68.2** (Jan 4, 2026)
+## 🆕 Latest Release: **v8.69.0** (Jan 4, 2026)
 
-**Platform Detection Improvements - Hardware Acceleration**
+**MCP Tool Annotations for Improved LLM Decision-Making** (contributed by @triepod-ai)
 
-- ⚡ **Hardware Acceleration** - Apple Silicon M1/M2/M3 now use MPS instead of CPU-only PyTorch (3-5x faster)
-- 🎯 **Platform Detection** - Comprehensive detection for MPS, CUDA, ROCm, DirectML across all platforms
-- 🐍 **Python Helper** - New `detect_platform.py` using shared `gpu_detection.py` module
-- 🔧 **Update Script** - Enhanced `update_and_restart.sh` with optimal PyTorch selection
+- 🏷️ **Tool Annotations** - Added `readOnlyHint`, `destructiveHint`, and `title` to all 24 MCP tools
+- ✅ **Auto-Approval** - Read-only tools (12) can be auto-approved by MCP clients for faster workflows
+- ⚠️ **Safety Prompts** - Destructive tools (9) trigger confirmation prompts to prevent accidental data loss
+- 📦 **MCP SDK Update** - Bumped dependency from >=1.0.0 to >=1.8.0 for annotation support
 
 **Previous Releases**:
+- **v8.68.2** - Platform Detection Improvements (Apple Silicon MPS support, 3-5x faster, comprehensive hardware detection)
 - **v8.68.1** - Critical Data Integrity Bug Fix - Hybrid Backend (ghost memories fixed, 5 method fixes)
 - **v8.68.0** - Update & Restart Automation (87% time reduction, <2 min workflow, cross-platform scripts)
 - **v8.62.13** - HTTP-MCP Bridge API Endpoint Fix (Remote deployments restored with POST endpoints)
