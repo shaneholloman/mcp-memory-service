@@ -10,6 +10,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.68.2] - 2026-01-04
+
+### Added
+- **Platform Detection Helper Documentation** (`scripts/utils/README_detect_platform.md`)
+  - Comprehensive guide for platform detection helper
+  - JSON output format documentation
+  - Supported platforms comparison table
+  - Integration details with `update_and_restart.sh`
+  - Example outputs for different hardware configurations
+
+### Fixed
+- **Platform Detection Improvements - Hardware Acceleration** (`update_and_restart.sh`, `detect_platform.py`)
+  - **Problem**: Apple Silicon M1/M2/M3 Macs used CPU-only PyTorch instead of Metal Performance Shaders (MPS)
+  - **Impact**: Significant performance loss on M-series Macs (embedding generation 3-5x slower)
+  - **Root Cause**: Old bash-only detection treated all macOS as CPU-only, no MPS/ROCm/DirectML support
+  - **Solution**:
+    - Enhanced `update_and_restart.sh` with comprehensive hardware detection (MPS, CUDA, ROCm, DirectML, CPU)
+    - Created `scripts/utils/detect_platform.py` using shared `gpu_detection.py` module for consistency
+    - Python-based detection provides optimal PyTorch index selection per platform
+    - Graceful fallback to old logic if Python helper unavailable
+  - **Benefits**:
+    - MPS support for Apple Silicon (native Metal acceleration)
+    - CUDA version-specific PyTorch (cu121, cu118, cu102)
+    - ROCm support for AMD GPUs (rocm5.6)
+    - DirectML support for Windows GPU acceleration
+    - Consistent with `install.py` detection logic
+
 ## [8.68.1] - 2026-01-03
 
 ### Fixed

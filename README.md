@@ -150,17 +150,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v8.68.1** (Jan 3, 2026)
+## 🆕 Latest Release: **v8.68.2** (Jan 4, 2026)
 
-**Critical Data Integrity Bug Fix - Hybrid Backend**
+**Platform Detection Improvements - Hardware Acceleration**
 
-- 🔴 **CRITICAL FIX** - Soft-deleted memories from Cloudflare no longer sync back to SQLite databases
-- 🛡️ **Data Integrity** - Defense-in-depth validation prevents ghost memories in hybrid backend
-- 🔧 **5 Method Fixes** - Added `deleted_at IS NULL` filter to all Cloudflare query methods
-- ✅ **Test Updates** - Fixed `test_cleanup_duplicates` to verify soft-delete behavior
-- ⚡ **Script Improvements** - HTTPS support, better UX, SSH agent integration (PowerShell)
+- ⚡ **Hardware Acceleration** - Apple Silicon M1/M2/M3 now use MPS instead of CPU-only PyTorch (3-5x faster)
+- 🎯 **Platform Detection** - Comprehensive detection for MPS, CUDA, ROCm, DirectML across all platforms
+- 🐍 **Python Helper** - New `detect_platform.py` using shared `gpu_detection.py` module
+- 🔧 **Update Script** - Enhanced `update_and_restart.sh` with optimal PyTorch selection
 
 **Previous Releases**:
+- **v8.68.1** - Critical Data Integrity Bug Fix - Hybrid Backend (ghost memories fixed, 5 method fixes)
 - **v8.68.0** - Update & Restart Automation (87% time reduction, <2 min workflow, cross-platform scripts)
 - **v8.62.13** - HTTP-MCP Bridge API Endpoint Fix (Remote deployments restored with POST endpoints)
 - **v8.62.12** - Quality Analytics UI Fixed ("Invalid Date" and "ID: undefined" bugs)
