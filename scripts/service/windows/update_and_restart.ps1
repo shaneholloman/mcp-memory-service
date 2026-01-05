@@ -190,7 +190,20 @@ Write-InfoLog "Current version: $CurrentVersion"
 Write-StepLog "Pulling latest changes from git..."
 
 $BeforeCommit = git rev-parse HEAD
-git pull --rebase 2>&1 | Out-Null
+
+# Git writes info messages to stderr even on success, temporarily allow errors
+$OldErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+$PullOutput = git pull --rebase 2>&1
+$PullExitCode = $LASTEXITCODE
+$ErrorActionPreference = $OldErrorActionPreference
+
+if ($PullExitCode -ne 0) {
+    Write-ErrorLog "Git pull failed with exit code $PullExitCode"
+    Write-Host $PullOutput
+    exit 1
+}
+
 $AfterCommit = git rev-parse HEAD
 
 if ($BeforeCommit -eq $AfterCommit) {
