@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **PowerShell Update Script Git Stderr Handling** (`update_and_restart.ps1`)
+  - **Problem**: Script failed with `NativeCommandError` during `git pull --rebase`
+  - **Root Cause**: Git writes informational messages to stderr even on success (e.g., "From github.com:..."), and `$ErrorActionPreference = "Stop"` treats any stderr as error
+  - **Solution**: Temporarily set `ErrorActionPreference = "Continue"` during git pull, then check `$LASTEXITCODE` for actual errors
+
 ## [8.69.0] - 2026-01-04
 
 ### Added
