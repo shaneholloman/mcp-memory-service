@@ -10,7 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.70.0] - 2026-01-05
+
 ### Added
+- **User Override Commands for Memory Hooks** (`~/.claude/hooks/utilities/user-override-detector.js`)
+  - **Feature**: New `#skip` and `#remember` commands give users manual control over automatic memory triggers
+  - **Implementation**:
+    - Shared detection module for consistent behavior across all hooks
+    - `#skip` - Bypasses memory retrieval in session-start hook
+    - `#remember` - Forces mid-conversation analysis (bypasses cooldown) or session-end consolidation (bypasses thresholds)
+    - Applied to: `session-start.js`, `mid-conversation.js`, `session-end.js`
+  - **Configuration**: New `applyTo` array in `config.json` defines which hooks are active
+  - **Documentation**: Updated `README.md` with "User Overrides" section and `README-AUTO-CAPTURE.md` with comprehensive supported hooks table
+  - **Use Cases**:
+    - Skip retrieval when starting fresh conversation (`#skip`)
+    - Force memory capture of important mid-session insights (`#remember`)
+    - Override 100-character threshold for critical session notes (`#remember`)
+
+### Added (from v8.69.1-dev)
 - **Automatic Test Memory Cleanup System** (`tests/conftest.py`, `tests/api/test_operations.py`)
   - **Problem**: Test memories polluted production database (106+ orphaned test memories found)
   - **Solution**: Tag-based cleanup system
@@ -21,7 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Result**: 92 test memories automatically cleaned after test run
   - **Migration**: Tests using `store()` should migrate to `test_store()` fixture
 
-### Fixed
+### Fixed (from v8.69.1-dev)
 - **PowerShell Update Script Git Stderr Handling** (`update_and_restart.ps1`)
   - **Problem**: Script failed with `NativeCommandError` during `git pull --rebase`
   - **Root Cause**: Git writes informational messages to stderr even on success (e.g., "From github.com:..."), and `$ErrorActionPreference = "Stop"` treats any stderr as error
