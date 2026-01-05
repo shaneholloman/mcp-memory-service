@@ -76,6 +76,7 @@ from .types import (
 )
 from .operations import (
     search, store, health, consolidate, scheduler_status,
+    delete_by_tag,
     _consolidate_async, _scheduler_status_async
 )
 from .client import close, close_async, set_consolidator, set_scheduler
@@ -85,6 +86,7 @@ __all__ = [
     'search',           # Semantic search with compact results
     'store',            # Store new memory
     'health',           # Service health check
+    'delete_by_tag',    # Delete memories by tag(s)
     'close',            # Close and cleanup storage resources (sync)
     'close_async',      # Close and cleanup storage resources (async)
 

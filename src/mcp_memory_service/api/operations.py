@@ -447,6 +447,60 @@ async def _scheduler_status_async() -> CompactSchedulerStatus:
 
 
 @sync_wrapper
+async def delete_by_tag(tags: Union[str, List[str]]) -> dict:
+    """
+    Delete memories by tag(s).
+
+    Token efficiency: ~15 tokens
+    vs ~100 tokens for MCP delete_by_tag tool (85% reduction)
+
+    Args:
+        tags: Single tag string or list of tags. Memories matching ANY tag will be deleted.
+
+    Returns:
+        Dict with 'deleted' count and 'message' string
+
+    Raises:
+        RuntimeError: If storage backend is not available
+        ValueError: If tags is empty
+
+    Example:
+        >>> from mcp_memory_service.api import delete_by_tag
+        >>> result = delete_by_tag("__test__")
+        >>> print(f"Deleted {result['deleted']} memories")
+        Deleted 15 memories
+        >>> # Delete by multiple tags
+        >>> result = delete_by_tag(["temporary", "outdated"])
+        >>> print(result['message'])
+        Deleted 23 memories with specified tags
+
+    Performance:
+        - Execution time: ~10-50ms (depends on number of matches)
+        - Uses soft-delete (sets deleted_at timestamp)
+    """
+    # Normalize tags to list
+    if isinstance(tags, str):
+        tag_list = [tags]
+    else:
+        tag_list = list(tags)
+
+    # Validate input
+    if not tag_list:
+        raise ValueError("At least one tag must be provided")
+
+    # Get storage instance
+    storage = await get_storage_async()
+
+    # Delete by tags (uses optimized delete_by_tags if available)
+    count_deleted, message = await storage.delete_by_tags(tag_list)
+
+    return {
+        'deleted': count_deleted,
+        'message': message
+    }
+
+
+@sync_wrapper
 async def scheduler_status() -> CompactSchedulerStatus:
     """
     Get consolidation scheduler status and next run times.

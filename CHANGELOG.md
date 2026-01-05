@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **Automatic Test Memory Cleanup System** (`tests/conftest.py`, `tests/api/test_operations.py`)
+  - **Problem**: Test memories polluted production database (106+ orphaned test memories found)
+  - **Solution**: Tag-based cleanup system
+    - Reserved `__test__` tag for all test-created memories
+    - New `test_store` fixture auto-tags memories for cleanup
+    - `pytest_sessionfinish` hook automatically deletes tagged memories at end of test session
+    - New `delete_by_tag()` function in Code Execution API
+  - **Result**: 92 test memories automatically cleaned after test run
+  - **Migration**: Tests using `store()` should migrate to `test_store()` fixture
+
 ### Fixed
 - **PowerShell Update Script Git Stderr Handling** (`update_and_restart.ps1`)
   - **Problem**: Script failed with `NativeCommandError` during `git pull --rebase`
