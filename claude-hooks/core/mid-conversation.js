@@ -9,6 +9,7 @@ const { PerformanceManager } = require('../utilities/performance-manager');
 const { MemoryClient } = require('../utilities/memory-client');
 const { scoreMemoryRelevance } = require('../utilities/memory-scorer');
 const { formatMemoriesForContext } = require('../utilities/context-formatter');
+const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
 
 class MidConversationHook {
     constructor(config = {}) {
@@ -70,6 +71,25 @@ class MidConversationHook {
      */
     async analyzeMessage(userMessage, context = {}) {
         if (!this.isEnabled) return null;
+
+        // Check for user overrides (#skip / #remember)
+        const overrides = detectUserOverrides(userMessage);
+        if (overrides.forceSkip) {
+            logOverride('skip');
+            return this.createResult('skipped', 'User override #skip', 0);
+        }
+        if (overrides.forceRemember) {
+            logOverride('remember');
+            // Bypass cooldown and force high confidence trigger
+            this.lastTriggerTime = 0; // Reset cooldown
+            return {
+                shouldTrigger: true,
+                confidence: 1.0,
+                reasoning: 'User requested #remember override',
+                forceRemember: true,
+                timestamp: Date.now()
+            };
+        }
 
         const timing = this.performanceManager.startTiming('mid_conversation_analysis', 'fast');
 

@@ -14,6 +14,7 @@ const { detectContextShift, extractCurrentContext, determineRefreshStrategy } = 
 const { analyzeGitContext, buildGitContextQuery } = require('../utilities/git-analyzer');
 const { MemoryClient } = require('../utilities/memory-client');
 const { getVersionInfo, formatVersionDisplay } = require('../utilities/version-checker');
+const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
 
 /**
  * Load hook configuration
@@ -512,10 +513,22 @@ async function executeSessionStart(context) {
         const showMemoryDetails = config.output?.showMemoryDetails === true;
         const showProjectDetails = config.output?.showProjectDetails !== false; // Default to true
 
+        // Check for user overrides (#skip / #remember)
+        const overrides = detectUserOverrides(context.userMessage);
+        if (overrides.forceSkip) {
+            logOverride('skip');
+            return;
+        }
+        // Note: forceRemember for session-start could force retrieval even without context shift
+        // Currently we just log and continue - could be enhanced later
+        if (overrides.forceRemember && verbose && !cleanMode) {
+            console.log(`${CONSOLE_COLORS.CYAN}💾 Memory Hook${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Force retrieval requested (#remember)`);
+        }
+
         if (verbose && !cleanMode) {
             console.log(`${CONSOLE_COLORS.CYAN}🧠 Memory Hook${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Initializing session awareness...`);
         }
-        
+
         // Check if this is triggered by a compacting event and skip if configured to do so
         if (context.trigger === 'compacting' || context.event === 'memory-compacted') {
             if (!config.memoryService.injectAfterCompacting) {

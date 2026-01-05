@@ -62,9 +62,49 @@ Three complementary ways to view session memory context:
 
 ### 🧠 **Core Features**
 - **Automatic Memory Injection**: Load relevant memories at session start with quality filtering
-- **Project Awareness**: Detect current project context and frameworks  
+- **Project Awareness**: Detect current project context and frameworks
 - **Memory Consolidation**: Store session outcomes and insights
 - **Intelligent Selection**: Quality-aware scoring that prioritizes meaningful content over just recency
+
+### 🎮 **User Overrides** (`#skip` / `#remember`)
+
+Control memory hook behavior directly from your messages:
+
+| Trigger | Effect |
+|---------|--------|
+| `#skip` | Skip all memory operations for this message |
+| `#remember` | Force memory operations (bypass cooldowns, thresholds) |
+
+**Examples:**
+```
+User: "Quick test, ignore this #skip"
+→ ⏭️ Memory Hook → Skipped by user override (#skip)
+
+User: "Important architecture decision #remember"
+→ 💾 Memory Hook → Force triggered by user override (#remember)
+```
+
+**Supported Hooks:**
+
+| Hook | `#skip` | `#remember` |
+|------|---------|-------------|
+| session-start | Skips memory retrieval | Forces retrieval |
+| mid-conversation | Skips analysis | Bypasses cooldown, forces trigger |
+| session-end | Skips consolidation | Bypasses length/confidence checks |
+| auto-capture | Skips storage | Forces storage |
+
+Configuration in `config.json`:
+```json
+{
+  "autoCapture": {
+    "userOverrides": {
+      "forceRemember": "#remember",
+      "forceSkip": "#skip",
+      "applyTo": ["auto-capture", "session-start", "mid-conversation", "session-end"]
+    }
+  }
+}
+```
 
 ## Installation
 

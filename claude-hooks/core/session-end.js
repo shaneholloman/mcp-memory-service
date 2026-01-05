@@ -11,6 +11,7 @@ const http = require('http');
 // Import utilities
 const { detectProjectContext } = require('../utilities/project-detector');
 const { formatSessionConsolidation } = require('../utilities/context-formatter');
+const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
 
 /**
  * Load hook configuration
@@ -355,36 +356,59 @@ function storeSessionMemory(endpoint, apiKey, content, projectContext, analysis)
  */
 async function onSessionEnd(context) {
     try {
+        // Check for user overrides in the last user message (#skip / #remember)
+        let lastUserMessage = null;
+        if (context.conversation && context.conversation.messages) {
+            const userMessages = context.conversation.messages.filter(msg => msg.role === 'user');
+            if (userMessages.length > 0) {
+                lastUserMessage = userMessages[userMessages.length - 1].content || '';
+            }
+        }
+
+        const overrides = detectUserOverrides(lastUserMessage);
+        if (overrides.forceSkip) {
+            logOverride('skip');
+            console.log('[Memory Hook] Session consolidation skipped by user override (#skip)');
+            return;
+        }
+        // forceRemember will bypass minSessionLength and confidence checks below
+
         console.log('[Memory Hook] Session ending - consolidating outcomes...');
-        
+
         // Load configuration
         const config = await loadConfig();
-        
+
         if (!config.memoryService.enableSessionConsolidation) {
             console.log('[Memory Hook] Session consolidation disabled in config');
             return;
         }
         
-        // Check if session is meaningful enough to store
-        if (context.conversation && context.conversation.messages) {
+        // Check if session is meaningful enough to store (bypass with #remember)
+        if (!overrides.forceRemember && context.conversation && context.conversation.messages) {
             const totalLength = context.conversation.messages
                 .map(msg => (msg.content || '').length)
                 .reduce((sum, len) => sum + len, 0);
-                
+
             if (totalLength < config.sessionAnalysis.minSessionLength) {
                 console.log('[Memory Hook] Session too short for consolidation');
                 return;
             }
         }
-        
+
+        if (overrides.forceRemember) {
+            logOverride('remember');
+            console.log('[Memory Hook] Force consolidation requested (#remember)');
+        }
+
         // Detect project context
         const projectContext = await detectProjectContext(context.workingDirectory || process.cwd());
         console.log(`[Memory Hook] Consolidating session for project: ${projectContext.name}`);
-        
+
         // Analyze conversation
         const analysis = analyzeConversation(context.conversation);
-        
-        if (analysis.confidence < 0.1) {
+
+        // Bypass confidence check with #remember
+        if (!overrides.forceRemember && analysis.confidence < 0.1) {
             console.log('[Memory Hook] Session analysis confidence too low, skipping consolidation');
             return;
         }

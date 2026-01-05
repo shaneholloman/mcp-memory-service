@@ -96,7 +96,8 @@
     "debugMode": false,
     "userOverrides": {
       "forceRemember": "#remember",
-      "forceSkip": "#skip"
+      "forceSkip": "#skip",
+      "applyTo": ["auto-capture", "session-start", "mid-conversation", "session-end"]
     }
   },
   "hooks": {

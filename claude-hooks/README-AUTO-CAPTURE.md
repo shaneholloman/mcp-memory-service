@@ -79,7 +79,10 @@ Patterns are evaluated in priority order (first match wins):
 
 ## User Overrides
 
-Control auto-capture behavior in your messages:
+Control memory hook behavior directly in your messages.
+
+> **Note**: As of v8.70.0, `#skip` and `#remember` apply to **all** memory hooks, not just auto-capture.
+> See the main [README.md](README.md#-user-overrides-skip--remember) for complete documentation.
 
 ### Force Capture
 
@@ -96,6 +99,15 @@ Add `#skip` to prevent auto-capture:
 ```
 Just testing something quickly #skip
 ```
+
+### All Supported Hooks
+
+| Hook | `#skip` | `#remember` |
+|------|---------|-------------|
+| **auto-capture** | Skips storage | Forces storage |
+| session-start | Skips retrieval | Forces retrieval |
+| mid-conversation | Skips analysis | Bypasses cooldown |
+| session-end | Skips consolidation | Bypasses thresholds |
 
 ## Hook Trigger
 
