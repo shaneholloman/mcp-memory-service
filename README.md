@@ -150,17 +150,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v8.70.0** (Jan 5, 2026)
+## 🆕 Latest Release: **v8.71.0** (Jan 6, 2026)
 
-**User Override Commands for Memory Hooks**
+**Memory Management APIs and Graceful Shutdown**
 
-- 🎛️ **Manual Control** - New `#skip` and `#remember` commands give users direct control over automatic memory triggers
-- ⏭️ **Skip Retrieval** - Use `#skip` in session-start to bypass memory retrieval for fresh conversations
-- 💾 **Force Capture** - Use `#remember` mid-conversation to bypass cooldowns or at session-end to override thresholds
-- 🔧 **Consistent Behavior** - Shared detection module ensures uniform override handling across all hooks
-- 📚 **Comprehensive Documentation** - Updated README.md and README-AUTO-CAPTURE.md with user override guides
+- 🧹 **Cache Cleanup APIs** - New endpoints to clear caches and monitor memory usage (`GET /api/memory-stats`, `POST /api/clear-caches`)
+- 📊 **Process Memory Stats** - Real-time monitoring of RSS, VMS, and available memory
+- 🔄 **Graceful Shutdown** - Proper cleanup of caches and connections on server exit (SIGTERM, SIGINT, atexit)
+- 🚀 **Production-Ready** - Prevents memory leaks from orphaned MCP sessions in long-running deployments
+- 📚 **Memory Management Guide** - New `docs/troubleshooting/memory-management.md` for monitoring and optimization
 
 **Previous Releases**:
+- **v8.70.0** - User Override Commands for Memory Hooks (`#skip`/`#remember` for manual memory control)
 - **v8.69.0** - MCP Tool Annotations for Improved LLM Decision-Making (readOnlyHint/destructiveHint, auto-approval for 12 tools)
 - **v8.68.2** - Platform Detection Improvements (Apple Silicon MPS support, 3-5x faster, comprehensive hardware detection)
 - **v8.68.1** - Critical Data Integrity Bug Fix - Hybrid Backend (ghost memories fixed, 5 method fixes)

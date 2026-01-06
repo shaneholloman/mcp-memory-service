@@ -38,7 +38,7 @@ See [Essential Commands](#essential-commands) for options (--no-restart, --force
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.70.0**: **User Override Commands for Memory Hooks** - New `#skip` and `#remember` commands give manual control over automatic memory triggers. Skip retrieval with `#skip`, force capture with `#remember` (bypasses cooldowns/thresholds). Shared detection module ensures consistent behavior across session-start, mid-conversation, and session-end hooks. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.71.0**: **Memory Management APIs and Graceful Shutdown** - New cache cleanup APIs (`GET /api/memory-stats`, `POST /api/clear-caches`) for monitoring and managing memory. Graceful shutdown with proper cleanup (SIGTERM/SIGINT/atexit). Prevents memory leaks from orphaned MCP sessions. Production-ready memory management for long-running deployments. See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
@@ -75,6 +75,8 @@ MCP Memory Service is a Model Context Protocol server providing semantic memory 
 | | **⚠️ Use tar for cross-platform transfers** | `tar czf backup.tar.gz sqlite_vec.db*` then `scp` - See [Database Transfer Guide](docs/troubleshooting/database-transfer-migration.md#sqlite-vec-database-corruption-during-transfer) |
 | **Sync Controls** | `curl -X POST http://127.0.0.1:8000/api/sync/pause` | Pause hybrid backend sync (v8.29.0+) |
 | | `curl -X POST http://127.0.0.1:8000/api/sync/resume` | Resume hybrid backend sync |
+| **Memory Management** | `curl http://127.0.0.1:8000/api/memory-stats` | Get memory usage stats (v8.71.0+) |
+| | `curl -X POST http://127.0.0.1:8000/api/clear-caches` | Clear all caches manually |
 | **Service** | `systemctl --user status mcp-memory-http.service` | Check HTTP service status (Linux) |
 | | `scripts/service/memory_service_manager.sh status` | Check service status |
 | **Debug** | `curl http://127.0.0.1:8000/api/health` | Health check |

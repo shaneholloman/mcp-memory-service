@@ -10,6 +10,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.71.0] - 2026-01-06
+
+### Added
+- **Memory Management APIs and Graceful Shutdown** (PR #331)
+  - **Problem**: Orphaned MCP sessions consuming excessive memory (reported in Discussion #331)
+  - **Cache Cleanup Functions** (`src/mcp_memory_service/services/cache_manager.py`):
+    - `clear_all_caches()` - Clear storage and service caches
+    - `get_memory_usage()` - Get process memory statistics (RSS, VMS, available memory)
+    - `get_cache_stats()` - Get cache hit/miss statistics
+  - **Model Cache Cleanup** (`src/mcp_memory_service/storage/sqlite_vec.py`):
+    - `clear_model_caches()` - Clear embedding model caches
+    - `get_model_cache_stats()` - Get model cache statistics
+  - **Graceful Shutdown** (`src/mcp_memory_service/server/server_impl.py`):
+    - `_cleanup_on_shutdown()` - Cleanup function for signal handlers
+    - Updated `shutdown()` method with proper cache and connection cleanup
+    - Added `atexit` handler for normal process exit
+    - SIGTERM and SIGINT handlers now call cleanup before exit
+  - **Memory Management API Endpoints** (`src/mcp_memory_service/api/routes/health.py`):
+    - `GET /api/memory-stats` - Get detailed memory usage (process memory + cache stats + model cache stats)
+    - `POST /api/clear-caches` - Clear all caches manually (returns memory freed)
+  - **Documentation**:
+    - New file: `docs/troubleshooting/memory-management.md` - Comprehensive guide for monitoring and managing memory
+  - **Benefits**:
+    - Prevents memory leaks from orphaned sessions
+    - Enables proactive memory monitoring and cleanup
+    - Graceful resource release on server shutdown
+    - Production-ready memory management for long-running deployments
+
 ## [8.70.0] - 2026-01-05
 
 ### Added
