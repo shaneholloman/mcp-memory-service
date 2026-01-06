@@ -2901,11 +2901,38 @@ class MemoryServer:
 
     async def shutdown(self) -> None:
         """
-        Shutdown the server and cleanup resources (test-compatible wrapper).
+        Shutdown the server and cleanup resources.
+
+        This method properly cleans up all caches and resources to free memory.
+        Called during graceful shutdown (SIGTERM/SIGINT) or process exit.
+
+        Cleanup includes:
+        - Service and storage caches (cache_manager)
+        - Embedding model caches (sqlite_vec)
+        - Garbage collection to reclaim memory
         """
-        # Server doesn't maintain persistent connections that need cleanup
-        # This is a no-op for test compatibility
-        pass
+        import gc
+        from .server.cache_manager import clear_all_caches
+        from .storage.sqlite_vec import clear_model_caches
+
+        logger.info("Initiating graceful shutdown...")
+
+        try:
+            # Clear service and storage caches
+            cache_stats = clear_all_caches()
+            logger.info(f"Cleared service caches: {cache_stats}")
+
+            # Clear model caches (embedding models)
+            model_stats = clear_model_caches()
+            logger.info(f"Cleared model caches: {model_stats}")
+
+            # Force garbage collection to reclaim memory
+            gc_collected = gc.collect()
+            logger.info(f"Garbage collection: {gc_collected} objects collected")
+
+            logger.info("Graceful shutdown complete")
+        except Exception as e:
+            logger.warning(f"Error during shutdown cleanup: {e}")
 
 
 def _print_system_diagnostics(system_info: Any) -> None:
@@ -2961,27 +2988,64 @@ async def async_main():
         print(f"Fatal server error: {str(e)}", file=sys.stderr, flush=True)
         raise
 
+def _cleanup_on_shutdown():
+    """
+    Cleanup function called on process shutdown (SIGTERM, SIGINT, KeyboardInterrupt).
+
+    This function clears all caches to free memory and runs garbage collection.
+    It's designed to be called from signal handlers (synchronous context).
+    """
+    import gc
+    from .server.cache_manager import clear_all_caches
+    from .storage.sqlite_vec import clear_model_caches
+
+    try:
+        logger.info("Running shutdown cleanup...")
+
+        # Clear service and storage caches
+        cache_stats = clear_all_caches()
+        logger.info(f"Cleared service caches: {cache_stats}")
+
+        # Clear model caches (embedding models)
+        model_stats = clear_model_caches()
+        logger.info(f"Cleared model caches: {model_stats}")
+
+        # Force garbage collection
+        gc_collected = gc.collect()
+        logger.info(f"Garbage collection: {gc_collected} objects collected")
+
+        logger.info("Shutdown cleanup complete")
+    except Exception as e:
+        logger.warning(f"Error during shutdown cleanup: {e}")
+
+
 def main():
     import signal
-    
+    import atexit
+
+    # Register cleanup function for normal exit
+    atexit.register(_cleanup_on_shutdown)
+
     # Set up signal handlers for graceful shutdown
     def signal_handler(signum, frame):
         logger.info(f"Received signal {signum}, shutting down gracefully...")
+        _cleanup_on_shutdown()
         sys.exit(0)
-    
+
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     try:
         # Check if running in Docker
         if os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False):
             logger.info("Running in Docker container")
             if MCP_CLIENT == 'lm_studio':
                 print("MCP Memory Service starting in Docker mode", file=sys.stdout, flush=True)
-        
+
         asyncio.run(async_main())
     except KeyboardInterrupt:
-        logger.info("Shutting down gracefully...")
+        logger.info("Shutting down gracefully (KeyboardInterrupt)...")
+        _cleanup_on_shutdown()
     except Exception as e:
         logger.error(f"Fatal error: {str(e)}\n{traceback.format_exc()}")
         sys.exit(1)

@@ -229,3 +229,131 @@ def format_uptime(seconds: float) -> str:
         return f"{seconds/3600:.1f} hours"
     else:
         return f"{seconds/86400:.1f} days"
+
+
+# =============================================================================
+# MEMORY MANAGEMENT ENDPOINTS (v8.71.0 - Discussion #331)
+# =============================================================================
+
+class MemoryStatsResponse(BaseModel):
+    """Response model for memory statistics."""
+    process_memory_mb: float
+    process_memory_virtual_mb: float
+    system_memory_total_gb: float
+    system_memory_available_gb: float
+    system_memory_percent: float
+    cached_storage_count: int
+    cached_service_count: int
+    model_cache_count: int
+    embedding_cache_count: int
+    cache_stats: Dict[str, Any]
+
+
+class ClearCachesResponse(BaseModel):
+    """Response model for cache clearing operation."""
+    success: bool
+    storage_instances_cleared: int
+    service_instances_cleared: int
+    models_cleared: int
+    embeddings_cleared: int
+    gc_collected: int
+    memory_freed_estimate_mb: float
+
+
+@router.get("/memory-stats", response_model=MemoryStatsResponse)
+async def get_memory_stats(
+    user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
+):
+    """
+    Get detailed memory usage statistics for the process.
+
+    This endpoint provides insights into:
+    - Process memory usage (RSS and virtual)
+    - System memory status
+    - Cache counts (storage, service, model, embedding)
+    - Cache hit/miss statistics
+
+    Useful for monitoring memory pressure and diagnosing memory issues.
+    """
+    from ...server.cache_manager import get_memory_usage, get_cache_stats
+    from ...storage.sqlite_vec import get_model_cache_stats
+
+    # Get process memory info
+    process_memory = get_memory_usage()
+
+    # Get system memory info
+    memory_info = psutil.virtual_memory()
+
+    # Get model cache stats
+    model_stats = get_model_cache_stats()
+
+    # Get cache stats
+    cache_stats = get_cache_stats()
+
+    return MemoryStatsResponse(
+        process_memory_mb=process_memory["rss_mb"],
+        process_memory_virtual_mb=process_memory["vms_mb"],
+        system_memory_total_gb=round(memory_info.total / (1024**3), 2),
+        system_memory_available_gb=round(memory_info.available / (1024**3), 2),
+        system_memory_percent=memory_info.percent,
+        cached_storage_count=process_memory["cached_storage_count"],
+        cached_service_count=process_memory["cached_service_count"],
+        model_cache_count=model_stats["model_count"],
+        embedding_cache_count=model_stats["embedding_count"],
+        cache_stats=cache_stats
+    )
+
+
+@router.post("/clear-caches", response_model=ClearCachesResponse)
+async def clear_caches(
+    user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
+):
+    """
+    Clear all caches to free memory.
+
+    WARNING: This is a destructive operation that will:
+    - Clear all storage backend caches
+    - Clear all MemoryService caches
+    - Clear all embedding model caches
+    - Clear all computed embedding caches
+    - Run garbage collection
+
+    After clearing:
+    - Next requests will be slower (cold start)
+    - Models will be reloaded on demand
+    - Storage connections will be re-established
+
+    Use this endpoint when:
+    - Memory pressure is high
+    - Debugging memory issues
+    - After long sessions to reclaim memory
+    """
+    from ...server.cache_manager import clear_all_caches, get_memory_usage
+    from ...storage.sqlite_vec import clear_model_caches
+
+    # Get memory usage before clearing
+    memory_before = get_memory_usage()
+    rss_before = memory_before["rss_mb"]
+
+    # Clear service and storage caches
+    cache_stats = clear_all_caches()
+
+    # Clear model caches
+    model_stats = clear_model_caches()
+
+    # Get memory usage after clearing
+    memory_after = get_memory_usage()
+    rss_after = memory_after["rss_mb"]
+
+    # Calculate estimated freed memory
+    memory_freed = max(0, rss_before - rss_after)
+
+    return ClearCachesResponse(
+        success=True,
+        storage_instances_cleared=cache_stats["storage_instances_cleared"],
+        service_instances_cleared=cache_stats["service_instances_cleared"],
+        models_cleared=model_stats["models_cleared"],
+        embeddings_cleared=model_stats["embeddings_cleared"],
+        gc_collected=model_stats["gc_collected"],
+        memory_freed_estimate_mb=round(memory_freed, 2)
+    )

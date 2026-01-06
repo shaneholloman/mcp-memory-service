@@ -68,6 +68,65 @@ _MODEL_CACHE = {}
 _EMBEDDING_CACHE = {}
 
 
+def clear_model_caches() -> dict:
+    """
+    Clear embedding model caches to free memory.
+
+    This function clears both the model cache (loaded embedding models)
+    and the embedding cache (computed embeddings). It also triggers
+    garbage collection to reclaim memory.
+
+    Used during graceful shutdown or when memory pressure is detected.
+    Note: After clearing, models will be reloaded on next use.
+
+    Returns:
+        Dict with counts of cleared items:
+        - models_cleared: Number of model instances removed
+        - embeddings_cleared: Number of cached embeddings removed
+    """
+    import gc
+
+    global _MODEL_CACHE, _EMBEDDING_CACHE
+
+    model_count = len(_MODEL_CACHE)
+    embedding_count = len(_EMBEDDING_CACHE)
+
+    _MODEL_CACHE.clear()
+    _EMBEDDING_CACHE.clear()
+
+    # Force garbage collection to reclaim memory
+    collected = gc.collect()
+
+    logger.info(
+        f"Model caches cleared - "
+        f"Models: {model_count}, Embeddings: {embedding_count}, "
+        f"GC collected: {collected} objects"
+    )
+
+    return {
+        "models_cleared": model_count,
+        "embeddings_cleared": embedding_count,
+        "gc_collected": collected
+    }
+
+
+def get_model_cache_stats() -> dict:
+    """
+    Get statistics about the model cache.
+
+    Returns:
+        Dict with cache statistics:
+        - model_count: Number of cached models
+        - model_keys: List of cached model keys
+        - embedding_count: Number of cached embeddings
+    """
+    return {
+        "model_count": len(_MODEL_CACHE),
+        "model_keys": list(_MODEL_CACHE.keys()),
+        "embedding_count": len(_EMBEDDING_CACHE)
+    }
+
+
 class _HashEmbeddingModel:
     """Deterministic, pure-Python embedding fallback.
 
