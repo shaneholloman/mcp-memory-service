@@ -338,8 +338,8 @@ Write-Host ""
 Write-SuccessLog "Version: $CurrentVersion -> $NewVersion"
 Write-SuccessLog "Total time: ${TotalTime}s"
 Write-Host ""
-Write-InfoLog "Dashboard: http://localhost:8000"
-Write-InfoLog "API Docs:  http://localhost:8000/api/docs"
+Write-InfoLog "Dashboard: https://localhost:8000"
+Write-InfoLog "API Docs:  https://localhost:8000/api/docs"
 Write-Host ""
 
 if ($CurrentVersion -ne $NewVersion) {
