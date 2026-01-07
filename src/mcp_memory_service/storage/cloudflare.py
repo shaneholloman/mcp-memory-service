@@ -303,7 +303,9 @@ class CloudflareStorage(MemoryStorage):
             metadata_json TEXT,
             vector_id TEXT UNIQUE,
             content_size INTEGER DEFAULT 0,
-            r2_key TEXT
+            r2_key TEXT,
+            tags TEXT,
+            deleted_at REAL DEFAULT NULL
         );
         
         -- Tags table
@@ -325,6 +327,7 @@ class CloudflareStorage(MemoryStorage):
         CREATE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash);
         CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at);
         CREATE INDEX IF NOT EXISTS idx_memories_vector_id ON memories(vector_id);
+        CREATE INDEX IF NOT EXISTS idx_memories_deleted_at ON memories(deleted_at);
         CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
         """
         

@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Cloudflare D1 Schema Missing Columns** (`src/mcp_memory_service/storage/cloudflare.py`)
+  - **Problem**: D1 schema was missing `deleted_at` and `tags` columns, causing soft-delete operations to fail silently
+  - **Impact**: Tombstone-based sync between devices was broken - deleted memories on one device were not synced to others
+  - **Fix**: Added `deleted_at REAL DEFAULT NULL` and `tags TEXT` columns to D1 schema
+  - **Index**: Added `idx_memories_deleted_at` index for query performance
+
+### Added
+- **Sync Status Maintenance Script** (`scripts/maintenance/sync_status.py`)
+  - Compares local SQLite database with Cloudflare D1
+  - Shows memory counts (total, active, tombstones) for both databases
+  - Identifies sync discrepancies: local-only, D1-only, pending deletions
+  - Cross-platform support (Windows, macOS, Linux)
+  - Handles schema differences gracefully
+
 ## [8.71.0] - 2026-01-06
 
 ### Added
