@@ -38,7 +38,7 @@ See [Essential Commands](#essential-commands) for options (--no-restart, --force
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v8.73.0**: **Universal Permission Request Hook v1.0** - Automatic MCP tool permission management eliminates repetitive prompts. Safe-by-default design auto-approves read-only operations (get, list, retrieve, search), requires confirmation for destructive operations (delete, update, execute). Universal support across all MCP servers (memory, browser, context7, playwright). Zero configuration required, extensible via config.json. See [CHANGELOG.md](CHANGELOG.md) for full version history.
+> **🆕 v8.75.0**: **Lightweight ONNX Quality Scoring** - 90% installation size reduction (7.7GB → 805MB) via tokenizers-only dependency. Same nvidia-quality-classifier-deberta ONNX model, faster installation (<2 min), conditional loading (transformers optional). Includes multi-protocol port detection fix (HTTP/HTTPS health checks, cross-platform fallback). See [CHANGELOG.md](CHANGELOG.md) for full version history.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 

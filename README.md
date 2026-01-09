@@ -150,18 +150,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v8.74.0** (Jan 9, 2026)
+## 🆕 Latest Release: **v8.75.0** (Jan 9, 2026)
 
-**Cross-Platform Orphan Process Cleanup - Database Lock Prevention**
+**Lightweight ONNX Quality Scoring - 90% Installation Size Reduction**
 
-- 🧹 **Automatic Orphan Detection** - Identifies orphaned MCP memory processes after Claude Desktop/Code crashes
-- 🛡️ **Database Lock Prevention** - Eliminates "SQLite database is locked" errors from orphaned processes
-- 🌐 **Cross-Platform Wrappers** - Python, Bash (macOS/Linux), and PowerShell (Windows) implementations
-- 🔒 **Safe Cleanup** - Only terminates actual orphans (ppid == 1 on Unix, missing parent on Windows), preserves active sessions
-- 📚 **Comprehensive Documentation** - README_CLEANUP_WRAPPER.md with installation guide, troubleshooting, and technical details
-- 🔧 **22 Unit Tests** - Full test coverage with platform-specific validation
+- 🎯 **90% Disk Space Reduction** - Installation shrinks from 7.7GB to 805MB (transformers → tokenizers migration)
+- ⚡ **Faster Installation** - Complete setup in <2 minutes (vs 10-15 minutes previously)
+- 🧠 **Same Quality Scoring** - Uses nvidia-quality-classifier-deberta ONNX model with lighter dependency chain
+- 🔧 **Conditional Loading** - Only install what you use (transformers optional for embeddings only)
+- 🐛 **Port Detection Fix** - Multi-protocol health checks (HTTP/HTTPS) with cross-platform port detection fallback (lsof → ss → netstat → ps)
+- 📚 **Complete Documentation** - docs/LIGHTWEIGHT_ONNX_SETUP.md + scripts/setup-lightweight.sh
 
 **Previous Releases**:
+- **v8.74.0** - Cross-Platform Orphan Process Cleanup (database lock prevention, automatic orphan detection after crashes)
 - **v8.73.0** - Universal Permission Request Hook (auto-approves safe operations, eliminates repetitive prompts for 12+ tools)
 - **v8.72.0** - Graph Traversal MCP Tools (find_connected_memories, find_shortest_path, get_memory_subgraph - 5-25ms, 30x faster)
 - **v8.71.0** - Memory Management APIs and Graceful Shutdown (cache cleanup, process monitoring, production-ready memory management)

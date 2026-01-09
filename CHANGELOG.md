@@ -10,6 +10,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.75.0] - 2026-01-09
+
+### Added
+- **Lightweight ONNX Quality Scoring without Transformers Dependency** (PR #337)
+  - **Problem**: transformers package adds 6.9GB of dependencies (torch, tensorflow, etc.), making installation bloated for users who only need quality scoring
+  - **Solution**: Use tokenizers package directly instead of transformers
+    - 90% disk space reduction: 7.7GB → 805MB total installation
+    - Same ONNX model (nvidia-quality-classifier-deberta), just lighter dependency chain
+    - Conditional dependency loading - only install what you use
+  - **Implementation**:
+    - Modified `src/mcp_memory_service/quality/onnx_ranker.py` to use tokenizers directly
+    - Added tokenizers as optional dependency in pyproject.toml
+    - Updated embedding service to handle both tokenizers and transformers (graceful fallback)
+    - Fixed quality_provider metadata access bug in async_scorer.py
+  - **Testing**: 15 comprehensive integration tests (`tests/test_lightweight_onnx.py`, 487 lines)
+  - **Documentation**:
+    - Complete setup guide: `docs/LIGHTWEIGHT_ONNX_SETUP.md`
+    - Setup script: `scripts/setup-lightweight.sh`
+  - **Benefits**:
+    - Faster installation (<2 min vs 10-15 min)
+    - Lower disk usage (805MB vs 7.7GB)
+    - Same quality scoring performance
+    - No runtime performance impact
+
 ### Fixed
 - **Multi-Protocol and Cross-Platform Port Detection** (`scripts/service/http_server_manager.sh`)
   - **Problem**: Update script failed with port conflict on Linux systems without lsof installed
