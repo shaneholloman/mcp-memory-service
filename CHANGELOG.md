@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-## [8.74.0] - TBD
+## [8.74.0] - 2026-01-09
 
 ### Added
 - **Cross-Platform Wrapper Scripts for Orphan Process Cleanup** (`scripts/run/`)
