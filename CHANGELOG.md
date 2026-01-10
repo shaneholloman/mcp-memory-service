@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **Production Refactor Command**: Added `/refactor-function-prod` command for production-ready code refactoring
+  - Enhanced version of the refactor-function PoC with production features
+- **Refactoring Metrics Documentation**: Comprehensive Issue #340 refactoring documentation in `.metrics/`
+  - Baseline complexity measurements
+  - Complexity comparison showing 75.2% average reduction
+  - Tracking tables and completion reports
+
 ### Fixed
 - **Hook Installer**: Auto-register PreToolUse hook in settings.json (Issue #335)
   - **Problem**: `permission-request.js` was copied but never registered in `settings.json`, so the hook never executed
