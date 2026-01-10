@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Hook Installer**: Auto-register PreToolUse hook in settings.json (Issue #335)
+  - **Problem**: `permission-request.js` was copied but never registered in `settings.json`, so the hook never executed
+  - **Solution**: Installer now auto-adds PreToolUse hook configuration for MCP permission management
+  - Added 7 new safe patterns: `store`, `remember`, `ingest`, `rate`, `proactive`, `context`, `summary`, `recommendations`
+  - Hook now correctly auto-approves additive operations (e.g., `store_memory`)
+
 ### Changed
 - **Hook Installer**: Refactored MCP configuration detection functions for improved maintainability (Issue #340)
   - Reduced complexity by 45.5% across 3 core functions
