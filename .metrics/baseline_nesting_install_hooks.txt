@@ -1,0 +1,45 @@
+BASELINE COMPLEXITY METRICS
+====================================================================================================
+
+Function: detect_claude_mcp_configuration
+  Location: Lines 198-236 (39 total)
+  Total Statements: 23
+  Control Flow:
+    - If statements: 3
+    - For loops: 1
+    - While loops: 0
+    - Try/Except blocks: 4
+    - With statements: 0
+    - Total branches: 8
+  Boolean Operators: 4
+  Maximum Nesting Depth: 5
+  Estimated Cyclomatic Complexity: 13
+
+Function: _parse_mcp_get_output
+  Location: Lines 238-268 (31 total)
+  Total Statements: 24
+  Control Flow:
+    - If statements: 7
+    - For loops: 1
+    - While loops: 0
+    - Try/Except blocks: 2
+    - With statements: 0
+    - Total branches: 10
+  Boolean Operators: 5
+  Maximum Nesting Depth: 9
+  Estimated Cyclomatic Complexity: 16
+
+Function: validate_mcp_prerequisites
+  Location: Lines 351-385 (35 total)
+  Total Statements: 23
+  Control Flow:
+    - If statements: 8
+    - For loops: 0
+    - While loops: 0
+    - Try/Except blocks: 0
+    - With statements: 0
+    - Total branches: 8
+  Boolean Operators: 12
+  Maximum Nesting Depth: 4
+  Estimated Cyclomatic Complexity: 21
+

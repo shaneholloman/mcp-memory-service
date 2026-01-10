@@ -1,0 +1,1 @@
+claude-hooks/install_hooks.py - C (2.38)
