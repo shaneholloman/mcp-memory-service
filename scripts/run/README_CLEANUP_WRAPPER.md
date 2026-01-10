@@ -108,6 +108,89 @@ All wrappers log to stderr (visible in MCP server logs):
 
 ## Troubleshooting
 
+### macOS: "Operation not permitted" Error
+
+**Symptoms:**
+- Claude Desktop logs show: `/bin/bash: /path/to/script.sh: Operation not permitted`
+- Server immediately disconnects after connecting
+- This happens even with Full Disk Access enabled for Claude.app
+
+**Cause:**
+macOS App Sandbox blocks Claude Desktop from executing scripts located in protected directories (`~/Documents`, `~/Desktop`, `~/Downloads`) via `exec`, even when Full Disk Access is granted.
+
+**Solutions:**
+
+**Option 1: Copy wrapper to unprotected location (Recommended)**
+
+Create a standalone wrapper in `~/bin` (or another unprotected location):
+
+```bash
+mkdir -p ~/bin
+cat > ~/bin/mcp-memory-wrapper.sh << 'EOF'
+#!/bin/bash
+set -e
+PROJECT_DIR="/path/to/mcp-memory-service"  # Adjust this path
+
+log() { echo "[mcp-memory-wrapper] $1" >&2; }
+
+cleanup_orphans() {
+    for pid in $(pgrep -f "mcp-memory-service" 2>/dev/null || true); do
+        [ "$pid" = "$$" ] && continue
+        ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+        [ "$ppid" = "1" ] && { log "Killing orphan: $pid"; kill -9 "$pid" 2>/dev/null || true; }
+    done
+}
+
+find_uv() {
+    for p in "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv"; do
+        [ -x "$p" ] && echo "$p" && return
+    done
+    command -v uv 2>/dev/null || { log "ERROR: uv not found"; exit 1; }
+}
+
+log "Starting ($(uname -s))"
+cleanup_orphans
+UV=$(find_uv)
+exec "$UV" --directory "$PROJECT_DIR" run memory "$@"
+EOF
+chmod +x ~/bin/mcp-memory-wrapper.sh
+```
+
+Then use in `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "/Users/YOUR_USERNAME/bin/mcp-memory-wrapper.sh",
+      "args": [],
+      "env": { ... }
+    }
+  }
+}
+```
+
+**Option 2: Use `uv --directory` directly (No wrapper)**
+
+Skip the wrapper entirely and call `uv` directly:
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "/Users/YOUR_USERNAME/.local/bin/uv",
+      "args": [
+        "--directory", "/path/to/mcp-memory-service",
+        "run", "memory"
+      ],
+      "env": { ... }
+    }
+  }
+}
+```
+
+Note: This bypasses orphan cleanup, but avoids the permission issue entirely.
+
+**Key insight:** The issue is NOT about Full Disk Access—it's about macOS blocking `exec` syscalls on files in protected directories from sandboxed apps. Moving the script outside these directories resolves it.
+
 ### "uv not found"
 Install uv:
 ```bash
