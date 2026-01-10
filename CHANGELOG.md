@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.75.1] - 2026-01-10
+
+### Fixed
+- **Hook Installer**: Support flexible MCP server naming conventions (PR #339)
+  - **Problem**: Installer required exact server name `memory`, causing installation failures for users with custom MCP configurations (e.g., `mcp-memory-service`, `memory-service`)
+  - **Solution**:
+    - Installer now detects servers matching patterns: `memory`, `mcp-memory`, `*memory*service*`, `*memory*server*`
+    - Backward compatible with existing `memory` server name
+    - Provides clear error messages when no matching server found
+    - Improved user experience for custom MCP configurations
+  - **Testing**: Manual testing with various server name configurations
+  - **Contributors**: Thanks to @timkjr for reporting and testing the fix!
+
 ## [8.75.0] - 2026-01-09
 
 ### Added

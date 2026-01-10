@@ -150,18 +150,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v8.75.0** (Jan 9, 2026)
+## 🆕 Latest Release: **v8.75.1** (Jan 10, 2026)
 
-**Lightweight ONNX Quality Scoring - 90% Installation Size Reduction**
+**Hook Installer Fix - Flexible MCP Server Naming Support**
 
-- 🎯 **90% Disk Space Reduction** - Installation shrinks from 7.7GB to 805MB (transformers → tokenizers migration)
-- ⚡ **Faster Installation** - Complete setup in <2 minutes (vs 10-15 minutes previously)
-- 🧠 **Same Quality Scoring** - Uses nvidia-quality-classifier-deberta ONNX model with lighter dependency chain
-- 🔧 **Conditional Loading** - Only install what you use (transformers optional for embeddings only)
-- 🐛 **Port Detection Fix** - Multi-protocol health checks (HTTP/HTTPS) with cross-platform port detection fallback (lsof → ss → netstat → ps)
-- 📚 **Complete Documentation** - docs/LIGHTWEIGHT_ONNX_SETUP.md + scripts/setup-lightweight.sh
+- 🔧 **Flexible Server Name Detection** - Installer now supports custom MCP server names (e.g., `mcp-memory-service`, `memory-service`)
+- ✅ **Backward Compatible** - Existing `memory` server name still works perfectly
+- 🎯 **Improved UX** - Clear error messages when no matching server found
+- 🐛 **Installation Reliability** - Fixes installation failures for users with custom MCP configurations
 
 **Previous Releases**:
+- **v8.75.0** - Lightweight ONNX Quality Scoring (90% installation size reduction: 7.7GB → 805MB, same quality scoring performance)
 - **v8.74.0** - Cross-Platform Orphan Process Cleanup (database lock prevention, automatic orphan detection after crashes)
 - **v8.73.0** - Universal Permission Request Hook (auto-approves safe operations, eliminates repetitive prompts for 12+ tools)
 - **v8.72.0** - Graph Traversal MCP Tools (find_connected_memories, find_shortest_path, get_memory_subgraph - 5-25ms, 30x faster)
