@@ -62,7 +62,15 @@ const DEFAULT_SAFE_PATTERNS = [
     'view',
     'show',
     'describe',
-    'inspect'
+    'inspect',
+    'store',      // Additive only, doesn't delete
+    'remember',   // Additive only
+    'ingest',     // Document ingestion (additive)
+    'rate',       // Rating memories (non-destructive)
+    'proactive',  // Proactive context (read-like)
+    'context',    // Context retrieval
+    'summary',    // Summary retrieval
+    'recommendations' // Recommendations (read-only)
 ];
 
 // Configuration state (loaded at startup)

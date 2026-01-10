@@ -986,6 +986,23 @@ class HookInstaller:
                         }
                     ]
 
+            # Add PreToolUse hook for MCP permission auto-approval (v8.73.0+)
+            permission_request_script = self.claude_hooks_dir / 'core' / 'permission-request.js'
+            if permission_request_script.exists():
+                hook_config["hooks"]["PreToolUse"] = [
+                    {
+                        "matcher": "mcp__",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": f'node "{self.claude_hooks_dir}/core/permission-request.js"',
+                                "timeout": 5
+                            }
+                        ]
+                    }
+                ]
+                self.success("Added PreToolUse hook for MCP permission auto-approval")
+
             # Add mid-conversation hook if Natural Memory Triggers are installed
             if install_mid_conversation:
                 hook_config["hooks"]["UserPromptSubmit"] = [
