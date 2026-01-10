@@ -81,6 +81,9 @@ class HookInstaller:
     CLAUDE_CODE_ENV = "claude-code"
     STANDALONE_ENV = "standalone"
 
+    # Memory server name constants
+    MEMORY_SERVER_NAMES = ['memory-service', 'memory', 'mcp-memory-service', 'extended-memory']
+
     def __init__(self):
         self.script_dir = Path(__file__).parent.absolute()
         self.platform_name = platform.system().lower()
@@ -200,29 +203,15 @@ class HookInstaller:
         self.info("Detecting existing Claude Code MCP configuration...")
 
         try:
-            # Try multiple common memory server names
-            memory_server_names = ['memory-service', 'memory', 'mcp-memory-service', 'extended-memory']
+            # Try specific server names first
+            config_info = self._try_detect_server()
+            if config_info:
+                return config_info
 
-            for server_name in memory_server_names:
-                result = subprocess.run(['claude', 'mcp', 'get', server_name],
-                                      capture_output=True, text=True, timeout=10)
-
-                if result.returncode == 0:
-                    # Parse the output to extract configuration details
-                    config_info = self._parse_mcp_get_output(result.stdout)
-                    if config_info:
-                        self.success(f"Found existing memory server '{server_name}': {config_info.get('command', 'Unknown')}")
-                        self.success(f"Status: {config_info.get('status', 'Unknown')}")
-                        self.success(f"Type: {config_info.get('type', 'Unknown')}")
-                        return config_info
-
-            # If no specific server found, try listing all and searching for memory-related ones
-            result = subprocess.run(['claude', 'mcp', 'list'],
-                                  capture_output=True, text=True, timeout=10)
-            if result.returncode == 0 and 'memory' in result.stdout.lower():
-                self.success("Found memory-related MCP server in configuration")
-                # Extract basic info from list output
-                return {'status': 'Connected', 'type': 'detected', 'command': 'See claude mcp list'}
+            # Fallback: try listing all servers
+            config_info = self._try_fallback_detection()
+            if config_info:
+                return config_info
 
             self.info("No existing memory server found in Claude Code MCP configuration")
 
@@ -235,30 +224,72 @@ class HookInstaller:
 
         return None
 
+    def _try_detect_server(self) -> Optional[Dict]:
+        """Try to detect memory server by name."""
+        for server_name in self.MEMORY_SERVER_NAMES:
+            result = subprocess.run(['claude', 'mcp', 'get', server_name],
+                                  capture_output=True, text=True, timeout=10)
+
+            if result.returncode != 0:
+                continue
+
+            config_info = self._parse_mcp_get_output(result.stdout)
+            if not config_info:
+                continue
+
+            self.success(f"Found existing memory server '{server_name}': {config_info.get('command', 'Unknown')}")
+            self.success(f"Status: {config_info.get('status', 'Unknown')}")
+            self.success(f"Type: {config_info.get('type', 'Unknown')}")
+            return config_info
+
+        return None
+
+    def _try_fallback_detection(self) -> Optional[Dict]:
+        """Fallback detection using mcp list command."""
+        result = subprocess.run(['claude', 'mcp', 'list'],
+                              capture_output=True, text=True, timeout=10)
+
+        if result.returncode != 0:
+            return None
+
+        if 'memory' not in result.stdout.lower():
+            return None
+
+        self.success("Found memory-related MCP server in configuration")
+        return {'status': 'Connected', 'type': 'detected', 'command': 'See claude mcp list'}
+
+    def _parse_field_line(self, line: str, config: Dict) -> None:
+        """Parse a single field line and update config."""
+        # Map field prefixes to config keys
+        field_mapping = {
+            'Status:': 'status',
+            'Type:': 'type',
+            'Command:': 'command',
+            'Scope:': 'scope',
+            'Environment:': 'environment',
+        }
+
+        # Special case: URL replaces Command for HTTP servers
+        if line.startswith('URL:'):
+            value = line.replace('URL:', '').strip()
+            config['command'] = value
+            config['url'] = value
+            return
+
+        # Standard field parsing using mapping
+        for prefix, key in field_mapping.items():
+            if line.startswith(prefix):
+                config[key] = line.replace(prefix, '').strip()
+                break
+
     def _parse_mcp_get_output(self, output: str) -> Optional[Dict]:
         """Parse the output of 'claude mcp get memory-service' command."""
-        config = {}
-
         try:
-            lines = output.strip().split('\n')
-            for line in lines:
-                line = line.strip()
-                if line.startswith('Status:'):
-                    config['status'] = line.replace('Status:', '').strip()
-                elif line.startswith('Type:'):
-                    config['type'] = line.replace('Type:', '').strip()
-                elif line.startswith('Command:'):
-                    config['command'] = line.replace('Command:', '').strip()
-                elif line.startswith('URL:'):
-                    # HTTP servers show URL instead of Command
-                    config['command'] = line.replace('URL:', '').strip()
-                    config['url'] = line.replace('URL:', '').strip()
-                elif line.startswith('Scope:'):
-                    config['scope'] = line.replace('Scope:', '').strip()
-                elif line.startswith('Environment:'):
-                    config['environment'] = line.replace('Environment:', '').strip()
+            config = {}
+            for line in output.strip().split('\n'):
+                self._parse_field_line(line.strip(), config)
 
-            # Return config if we found essential information (status + type or command/url)
+            # Return config if we found essential information
             if 'status' in config and ('command' in config or 'type' in config):
                 return config
 
@@ -348,6 +379,55 @@ class HookInstaller:
             "reason": config["reason"]
         }
 
+    def _validate_connection_status(self, status: str) -> Optional[str]:
+        """Validate server connection status.
+
+        Args:
+            status: Connection status string from config
+
+        Returns:
+            Error message if validation fails, None otherwise
+        """
+        if '✓ Connected' in status or 'Connected' in status:
+            return None
+        return f"Memory server is not connected. Status: {status}"
+
+    def _validate_command_format(self, command: str, server_type: str) -> Optional[str]:
+        """Validate command format based on server type.
+
+        Args:
+            command: Server command/URL
+            server_type: Type of server (http, stdio, etc.)
+
+        Returns:
+            Error message if validation fails, None otherwise
+        """
+        if not command:
+            return "Memory server command is empty"
+
+        if server_type == 'http':
+            if 'http://' in command or 'https://' in command:
+                return None
+            return f"HTTP server should have URL: {command}"
+
+        # For stdio servers, check if it looks like a memory service
+        if 'mcp' in command.lower() or 'memory' in command.lower():
+            return None
+        return f"Command doesn't appear to be a memory service: {command}"
+
+    def _validate_server_type(self, server_type: str) -> Optional[str]:
+        """Validate server type is supported.
+
+        Args:
+            server_type: Server type from config
+
+        Returns:
+            Error message if validation fails, None otherwise
+        """
+        if server_type in ['stdio', 'http', 'detected', '']:
+            return None
+        return f"Unsupported server type: {server_type}"
+
     def validate_mcp_prerequisites(self, detected_config: Optional[Dict] = None) -> Tuple[bool, List[str]]:
         """Validate that MCP memory service is properly configured."""
         issues = []
@@ -359,28 +439,23 @@ class HookInstaller:
             issues.append("No memory server found in Claude Code MCP configuration")
             return False, issues
 
-        # Check if server is connected
-        status = detected_config.get('status', '')
-        if '✓ Connected' not in status and 'Connected' not in status:
-            issues.append(f"Memory server is not connected. Status: {status}")
+        # Validate connection status
+        status_error = self._validate_connection_status(detected_config.get('status', ''))
+        if status_error:
+            issues.append(status_error)
 
         # Validate command format
         command = detected_config.get('command', '')
         server_type = detected_config.get('type', '').lower()
 
-        if not command:
-            issues.append("Memory server command is empty")
-        elif server_type == 'http':
-            # HTTP servers use URL, just verify it exists
-            if not ('http://' in command or 'https://' in command):
-                issues.append(f"HTTP server should have URL: {command}")
-        elif 'mcp' not in command.lower() and 'memory' not in command.lower():
-            # For stdio servers, check if it looks like a memory service
-            issues.append(f"Command doesn't appear to be a memory service: {command}")
+        command_error = self._validate_command_format(command, server_type)
+        if command_error:
+            issues.append(command_error)
 
-        # Check server type
-        if server_type not in ['stdio', 'http', '']:
-            issues.append(f"Unsupported server type: {server_type}")
+        # Validate server type
+        type_error = self._validate_server_type(server_type)
+        if type_error:
+            issues.append(type_error)
 
         return len(issues) == 0, issues
 
