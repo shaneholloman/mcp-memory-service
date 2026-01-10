@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+- **Hook Installer**: Refactored MCP configuration detection functions for improved maintainability (Issue #340)
+  - Reduced complexity by 45.5% across 3 core functions
+  - Extracted 6 well-structured helper functions (avg complexity 3.83)
+  - Fixed validation bug: Added 'detected' server type support (PR #339 follow-up)
+  - Improved code grade distribution: 58% A-grade functions (up from 53%)
+
 ## [8.75.1] - 2026-01-10
 
 ### Fixed
