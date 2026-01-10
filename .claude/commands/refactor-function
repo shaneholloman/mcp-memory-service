@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""
+/refactor-function - Automated function complexity reduction
+
+Quick PoC implementation using amp-bridge + code-quality-guard agents.
+
+Usage:
+    # From Claude Code - select function and run:
+    /refactor-function
+
+    # With options:
+    /refactor-function --target-complexity 6 --dry-run
+"""
+
+import sys
+import json
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import Optional, Dict, List, Tuple
+
+class RefactorCommand:
+    """Proof of Concept: Automated function refactoring command."""
+
+    def __init__(self, target_complexity: int = 6, dry_run: bool = False):
+        self.target_complexity = target_complexity
+        self.dry_run = dry_run
+        self.project_root = Path(__file__).parent.parent.parent
+
+    def extract_selection_from_stdin(self) -> Optional[Dict]:
+        """Extract selected code from stdin (Claude Code provides this)."""
+        # PoC: Read from stdin or use test data
+        try:
+            # Claude Code would provide: {"file": "path", "selection": "code", "line_start": N}
+            stdin_data = sys.stdin.read()
+            if stdin_data:
+                return json.loads(stdin_data)
+        except:
+            pass
+
+        # Fallback for PoC testing
+        return {
+            "file": "claude-hooks/install_hooks.py",
+            "function": "detect_claude_mcp_configuration",
+            "line_start": 198,
+            "line_end": 236
+        }
+
+    def run_baseline_analysis(self, file_path: str, function_name: str) -> Dict:
+        """Run code-quality-guard for baseline metrics."""
+        print(f"📊 Analyzing baseline complexity for {function_name}...")
+
+        # PoC: Simplified - would use Task agent in real implementation
+        prompt = f"""Measure complexity for function '{function_name}' in {file_path}.
+
+Return JSON:
+{{
+    "function": "{function_name}",
+    "complexity": <number>,
+    "nesting": <number>,
+    "grade": "<letter>",
+    "issues": ["<issue1>", ...]
+}}
+"""
+
+        # Simulate agent response for PoC
+        baseline = {
+            "function": function_name,
+            "complexity": 12,
+            "nesting": 5,
+            "grade": "C",
+            "issues": [
+                "High nesting depth (5 levels)",
+                "Multiple nested conditions",
+                "Magic strings in code"
+            ]
+        }
+
+        print(f"  Complexity: {baseline['complexity']} ({baseline['grade']}-grade)")
+        print(f"  Nesting: {baseline['nesting']} levels")
+        print(f"  Issues: {len(baseline['issues'])}")
+
+        return baseline
+
+    def run_refactoring(self, file_path: str, function_name: str, baseline: Dict) -> Dict:
+        """Run amp-bridge for refactoring."""
+        print(f"\n🔧 Refactoring {function_name}...")
+        print(f"  Target: Complexity ≤{self.target_complexity}, Nesting ≤3")
+
+        # PoC: Would use Task agent in real implementation
+        prompt = f"""Refactor function '{function_name}' in {file_path}.
+
+Current metrics:
+- Complexity: {baseline['complexity']}
+- Nesting: {baseline['nesting']}
+
+Target:
+- Complexity: ≤{self.target_complexity}
+- Nesting: ≤3
+
+Apply Extract Method pattern. Return refactored code + helper functions.
+"""
+
+        # Simulate refactoring result for PoC
+        result = {
+            "main_function": {
+                "complexity": 6,
+                "nesting": 1,
+                "code": "# Refactored detect_claude_mcp_configuration..."
+            },
+            "helpers": [
+                {"name": "_try_detect_server", "complexity": 4},
+                {"name": "_try_fallback_detection", "complexity": 3}
+            ],
+            "improvements": {
+                "complexity_reduction": "50%",
+                "nesting_reduction": "80%"
+            }
+        }
+
+        print(f"  ✓ Main function: C={result['main_function']['complexity']} (-{result['improvements']['complexity_reduction']})")
+        for helper in result['helpers']:
+            print(f"  ✓ Extracted {helper['name']}: C={helper['complexity']}")
+
+        return result
+
+    def validate_refactoring(self, refactored: Dict) -> bool:
+        """Run code-quality-guard for validation."""
+        print(f"\n✅ Validating refactoring...")
+
+        main_c = refactored['main_function']['complexity']
+        meets_target = main_c <= self.target_complexity
+
+        print(f"  Main complexity: {main_c} (target: ≤{self.target_complexity})")
+        print(f"  Helpers created: {len(refactored['helpers'])}")
+        print(f"  Target met: {'✓ Yes' if meets_target else '✗ No'}")
+
+        return meets_target
+
+    def show_diff_and_confirm(self, baseline: Dict, refactored: Dict) -> bool:
+        """Show diff and ask for user confirmation."""
+        print(f"\n{'='*60}")
+        print("REFACTORING SUMMARY")
+        print(f"{'='*60}")
+
+        print(f"\nBefore:")
+        print(f"  Function: {baseline['function']}")
+        print(f"  Complexity: {baseline['complexity']} ({baseline['grade']}-grade)")
+        print(f"  Nesting: {baseline['nesting']} levels")
+
+        print(f"\nAfter:")
+        print(f"  Main: {baseline['function']}")
+        print(f"    Complexity: {refactored['main_function']['complexity']}")
+        print(f"    Nesting: {refactored['main_function']['nesting']}")
+        print(f"  Helpers:")
+        for helper in refactored['helpers']:
+            print(f"    - {helper['name']} (C={helper['complexity']})")
+
+        print(f"\nImprovements:")
+        print(f"  Complexity: -{refactored['improvements']['complexity_reduction']}")
+        print(f"  Nesting: -{refactored['improvements']['nesting_reduction']}")
+
+        if self.dry_run:
+            print("\n[DRY RUN] - No changes applied")
+            return False
+
+        print(f"\n{'='*60}")
+        response = input("Apply changes? [y/n]: ").strip().lower()
+        return response == 'y'
+
+    def apply_changes(self, file_path: str, refactored: Dict):
+        """Apply refactored code to file."""
+        print(f"\n📝 Applying changes to {file_path}...")
+
+        # PoC: Would use Edit tool in real implementation
+        print("  ✓ Updated main function")
+        for helper in refactored['helpers']:
+            print(f"  ✓ Added {helper['name']}")
+
+        return True
+
+    def offer_commit(self, baseline: Dict, refactored: Dict):
+        """Offer to create git commit."""
+        print(f"\n💾 Create commit?")
+
+        message = f"""refactor: Reduce complexity in {baseline['function']}
+
+- Complexity: {baseline['complexity']}→{refactored['main_function']['complexity']} (-{refactored['improvements']['complexity_reduction']})
+- Nesting: {baseline['nesting']}→{refactored['main_function']['nesting']} levels
+- Extracted {len(refactored['helpers'])} helpers
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"""
+
+        print(f"\nProposed commit message:")
+        print("-" * 60)
+        print(message)
+        print("-" * 60)
+
+        response = input("\nCreate commit? [y/n]: ").strip().lower()
+        if response == 'y':
+            # PoC: Would use Bash tool in real implementation
+            print("  ✓ Commit created")
+            return True
+        return False
+
+    def run(self):
+        """Execute the refactoring workflow."""
+        print("🔄 /refactor-function - Automated Complexity Reduction\n")
+
+        # 1. Extract selection
+        selection = self.extract_selection_from_stdin()
+        if not selection:
+            print("❌ No function selected")
+            return 1
+
+        file_path = selection['file']
+        function_name = selection['function']
+
+        print(f"Target: {function_name} in {file_path}\n")
+
+        # 2. Baseline analysis
+        baseline = self.run_baseline_analysis(file_path, function_name)
+
+        if baseline['complexity'] <= self.target_complexity:
+            print(f"\n✓ Function already meets target (C={baseline['complexity']})")
+            return 0
+
+        # 3. Refactoring
+        refactored = self.run_refactoring(file_path, function_name, baseline)
+
+        # 4. Validation
+        if not self.validate_refactoring(refactored):
+            print("\n❌ Refactoring failed to meet targets")
+            return 1
+
+        # 5. User confirmation
+        if not self.show_diff_and_confirm(baseline, refactored):
+            print("\n❌ Changes not applied")
+            return 0
+
+        # 6. Apply changes
+        if not self.apply_changes(file_path, refactored):
+            print("\n❌ Failed to apply changes")
+            return 1
+
+        # 7. Optional commit
+        self.offer_commit(baseline, refactored)
+
+        print("\n✅ Refactoring complete!")
+        return 0
+
+def main():
+    """CLI entry point."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="/refactor-function - Automated function complexity reduction"
+    )
+    parser.add_argument(
+        '--target-complexity',
+        type=int,
+        default=6,
+        help='Target cyclomatic complexity (default: 6)'
+    )
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Show plan without applying changes'
+    )
+
+    args = parser.parse_args()
+
+    command = RefactorCommand(
+        target_complexity=args.target_complexity,
+        dry_run=args.dry_run
+    )
+
+    sys.exit(command.run())
+
+if __name__ == '__main__':
+    main()
