@@ -1202,7 +1202,7 @@ async function executeSessionStart(context) {
                 try {
                     const os = require('os');
                     const logPath = path.join(os.homedir(), '.claude', 'last-session-context.txt');
-                    const recencyPercent = maxMemories > 0 ? ((recentCount / maxMemories) * 100).toFixed(0) : 0;
+                    const recencyPercent = memories.length > 0 ? ((recentCount / memories.length) * 100).toFixed(0) : 0;
 
                     let logContent = `Session Started: ${new Date().toISOString()}\n`;
                     logContent += `Session ID: ${context.sessionId || 'unknown'}\n\n`;
@@ -1225,7 +1225,7 @@ async function executeSessionStart(context) {
                         }
                     }
                     logContent += `\n=== Memory Statistics ===\n`;
-                    logContent += `Memories Loaded: ${maxMemories}\n`;
+                    logContent += `Memories Loaded: ${memories.length}\n`;
                     logContent += `Recent (last week): ${recentCount} (${recencyPercent}%)\n`;
 
                     if (gitContext) {
@@ -1260,7 +1260,7 @@ async function executeSessionStart(context) {
                         timestamp: new Date().toISOString(),
                         sessionId: context.sessionId || 'unknown',
                         project: projectContext.name,
-                        memoriesLoaded: maxMemories,
+                        memoriesLoaded: memories.length,  // Use actual loaded count after deduplication
                         recentCount: recentCount,
                         gitCommits: gitContext ? gitContext.commits.length : 0,
                         gitKeywords: gitContext ? gitContext.developmentKeywords.keywords.slice(0, 3) : [],
