@@ -839,7 +839,13 @@ function deduplicateMemories(memories, options = {}) {
     
     for (const memory of sorted) {
         const content = memory.content || '';
-        
+
+        // Never deduplicate cluster memories - they are unique consolidations
+        if (memory.memory_type === 'compressed_cluster') {
+            deduplicated.push(memory);
+            continue;
+        }
+
         // Create a normalized version for comparison
         let normalized = content.toLowerCase()
             .replace(/# session summary.*?\n/gi, '') // Remove session headers

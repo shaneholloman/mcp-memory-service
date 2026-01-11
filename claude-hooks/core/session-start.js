@@ -903,7 +903,25 @@ async function executeSessionStart(context) {
 
             allMemories.push(...(legacyMemories || []));
         }
-        
+
+        // Query specifically for consolidated cluster memories (always load 2-3 most recent)
+        if (memoryClient) {
+            const clusterQuery = {
+                semanticQuery: "Cluster of related memories",
+                limit: 3,  // Load 2-3 most recent clusters
+                timeFilter: 'last-month'
+            };
+
+            const clusterMemories = await queryMemoryService(memoryClient, clusterQuery, config);
+
+            // Filter to only keep compressed_cluster types and add to allMemories
+            const validClusters = (clusterMemories || []).filter(m => m.memory_type === 'compressed_cluster');
+            if (validClusters.length > 0 && verbose && showMemoryDetails && !cleanMode) {
+                console.log(`${CONSOLE_COLORS.MAGENTA}📦 Cluster Search${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Found ${CONSOLE_COLORS.BRIGHT}${validClusters.length}${CONSOLE_COLORS.RESET} consolidated memories`);
+            }
+            allMemories.push(...validClusters);
+        }
+
         // Skip memory retrieval if no memory client available
         if (!memoryClient) {
             if (verbose && !cleanMode) {
