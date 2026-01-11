@@ -286,7 +286,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
 
     contextMessage += `${COLORS.CYAN}│${COLORS.RESET}\n`;
 
-    if (validMemories.length > 3) {
+    if (validMemories.length >= 1) {
         // Group by category with enhanced formatting
         const categories = groupMemoriesByCategory(validMemories.map(v => v.memory));
 
@@ -740,15 +740,19 @@ function isGenericSessionSummary(content) {
     if (!content || typeof content !== 'string') {
         return true;
     }
-    
-    // Check for generic patterns
+
+    // Check for generic patterns - these are placeholder summaries with no real value
     const genericPatterns = [
-        /## 🎯 Topics Discussed\s*-\s*implementation\s*-\s*\.\.\.?$/m,
-        /Topics Discussed.*implementation.*\.\.\..*$/s,
-        /Session Summary.*implementation.*\.\.\..*$/s
+        /## 🎯 Topics Discussed\s*implementation\s*architecture\s*performance\s*testing/i,
+        /We decided to use hooks for session management and implement automatic context injection/i,
+        /I learned that we need project detection and memory scoring algorithms/i,
+        /I implemented the project detector in project-detector/i,
+        /Next we need to test the complete system/i
     ];
-    
-    return genericPatterns.some(pattern => pattern.test(content));
+
+    // If content matches 3+ generic patterns, it's a generic summary
+    const matches = genericPatterns.filter(pattern => pattern.test(content)).length;
+    return matches >= 3;
 }
 
 /**
