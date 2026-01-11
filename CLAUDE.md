@@ -242,23 +242,6 @@ export MCP_CONSOLIDATION_ENABLED=true
 export MCP_CONSOLIDATION_QUALITY_BOOST_ENABLED=true  # 20% boost for ≥5 connections
 ```
 
-### Recent Improvements (v8.75.2+)
-
-**🆕 Cluster Concept Quality** (2026-01-11):
-- **Problem**: Clusters showed redundant concepts: `"memories, Memories, MEMORY, BETWEEN, association, Association"`
-- **Solution**: Intelligent deduplication + filtering in `consolidation/compression.py`
-  - Case-insensitive deduplication: `"memories, Memories, MEMORY"` → `"memories"` (prefers capitalized forms)
-  - Filters 10 SQL keywords: `BETWEEN`, `SELECT`, `WHERE`, `FROM`, `JOIN`, etc.
-  - Filters 6 meta-concepts: `memory`, `association`, `similarity`, `storage`, `retrieval`
-- **Result**: Clean thematic concepts: `"embedding, consolidation, quality, scoring, retrieval"`
-
-**📦 Hook Display** (2026-01-11):
-- Clusters now appear in dedicated **"Consolidated Memories"** section (not "Recent Work")
-- Shows temporal span instead of creation date: `"📅 180d span"` (not `"🕒 today"`)
-- Updated `claude-hooks/utilities/context-formatter.js`
-
-**After updating hooks** (copy to `~/.claude/hooks/`), new clusters display clean concepts without redundancy.
-
 **For complete details:**
 → See [`.claude/directives/consolidation-details.md`](.claude/directives/consolidation-details.md)
 → Full guide: [docs/guides/memory-consolidation-guide.md](docs/guides/memory-consolidation-guide.md)
