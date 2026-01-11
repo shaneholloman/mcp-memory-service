@@ -457,10 +457,18 @@ function formatMemoryForCLI(memory, index, options = {}) {
         if (includeDate) {
             // Special handling for consolidated cluster memories
             if (memory.memory_type === 'compressed_cluster' && memory.metadata?.temporal_span) {
-                const spanDays = memory.metadata.temporal_span.span_days ||
-                               memory.metadata.temporal_span.days ||
-                               Math.round((new Date(memory.metadata.temporal_span.end_date) - new Date(memory.metadata.temporal_span.start_date)) / (1000 * 60 * 60 * 24));
-                dateStr = ` ${COLORS.GRAY}📅 ${spanDays}d span${COLORS.RESET}`;
+                // Try to get span_days directly first
+                let spanDays = memory.metadata.temporal_span.span_days;
+
+                // Fallback: Calculate from Unix timestamps (start_time/end_time)
+                if (!spanDays && memory.metadata.temporal_span.start_time && memory.metadata.temporal_span.end_time) {
+                    spanDays = Math.round((memory.metadata.temporal_span.end_time - memory.metadata.temporal_span.start_time) / (24 * 60 * 60));
+                }
+
+                // Use span_description if available for more human-readable output
+                const spanText = memory.metadata.temporal_span.span_description ||
+                               (spanDays ? `${spanDays}d span` : 'unknown span');
+                dateStr = ` ${COLORS.GRAY}📅 ${spanText}${COLORS.RESET}`;
             } else if (memory.created_at_iso) {
                 const date = new Date(memory.created_at_iso);
                 const now = new Date();
