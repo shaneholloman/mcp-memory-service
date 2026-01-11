@@ -43,6 +43,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Extracted 6 well-structured helper functions (avg complexity 3.83)
   - Fixed validation bug: Added 'detected' server type support (PR #339 follow-up)
   - Improved code grade distribution: 58% A-grade functions (up from 53%)
+- **Memory Consolidation**: Improved cluster concept quality with intelligent deduplication
+  - **Problem**: Cluster summaries showed redundant concepts (e.g., "memories, Memories, MEMORY, memory") and noise (SQL keywords like "BETWEEN")
+  - **Solution**: Added case-insensitive deduplication and filtering of SQL keywords/meta-concepts
+  - **Changes**: Enhanced `_extract_key_concepts()` in `consolidation/compression.py` to deduplicate case variants and filter 10 SQL keywords + 6 meta-concepts
+  - **Impact**: Cluster summaries now show meaningful thematic concepts instead of technical noise
 
 ## [8.75.1] - 2026-01-10
 
