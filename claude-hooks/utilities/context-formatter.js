@@ -455,19 +455,74 @@ function formatMemoryForCLI(memory, index, options = {}) {
         // Format date with standardized recency indicators
         let dateStr = '';
         if (includeDate) {
+            /**
+             * Format date range for cluster memories
+             * Returns human-readable date range based on temporal distance
+             */
+            function formatDateRange(startISO, endISO, spanDays) {
+                if (!startISO || !endISO) return null;
+
+                const start = new Date(startISO);
+                const end = new Date(endISO);
+
+                // Month names for formatting
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+                const startMonth = monthNames[start.getUTCMonth()];
+                const startDay = start.getUTCDate();
+                const startYear = start.getUTCFullYear();
+
+                const endMonth = monthNames[end.getUTCMonth()];
+                const endDay = end.getUTCDate();
+                const endYear = end.getUTCFullYear();
+
+                // Same day
+                if (spanDays === 0) {
+                    return `${startMonth} ${startDay}`;
+                }
+
+                // Same month
+                if (start.getUTCMonth() === end.getUTCMonth() &&
+                    start.getUTCFullYear() === end.getUTCFullYear()) {
+                    return `${startMonth} ${startDay}-${endDay}`;
+                }
+
+                // Same year, different months
+                if (start.getUTCFullYear() === end.getUTCFullYear()) {
+                    return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+                }
+
+                // Different years
+                return `${startYear}-${String(start.getUTCMonth() + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')} - ${endYear}-${String(end.getUTCMonth() + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+            }
+
             // Special handling for consolidated cluster memories
             if (memory.memory_type === 'compressed_cluster' && memory.metadata?.temporal_span) {
                 // Try to get span_days directly first
                 let spanDays = memory.metadata.temporal_span.span_days;
 
                 // Fallback: Calculate from Unix timestamps (start_time/end_time)
-                if (!spanDays && memory.metadata.temporal_span.start_time && memory.metadata.temporal_span.end_time) {
+                if (spanDays === undefined && memory.metadata.temporal_span.start_time && memory.metadata.temporal_span.end_time) {
                     spanDays = Math.round((memory.metadata.temporal_span.end_time - memory.metadata.temporal_span.start_time) / (24 * 60 * 60));
                 }
 
-                // Use span_description if available for more human-readable output
-                const spanText = memory.metadata.temporal_span.span_description ||
-                               (spanDays ? `${spanDays}d span` : 'unknown span');
+                // Try to format date range from ISO dates
+                let spanText = null;
+                if (memory.metadata.temporal_span.start_iso && memory.metadata.temporal_span.end_iso) {
+                    spanText = formatDateRange(
+                        memory.metadata.temporal_span.start_iso,
+                        memory.metadata.temporal_span.end_iso,
+                        spanDays
+                    );
+                }
+
+                // Fallback to span_description or calculated span
+                if (!spanText) {
+                    spanText = memory.metadata.temporal_span.span_description ||
+                              (spanDays !== undefined ? `${spanDays}d span` : 'unknown span');
+                }
+
                 dateStr = ` ${COLORS.GRAY}📅 ${spanText}${COLORS.RESET}`;
             } else if (memory.created_at_iso) {
                 const date = new Date(memory.created_at_iso);
