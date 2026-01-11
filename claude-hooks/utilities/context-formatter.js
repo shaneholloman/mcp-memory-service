@@ -294,6 +294,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
             'recent-work': { title: 'Recent Work', icon: '🔥', color: COLORS.GREEN },
             'current-problems': { title: 'Current Problems', icon: '⚠️', color: COLORS.YELLOW },
             'key-decisions': { title: 'Key Decisions', icon: '🎯', color: COLORS.CYAN },
+            'consolidated-memories': { title: 'Consolidated Memories', icon: '📦', color: COLORS.MAGENTA },
             'additional-context': { title: 'Additional Context', icon: '📋', color: COLORS.GRAY }
         };
 
@@ -453,24 +454,32 @@ function formatMemoryForCLI(memory, index, options = {}) {
 
         // Format date with standardized recency indicators
         let dateStr = '';
-        if (includeDate && memory.created_at_iso) {
-            const date = new Date(memory.created_at_iso);
-            const now = new Date();
-            const daysDiff = (now - date) / (1000 * 60 * 60 * 24);
+        if (includeDate) {
+            // Special handling for consolidated cluster memories
+            if (memory.memory_type === 'compressed_cluster' && memory.metadata?.temporal_span) {
+                const spanDays = memory.metadata.temporal_span.span_days ||
+                               memory.metadata.temporal_span.days ||
+                               Math.round((new Date(memory.metadata.temporal_span.end_date) - new Date(memory.metadata.temporal_span.start_date)) / (1000 * 60 * 60 * 24));
+                dateStr = ` ${COLORS.GRAY}📅 ${spanDays}d span${COLORS.RESET}`;
+            } else if (memory.created_at_iso) {
+                const date = new Date(memory.created_at_iso);
+                const now = new Date();
+                const daysDiff = (now - date) / (1000 * 60 * 60 * 24);
 
-            if (daysDiff < 1) {
-                dateStr = ` ${COLORS.GREEN}🕒 today${COLORS.RESET}`;
-            } else if (daysDiff < 2) {
-                dateStr = ` ${COLORS.CYAN}📅 yesterday${COLORS.RESET}`;
-            } else if (daysDiff <= 7) {
-                const daysAgo = Math.floor(daysDiff);
-                dateStr = ` ${COLORS.CYAN}📅 ${daysAgo}d ago${COLORS.RESET}`;
-            } else if (daysDiff <= 30) {
-                const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                dateStr = ` ${COLORS.CYAN}📅 ${formattedDate}${COLORS.RESET}`;
-            } else {
-                const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                dateStr = ` ${COLORS.GRAY}📅 ${formattedDate}${COLORS.RESET}`;
+                if (daysDiff < 1) {
+                    dateStr = ` ${COLORS.GREEN}🕒 today${COLORS.RESET}`;
+                } else if (daysDiff < 2) {
+                    dateStr = ` ${COLORS.CYAN}📅 yesterday${COLORS.RESET}`;
+                } else if (daysDiff <= 7) {
+                    const daysAgo = Math.floor(daysDiff);
+                    dateStr = ` ${COLORS.CYAN}📅 ${daysAgo}d ago${COLORS.RESET}`;
+                } else if (daysDiff <= 30) {
+                    const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    dateStr = ` ${COLORS.CYAN}📅 ${formattedDate}${COLORS.RESET}`;
+                } else {
+                    const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    dateStr = ` ${COLORS.GRAY}📅 ${formattedDate}${COLORS.RESET}`;
+                }
             }
         }
 
@@ -836,6 +845,7 @@ function groupMemoriesByCategory(memories, options = {}) {
             'recent-work': [],
             'current-problems': [],
             'key-decisions': [],
+            'consolidated-memories': [],
             'additional-context': []
         };
 
@@ -870,8 +880,14 @@ function groupMemoriesByCategory(memories, options = {}) {
                 tags.some(tag => ['decision', 'architecture', 'design', 'key-decisions', 'why'].includes(tag.toLowerCase())) ||
                 content.includes('decided to') || content.includes('architecture:');
 
-            // Categorize with priority: recent-work > current-problems > key-decisions > additional-context
-            if (isRecent && memory._gitContextType) {
+            // Detect consolidated cluster memories from consolidation system
+            const isCluster = type === 'compressed_cluster';
+
+            // Categorize with priority: cluster > recent-work > current-problems > key-decisions > additional-context
+            if (isCluster) {
+                // Consolidated memories should be in their own section
+                categories['consolidated-memories'].push(memory);
+            } else if (isRecent && memory._gitContextType) {
                 // Git context memories from recent development
                 categories['recent-work'].push(memory);
             } else if (isProblem) {

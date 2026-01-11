@@ -31,6 +31,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Solution**: Installer now auto-adds PreToolUse hook configuration for MCP permission management
   - Added 7 new safe patterns: `store`, `remember`, `ingest`, `rate`, `proactive`, `context`, `summary`, `recommendations`
   - Hook now correctly auto-approves additive operations (e.g., `store_memory`)
+- **Memory Hooks**: Fix cluster memory categorization showing incorrect dates
+  - **Problem**: Consolidated cluster memories (from consolidation system) showed "🕒 today" in "Recent Work" section because hook used `created_at` (when cluster was created) instead of `temporal_span` (time period the cluster represents)
+  - **Solution**: Added new "📦 Consolidated Memories" section with proper temporal span display (e.g., "📅 180d span")
+  - **Changes**: Updated `claude-hooks/utilities/context-formatter.js` to detect `compressed_cluster` memory type and display `metadata.temporal_span.span_days`
+  - **Impact**: Prevents confusion between recent development and historical memory summaries
 
 ### Changed
 - **Hook Installer**: Refactored MCP configuration detection functions for improved maintainability (Issue #340)
