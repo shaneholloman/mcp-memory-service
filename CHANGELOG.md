@@ -10,7 +10,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [8.76.0] - 2026-01-12
+
 ### Added
+- **Official Lite Distribution Support** (PR #341)
+  - **New Package**: `mcp-memory-service-lite` - Official lightweight distribution for ONNX-only installations
+    - 90% installation size reduction: 7.7GB → 805MB
+    - Same nvidia-quality-classifier-deberta ONNX model, just lighter dependency chain
+    - Faster installation time: <2 minutes vs 10-15 minutes
+  - **Dual Package Publishing**: Automated CI/CD workflow (`publish-dual.yml`) publishes both packages to PyPI
+    - Full package: `mcp-memory-service` (includes transformers, torch, sentence-transformers)
+    - Lite package: `mcp-memory-service-lite` (ONNX-only, tokenizers-based embeddings)
+    - Both packages share the same codebase via pyproject-lite.toml
+  - **Conditional Dependency Loading**: Transformers becomes truly optional
+    - Quality scoring works with tokenizers-only (lite) or full transformers (full package)
+    - Graceful fallback: embedding service detects available packages and loads accordingly
+    - No runtime performance impact - same quality scoring performance
+  - **Implementation Details**:
+    - Created `pyproject-lite.toml` with minimal dependencies (no transformers/torch)
+    - Updated `onnx_ranker.py` to use tokenizers directly instead of transformers
+    - Fixed quality_provider metadata access bug in async_scorer.py
+    - 15 comprehensive integration tests (`tests/test_lightweight_onnx.py`, 487 lines)
+  - **Documentation**:
+    - Complete setup guide: `docs/LIGHTWEIGHT_ONNX_SETUP.md`
+    - Setup script: `scripts/setup-lightweight.sh`
+  - **Use Cases**:
+    - CI/CD pipelines (faster builds, lower disk usage)
+    - Resource-constrained environments (VPS, containers)
+    - Quick local development setup
+    - Users who only need quality scoring (not full ML features)
 - **Production Refactor Command**: Added `/refactor-function-prod` command for production-ready code refactoring
   - Enhanced version of the refactor-function PoC with production features
 - **Refactoring Metrics Documentation**: Comprehensive Issue #340 refactoring documentation in `.metrics/`
@@ -19,6 +47,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Tracking tables and completion reports
 
 ### Fixed
+- **Multi-Protocol Port Detection and Cross-Platform Fallback** (`scripts/service/http_server_manager.sh`)
+  - **Problem**: Update script failed with port conflict on Linux systems without lsof installed
+  - **Root Causes**:
+    - Script used lsof exclusively for port detection, silently failed on systems without it (common on Arch/Manjaro)
+    - Health checks only tried HTTP protocol, failed when server used HTTPS
+    - Led to "server not running" false positive → attempted restart → port conflict error
+  - **Solution**:
+    - Implemented 4-level port detection fallback chain: lsof → ss → netstat → ps
+    - Health check now tries both HTTP and HTTPS protocols with automatic fallback
+    - Explicit error messages when all detection methods fail
+    - Cross-platform compatibility validated on Arch Linux with ss-only environment
+  - **Testing**: Manual testing on Arch Linux without lsof, confirmed fallback to ss works correctly
+  - **Impact**: Resolves installation failures on minimal Linux distributions, improves HTTPS deployment reliability
 - **MCP HTTP Transport**: Fix KeyError 'backend_info' in get_cache_stats tool (Issue #342, PR #343)
   - **Problem**: `get_cache_stats` tool crashed with `KeyError: 'backend_info'` when called via HTTP transport
   - **Root Cause**: Code tried to set `result["backend_info"]["embedding_model"]` without creating the dict first
