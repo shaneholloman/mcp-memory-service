@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **Response Size Limiter** (PR #344)
+  - Added `max_response_chars` parameter to 5 memory retrieval tools to prevent context window overflow
+  - Tools updated: `retrieve_memory`, `recall_memory`, `retrieve_with_quality_boost`, `search_by_tag`, `recall_by_timeframe`
+  - Environment variable: `MCP_MAX_RESPONSE_CHARS` (default: 0 = unlimited)
+  - Truncates at memory boundaries (never mid-content) to preserve data integrity
+  - Always returns at least one memory even if it exceeds the character limit
+  - Displays truncation warning with shown/total counts when limit is applied
+  - New utility module: `src/mcp_memory_service/server/utils/response_limiter.py` (260 lines)
+  - Comprehensive test coverage: 29 tests (415 lines) covering edge cases
+  - Recommended values: 30000-50000 characters for typical LLM context windows
+  - Backward compatible: existing code continues to work with unlimited responses
+
 ## [8.76.0] - 2026-01-12
 
 ### Added
