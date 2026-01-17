@@ -150,22 +150,25 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v9.0.1** (January 17, 2026)
+## 🆕 Latest Release: **v9.0.2** (January 17, 2026)
 
-🚨 **CRITICAL HOTFIX** - All v9.0.0 users must upgrade immediately
+🚨 **CRITICAL HOTFIX** - Includes actual code fix for mass deletion bug
 
 **What's Fixed:**
-- 🔒 **Security Fix** - Prevents accidental mass deletion via /delete-untagged endpoint
-- 🛡️ `confirm_count` parameter now REQUIRED (was optional in v9.0.0)
-- 📝 Enhanced error messages and documentation
+- 🔒 **Security Fix** - Actually includes the code changes to prevent accidental mass deletion
+- ⚠️ **v9.0.1 Warning** - v9.0.1 was tagged WITHOUT the code fix (do NOT use v9.0.1)
+- 🛡️ `confirm_count` parameter now REQUIRED in `/api/manage/delete-untagged` endpoint
+- 📝 Enhanced error messages and comprehensive security documentation
 - 🔧 All affected memories can be restored by setting `deleted_at = NULL`
 
-**If you were affected by v9.0.0:**
-- Memories can be restored by setting `deleted_at = NULL` in your database
-- See [CHANGELOG.md](CHANGELOG.md#901---2026-01-17) for detailed recovery instructions
+**Critical Note:**
+- v9.0.1 was incorrectly tagged and does NOT contain the fix - use v9.0.2 instead
+- PyPI and Docker images for v9.0.1 do NOT include the security fix
+- All users should upgrade directly to v9.0.2
 
 **Previous Releases**:
-- **v9.0.0** - Phase 0 Ontology Foundation (⚠️ Contains critical bug - upgrade to v9.0.1 immediately)
+- **v9.0.1** - Incorrectly tagged release (⚠️ Does NOT contain fix - use v9.0.2 instead)
+- **v9.0.0** - Phase 0 Ontology Foundation (⚠️ Contains critical bug - upgrade to v9.0.2 immediately)
 - **v8.76.0** - Official Lite Distribution (90% size reduction: 7.7GB → 805MB, dual publishing workflow)
 - **v8.75.1** - Hook Installer Fix (flexible MCP server naming support, custom configurations)
 - **v8.75.0** - Lightweight ONNX Quality Scoring (90% installation size reduction: 7.7GB → 805MB, same quality scoring performance)

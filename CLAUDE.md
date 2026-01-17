@@ -38,7 +38,7 @@ See [Essential Commands](#essential-commands) for options (--no-restart, --force
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v9.0.1**: **CRITICAL HOTFIX** - Fixes accidental mass deletion bug in v9.0.0. The `/api/manage/delete-untagged` endpoint now requires `confirm_count` parameter (was optional in v9.0.0, causing accidental deletions). All v9.0.0 users must upgrade immediately. See [CHANGELOG.md](CHANGELOG.md#901---2026-01-17) for recovery instructions.
+> **🆕 v9.0.2**: **CRITICAL HOTFIX** - Actually includes the code fix for mass deletion bug. The `/api/manage/delete-untagged` endpoint now requires `confirm_count` parameter. **WARNING**: v9.0.1 was incorrectly tagged WITHOUT the code fix - do NOT use v9.0.1, upgrade directly to v9.0.2. See [CHANGELOG.md](CHANGELOG.md#902---2026-01-17) for details.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
