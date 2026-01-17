@@ -10,8 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [9.0.0] - 2026-01-17
+
+⚠️ **MAJOR RELEASE** - Contains breaking changes. See Migration Guide in README.md.
+
 ### Fixed
-- **Fix 33 API/HTTP test failures with package import error** (Issue #351)
+- **Fix 33 API/HTTP test failures with package import error** (Issue #351, PR #352)
   - Changed relative imports to absolute imports in `web/api/backup.py` for pytest compatibility
   - Fixed `ModuleNotFoundError: 'mcp_memory_service' is not a package` during test collection
   - Resolved pytest `--import-mode=prepend` confusion with triple-dot relative imports
@@ -29,7 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Updated consolidation retention periods for new ontology types
   - **Test Results**: 818/851 tests passing (96%), all validation tests pass
 
-- **Fix bidirectional storage for asymmetric relationships** (PR #348)
+- **Fix bidirectional storage for asymmetric relationships** ⚠️ **BREAKING CHANGE** (Issue #348, PR #349)
   - Asymmetric relationships (causes, fixes, supports, follows) now store only directed edges
   - Symmetric relationships (related, contradicts) continue storing bidirectional edges
   - Database migration (010) removes incorrect reverse edges from existing data
@@ -38,10 +42,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - New `is_symmetric_relationship()` function in ontology.py for relationship classification
   - Updated `store_association()` to conditionally store edges based on relationship symmetry
   - Updated `find_connected()` direction="both" to use CASE expression for asymmetric edges
-  - **Breaking Change**: Code expecting bidirectional asymmetric edges will need updates
+  - **Breaking Change**: Code expecting bidirectional asymmetric edges needs `direction="both"` parameter
 
 ### Added
-- **Phase 0 Ontology Foundation - Core Implementation** (PR #347)
+- **Phase 0 Ontology Foundation - Core Implementation** ⚠️ **BREAKING CHANGE** (PR #347)
   - **Memory Type Ontology**: Formal classification system with 5 base types and 21 subtypes
     - Base types: observation, decision, learning, error, pattern
     - Hierarchical taxonomy with parent-child relationships
@@ -65,7 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
     - Tag validation: 47.3% speedup (eliminated double parsing)
   - **Security Improvements**: Template-based SQL query building
   - **Testing**: 80 comprehensive tests with 100% backward compatibility
-  - **Known Limitation**: Bidirectional storage documented (Issue #348, to be fixed in follow-up PR)
+  - **Breaking Change**: Legacy types (task, note, standard) deprecated, auto-migrate with `scripts/migrate_ontology.py`
 
 - **Response Size Limiter** (PR #344)
   - Added `max_response_chars` parameter to 5 memory retrieval tools to prevent context window overflow
