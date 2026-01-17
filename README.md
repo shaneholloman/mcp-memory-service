@@ -150,16 +150,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v8.76.0** (Jan 12, 2026)
+## 🆕 Latest Release: **v9.0.0** (January 17, 2026)
 
-**Official Lite Distribution - mcp-memory-service-lite Package**
+**⚠️ MAJOR RELEASE** - Contains breaking changes. See [Migration Guide](#migration-to-v900).
 
-- 📦 **New Lite Package** - Official `mcp-memory-service-lite` package for ONNX-only installations (90% size reduction: 7.7GB → 805MB)
-- 🤖 **Automated Dual Publishing** - CI/CD workflow publishes both full and lite packages to PyPI automatically
-- 🔌 **Conditional Loading** - Transformers dependency becomes truly optional, loaded only when needed
-- 🐛 **Multi-Protocol Port Detection** - Fixed HTTP/HTTPS health check issues with cross-platform fallback (lsof → ss → netstat → ps)
+**What's New:**
+- 🧠 **Phase 0 Ontology Foundation** - Formal memory type taxonomy (5 base types, 21 subtypes)
+- 🔗 **Typed Relationships** - Semantic relationship system for knowledge graphs
+- ⚡ **97.5x Performance** - Caching improvements in ontology validation
+- 🔧 **Asymmetric Relationships** - Correct directed edge storage for causal reasoning
+- ✅ **+11 Tests Passing** - Import fixes resolve 33 API/HTTP test failures (829/914 tests passing)
 
 **Previous Releases**:
+- **v8.76.0** - Official Lite Distribution (90% size reduction: 7.7GB → 805MB, dual publishing workflow)
 - **v8.75.1** - Hook Installer Fix (flexible MCP server naming support, custom configurations)
 - **v8.75.0** - Lightweight ONNX Quality Scoring (90% installation size reduction: 7.7GB → 805MB, same quality scoring performance)
 - **v8.74.0** - Cross-Platform Orphan Process Cleanup (database lock prevention, automatic orphan detection after crashes)
@@ -254,6 +257,86 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 - **v8.23.0** - Consolidation Scheduler via Code Execution API (88% token reduction)
 
 **📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8222---2025-11-09) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+
+---
+
+## Migration to v9.0.0
+
+### Breaking Changes
+
+#### 1. Memory Type Ontology
+
+**What Changed:**
+- Legacy memory types (task, note, standard) are deprecated
+- New formal taxonomy: 5 base types (observation, decision, learning, error, pattern) with 21 subtypes
+- Type validation now defaults to 'observation' for invalid types (soft validation)
+
+**Migration Required:**
+```bash
+# Run migration script to update existing memories
+python scripts/migrate_ontology.py
+```
+
+**New Memory Types:**
+- observation: General observations, facts, and discoveries
+- decision: Decisions and planning
+- learning: Learnings and insights
+- error: Errors and failures
+- pattern: Patterns and trends
+
+**Backward Compatibility:**
+- Existing memories will be auto-migrated (task→observation, note→observation, standard→observation)
+- Invalid types default to 'observation' (no errors thrown)
+
+#### 2. Asymmetric Relationships
+
+**What Changed:**
+- Asymmetric relationships (causes, fixes, supports, follows) now store only directed edges
+- Symmetric relationships (related, contradicts) continue storing bidirectional edges
+- Database migration (010) removes incorrect reverse edges
+
+**Migration Required:**
+No action needed - database migration runs automatically on startup.
+
+**Code Changes Required:**
+If your code expects bidirectional storage for asymmetric relationships:
+
+```python
+# OLD (will no longer work):
+# Asymmetric relationships were stored bidirectionally
+result = storage.find_connected(memory_id, relationship_type="causes")
+
+# NEW (correct approach):
+# Use direction parameter for asymmetric relationships
+result = storage.find_connected(
+    memory_id,
+    relationship_type="causes",
+    direction="both"  # Explicit direction required for asymmetric types
+)
+```
+
+**Relationship Types:**
+- Asymmetric: causes, fixes, supports, follows (A→B ≠ B→A)
+- Symmetric: related, contradicts (A↔B)
+
+### Performance Improvements
+
+- ontology validation: 97.5x faster (module-level caching)
+- Type lookups: 35.9x faster (cached reverse maps)
+- Tag validation: 47.3% faster (eliminated double parsing)
+
+### Testing
+
+- 829/914 tests passing (90.7%)
+- 80 new ontology tests with 100% backward compatibility
+- All API/HTTP integration tests passing
+
+### Support
+
+If you encounter issues during migration:
+- Check [Troubleshooting Guide](docs/troubleshooting/)
+- Review [CHANGELOG.md](CHANGELOG.md) for detailed changes
+- Open an issue: https://github.com/doobidoo/mcp-memory-service/issues
 
 ---
 
