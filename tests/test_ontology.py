@@ -7,6 +7,7 @@ Tests the formal ontology layer for memory classification and type validation.
 import sys
 from pathlib import Path
 import importlib.util
+import pytest
 
 # Load ontology module directly without importing the package
 ontology_path = Path(__file__).parent.parent / "src" / "mcp_memory_service" / "models" / "ontology.py"
@@ -21,6 +22,7 @@ validate_memory_type = ontology.validate_memory_type
 get_parent_type = ontology.get_parent_type
 get_all_types = ontology.get_all_types
 validate_relationship = ontology.validate_relationship
+is_symmetric_relationship = ontology.is_symmetric_relationship
 MemoryTypeOntology = ontology.MemoryTypeOntology
 
 
@@ -257,3 +259,32 @@ class TestBurst18OntologyClassIntegration:
         """validate_relationship should work via class method"""
         assert MemoryTypeOntology.validate_relationship("causes") is True
         assert MemoryTypeOntology.validate_relationship("invalid") is False
+
+
+class TestBurst19SymmetricRelationshipClassification:
+    """Tests for is_symmetric_relationship() - PR #348"""
+
+    def test_is_symmetric_relationship_symmetric_types(self):
+        """Test symmetric relationship types return True"""
+        assert is_symmetric_relationship("related") is True
+        assert is_symmetric_relationship("contradicts") is True
+
+    def test_is_symmetric_relationship_asymmetric_types(self):
+        """Test asymmetric relationship types return False"""
+        assert is_symmetric_relationship("causes") is False
+        assert is_symmetric_relationship("fixes") is False
+        assert is_symmetric_relationship("supports") is False
+        assert is_symmetric_relationship("follows") is False
+
+    def test_is_symmetric_relationship_invalid_type(self):
+        """Test invalid relationship type raises ValueError"""
+        with pytest.raises(ValueError, match="Invalid relationship type"):
+            is_symmetric_relationship("invalid_type")
+
+    def test_is_symmetric_relationship_via_class(self):
+        """Test is_symmetric_relationship works via class method"""
+        assert MemoryTypeOntology.is_symmetric_relationship("related") is True
+        assert MemoryTypeOntology.is_symmetric_relationship("causes") is False
+
+        with pytest.raises(ValueError):
+            MemoryTypeOntology.is_symmetric_relationship("invalid")
