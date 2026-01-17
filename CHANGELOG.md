@@ -10,6 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [9.0.1] - 2026-01-17
+
+🚨 **CRITICAL HOTFIX** - Fixes accidental mass deletion bug in v9.0.0
+
+### Fixed
+- **CRITICAL: Fix accidental mass deletion via /delete-untagged endpoint** (Hotfix)
+  - **Root Cause**: `confirm_count` parameter was optional in `/api/manage/delete-untagged` endpoint
+  - **Impact**: If endpoint called without `confirm_count`, ALL untagged memories were deleted without confirmation
+  - **Incident**: On 2026-01-17 at 10:59:20, 6733 memories (87% of database) were accidentally soft-deleted
+  - **Fix**: Made `confirm_count` parameter REQUIRED (not optional)
+  - **Fix**: Enhanced safety check to always validate confirm_count matches actual count
+  - **Fix**: Improved error message to guide users to use GET /api/manage/count-untagged first
+  - **Security**: Added comprehensive documentation about the security implications
+  - **Recovery**: All affected memories can be restored by setting `deleted_at = NULL`
+  - **File**: `src/mcp_memory_service/web/api/manage.py:254`
+  - **Breaking Change**: API now requires `confirm_count` parameter (previously optional)
+  - **Recommendation**: All v9.0.0 users should upgrade immediately to v9.0.1
+
 ## [9.0.0] - 2026-01-17
 
 ⚠️ **MAJOR RELEASE** - Contains breaking changes. See Migration Guide in README.md.

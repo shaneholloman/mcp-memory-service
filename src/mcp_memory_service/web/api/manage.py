@@ -251,7 +251,7 @@ async def count_untagged_memories(
 
 @router.post("/delete-untagged", response_model=BulkOperationResponse, tags=["management"])
 async def delete_untagged_memories(
-    confirm_count: int = None,
+    confirm_count: int,
     storage: MemoryStorage = Depends(get_storage),
     user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
 ):
@@ -259,9 +259,22 @@ async def delete_untagged_memories(
     Delete all memories without tags.
 
     Removes memories that have no tags assigned (NULL, empty string, or whitespace only).
-    Requires confirm_count parameter matching the actual count for safety.
+    **CRITICAL**: Requires confirm_count parameter matching the actual count for safety.
+    This prevents accidental mass deletion of memories.
+
+    Args:
+        confirm_count: REQUIRED - Must match the exact count of untagged memories.
+                      Use GET /api/manage/count-untagged to get this count first.
+
+    Security:
+        - confirm_count is REQUIRED (not optional)
+        - Must exactly match actual untagged memory count
+        - Prevents accidental deletion without explicit confirmation
     """
     try:
+        # CRITICAL: confirm_count is now REQUIRED (fixed in v9.0.1)
+        # Previous bug: confirm_count was optional, allowing accidental mass deletion
+
         # First count untagged memories (exclude already soft-deleted)
         if hasattr(storage, 'conn'):
             conn = storage.conn
@@ -275,11 +288,12 @@ async def delete_untagged_memories(
         )
         actual_count = cursor.fetchone()[0]
 
-        # Safety check
-        if confirm_count is not None and confirm_count != actual_count:
+        # CRITICAL Safety check - confirm_count MUST match actual_count
+        if confirm_count != actual_count:
             raise HTTPException(
                 status_code=400,
-                detail=f"Confirmation count mismatch. Expected {actual_count}, got {confirm_count}"
+                detail=f"Confirmation count mismatch. Expected {actual_count}, got {confirm_count}. "
+                       f"Use GET /api/manage/count-untagged to get the current count."
             )
 
         if actual_count == 0:
