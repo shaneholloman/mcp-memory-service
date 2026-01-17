@@ -687,7 +687,7 @@ if CONSOLIDATION_ENABLED:
     logger.info(f"Consolidation schedule: {CONSOLIDATION_SCHEDULE}")
 
 # OAuth 2.1 Configuration
-OAUTH_ENABLED = safe_get_bool_env('MCP_OAUTH_ENABLED', True)
+OAUTH_ENABLED = safe_get_bool_env('MCP_OAUTH_ENABLED', False)
 
 # RSA key pair configuration for JWT signing (RS256)
 # Private key for signing tokens
@@ -887,12 +887,12 @@ if OAUTH_ENABLED:
             "set MCP_OAUTH_ISSUER to the external URL (e.g., 'https://api.example.com')"
         )
 
-    # Validate OAuth configuration at startup
+    # Validate OAuth configuration at startup (non-fatal)
     try:
         validate_oauth_configuration()
     except ValueError as e:
         logger.error(f"OAuth configuration validation failed: {e}")
-        raise
+        logger.error("OAuth will be disabled. To enable OAuth, fix configuration errors or set MCP_OAUTH_ENABLED=false")
 
 # =============================================================================
 # Quality System Configuration (Memento-Inspired Quality System)
