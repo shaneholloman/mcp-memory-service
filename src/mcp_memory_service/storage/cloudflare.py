@@ -287,8 +287,164 @@ class CloudflareStorage(MemoryStorage):
             logger.error(f"Failed to initialize Cloudflare storage: {e}")
             raise
     
+    async def _migrate_d1_schema(self) -> None:
+        """
+        Migrate D1 schema for existing databases (v8.72.0+ compatibility).
+
+        Adds missing columns to databases created before v8.72.0:
+        - tags TEXT (added in v8.72.0)
+        - deleted_at REAL (added in v8.72.0)
+
+        This fixes the reboot loop issue for users upgrading from v8.69.0.
+        """
+        try:
+            # Check existing schema using PRAGMA table_info
+            check_sql = "PRAGMA table_info(memories)"
+            payload = {"sql": check_sql}
+            response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+            result = response.json()
+
+            if not result.get("success"):
+                logger.warning(f"Schema check failed (table may not exist yet): {result}")
+                return  # Table doesn't exist yet, will be created by _initialize_d1_schema
+
+            # Parse column names from PRAGMA response
+            columns = set()
+            if result.get("result", [{}])[0].get("results"):
+                for row in result["result"][0]["results"]:
+                    # PRAGMA table_info returns: (cid, name, type, notnull, dflt_value, pk)
+                    if "name" in row:
+                        columns.add(row["name"])
+
+            migrations_needed = []
+
+            # Check if 'tags' column exists
+            if "tags" not in columns:
+                migrations_needed.append("tags")
+                logger.info("Migration needed: Adding 'tags' column to memories table")
+
+            # Check if 'deleted_at' column exists
+            if "deleted_at" not in columns:
+                migrations_needed.append("deleted_at")
+                logger.info("Migration needed: Adding 'deleted_at' column to memories table")
+
+            if not migrations_needed:
+                logger.debug("Schema migration check: All columns present, no migration needed")
+                return
+
+            # Run migrations with retry logic for D1 metadata sync issues
+            for column in migrations_needed:
+                await self._add_column_with_retry(column)
+
+            # Create index for deleted_at if it was added
+            if "deleted_at" in migrations_needed:
+                logger.info("Creating index for deleted_at column...")
+                index_sql = "CREATE INDEX IF NOT EXISTS idx_memories_deleted_at ON memories(deleted_at)"
+                payload = {"sql": index_sql}
+                response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+                result = response.json()
+
+                if not result.get("success"):
+                    logger.warning(f"Failed to create deleted_at index (non-fatal): {result}")
+                else:
+                    logger.info("Successfully created deleted_at index")
+
+            logger.info(f"Schema migration completed successfully. Added columns: {', '.join(migrations_needed)}")
+
+        except Exception as e:
+            logger.error(f"Schema migration failed: {e}")
+            # Don't raise - let initialization continue, error will surface later if needed
+
+    async def _add_column_with_retry(self, column: str, max_attempts: int = 3) -> None:
+        """
+        Add a column to the memories table with retry logic for D1 metadata sync issues.
+
+        D1 occasionally has metadata sync issues where ALTER TABLE appears to succeed
+        but the column isn't actually usable. We retry with verification to ensure
+        the column is truly added.
+
+        Args:
+            column: Column name to add ('tags' or 'deleted_at')
+            max_attempts: Maximum number of retry attempts
+
+        Raises:
+            ValueError: If migration fails after all retry attempts
+        """
+        column_spec = {
+            "tags": "ALTER TABLE memories ADD COLUMN tags TEXT",
+            "deleted_at": "ALTER TABLE memories ADD COLUMN deleted_at REAL DEFAULT NULL"
+        }
+
+        if column not in column_spec:
+            raise ValueError(f"Unknown column for migration: {column}")
+
+        alter_sql = column_spec[column]
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                logger.info(f"Adding '{column}' column (attempt {attempt}/{max_attempts})...")
+
+                # Execute ALTER TABLE
+                payload = {"sql": alter_sql}
+                response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+                result = response.json()
+
+                if not result.get("success"):
+                    error_msg = result.get("errors", [{}])[0].get("message", "Unknown error")
+
+                    # Check if column already exists error
+                    if "duplicate column name" in error_msg.lower() or "already exists" in error_msg.lower():
+                        logger.info(f"Column '{column}' already exists (migration already applied)")
+                        return
+
+                    raise ValueError(f"ALTER TABLE failed: {error_msg}")
+
+                # Wait for D1 metadata sync (known D1 limitation)
+                if attempt < max_attempts:
+                    logger.info(f"Waiting for D1 metadata sync...")
+                    await asyncio.sleep(2)  # Give D1 time to sync metadata
+
+                # Verify column is actually usable by checking schema again
+                check_sql = "PRAGMA table_info(memories)"
+                payload = {"sql": check_sql}
+                response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
+                result = response.json()
+
+                if result.get("success") and result.get("result", [{}])[0].get("results"):
+                    columns = [row["name"] for row in result["result"][0]["results"] if "name" in row]
+
+                    if column in columns:
+                        logger.info(f"Successfully added '{column}' column and verified it's usable")
+                        return
+                    else:
+                        logger.warning(f"Column '{column}' not found in schema after ALTER TABLE (attempt {attempt})")
+                        if attempt < max_attempts:
+                            logger.info(f"Retrying column addition due to D1 metadata sync issue...")
+                            await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                            continue
+
+            except Exception as e:
+                logger.warning(f"Column addition attempt {attempt} failed: {e}")
+                if attempt < max_attempts:
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+                raise
+
+        # If we get here, all retry attempts failed
+        error_msg = (
+            f"Failed to add '{column}' column after {max_attempts} attempts. "
+            f"This is likely due to D1 metadata sync issues. "
+            f"\n\nManual workaround: Run this SQL in your Cloudflare D1 dashboard:\n"
+            f"{alter_sql};\n"
+            f"Then wait 5-10 minutes and restart the container."
+        )
+        raise ValueError(error_msg)
+
     async def _initialize_d1_schema(self) -> None:
         """Initialize D1 database schema."""
+        # Run migrations BEFORE creating tables (for existing databases)
+        await self._migrate_d1_schema()
+
         schema_sql = """
         -- Memory metadata table
         CREATE TABLE IF NOT EXISTS memories (
@@ -307,13 +463,13 @@ class CloudflareStorage(MemoryStorage):
             tags TEXT,
             deleted_at REAL DEFAULT NULL
         );
-        
+
         -- Tags table
         CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL
         );
-        
+
         -- Memory-tag relationships
         CREATE TABLE IF NOT EXISTS memory_tags (
             memory_id INTEGER,
@@ -322,7 +478,7 @@ class CloudflareStorage(MemoryStorage):
             FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE,
             FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
         );
-        
+
         -- Indexes for performance
         CREATE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash);
         CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at);
@@ -330,11 +486,11 @@ class CloudflareStorage(MemoryStorage):
         CREATE INDEX IF NOT EXISTS idx_memories_deleted_at ON memories(deleted_at);
         CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
         """
-        
+
         payload = {"sql": schema_sql}
         response = await self._retry_request("POST", f"{self.d1_url}/query", json=payload)
         result = response.json()
-        
+
         if not result.get("success"):
             raise ValueError(f"Failed to initialize D1 schema: {result}")
     
