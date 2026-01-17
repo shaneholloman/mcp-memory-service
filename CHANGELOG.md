@@ -10,6 +10,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [9.0.3] - 2026-01-17
+
+🚨 **CRITICAL HOTFIX** - Fixes Cloudflare D1 schema migration bug causing container reboot loop
+
+### Fixed
+- **CRITICAL: Add automatic schema migration for Cloudflare D1 backend** (Issue #354)
+  - **Root Cause**: v8.72.0 added `tags` and `deleted_at` columns but Cloudflare backend had no migration logic
+  - **Impact**: Users upgrading from v8.69.0 → v8.72.0+ experienced container reboot loop due to missing columns
+  - **Symptoms**: `400 Bad Request` errors from D1 when trying to use missing columns
+  - **Fix**: Added `_migrate_d1_schema()` method with automatic column detection and migration
+  - **Fix**: Added retry logic with exponential backoff to handle D1 metadata sync issues
+  - **Fix**: Added clear error messages with manual SQL workaround if automated migration fails
+  - **Files Changed**:
+    - `src/mcp_memory_service/storage/cloudflare.py:290-495` - Added migration methods
+  - **Migration Process**:
+    1. Check existing schema using `PRAGMA table_info(memories)`
+    2. Add missing columns: `tags TEXT`, `deleted_at REAL DEFAULT NULL`
+    3. Create index: `idx_memories_deleted_at`
+    4. Verify columns are usable (handles D1 metadata sync issues)
+  - **Backward Compatibility**: Safe for all versions (idempotent, no data loss)
+  - **Manual Workaround** (if automated migration fails):
+    ```sql
+    ALTER TABLE memories ADD COLUMN tags TEXT;
+    ALTER TABLE memories ADD COLUMN deleted_at REAL DEFAULT NULL;
+    CREATE INDEX IF NOT EXISTS idx_memories_deleted_at ON memories(deleted_at);
+    ```
+  - **Recommendation**: All Cloudflare users on v8.72.0+ should upgrade to v9.0.3 immediately
+
 ## [9.0.2] - 2026-01-17
 
 🚨 **CRITICAL HOTFIX** - Actually includes the code fix from v9.0.1
