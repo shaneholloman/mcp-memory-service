@@ -10,7 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [9.0.2] - 2026-01-17
+
+🚨 **CRITICAL HOTFIX** - Actually includes the code fix from v9.0.1
+
+### Fixed
+- **CRITICAL: Include actual code changes for mass deletion bug fix**
+  - **Issue**: v9.0.1 was tagged and released WITHOUT the actual code changes to `manage.py`
+  - **Root Cause**: Code changes were committed AFTER the v9.0.1 tag was created
+  - **Impact**: PyPI and Docker images for v9.0.1 do NOT contain the fix
+  - **This Release**: v9.0.2 includes the actual code changes from commit 9c5ed87
+  - **Files Fixed**:
+    - `src/mcp_memory_service/web/api/manage.py:254` - `confirm_count` now REQUIRED
+    - Added comprehensive security documentation and error messages
+  - **Recommendation**: All users should upgrade to v9.0.2 (not v9.0.1)
+
 ## [9.0.1] - 2026-01-17
+
+⚠️ **WARNING**: This release was tagged incorrectly and does NOT include the actual code fix. Please upgrade to v9.0.2 instead.
 
 🚨 **CRITICAL HOTFIX** - Fixes accidental mass deletion bug in v9.0.0
 
