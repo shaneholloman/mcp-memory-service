@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [9.0.4] - 2026-01-17
+
+🚨 **CRITICAL HOTFIX** - Fixes OAuth validation blocking server startup
+
+### Fixed
+- **CRITICAL: OAuth validation preventing server startup** (discovered in v9.0.3)
+  - **Root Cause**: `OAUTH_ENABLED` defaulted to `True`, causing OAuth validation to run on every import
+  - **Impact**: Server startup failed with `ValueError: Invalid OAuth configuration: JWT configuration error: No JWT signing key available`
+  - **Symptoms**: `update_and_restart.sh` fails during dependency installation, config.py import fails
+  - **Fix**: Changed `OAUTH_ENABLED` default from `True` to `False` (opt-in, not opt-out)
+  - **Fix**: Made OAuth validation non-fatal (logs errors but doesn't raise exception)
+  - **Files Changed**:
+    - `src/mcp_memory_service/config.py:690` - Changed default to `False`
+    - `src/mcp_memory_service/config.py:890-895` - Made validation non-fatal
+  - **Backward Compatibility**: No impact (OAuth was broken by default, now works correctly)
+  - **Recommendation**: All users on v9.0.3 should upgrade to v9.0.4 immediately
+
 ## [9.0.3] - 2026-01-17
 
 🚨 **CRITICAL HOTFIX** - Fixes Cloudflare D1 schema migration bug causing container reboot loop
