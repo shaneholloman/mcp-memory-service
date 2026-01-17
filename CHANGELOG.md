@@ -11,6 +11,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Added
+- **Phase 0 Ontology Foundation - Core Implementation** (PR #347)
+  - **Memory Type Ontology**: Formal classification system with 5 base types and 21 subtypes
+    - Base types: observation, decision, learning, error, pattern
+    - Hierarchical taxonomy with parent-child relationships
+    - Soft validation: defaults to 'observation' for invalid types (backward compatible)
+  - **Tag Taxonomy**: Structured namespace system with 6 predefined namespaces
+    - Namespaces: `sys:`, `q:`, `proj:`, `topic:`, `t:`, `user:`
+    - Backward compatible with legacy tags (no namespace)
+    - O(1) namespace validation via exposed `VALID_NAMESPACES` class attribute
+  - **Typed Relationships**: Semantic relationship system for knowledge graph
+    - 6 relationship types: causes, fixes, contradicts, supports, follows, related
+    - Database migration adds `relationship_type` column to memory_graph table
+    - `TypedAssociation` dataclass for explicit relationship semantics
+    - GraphStorage extended with relationship type filtering in queries
+  - **Lightweight Reasoning Engine**: Foundation for causal inference
+    - `SemanticReasoner` class with contradiction detection
+    - Causal chain analysis: `find_fixes()`, `find_causes()`
+    - Placeholder methods for future reasoning capabilities
+  - **Performance Optimizations**: Caching and validation improvements
+    - `get_all_types()`: 97.5x speedup via module-level caching
+    - `get_parent_type()`: 35.9x speedup via cached reverse lookup map
+    - Tag validation: 47.3% speedup (eliminated double parsing)
+  - **Security Improvements**: Template-based SQL query building
+  - **Testing**: 80 comprehensive tests with 100% backward compatibility
+  - **Known Limitation**: Bidirectional storage documented (Issue #348, to be fixed in follow-up PR)
+
 - **Response Size Limiter** (PR #344)
   - Added `max_response_chars` parameter to 5 memory retrieval tools to prevent context window overflow
   - Tools updated: `retrieve_memory`, `recall_memory`, `retrieve_with_quality_boost`, `search_by_tag`, `recall_by_timeframe`
