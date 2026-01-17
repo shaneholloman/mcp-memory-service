@@ -137,7 +137,7 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ---
 
-## ✨ Key Features
+## ✨ Quick Start Features
 
 🧠 **Persistent Memory** – Context survives across sessions with semantic search
 🔍 **Smart Retrieval** – Finds relevant context automatically using AI embeddings
@@ -154,17 +154,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 🚨 **CRITICAL HOTFIX** - Includes actual code fix for mass deletion bug
 
+> **🚨 CRITICAL**: Do NOT use v9.0.1! The v9.0.1 release was tagged WITHOUT the actual code fix.
+> PyPI and Docker images for v9.0.1 do NOT contain the security patch.
+> **Upgrade directly to v9.0.2**.
+
 **What's Fixed:**
 - 🔒 **Security Fix** - Actually includes the code changes to prevent accidental mass deletion
-- ⚠️ **v9.0.1 Warning** - v9.0.1 was tagged WITHOUT the code fix (do NOT use v9.0.1)
 - 🛡️ `confirm_count` parameter now REQUIRED in `/api/manage/delete-untagged` endpoint
 - 📝 Enhanced error messages and comprehensive security documentation
 - 🔧 All affected memories can be restored by setting `deleted_at = NULL`
 
-**Critical Note:**
-- v9.0.1 was incorrectly tagged and does NOT contain the fix - use v9.0.2 instead
-- PyPI and Docker images for v9.0.1 do NOT include the security fix
-- All users should upgrade directly to v9.0.2
+**Migration from v9.0.0:**
+📖 [v9.0.0 Migration Guide](#migration-to-v900) - Breaking changes require database migration
 
 **Previous Releases**:
 - **v9.0.1** - Incorrectly tagged release (⚠️ Does NOT contain fix - use v9.0.2 instead)
@@ -269,6 +270,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ## Migration to v9.0.0
 
+**⚡ TL;DR**: Run `python scripts/migrate_ontology.py` to migrate your database.
+
+**Breaking Changes:**
+- **Memory Type Ontology**: 38 legacy types auto-migrated (task→observation, note→observation)
+- **Asymmetric Relationships**: Directed edges only (no longer bidirectional)
+
+**Time**: ~30 seconds for 10k memories
+**Safety**: Creates backup before migration
+
+---
+
 ### Breaking Changes
 
 #### 1. Memory Type Ontology
@@ -353,6 +365,8 @@ If you encounter issues during migration:
 - **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
 - **[Architecture Overview](docs/architecture.md)** – How it works under the hood
 - **[Team Setup Guide](docs/teams.md)** – OAuth and cloud collaboration
+- **[Knowledge Graph Guide](docs/guides/knowledge-graph-guide.md)** 🆕 – Typed relationships and semantic reasoning
+- **[Memory Ontology Guide](docs/guides/memory-ontology-guide.md)** 🆕 – Type taxonomy and classification
 - **[Troubleshooting](docs/troubleshooting/)** – Common issues and solutions
 - **[API Reference](docs/api.md)** – Programmatic usage
 - **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** – Complete documentation
@@ -529,6 +543,32 @@ These warnings disappear after the first successful run. The service is working 
 - **Memory consolidation** with dream-inspired algorithms
 - **Document-aware search** - Query across uploaded documents and manual memories
 
+### 🧬 **Memory Type Ontology** 🆕 v9.0.0
+- **Formal Taxonomy** - 5 base types with 21 specialized subtypes
+  - `observation` - General observations, facts, discoveries
+  - `decision` - Decisions, planning, architecture choices
+  - `learning` - Learnings, insights, patterns discovered
+  - `error` - Errors, failures, debugging information
+  - `pattern` - Patterns, trends, recurring behaviors
+- **97.5x Performance** - Module-level caching for validation
+- **Auto-Migration** - Backward compatible conversion from legacy types
+- **Soft Validation** - Warns but doesn't reject unknown types
+
+📖 See [Memory Type Ontology Guide](docs/guides/memory-ontology-guide.md) for full taxonomy.
+
+### 🔗 **Knowledge Graph & Typed Relationships** 🆕 v9.0.0
+- **Relationship Types** - Build semantic networks between memories
+  - **Asymmetric**: `causes`, `fixes`, `supports`, `opposes`, `follows`
+  - **Symmetric**: `related`, `contradicts`
+- **Graph Operations** - Query and traverse memory networks
+  - `find_connected_memories` - BFS traversal (1-2 hops)
+  - `find_shortest_path` - Compute paths between memories
+  - `get_memory_subgraph` - Extract subgraph for visualization
+- **Semantic Reasoning** - Automatic causal chain analysis and contradiction detection
+- **Performance** - 5-25ms queries, 30x faster than table scans
+
+📖 See [Knowledge Graph Guide](docs/guides/knowledge-graph-guide.md) for examples.
+
 ### 🔗 **Universal Compatibility**
 - **Claude Desktop** - Native MCP integration
 - **Claude Code** - **HTTP transport** + Memory-aware development with hooks
@@ -550,6 +590,24 @@ These warnings disappear after the first successful run. The service is working 
   - Network-dependent performance
 
 > **Note**: All heavy ML dependencies (PyTorch, sentence-transformers) are now optional to dramatically reduce build times and image sizes. SQLite-vec uses lightweight ONNX embeddings by default. Install with `--with-ml` for full ML capabilities.
+
+### 🪶 **Lite Distribution** 🆕 v8.76.0
+
+For resource-constrained environments (CI/CD, edge devices):
+
+```bash
+pip install mcp-memory-service-lite
+```
+
+**Benefits:**
+- **90% size reduction**: 7.7GB → 805MB
+- **ONNX-only**: No transformers dependency
+- **Same performance**: Identical quality scoring
+- **Ideal for**: CI/CD pipelines, Docker images, embedded systems
+
+**Trade-offs:**
+- Local-only quality scoring (no Groq/Gemini fallback)
+- ONNX embeddings only (no PyTorch)
 
 ### 🚀 **Production Ready**
 - **Cross-platform** - Windows, macOS, Linux
@@ -681,6 +739,23 @@ export MCP_API_KEY="your-secure-key"
 export MCP_MEMORY_STORAGE_BACKEND=sqlite_vec
 export MCP_MEMORY_SQLITE_PRAGMAS="busy_timeout=15000,cache_size=20000"
 ```
+
+### Response Size Management 🆕 v9.0.0
+
+Control maximum response size to prevent context overflow:
+
+```bash
+# Limit response size (recommended: 30000-50000)
+export MCP_MAX_RESPONSE_CHARS=50000  # Default: unlimited
+```
+
+**Applies to all retrieval tools:**
+- `retrieve_memory`, `recall_memory`, `retrieve_with_quality_boost`
+- `search_by_tag`, `recall_by_timeframe`
+
+**Behavior:**
+- Truncates at memory boundaries (preserves data integrity)
+- Recommended: 30000-50000 characters for optimal context usage
 
 ## 🏗️ Architecture
 
