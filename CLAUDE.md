@@ -38,7 +38,7 @@ See [Essential Commands](#essential-commands) for options (--no-restart, --force
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
 
-> **🆕 v9.0.3**: **CRITICAL HOTFIX** - Fixes Cloudflare D1 schema migration bug causing container reboot loop. Automatic migration for v8.69.0 → v8.72.0+ upgrades. All Cloudflare users should upgrade immediately. See [CHANGELOG.md](CHANGELOG.md#903---2026-01-17) for details.
+> **🆕 v9.0.4**: **CRITICAL HOTFIX** - Fixes OAuth validation blocking server startup. Changed `OAUTH_ENABLED` default to `False` (opt-in), made validation non-fatal. All v9.0.3 users must upgrade immediately. See [CHANGELOG.md](CHANGELOG.md#904---2026-01-17) for details.
 >
 > **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
 
