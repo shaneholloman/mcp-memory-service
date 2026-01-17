@@ -150,24 +150,25 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v9.0.2** (January 17, 2026)
+## 🆕 Latest Release: **v9.0.4** (January 17, 2026)
 
-🚨 **CRITICAL HOTFIX** - Includes actual code fix for mass deletion bug
+🚨 **CRITICAL HOTFIX** - Fixes OAuth validation blocking server startup
 
-> **🚨 CRITICAL**: Do NOT use v9.0.1! The v9.0.1 release was tagged WITHOUT the actual code fix.
-> PyPI and Docker images for v9.0.1 do NOT contain the security patch.
-> **Upgrade directly to v9.0.2**.
+**Issue:** Server startup fails with `ValueError: Invalid OAuth configuration`
 
 **What's Fixed:**
-- 🔒 **Security Fix** - Actually includes the code changes to prevent accidental mass deletion
-- 🛡️ `confirm_count` parameter now REQUIRED in `/api/manage/delete-untagged` endpoint
-- 📝 Enhanced error messages and comprehensive security documentation
-- 🔧 All affected memories can be restored by setting `deleted_at = NULL`
+- 🔧 **OAuth Validation Fix** - Changed `OAUTH_ENABLED` default from `True` to `False` (opt-in, not opt-out)
+- 🛡️ **Made OAuth validation non-fatal** - Logs errors instead of raising exception
+- ✅ **Server now starts successfully** - Without JWT keys configured
+- 🚀 **All v9.0.3 users must upgrade immediately** - This fixes a critical blocking issue
+
+**Root Cause:** `OAUTH_ENABLED` defaulted to `True`, causing validation to run at module import time
 
 **Migration from v9.0.0:**
 📖 [v9.0.0 Migration Guide](#migration-to-v900) - Breaking changes require database migration
 
 **Previous Releases**:
+- **v9.0.2** - Critical hotfix: Includes actual code fix for mass deletion bug (confirm_count parameter now REQUIRED)
 - **v9.0.1** - Incorrectly tagged release (⚠️ Does NOT contain fix - use v9.0.2 instead)
 - **v9.0.0** - Phase 0 Ontology Foundation (⚠️ Contains critical bug - upgrade to v9.0.2 immediately)
 - **v8.76.0** - Official Lite Distribution (90% size reduction: 7.7GB → 805MB, dual publishing workflow)
