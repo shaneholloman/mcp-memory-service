@@ -75,13 +75,13 @@ The commands can be installed automatically during the main MCP Memory Service i
 
 ```bash
 # Install with commands (will prompt if Claude Code CLI is detected)
-python install.py
+python scripts/installation/install.py
 
 # Force install commands
-python install.py --install-claude-commands
+python scripts/installation/install.py --install-claude-commands
 
 # Skip command installation prompt
-python install.py --skip-claude-commands-prompt
+python scripts/installation/install.py --skip-claude-commands-prompt
 ```
 
 ### Manual Installation

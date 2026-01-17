@@ -39,7 +39,7 @@ echo Dependencies installed successfully!
 REM Verify Python can import the service
 echo.
 echo Verifying installation...
-python -c "import sys; sys.path.insert(0, 'src'); import mcp_memory_service; print('✓ MCP Memory Service imported successfully')"
+python -c "import sys; sys.path.insert(0, '..\\..\\src'); import mcp_memory_service; print('✓ MCP Memory Service imported successfully')"
 if %errorlevel% neq 0 (
     echo ERROR: Failed to import MCP Memory Service
     echo Please check the error messages above
@@ -100,4 +100,4 @@ echo ========================================
 REM Start the service using Python directly (required for HTTP mode)
 echo Starting service with Python...
 echo Note: Using Python directly for HTTP server mode
-uv run python run_server.py
+uv run python ..\..\run_server.py

@@ -6,8 +6,13 @@ import sys
 import uvicorn
 import logging
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add src to path (handles both root and scripts/server/ locations)
+script_dir = os.path.dirname(__file__)
+src_path = os.path.join(script_dir, 'src')
+if not os.path.exists(src_path):
+    # Script is in scripts/server/, go up two levels
+    src_path = os.path.join(script_dir, '..', '..', 'src')
+sys.path.insert(0, src_path)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

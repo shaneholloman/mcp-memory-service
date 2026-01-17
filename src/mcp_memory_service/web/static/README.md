@@ -48,7 +48,7 @@ This directory contains the static assets for the interactive memory management 
 # With HTTPS (recommended)
 export MCP_HTTPS_ENABLED=true
 export MCP_HTTPS_PORT=8443
-python run_server.py
+python scripts/server/run_server.py
 ```
 
 ### 2. Access the Dashboard

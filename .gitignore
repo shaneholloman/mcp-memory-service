@@ -169,6 +169,11 @@ SESSION_MEMORY_2025-08-11.md
 # Context crystallizer artifacts
 .context-crystallizer/
 
+# Old analysis and benchmark directories
+.benchmarks/
+.metrics/
+.venv-analysis/
+
 # Git tools
 .git-rewrite/
 

@@ -52,7 +52,8 @@ def run_platform_installer(platform_name, args):
     """Run the appropriate platform-specific installer."""
     # Get the directory where this script is located
     script_dir = Path(__file__).parent
-    scripts_dir = script_dir / 'scripts'
+    # This script will be in scripts/installation/, so scripts_dir is parent
+    scripts_dir = script_dir.parent if script_dir.name == 'installation' else script_dir / 'scripts'
     
     installers = {
         'windows': scripts_dir / 'install_windows_service.py',
