@@ -25,7 +25,11 @@ and Docker containers that use `python -m` invocation.
 import sys
 import argparse
 from . import main
-from .._version import __version__
+
+try:
+    from .. import __version__
+except (ImportError, AttributeError):
+    __version__ = "0.0.0.dev0"
 
 
 def run_with_args():

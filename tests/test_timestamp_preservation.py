@@ -13,8 +13,9 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+# Direct imports from submodules to avoid namespace collision with mcp.server.models
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
-from mcp_memory_service.models import Memory
+from mcp_memory_service.models.memory import Memory
 
 
 @pytest_asyncio.fixture

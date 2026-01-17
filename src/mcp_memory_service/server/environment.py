@@ -27,7 +27,12 @@ from importlib.metadata import version as pkg_version
 from importlib.util import find_spec
 
 from .logging_config import logger
-from .. import __version__
+
+try:
+    from .. import __version__
+except (ImportError, AttributeError):
+    __version__ = "0.0.0.dev0"
+
 from ..utils.system_detection import get_system_info, AcceleratorType
 from ..config import BACKUPS_PATH
 
