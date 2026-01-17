@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Fix validation tests and legacy type migration** (PR #350)
+  - Fixed all 5 validation tests (editable install detection, version matching, runtime warnings)
+  - Fixed `check_dev_setup.py` to import `_version.py` directly instead of text parsing
+  - Fixed timestamp test import error (namespace collision in `models` import)
+  - Migrated 38 legacy memory types to new ontology (task→observation, note→observation, standard→observation)
+  - Pinned `numpy<2` for pandas compatibility (prevents binary incompatibility errors)
+  - Extracted offline mode setup to standalone `offline_mode.py` module (cleaner package structure)
+  - Restored core imports in `__init__.py` for pytest package recognition
+  - Updated consolidation retention periods for new ontology types
+  - **Test Results**: 818/851 tests passing (96%), all validation tests pass
+  - **Known Issue**: 33 API/HTTP tests still failing (pre-existing from PR #347, tracked separately)
+
 ### Added
 - **Phase 0 Ontology Foundation - Core Implementation** (PR #347)
   - **Memory Type Ontology**: Formal classification system with 5 base types and 21 subtypes
