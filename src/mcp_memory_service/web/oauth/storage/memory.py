@@ -13,48 +13,84 @@
 # limitations under the License.
 
 """
-OAuth 2.1 in-memory storage for MCP Memory Service.
+In-memory OAuth 2.1 storage implementation.
 
-Provides simple in-memory storage for OAuth clients and authorization codes.
-This is an MVP implementation - production deployments should use persistent storage.
+Provides simple in-memory storage for OAuth clients, authorization codes,
+and access tokens. This is suitable for development and single-instance
+deployments. For production multi-instance deployments, use a persistent
+storage backend (e.g., SQLite).
 """
 
 import time
-import secrets
 import asyncio
 from typing import Dict, Optional
-from .models import RegisteredClient
-from ...config import OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES, OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES
+from .base import OAuthStorage
+from ..models import RegisteredClient
+from ....config import OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES, OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES
 
 
-class OAuthStorage:
-    """In-memory storage for OAuth 2.1 clients and authorization codes."""
+class MemoryOAuthStorage(OAuthStorage):
+    """
+    In-memory storage for OAuth 2.1 clients and tokens.
+
+    All data is stored in memory and will be lost when the server restarts.
+    Suitable for:
+    - Development and testing
+    - Single-instance deployments
+    - Non-critical applications
+
+    For production deployments with multiple instances or persistence requirements,
+    use SQLiteOAuthStorage instead.
+    """
 
     def __init__(self):
-        # Registered OAuth clients
+        """Initialize in-memory storage with empty dictionaries."""
+        # Registered OAuth clients (client_id -> RegisteredClient)
         self._clients: Dict[str, RegisteredClient] = {}
 
-        # Active authorization codes (code -> client_id, expires_at, redirect_uri, scope)
+        # Active authorization codes (code -> {client_id, expires_at, redirect_uri, scope})
         self._authorization_codes: Dict[str, Dict] = {}
 
-        # Active access tokens (token -> client_id, expires_at, scope)
+        # Active access tokens (token -> {client_id, expires_at, scope})
         self._access_tokens: Dict[str, Dict] = {}
 
         # Thread safety lock for concurrent access
         self._lock = asyncio.Lock()
 
     async def store_client(self, client: RegisteredClient) -> None:
-        """Store a registered OAuth client."""
+        """
+        Store a registered OAuth client.
+
+        Args:
+            client: RegisteredClient instance containing client metadata
+        """
         async with self._lock:
             self._clients[client.client_id] = client
 
     async def get_client(self, client_id: str) -> Optional[RegisteredClient]:
-        """Get a registered OAuth client by ID."""
+        """
+        Retrieve a registered OAuth client by client ID.
+
+        Args:
+            client_id: OAuth client identifier
+
+        Returns:
+            RegisteredClient instance if found, None otherwise
+        """
         async with self._lock:
             return self._clients.get(client_id)
 
     async def authenticate_client(self, client_id: str, client_secret: str) -> bool:
-        """Authenticate a client using client_id and client_secret."""
+        """
+        Authenticate a client using client_id and client_secret.
+
+        Args:
+            client_id: OAuth client identifier
+            client_secret: OAuth client secret
+
+        Returns:
+            True if authentication succeeds, False otherwise
+        """
         client = await self.get_client(client_id)
         if not client:
             return False
@@ -68,7 +104,16 @@ class OAuthStorage:
         scope: Optional[str] = None,
         expires_in: Optional[int] = None
     ) -> None:
-        """Store an authorization code."""
+        """
+        Store an authorization code for the authorization code flow.
+
+        Args:
+            code: Authorization code value
+            client_id: OAuth client identifier
+            redirect_uri: Redirect URI associated with this authorization
+            scope: Space-separated list of granted scopes
+            expires_in: Expiration time in seconds (None uses default)
+        """
         if expires_in is None:
             expires_in = OAUTH_AUTHORIZATION_CODE_EXPIRE_MINUTES * 60
         async with self._lock:
@@ -80,7 +125,16 @@ class OAuthStorage:
             }
 
     async def get_authorization_code(self, code: str) -> Optional[Dict]:
-        """Get and consume an authorization code (one-time use)."""
+        """
+        Retrieve and consume an authorization code (one-time use).
+
+        Args:
+            code: Authorization code value
+
+        Returns:
+            Dict with keys: client_id, redirect_uri, scope, expires_at
+            None if code not found or expired
+        """
         async with self._lock:
             code_data = self._authorization_codes.pop(code, None)
 
@@ -96,7 +150,15 @@ class OAuthStorage:
         scope: Optional[str] = None,
         expires_in: Optional[int] = None
     ) -> None:
-        """Store an access token."""
+        """
+        Store an access token.
+
+        Args:
+            token: Access token value
+            client_id: OAuth client identifier
+            scope: Space-separated list of granted scopes
+            expires_in: Expiration time in seconds (None uses default)
+        """
         if expires_in is None:
             expires_in = OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES * 60
         async with self._lock:
@@ -107,7 +169,16 @@ class OAuthStorage:
             }
 
     async def get_access_token(self, token: str) -> Optional[Dict]:
-        """Get access token information if valid."""
+        """
+        Retrieve access token information if valid.
+
+        Args:
+            token: Access token value
+
+        Returns:
+            Dict with keys: client_id, scope, expires_at
+            None if token not found or expired
+        """
         async with self._lock:
             token_data = self._access_tokens.get(token)
 
@@ -121,8 +192,29 @@ class OAuthStorage:
 
             return None
 
+    async def revoke_access_token(self, token: str) -> bool:
+        """
+        Revoke an access token (remove from storage).
+
+        Args:
+            token: Access token value to revoke
+
+        Returns:
+            True if token was revoked, False if token not found
+        """
+        async with self._lock:
+            if token in self._access_tokens:
+                self._access_tokens.pop(token)
+                return True
+            return False
+
     async def cleanup_expired(self) -> Dict[str, int]:
-        """Clean up expired authorization codes and access tokens."""
+        """
+        Clean up expired authorization codes and access tokens.
+
+        Returns:
+            Dict with keys: expired_codes_cleaned, expired_tokens_cleaned
+        """
         async with self._lock:
             current_time = time.time()
 
@@ -147,32 +239,25 @@ class OAuthStorage:
                 "expired_tokens_cleaned": len(expired_tokens)
             }
 
-    def generate_client_id(self) -> str:
-        """Generate a unique client ID."""
-        return f"mcp_client_{secrets.token_urlsafe(16)}"
+    async def close(self) -> None:
+        """
+        Clean up storage resources.
 
-    def generate_client_secret(self) -> str:
-        """Generate a secure client secret."""
-        return secrets.token_urlsafe(32)
+        For in-memory storage, this is a no-op as there are no external
+        resources to clean up.
+        """
+        pass
 
-    def generate_authorization_code(self) -> str:
-        """Generate a secure authorization code."""
-        return secrets.token_urlsafe(32)
-
-    def generate_access_token(self) -> str:
-        """Generate a secure access token."""
-        return secrets.token_urlsafe(32)
-
-    # Statistics and management methods
     async def get_stats(self) -> Dict:
-        """Get storage statistics."""
+        """
+        Get storage statistics.
+
+        Returns:
+            Dict with counts of registered clients, active codes, and active tokens
+        """
         async with self._lock:
             return {
                 "registered_clients": len(self._clients),
                 "active_authorization_codes": len(self._authorization_codes),
                 "active_access_tokens": len(self._access_tokens)
             }
-
-
-# Global OAuth storage instance
-oauth_storage = OAuthStorage()
