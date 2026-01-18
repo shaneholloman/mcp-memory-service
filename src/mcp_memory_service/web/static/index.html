@@ -8,6 +8,8 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
     <!-- Chart.js for quality analytics visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- D3.js v7 for force-directed graph visualization (v9.2.0+) -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 </head>
 <body>
     <!-- Main Application Container -->
@@ -825,6 +827,76 @@
                                         <p data-i18n="analytics.loadingHeatmap">Loading heatmap...</p>
                                     </div>
                                     </div>
+                            </section>
+
+                            <!-- Knowledge Graph Section (v9.2.0) -->
+                            <section class="analytics-section">
+                                <h2 data-i18n="analytics.knowledgeGraph">🧬 Knowledge Graph</h2>
+                                <p class="section-description" data-i18n="analytics.knowledgeGraphDescription">Explore typed relationships between your memories</p>
+                                <div class="charts-grid">
+                                    <div class="chart-card">
+                                        <h3 data-i18n="analytics.relationshipTypes">Relationship Types</h3>
+                                        <div id="relationshipTypesChart" class="chart-container">
+                                            <div class="loading-spinner"></div>
+                                            <p data-i18n="analytics.loadingChart">Loading chart...</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="chart-card graph-card-large">
+                                        <h3 data-i18n="analytics.graphVisualization">Interactive Graph Visualization</h3>
+                                        <div class="chart-controls">
+                                            <label for="graphLimitSelect">
+                                                <span data-i18n="analytics.graphNodes">Nodes:</span>
+                                                <select id="graphLimitSelect" class="form-control">
+                                                    <option value="50">50</option>
+                                                    <option value="100" selected>100</option>
+                                                    <option value="200">200</option>
+                                                    <option value="500">500</option>
+                                                </select>
+                                            </label>
+                                            <label for="graphMinConnectionsSelect">
+                                                <span data-i18n="analytics.minConnections">Min Connections:</span>
+                                                <select id="graphMinConnectionsSelect" class="form-control">
+                                                    <option value="1" selected>1</option>
+                                                    <option value="2">2</option>
+                                                    <option value="3">3</option>
+                                                    <option value="5">5</option>
+                                                </select>
+                                            </label>
+                                            <button id="refreshGraphBtn" class="btn btn-secondary">
+                                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                                </svg>
+                                                <span data-i18n="analytics.refresh">Refresh</span>
+                                            </button>
+                                        </div>
+                                        <div id="graphVisualizationContainer" class="graph-container">
+                                            <div class="loading-spinner"></div>
+                                            <p data-i18n="analytics.loadingGraph">Loading graph...</p>
+                                        </div>
+                                        <div id="graphLegend" class="graph-legend">
+                                            <h4 data-i18n="analytics.legend">Legend</h4>
+                                            <div class="legend-section">
+                                                <span data-i18n="analytics.nodeColors">Node Colors:</span>
+                                                <div class="legend-items">
+                                                    <span class="legend-item"><span class="legend-color node-observation"></span> <span data-i18n="analytics.observation">Observation</span></span>
+                                                    <span class="legend-item"><span class="legend-color node-decision"></span> <span data-i18n="analytics.decision">Decision</span></span>
+                                                    <span class="legend-item"><span class="legend-color node-learning"></span> <span data-i18n="analytics.learning">Learning</span></span>
+                                                    <span class="legend-item"><span class="legend-color node-error"></span> <span data-i18n="analytics.error">Error</span></span>
+                                                    <span class="legend-item"><span class="legend-color node-other"></span> <span data-i18n="analytics.other">Other</span></span>
+                                                </div>
+                                            </div>
+                                            <div class="legend-section">
+                                                <span data-i18n="analytics.edgeTypes">Edge Types:</span>
+                                                <div class="legend-items">
+                                                    <span class="legend-item"><span class="legend-line edge-causes"></span> <span data-i18n="analytics.causes">causes</span></span>
+                                                    <span class="legend-item"><span class="legend-line edge-fixes"></span> <span data-i18n="analytics.fixes">fixes</span></span>
+                                                    <span class="legend-item"><span class="legend-line edge-related"></span> <span data-i18n="analytics.related">related</span></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </section>
 
                             <!-- Detailed Analytics -->
