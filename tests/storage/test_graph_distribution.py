@@ -28,6 +28,8 @@ import sqlite3
 
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 from mcp_memory_service.storage.graph import GraphStorage
+from mcp_memory_service.models.memory import Memory
+from mcp_memory_service.utils.hashing import generate_content_hash
 
 
 @pytest.fixture
@@ -78,8 +80,15 @@ async def test_relationship_type_distribution_all_six_types(storage, graph_stora
     # Create memories
     memories = []
     for i in range(12):
-        mem = await storage.store(f"Memory {i}", tags=["test"])
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"]
+        )
+        success, message = await storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Create all 6 relationship types
     # Symmetric (bidirectional)
@@ -126,9 +135,35 @@ async def test_relationship_type_distribution_with_untyped_null(storage):
     - They appear as 'untyped' in the distribution
     """
     # Create memories
-    mem1 = await storage.store("Memory 1", tags=["test"])
-    mem2 = await storage.store("Memory 2", tags=["test"])
-    mem3 = await storage.store("Memory 3", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
+
+    content3 = "Memory 3"
+    memory3 = Memory(
+        content=content3,
+        content_hash=generate_content_hash(content3),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory3)
+    assert success, f"Failed to store memory: {message}"
+    mem3 = memory3.content_hash
 
     # Insert relationships with NULL relationship_type
     storage.conn.execute("""
@@ -156,8 +191,25 @@ async def test_relationship_type_distribution_with_empty_string(storage):
     Validates:
     - Empty strings are treated the same as NULL
     """
-    mem1 = await storage.store("Memory 1", tags=["test"])
-    mem2 = await storage.store("Memory 2", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
 
     # Insert relationship with empty string
     storage.conn.execute("""
@@ -179,8 +231,15 @@ async def test_relationship_type_distribution_mixed_typed_untyped(storage, graph
     # Create memories
     memories = []
     for i in range(6):
-        mem = await storage.store(f"Memory {i}", tags=["test"])
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"]
+        )
+        success, message = await storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Typed relationships
     await graph_storage.store_association(
@@ -210,8 +269,15 @@ async def test_relationship_type_distribution_counts_accuracy(storage, graph_sto
     # Create memories
     memories = []
     for i in range(10):
-        mem = await storage.store(f"Memory {i}", tags=["test"])
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"]
+        )
+        success, message = await storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Create multiple "causes" relationships
     for i in range(0, 8, 2):
@@ -236,8 +302,15 @@ async def test_relationship_type_distribution_ordering(storage, graph_storage):
     # Create memories
     memories = []
     for i in range(10):
-        mem = await storage.store(f"Memory {i}", tags=["test"])
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"]
+        )
+        success, message = await storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Create different amounts of each type
     # 4 "related" (2 bidirectional = 4 edges)
@@ -317,8 +390,25 @@ async def test_graph_visualization_node_format(storage, graph_storage):
     """
     # Create memory with long content
     long_content = "A" * 200
-    mem1 = await storage.store(long_content, tags=["tag1", "tag2"], memory_type="note")
-    mem2 = await storage.store("Memory 2", tags=["test"])
+    memory1 = Memory(
+        content=long_content,
+        content_hash=generate_content_hash(long_content),
+        tags=["tag1", "tag2"],
+        memory_type="note"
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
 
     await graph_storage.store_association(mem1, mem2, 0.8, ["semantic"], relationship_type="related")
 
@@ -352,8 +442,25 @@ async def test_graph_visualization_edge_format(storage, graph_storage):
     - Required fields: source, target, relationship_type, similarity, connection_types
     - Types are correct
     """
-    mem1 = await storage.store("Memory 1", tags=["test"])
-    mem2 = await storage.store("Memory 2", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
 
     await graph_storage.store_association(
         mem1, mem2, 0.85, ["semantic", "temporal"], relationship_type="causes"
@@ -386,10 +493,27 @@ async def test_graph_visualization_limit_parameter(storage, graph_storage):
     - Most connected nodes are prioritized
     """
     # Create hub with many connections
-    hub = await storage.store("Hub memory", tags=["test"])
+    hub_content = "Hub memory"
+    hub_memory = Memory(
+        content=hub_content,
+        content_hash=generate_content_hash(hub_content),
+        tags=["test"]
+    )
+    success, message = await storage.store(hub_memory)
+    assert success, f"Failed to store hub memory: {message}"
+    hub = hub_memory.content_hash
+
     spokes = []
     for i in range(10):
-        spoke = await storage.store(f"Spoke {i}", tags=["test"])
+        spoke_content = f"Spoke {i}"
+        spoke_memory = Memory(
+            content=spoke_content,
+            content_hash=generate_content_hash(spoke_content),
+            tags=["test"]
+        )
+        success, message = await storage.store(spoke_memory)
+        assert success, f"Failed to store spoke memory: {message}"
+        spoke = spoke_memory.content_hash
         spokes.append(spoke)
         await graph_storage.store_association(hub, spoke, 0.7, ["semantic"], relationship_type="related")
 
@@ -413,14 +537,49 @@ async def test_graph_visualization_min_connections_filter(storage, graph_storage
     - Only nodes meeting threshold are included
     """
     # Create hub with many connections
-    hub = await storage.store("Hub", tags=["test"])
+    hub_content = "Hub"
+    hub_memory = Memory(
+        content=hub_content,
+        content_hash=generate_content_hash(hub_content),
+        tags=["test"]
+    )
+    success, message = await storage.store(hub_memory)
+    assert success, f"Failed to store hub memory: {message}"
+    hub = hub_memory.content_hash
+
     for i in range(5):
-        spoke = await storage.store(f"Spoke {i}", tags=["test"])
+        spoke_content = f"Spoke {i}"
+        spoke_memory = Memory(
+            content=spoke_content,
+            content_hash=generate_content_hash(spoke_content),
+            tags=["test"]
+        )
+        success, message = await storage.store(spoke_memory)
+        assert success, f"Failed to store spoke memory: {message}"
+        spoke = spoke_memory.content_hash
         await graph_storage.store_association(hub, spoke, 0.7, ["semantic"], relationship_type="related")
 
     # Create low-connectivity pair
-    isolated1 = await storage.store("Isolated 1", tags=["test"])
-    isolated2 = await storage.store("Isolated 2", tags=["test"])
+    isolated1_content = "Isolated 1"
+    isolated1_memory = Memory(
+        content=isolated1_content,
+        content_hash=generate_content_hash(isolated1_content),
+        tags=["test"]
+    )
+    success, message = await storage.store(isolated1_memory)
+    assert success, f"Failed to store isolated1 memory: {message}"
+    isolated1 = isolated1_memory.content_hash
+
+    isolated2_content = "Isolated 2"
+    isolated2_memory = Memory(
+        content=isolated2_content,
+        content_hash=generate_content_hash(isolated2_content),
+        tags=["test"]
+    )
+    success, message = await storage.store(isolated2_memory)
+    assert success, f"Failed to store isolated2 memory: {message}"
+    isolated2 = isolated2_memory.content_hash
+
     await graph_storage.store_association(isolated1, isolated2, 0.6, ["semantic"], relationship_type="related")
 
     # Filter to min 3 connections
@@ -441,10 +600,45 @@ async def test_graph_visualization_edges_between_included_nodes_only(storage, gr
     - All edges connect included nodes
     """
     # Create connected subgraph
-    mem1 = await storage.store("Memory 1", tags=["test"])
-    mem2 = await storage.store("Memory 2", tags=["test"])
-    mem3 = await storage.store("Memory 3", tags=["test"])
-    mem4 = await storage.store("Memory 4", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
+
+    content3 = "Memory 3"
+    memory3 = Memory(
+        content=content3,
+        content_hash=generate_content_hash(content3),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory3)
+    assert success, f"Failed to store memory: {message}"
+    mem3 = memory3.content_hash
+
+    content4 = "Memory 4"
+    memory4 = Memory(
+        content=content4,
+        content_hash=generate_content_hash(content4),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory4)
+    assert success, f"Failed to store memory: {message}"
+    mem4 = memory4.content_hash
 
     # Connect 1-2-3 (included), 3-4 (4 excluded due to low connections)
     await graph_storage.store_association(mem1, mem2, 0.8, ["semantic"], relationship_type="related")
@@ -471,8 +665,26 @@ async def test_graph_visualization_meta_information(storage, graph_storage):
     - min_connections, limit match parameters
     """
     # Create some data
-    mem1 = await storage.store("Memory 1", tags=["test"])
-    mem2 = await storage.store("Memory 2", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
+
     await graph_storage.store_association(mem1, mem2, 0.8, ["semantic"], relationship_type="related")
 
     data = await storage.get_graph_visualization_data(limit=50, min_connections=1)
@@ -493,9 +705,38 @@ async def test_graph_visualization_memory_type_preservation(storage, graph_stora
     - Different types are represented correctly
     """
     # Create memories with different types
-    note = await storage.store("Note", tags=["test"], memory_type="note")
-    decision = await storage.store("Decision", tags=["test"], memory_type="decision")
-    observation = await storage.store("Observation", tags=["test"], memory_type="observation")
+    note_content = "Note"
+    note_memory = Memory(
+        content=note_content,
+        content_hash=generate_content_hash(note_content),
+        tags=["test"],
+        memory_type="note"
+    )
+    success, message = await storage.store(note_memory)
+    assert success, f"Failed to store note memory: {message}"
+    note = note_memory.content_hash
+
+    decision_content = "Decision"
+    decision_memory = Memory(
+        content=decision_content,
+        content_hash=generate_content_hash(decision_content),
+        tags=["test"],
+        memory_type="decision"
+    )
+    success, message = await storage.store(decision_memory)
+    assert success, f"Failed to store decision memory: {message}"
+    decision = decision_memory.content_hash
+
+    observation_content = "Observation"
+    observation_memory = Memory(
+        content=observation_content,
+        content_hash=generate_content_hash(observation_content),
+        tags=["test"],
+        memory_type="observation"
+    )
+    success, message = await storage.store(observation_memory)
+    assert success, f"Failed to store observation memory: {message}"
+    observation = observation_memory.content_hash
 
     # Connect them
     await graph_storage.store_association(note, decision, 0.8, ["semantic"], relationship_type="related")
@@ -513,8 +754,25 @@ async def test_graph_visualization_memory_type_preservation(storage, graph_stora
 async def test_graph_visualization_handles_null_memory_type(storage, graph_storage):
     """Test that NULL/empty memory_type is handled as 'untyped'."""
     # Create memory without type
-    mem1 = await storage.store("Memory 1", tags=["test"])
-    mem2 = await storage.store("Memory 2", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
 
     await graph_storage.store_association(mem1, mem2, 0.8, ["semantic"], relationship_type="related")
 
@@ -536,9 +794,35 @@ async def test_graph_visualization_excludes_deleted_memories(storage, graph_stor
     - Edges to deleted memories are excluded
     """
     # Create memories and relationships
-    mem1 = await storage.store("Active", tags=["test"])
-    mem2 = await storage.store("To be deleted", tags=["test"])
-    mem3 = await storage.store("Active 2", tags=["test"])
+    content1 = "Active"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "To be deleted"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
+
+    content3 = "Active 2"
+    memory3 = Memory(
+        content=content3,
+        content_hash=generate_content_hash(content3),
+        tags=["test"]
+    )
+    success, message = await storage.store(memory3)
+    assert success, f"Failed to store memory: {message}"
+    mem3 = memory3.content_hash
 
     await graph_storage.store_association(mem1, mem2, 0.8, ["semantic"], relationship_type="related")
     await graph_storage.store_association(mem2, mem3, 0.7, ["semantic"], relationship_type="related")
@@ -569,8 +853,15 @@ async def test_graph_visualization_relationship_type_in_edges(storage, graph_sto
     # Create memories
     memories = []
     for i in range(8):
-        mem = await storage.store(f"Memory {i}", tags=["test"])
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"]
+        )
+        success, message = await storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Create edges with different relationship types
     await graph_storage.store_association(
@@ -609,10 +900,27 @@ async def test_graph_visualization_connection_count_accuracy(storage, graph_stor
     - Count matches actual number of edges
     """
     # Create hub with 3 spokes
-    hub = await storage.store("Hub", tags=["test"])
+    hub_content = "Hub"
+    hub_memory = Memory(
+        content=hub_content,
+        content_hash=generate_content_hash(hub_content),
+        tags=["test"]
+    )
+    success, message = await storage.store(hub_memory)
+    assert success, f"Failed to store hub memory: {message}"
+    hub = hub_memory.content_hash
+
     spokes = []
     for i in range(3):
-        spoke = await storage.store(f"Spoke {i}", tags=["test"])
+        spoke_content = f"Spoke {i}"
+        spoke_memory = Memory(
+            content=spoke_content,
+            content_hash=generate_content_hash(spoke_content),
+            tags=["test"]
+        )
+        success, message = await storage.store(spoke_memory)
+        assert success, f"Failed to store spoke memory: {message}"
+        spoke = spoke_memory.content_hash
         spokes.append(spoke)
         await graph_storage.store_association(
             hub, spoke, 0.7, ["semantic"], relationship_type="related"  # Bidirectional
@@ -638,8 +946,15 @@ async def test_graph_visualization_performance_with_large_graph(storage, graph_s
     # Create 50 memories with interconnections
     memories = []
     for i in range(50):
-        mem = await storage.store(f"Memory {i}", tags=["test"])
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"]
+        )
+        success, message = await storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Create hub topology (one central node connected to all others)
     for i in range(1, 50):

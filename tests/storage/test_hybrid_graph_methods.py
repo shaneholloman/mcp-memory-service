@@ -26,9 +26,11 @@ import tempfile
 import os
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from mcp_memory_service.storage.hybrid import HybridStorage
+from mcp_memory_service.storage.hybrid import HybridMemoryStorage
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 from mcp_memory_service.storage.graph import GraphStorage
+from mcp_memory_service.models.memory import Memory
+from mcp_memory_service.utils.hashing import generate_content_hash
 
 
 @pytest.fixture
@@ -61,7 +63,7 @@ async def hybrid_storage_with_mock_cloudflare(primary_storage):
     mock_cloudflare.close = AsyncMock()
 
     # Create hybrid storage
-    hybrid = HybridStorage(primary_storage.db_path)
+    hybrid = HybridMemoryStorage(primary_storage.db_path)
     hybrid.primary = primary_storage
     hybrid.secondary = mock_cloudflare
 
@@ -77,8 +79,16 @@ async def hybrid_with_graph_data(hybrid_storage_with_mock_cloudflare):
     # Create memories
     memories = []
     for i in range(6):
-        mem = await primary.store(f"Memory {i}", tags=["test"], memory_type="note")
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"],
+            memory_type="note"
+        )
+        success, message = await primary.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Create graph with typed relationships
     graph = GraphStorage(primary.db_path)
@@ -173,7 +183,7 @@ async def test_hybrid_relationship_distribution_with_mock_primary():
     mock_secondary = AsyncMock()
 
     # Create hybrid with mocks
-    hybrid = HybridStorage("/fake/path")
+    hybrid = HybridMemoryStorage("/fake/path")
     hybrid.primary = mock_primary
     hybrid.secondary = mock_secondary
 
@@ -261,7 +271,7 @@ async def test_hybrid_graph_visualization_with_mock_primary():
     mock_secondary = AsyncMock()
 
     # Create hybrid with mocks
-    hybrid = HybridStorage("/fake/path")
+    hybrid = HybridMemoryStorage("/fake/path")
     hybrid.primary = mock_primary
     hybrid.secondary = mock_secondary
 
@@ -297,9 +307,26 @@ async def test_hybrid_graph_visualization_min_connections_delegation(hybrid_with
     primary = storage.primary
     graph = GraphStorage(primary.db_path)
 
-    hub = await primary.store("Hub", tags=["test"])
+    content = "Hub"
+    hub_memory = Memory(
+        content=content,
+        content_hash=generate_content_hash(content),
+        tags=["test"]
+    )
+    success, message = await primary.store(hub_memory)
+    assert success, f"Failed to store hub memory: {message}"
+    hub = hub_memory.content_hash
+
     for i in range(5):
-        spoke = await primary.store(f"Spoke {i}", tags=["test"])
+        spoke_content = f"Spoke {i}"
+        spoke_memory = Memory(
+            content=spoke_content,
+            content_hash=generate_content_hash(spoke_content),
+            tags=["test"]
+        )
+        success, message = await primary.store(spoke_memory)
+        assert success, f"Failed to store spoke memory: {message}"
+        spoke = spoke_memory.content_hash
         await graph.store_association(hub, spoke, 0.7, ["semantic"], relationship_type="related")
 
     # Test with high min_connections (should filter out low-connectivity nodes)

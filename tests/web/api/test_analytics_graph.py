@@ -30,6 +30,8 @@ from fastapi.testclient import TestClient
 from mcp_memory_service.web.dependencies import set_storage
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 from mcp_memory_service.storage.graph import GraphStorage
+from mcp_memory_service.models.memory import Memory
+from mcp_memory_service.utils.hashing import generate_content_hash
 
 
 # Test Fixtures
@@ -75,12 +77,16 @@ async def storage_with_graph_data(initialized_storage):
     # Create test memories
     memories = []
     for i in range(10):
-        memory = await initialized_storage.store(
-            content=f"Test memory {i}",
+        content = f"Test memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
             tags=["test"],
             memory_type=["note", "observation", "decision"][i % 3]
         )
-        memories.append(memory)
+        success, message = await initialized_storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Create typed relationships using all 6 types
     graph = GraphStorage(initialized_storage.db_path)
@@ -169,9 +175,35 @@ async def test_relationship_type_distribution_only_symmetric(test_app, initializ
     graph = GraphStorage(initialized_storage.db_path)
     await graph._get_connection()
 
-    mem1 = await initialized_storage.store("Memory 1", tags=["test"])
-    mem2 = await initialized_storage.store("Memory 2", tags=["test"])
-    mem3 = await initialized_storage.store("Memory 3", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
+
+    content3 = "Memory 3"
+    memory3 = Memory(
+        content=content3,
+        content_hash=generate_content_hash(content3),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory3)
+    assert success, f"Failed to store memory: {message}"
+    mem3 = memory3.content_hash
 
     # Only symmetric types
     await graph.store_association(mem1, mem2, 0.8, ["semantic"], relationship_type="related")
@@ -196,9 +228,35 @@ async def test_relationship_type_distribution_only_asymmetric(test_app, initiali
     graph = GraphStorage(initialized_storage.db_path)
     await graph._get_connection()
 
-    mem1 = await initialized_storage.store("Decision A", tags=["test"])
-    mem2 = await initialized_storage.store("Error B", tags=["test"])
-    mem3 = await initialized_storage.store("Fix C", tags=["test"])
+    content1 = "Decision A"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Error B"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
+
+    content3 = "Fix C"
+    memory3 = Memory(
+        content=content3,
+        content_hash=generate_content_hash(content3),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory3)
+    assert success, f"Failed to store memory: {message}"
+    mem3 = memory3.content_hash
 
     # Only asymmetric types
     await graph.store_association(mem1, mem2, 0.9, ["causal"], relationship_type="causes")
@@ -221,8 +279,25 @@ async def test_relationship_type_distribution_only_asymmetric(test_app, initiali
 async def test_relationship_type_distribution_with_untyped_null(test_app, initialized_storage, monkeypatch):
     """Test that NULL relationship_type is returned as 'untyped'."""
     # Create memories
-    mem1 = await initialized_storage.store("Memory 1", tags=["test"])
-    mem2 = await initialized_storage.store("Memory 2", tags=["test"])
+    content1 = "Memory 1"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Memory 2"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
 
     # Insert untyped relationship directly
     initialized_storage.conn.execute("""
@@ -371,8 +446,15 @@ async def test_graph_visualization_limit_parameter(test_app, initialized_storage
 
     memories = []
     for i in range(20):
-        mem = await initialized_storage.store(f"Memory {i}", tags=["test"])
-        memories.append(mem)
+        content = f"Memory {i}"
+        memory = Memory(
+            content=content,
+            content_hash=generate_content_hash(content),
+            tags=["test"]
+        )
+        success, message = await initialized_storage.store(memory)
+        assert success, f"Failed to store memory: {message}"
+        memories.append(memory.content_hash)
 
     # Connect all to first memory (hub topology)
     for i in range(1, 20):
@@ -399,16 +481,51 @@ async def test_graph_visualization_min_connections_filter(test_app, initialized_
     await graph._get_connection()
 
     # Create hub with many connections
-    hub = await initialized_storage.store("Hub memory", tags=["test"])
+    hub_content = "Hub memory"
+    hub_memory = Memory(
+        content=hub_content,
+        content_hash=generate_content_hash(hub_content),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(hub_memory)
+    assert success, f"Failed to store hub memory: {message}"
+    hub = hub_memory.content_hash
+
     spokes = []
     for i in range(5):
-        spoke = await initialized_storage.store(f"Spoke {i}", tags=["test"])
+        spoke_content = f"Spoke {i}"
+        spoke_memory = Memory(
+            content=spoke_content,
+            content_hash=generate_content_hash(spoke_content),
+            tags=["test"]
+        )
+        success, message = await initialized_storage.store(spoke_memory)
+        assert success, f"Failed to store spoke memory: {message}"
+        spoke = spoke_memory.content_hash
         spokes.append(spoke)
         await graph.store_association(hub, spoke, 0.7, ["semantic"], relationship_type="related")
 
     # Create isolated pair (only 1 connection each)
-    isolated1 = await initialized_storage.store("Isolated 1", tags=["test"])
-    isolated2 = await initialized_storage.store("Isolated 2", tags=["test"])
+    isolated1_content = "Isolated 1"
+    isolated1_memory = Memory(
+        content=isolated1_content,
+        content_hash=generate_content_hash(isolated1_content),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(isolated1_memory)
+    assert success, f"Failed to store isolated1 memory: {message}"
+    isolated1 = isolated1_memory.content_hash
+
+    isolated2_content = "Isolated 2"
+    isolated2_memory = Memory(
+        content=isolated2_content,
+        content_hash=generate_content_hash(isolated2_content),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(isolated2_memory)
+    assert success, f"Failed to store isolated2 memory: {message}"
+    isolated2 = isolated2_memory.content_hash
+
     await graph.store_association(isolated1, isolated2, 0.6, ["semantic"], relationship_type="related")
 
     set_storage(initialized_storage)
@@ -451,9 +568,38 @@ async def test_graph_visualization_meta_information(test_app, storage_with_graph
 async def test_graph_visualization_node_colors_by_type(test_app, initialized_storage, monkeypatch):
     """Test that nodes include memory type for color coding."""
     # Create memories with different types
-    mem1 = await initialized_storage.store("Note memory", tags=["test"], memory_type="note")
-    mem2 = await initialized_storage.store("Decision memory", tags=["test"], memory_type="decision")
-    mem3 = await initialized_storage.store("Observation memory", tags=["test"], memory_type="observation")
+    content1 = "Note memory"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"],
+        memory_type="note"
+    )
+    success, message = await initialized_storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Decision memory"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"],
+        memory_type="decision"
+    )
+    success, message = await initialized_storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
+
+    content3 = "Observation memory"
+    memory3 = Memory(
+        content=content3,
+        content_hash=generate_content_hash(content3),
+        tags=["test"],
+        memory_type="observation"
+    )
+    success, message = await initialized_storage.store(memory3)
+    assert success, f"Failed to store memory: {message}"
+    mem3 = memory3.content_hash
 
     graph = GraphStorage(initialized_storage.db_path)
     await graph._get_connection()
@@ -496,8 +642,25 @@ async def test_graph_visualization_parameter_validation(test_app):
 async def test_graph_visualization_handles_deleted_memories(test_app, initialized_storage, monkeypatch):
     """Test that graph visualization excludes soft-deleted memories."""
     # Create memories
-    mem1 = await initialized_storage.store("Active memory", tags=["test"])
-    mem2 = await initialized_storage.store("Deleted memory", tags=["test"])
+    content1 = "Active memory"
+    memory1 = Memory(
+        content=content1,
+        content_hash=generate_content_hash(content1),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory1)
+    assert success, f"Failed to store memory: {message}"
+    mem1 = memory1.content_hash
+
+    content2 = "Deleted memory"
+    memory2 = Memory(
+        content=content2,
+        content_hash=generate_content_hash(content2),
+        tags=["test"]
+    )
+    success, message = await initialized_storage.store(memory2)
+    assert success, f"Failed to store memory: {message}"
+    mem2 = memory2.content_hash
 
     graph = GraphStorage(initialized_storage.db_path)
     await graph._get_connection()
