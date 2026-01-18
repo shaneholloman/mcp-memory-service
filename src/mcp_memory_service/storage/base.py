@@ -565,3 +565,53 @@ class MemoryStorage(ABC):
             timestamps = [ts for ts in timestamps if ts >= cutoff_timestamp]
 
         return sorted(timestamps, reverse=True)
+
+    async def get_relationship_type_distribution(self) -> Dict[str, int]:
+        """
+        Get distribution of relationship types in the knowledge graph.
+
+        Returns:
+            Dictionary mapping relationship type names to counts.
+            Example: {"causes": 45, "fixes": 23, "related": 102, ...}
+        """
+        return {}
+
+    async def get_graph_visualization_data(
+        self,
+        limit: int = 100,
+        min_connections: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Get graph data for visualization in D3.js-compatible format.
+
+        Fetches the most connected memories and their relationships for
+        interactive force-directed graph rendering.
+
+        Args:
+            limit: Maximum number of nodes to include
+            min_connections: Minimum number of connections a memory must have to be included
+
+        Returns:
+            Dictionary with "nodes" and "edges" keys in D3.js format:
+            {
+                "nodes": [
+                    {
+                        "id": "hash123",
+                        "type": "observation",
+                        "content": "preview text",
+                        "connections": 5
+                    },
+                    ...
+                ],
+                "edges": [
+                    {
+                        "source": "hash123",
+                        "target": "hash456",
+                        "relationship_type": "causes",
+                        "similarity": 0.85
+                    },
+                    ...
+                ]
+            }
+        """
+        return {"nodes": [], "edges": []}

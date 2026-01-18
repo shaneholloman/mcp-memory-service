@@ -1568,6 +1568,36 @@ class HybridMemoryStorage(MemoryStorage):
         """
         return await self.primary.get_memory_timestamps(days)
 
+    async def get_relationship_type_distribution(self) -> Dict[str, int]:
+        """
+        Get distribution of relationship types in the knowledge graph.
+
+        Delegates to primary storage (SQLite-vec) for graph queries.
+
+        Returns:
+            Dictionary mapping relationship type names to counts.
+        """
+        return await self.primary.get_relationship_type_distribution()
+
+    async def get_graph_visualization_data(
+        self,
+        limit: int = 100,
+        min_connections: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Get graph data for visualization in D3.js-compatible format.
+
+        Delegates to primary storage (SQLite-vec) for graph queries.
+
+        Args:
+            limit: Maximum number of nodes to include
+            min_connections: Minimum number of connections a memory must have to be included
+
+        Returns:
+            Dictionary with "nodes" and "edges" keys in D3.js format
+        """
+        return await self.primary.get_graph_visualization_data(limit, min_connections)
+
     async def recall(self, query: Optional[str] = None, n_results: int = 5, start_timestamp: Optional[float] = None, end_timestamp: Optional[float] = None) -> List[MemoryQueryResult]:
         """
         Retrieve memories with combined time filtering and optional semantic search.

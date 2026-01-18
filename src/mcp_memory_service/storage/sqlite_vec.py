@@ -2675,6 +2675,159 @@ SOLUTIONS:
             logger.error(f"Unexpected error getting tags with counts: {str(e)}")
             raise
 
+    async def get_relationship_type_distribution(self) -> Dict[str, int]:
+        """
+        Get distribution of relationship types in the knowledge graph.
+
+        Returns:
+            Dictionary mapping relationship type names to counts.
+            Example: {"causes": 45, "fixes": 23, "related": 102, ...}
+        """
+        try:
+            if not self.conn:
+                logger.error("Database not initialized")
+                return {}
+
+            # Query memory_graph table for relationship type distribution
+            cursor = self.conn.execute("""
+                SELECT
+                    CASE
+                        WHEN relationship_type IS NULL OR relationship_type = '' THEN 'untyped'
+                        ELSE relationship_type
+                    END as rel_type,
+                    COUNT(*) as count
+                FROM memory_graph
+                GROUP BY rel_type
+                ORDER BY count DESC
+            """)
+
+            # Convert to dictionary
+            distribution = {row[0]: row[1] for row in cursor.fetchall()}
+            return distribution
+
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting relationship type distribution: {str(e)}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error getting relationship type distribution: {str(e)}")
+            return {}
+
+    async def get_graph_visualization_data(
+        self,
+        limit: int = 100,
+        min_connections: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Get graph data for visualization in D3.js-compatible format.
+
+        Fetches the most connected memories and their relationships for
+        interactive force-directed graph rendering.
+
+        Args:
+            limit: Maximum number of nodes to include
+            min_connections: Minimum number of connections a memory must have to be included
+
+        Returns:
+            Dictionary with "nodes" and "edges" keys in D3.js format
+        """
+        try:
+            if not self.conn:
+                logger.error("Database not initialized")
+                return {"nodes": [], "edges": []}
+
+            # Step 1: Find most connected memories (nodes)
+            cursor = self.conn.execute("""
+                SELECT
+                    m.content_hash,
+                    m.content,
+                    m.memory_type,
+                    m.created_at,
+                    m.tags,
+                    COUNT(DISTINCT mg.target_hash) as connection_count
+                FROM memories m
+                INNER JOIN memory_graph mg ON m.content_hash = mg.source_hash
+                WHERE m.deleted_at IS NULL
+                GROUP BY m.content_hash
+                HAVING connection_count >= ?
+                ORDER BY connection_count DESC
+                LIMIT ?
+            """, (min_connections, limit))
+
+            # Build nodes list
+            nodes = []
+            node_hashes = set()
+
+            for row in cursor.fetchall():
+                content_hash, content, memory_type, created_at, tags_str, connection_count = row
+
+                # Parse tags
+                tags = []
+                if tags_str:
+                    tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+
+                # Create node
+                nodes.append({
+                    "id": content_hash,
+                    "type": memory_type or "untyped",
+                    "content": content[:100] if content else "",  # Preview only
+                    "connections": connection_count,
+                    "created_at": created_at,
+                    "tags": tags
+                })
+                node_hashes.add(content_hash)
+
+            # Step 2: Get edges between these nodes
+            if node_hashes:
+                placeholders = ",".join("?" * len(node_hashes))
+                query = f"""
+                    SELECT
+                        source_hash,
+                        target_hash,
+                        relationship_type,
+                        similarity,
+                        connection_types
+                    FROM memory_graph
+                    WHERE source_hash IN ({placeholders})
+                      AND target_hash IN ({placeholders})
+                """
+
+                # Execute with node hashes twice (for both source and target)
+                cursor = self.conn.execute(query, list(node_hashes) + list(node_hashes))
+
+                # Build edges list
+                edges = []
+                for row in cursor.fetchall():
+                    source, target, rel_type, similarity, conn_types = row
+
+                    edges.append({
+                        "source": source,
+                        "target": target,
+                        "relationship_type": rel_type or "related",
+                        "similarity": similarity if similarity is not None else 0.5,
+                        "connection_types": conn_types or ""
+                    })
+
+            else:
+                edges = []
+
+            return {
+                "nodes": nodes,
+                "edges": edges,
+                "meta": {
+                    "total_nodes": len(nodes),
+                    "total_edges": len(edges),
+                    "min_connections": min_connections,
+                    "limit": limit
+                }
+            }
+
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting graph visualization data: {str(e)}")
+            return {"nodes": [], "edges": []}
+        except Exception as e:
+            logger.error(f"Unexpected error getting graph visualization data: {str(e)}")
+            return {"nodes": [], "edges": []}
+
     def close(self):
         """Close the database connection."""
         if self.conn:

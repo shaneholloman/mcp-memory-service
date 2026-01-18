@@ -668,6 +668,57 @@ async def get_memory_type_distribution(
         raise HTTPException(status_code=500, detail=f"Failed to get memory type distribution: {str(e)}")
 
 
+@router.get("/relationship-types", response_model=Dict[str, int], tags=["analytics"])
+async def get_relationship_type_distribution(
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
+):
+    """
+    Get distribution of relationship types in the knowledge graph.
+
+    Returns statistics about typed relationships between memories (v9.0.0+).
+    Shows how many edges exist for each relationship type (causes, fixes, etc.).
+    """
+    try:
+        distribution = await storage.get_relationship_type_distribution()
+        return distribution
+
+    except Exception as e:
+        logger.error(f"Failed to get relationship type distribution: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get relationship type distribution: {str(e)}")
+
+
+class GraphVisualizationData(BaseModel):
+    """Graph data for D3.js visualization."""
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
+    meta: Dict[str, Any]
+
+
+@router.get("/graph-visualization", response_model=GraphVisualizationData, tags=["analytics"])
+async def get_graph_visualization(
+    limit: int = Query(100, description="Maximum number of nodes to include", ge=1, le=500),
+    min_connections: int = Query(1, description="Minimum connections per node", ge=1),
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
+):
+    """
+    Get knowledge graph data for interactive visualization.
+
+    Returns the most connected memories and their typed relationships in D3.js-compatible format
+    for force-directed graph rendering (v9.0.0+).
+
+    Nodes are memories, colored by type. Edges are typed relationships.
+    """
+    try:
+        graph_data = await storage.get_graph_visualization_data(limit, min_connections)
+        return GraphVisualizationData(**graph_data)
+
+    except Exception as e:
+        logger.error(f"Failed to get graph visualization data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get graph visualization data: {str(e)}")
+
+
 @router.get("/search-analytics", response_model=SearchAnalytics, tags=["analytics"])
 async def get_search_analytics(
     user: AuthenticationResult = Depends(require_read_access) if OAUTH_ENABLED else None
