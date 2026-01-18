@@ -12,276 +12,410 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 - **`.claude/directives/memory-tagging.md`** - MANDATORY: Always tag memories with `mcp-memory-service` as first tag
 - **`.claude/directives/README.md`** - Additional topic-specific directives
 
-## ⚡ Quick Update & Restart (RECOMMENDED)
-
-**ALWAYS use these scripts after git pull to update dependencies and restart server:**
-
-```bash
-# macOS/Linux - One command, <2 minutes
-./scripts/update_and_restart.sh
-
-# Windows PowerShell
-.\scripts\service\windows\update_and_restart.ps1
-```
-
-**Why?** These scripts automate the complete update workflow:
-- ✅ Git pull + auto-stash uncommitted changes
-- ✅ Install dependencies (editable mode: `pip install -e .`)
-- ✅ Restart HTTP server with version verification
-- ✅ Health check (ensures new version is running)
-
-**Without these scripts**, you risk running old code (common mistake: forget `pip install -e .` after pull).
-
-See [Essential Commands](#essential-commands) for options (--no-restart, --force).
-
 ## Overview
 
-MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop with SQLite-vec, Cloudflare, and Hybrid storage backends.
+MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop and 13+ AI applications. It uses vector embeddings for semantic search, supports multiple storage backends (SQLite-vec, Cloudflare, Hybrid), and includes advanced features like memory consolidation, quality scoring, and OAuth 2.1 team collaboration.
 
-> **🆕 v9.0.6**: **OAuth Persistent Storage** - Adds SQLite-based OAuth storage for production multi-worker deployments. New `MCP_OAUTH_STORAGE_BACKEND` (memory|sqlite) environment variable with WAL mode, atomic code consumption, and <10ms performance. Backward compatible (defaults to memory backend). See [CHANGELOG.md](CHANGELOG.md#906---2026-01-18) for details.
->
-> **Note**: When releasing new versions, update this line with current version + brief description. Use `.claude/agents/github-release-manager.md` agent for complete release workflow.
+**Current Version:** v9.0.6 (see [CHANGELOG.md](CHANGELOG.md) for details)
 
 ## Essential Commands
 
-**Most Used:**
-- `./scripts/update_and_restart.sh` - Update & restart (ALWAYS after git pull)
-- `curl http://127.0.0.1:8000/api/health` - Health check
-- `bash scripts/pr/pre_pr_check.sh` - Pre-PR validation (MANDATORY)
-- `curl -X POST http://127.0.0.1:8000/api/consolidation/trigger -H "Content-Type: application/json" -d '{"time_horizon":"weekly"}'` - Trigger consolidation
+### Development Server
+```bash
+# MCP server (for Claude Desktop integration)
+python -m mcp_memory_service.server
+
+# HTTP API server (dashboard + REST API)
+python scripts/server/run_http_server.py
+
+# Both servers simultaneously
+./start_all_servers.sh
+
+# Quick update after git pull (RECOMMENDED)
+./scripts/update_and_restart.sh
+```
+
+### Testing
+```bash
+# Run all tests (968 tests total)
+pytest
+
+# Run specific test file
+pytest tests/storage/test_sqlite_vec.py
+
+# Run with markers
+pytest -m unit           # Fast unit tests only
+pytest -m integration    # Integration tests (require storage)
+pytest -m performance    # Performance benchmarks
+
+# Run with coverage
+pytest --cov=src/mcp_memory_service --cov-report=html
+
+# Pre-PR validation (MANDATORY before submitting PR)
+bash scripts/pr/pre_pr_check.sh
+```
+
+### Building & Installation
+```bash
+# Install in editable mode (development)
+pip install -e .
+
+# Install with optional dependencies
+pip install -e ".[full]"      # All features
+pip install -e ".[sqlite]"    # SQLite with ONNX only
+pip install -e ".[ml]"        # Full ML capabilities
+
+# Build package
+python -m build
+```
+
+### Health Checks
+```bash
+# Quick health check
+curl http://127.0.0.1:8000/api/health
+
+# Comprehensive validation
+python scripts/validation/validate_configuration_complete.py
+
+# Backend configuration diagnostics
+python scripts/validation/diagnose_backend_config.py
+```
 
 **Full command reference:** [scripts/README.md](scripts/README.md)
 
-## Architecture
+## Code Architecture
 
-**Core Components:**
-- **Server Layer**: MCP protocol with async handlers, global caches (`src/mcp_memory_service/server.py:1`)
-- **Storage Backends**: SQLite-Vec (5ms reads), Cloudflare (edge), Hybrid (local + cloud sync)
-- **Web Interface**: FastAPI dashboard at `http://127.0.0.1:8000/` with REST API
-- **Document Ingestion**: PDF, DOCX, PPTX loaders (see [docs/document-ingestion.md](docs/document-ingestion.md))
-- **Memory Hooks**: Natural Memory Triggers v7.1.3+ with 85%+ accuracy (see below)
-
-**Utility Modules** (v8.61.0 - Phase 3 Refactoring):
-- `utils/health_check.py` - Strategy Pattern for backend health checks (5 strategies)
-- `utils/startup_orchestrator.py` - Orchestrator Pattern for server startup (3 orchestrators)
-- `utils/directory_ingestion.py` - Processor Pattern for file ingestion (3 processors)
-- `utils/quality_analytics.py` - Analyzer Pattern for quality distribution (3 analyzers)
-
-**Key Patterns:**
-- Async/await for I/O, type safety (Python 3.10+), platform hardware optimization (CUDA/MPS/DirectML/ROCm)
-- Design Patterns: Strategy, Orchestrator, Processor, Analyzer (all complexity A-B grade)
-
-## Document Ingestion
-
-Supports PDF, DOCX, PPTX, TXT/MD with optional [semtools](https://github.com/run-llama/semtools) for enhanced quality.
-
-```bash
-claude /memory-ingest document.pdf --tags documentation
-claude /memory-ingest-dir ./docs --tags knowledge-base
+### High-Level Structure
+```
+src/mcp_memory_service/
+├── server/           # MCP server layer (modular, cache-optimized)
+├── server_impl.py    # Main MCP handlers (35 tools)
+├── storage/          # Storage backends (Strategy Pattern)
+├── web/              # FastAPI dashboard + REST API + OAuth
+├── services/         # Business logic (MemoryService orchestrator)
+├── quality/          # AI quality scoring (multi-tier)
+├── consolidation/    # Dream-inspired memory maintenance
+├── embeddings/       # ONNX embeddings (sentence-transformers)
+├── ingestion/        # Document loaders (PDF, DOCX, TXT, JSON)
+├── models/           # Data models and schemas
+└── utils/            # Utilities (health checks, startup orchestrator)
 ```
 
-See [docs/document-ingestion.md](docs/document-ingestion.md) for full configuration and usage.
+### MCP Server Layer (`server/`)
 
-## Interactive Dashboard
+**Evolution:** Extracted from monolithic 5000+ line `server.py` to modular architecture (v8.59.0)
 
-Web interface at `http://127.0.0.1:8000/` with CRUD operations, semantic/tag/time search, real-time updates (SSE), mobile responsive. Performance: 25ms page load, <100ms search.
+**Key Components:**
+- **`server_impl.py`** - Main MemoryServer class with 35 MCP tool handlers
+- **`cache_manager.py`** - Global caching for 534,628x performance boost
+- **`client_detection.py`** - Adapts behavior for Claude Desktop vs LM Studio
+- **`handlers/`** - Modular request handlers (memory, quality, consolidation, graph)
+- **`logging_config.py`** - Client-aware logging
+- **`environment.py`** - Python path setup, version checks
 
-**API Endpoints:** `/api/search`, `/api/search/by-tag`, `/api/search/by-time`, `/api/events`, `/api/quality/*` (v8.45.0+)
+**Pattern:** Global singleton caching prevents redundant storage initialization across MCP tool calls.
 
-## Memory Quality System (v8.45.0+)
+### Storage Backend Architecture (`storage/`)
 
-Local-first AI quality scoring (ONNX), zero-cost, privacy-preserving.
+**Strategy Pattern** with 3 implementations sharing `BaseStorage` interface:
 
-**Features:**
-- Tier 1: Local ONNX (80-150ms CPU, $0 cost)
-- Quality-boosted search: `0.7×semantic + 0.3×quality`
-- Quality-based forgetting: High (365d), Medium (180d), Low (30-90d)
+| Backend | File | Size | Performance | Use Case |
+|---------|------|------|-------------|----------|
+| **SQLite-Vec** | `sqlite_vec.py` | 116KB | 5ms reads | Development, single-user |
+| **Cloudflare** | `cloudflare.py` | 85KB | Network-dependent | Cloud-only, edge deployment |
+| **Hybrid** | `hybrid.py` | 84KB | 5ms local + cloud sync | **Production (RECOMMENDED)** |
 
-**Config:** `export MCP_QUALITY_SYSTEM_ENABLED=true`
+**Key Features:**
+- All implement `BaseStorage` interface (`base.py`)
+- SQLite-Vec uses sqlite-vec extension for KNN semantic search
+- Cloudflare uses D1 (SQL) + Vectorize (vector index)
+- Hybrid: Local SQLite-Vec for reads, background Cloudflare sync
+- Graph storage in `graph.py` (v8.51.0) - 30x query performance
 
-→ Details: [`.claude/directives/quality-system-details.md`](.claude/directives/quality-system-details.md)
-→ Guide: [docs/guides/memory-quality-guide.md](docs/guides/memory-quality-guide.md)
+**Embeddings:** ONNX model (sentence-transformers/all-MiniLM-L6-v2) for lightweight vector generation
 
-## Memory Consolidation System
+### Web Layer (`web/`)
 
-Dream-inspired consolidation with automatic scheduling (v8.23.0+).
+**FastAPI-based REST API and dashboard:**
+- **`app.py`** - Main FastAPI application
+- **`api/`** - REST endpoints mirroring MCP tools
+- **`oauth/`** - OAuth 2.1 Dynamic Client Registration (v7.0.0+)
+- **`sse.py`** - Server-Sent Events for real-time updates
+- **`static/`** - Single-page dashboard application
 
-**Quick Start:**
-```bash
-curl -X POST http://127.0.0.1:8000/api/consolidation/trigger \
-  -H "Content-Type: application/json" -d '{"time_horizon":"weekly"}'
+**Key Pattern:** HTTP API provides same functionality as MCP tools for team collaboration.
+
+### Quality System (`quality/`)
+
+**Multi-tier AI quality scoring** (v8.45.0+):
+
+| Tier | Provider | Latency | Cost | Use Case |
+|------|----------|---------|------|----------|
+| 1 | Local ONNX | 80-150ms | $0 | **DEFAULT** - Fast, private |
+| 2 | Groq/Llama 3 | 500-800ms | $0.0015 | Fallback if local fails |
+| 3 | Gemini 1.5 Flash | 1-2s | $0.01 | High-accuracy scoring |
+
+**Files:**
+- `onnx_ranker.py` - Local ML-based quality scoring
+- `ai_evaluator.py` - Cloud LLM scoring (Groq, Gemini)
+- `async_scorer.py` - Async quality evaluation orchestrator
+- `implicit_signals.py` - Access count, recency signals
+
+**Usage:** Quality scores (0.0-1.0) used in quality-boosted search and retention policies.
+
+### Consolidation System (`consolidation/`)
+
+**Dream-inspired memory maintenance** (v8.23.0+):
+
+**Components:**
+- `decay.py` - Exponential decay scoring (importance × recency)
+- `association_discovery.py` - Find semantic relationships
+- `compression.py` - Semantic clustering and merging
+- `forgetting.py` - Quality-based archival (High: 365d, Medium: 180d, Low: 30-90d)
+- `scheduler.py` - Automatic consolidation scheduling (daily/weekly/monthly)
+
+**Pattern:** Runs via HTTP API (90% token reduction vs MCP tools) with APScheduler.
+
+### Document Ingestion (`ingestion/`)
+
+**Pluggable loader architecture:**
+- **`base.py`** - Abstract `DocumentLoader` interface
+- **`registry.py`** - Automatic loader selection by file extension
+- **Loaders:** `pdf_loader.py`, `text_loader.py`, `json_loader.py`, `csv_loader.py`
+- **`semtools_loader.py`** - Optional LlamaParse integration (enhanced PDF/DOCX/PPTX)
+- **`chunker.py`** - Intelligent text chunking (1000 chars, 200 overlap)
+
+**Pattern:** Registry pattern allows easy addition of new document types.
+
+## Test Architecture
+
+### Structure (968 tests)
+```
+tests/
+├── api/              # API layer tests (compact types, operations)
+├── storage/          # Backend-specific tests (sqlite_vec, cloudflare, hybrid)
+├── server/           # MCP server handler tests (35 handlers)
+├── consolidation/    # Memory maintenance tests
+├── quality/          # Quality scoring tests
+├── web/              # HTTP API and OAuth tests
+├── conftest.py       # Shared fixtures
+└── pytest.ini        # Test configuration
 ```
 
-**Config:** `export MCP_CONSOLIDATION_ENABLED=true`
+### Key Fixtures (`conftest.py`)
+- **`temp_db_path`** - Temporary database directory (auto-cleanup)
+- **`unique_content`** - Generate unique test content to avoid duplicates
+- **`test_store`** - Auto-tags memories with `__test__` for cleanup
+- **`TEST_MEMORY_TAG = "__test__"`** - Reserved tag for automatic test cleanup
 
-→ Details: [`.claude/directives/consolidation-details.md`](.claude/directives/consolidation-details.md)
-→ Guide: [docs/guides/memory-consolidation-guide.md](docs/guides/memory-consolidation-guide.md)
+### Test Markers (defined in `pytest.ini`)
+```python
+@pytest.mark.unit         # Fast unit tests
+@pytest.mark.integration  # Integration tests (require storage)
+@pytest.mark.performance  # Performance benchmarks
+@pytest.mark.asyncio      # Async tests (auto-detected)
+```
 
-## Environment Variables
-
-**Essential Configuration:**
+### Running Tests by Category
 ```bash
-# Storage Backend (Hybrid is RECOMMENDED for production)
+pytest -m unit           # Unit tests only
+pytest -m integration    # Integration tests
+pytest -m performance    # Performance benchmarks
+pytest -k "test_store"   # Tests matching name pattern
+```
+
+## Configuration
+
+### Environment Variables
+
+**Quick Reference** (full list in `.env.example`):
+
+```bash
+# Storage Backend
 export MCP_MEMORY_STORAGE_BACKEND=hybrid  # hybrid|cloudflare|sqlite_vec
 
-# Cloudflare Configuration (REQUIRED for hybrid/cloudflare backends)
-export CLOUDFLARE_API_TOKEN="your-token"      # Required for Cloudflare backend
-export CLOUDFLARE_ACCOUNT_ID="your-account"   # Required for Cloudflare backend
-export CLOUDFLARE_D1_DATABASE_ID="your-d1-id" # Required for Cloudflare backend
-export CLOUDFLARE_VECTORIZE_INDEX="mcp-memory-index" # Required for Cloudflare backend
+# Cloudflare (required for hybrid/cloudflare)
+export CLOUDFLARE_API_TOKEN="your-token"
+export CLOUDFLARE_ACCOUNT_ID="your-account"
+export CLOUDFLARE_D1_DATABASE_ID="your-db-id"
+export CLOUDFLARE_VECTORIZE_INDEX="mcp-memory-index"
 
-# Web Interface (Optional)
-export MCP_HTTP_ENABLED=true                  # Enable HTTP server
-export MCP_HTTPS_ENABLED=true                 # Enable HTTPS (production)
-export MCP_API_KEY="$(openssl rand -base64 32)" # Generate secure API key
+# HTTP Server
+export MCP_HTTP_ENABLED=true
+export MCP_HTTP_PORT=8000
+export MCP_API_KEY="your-secure-key"
 
-# OAuth Storage (v9.0.6+)
-export MCP_OAUTH_STORAGE_BACKEND=sqlite       # memory (default) | sqlite (production)
-export MCP_OAUTH_SQLITE_PATH=./data/oauth.db  # SQLite database path
+# OAuth (v9.0.6+)
+export MCP_OAUTH_STORAGE_BACKEND=sqlite   # memory|sqlite
+export MCP_OAUTH_SQLITE_PATH=./data/oauth.db
+
+# Quality System (v8.45.0+)
+export MCP_QUALITY_SYSTEM_ENABLED=true
+
+# Consolidation (v8.23.0+)
+export MCP_CONSOLIDATION_ENABLED=true
 ```
 
 **Configuration Precedence:** Environment variables > .env file > Global Claude Config > defaults
 
-**✅ Automatic Configuration Loading (v6.16.0+):** The service now automatically loads `.env` files and respects environment variable precedence. CLI defaults no longer override environment configuration.
+**Important:** After updating `.env`, always restart servers. Use `./scripts/update_and_restart.sh` for automated workflow.
 
-**⚠️  Important:** When using hybrid or cloudflare backends, ensure Cloudflare credentials are properly configured. If health checks show "sqlite-vec" when you expect "cloudflare" or "hybrid", this indicates a configuration issue that needs to be resolved.
+### Claude Desktop Integration
 
-**Platform Support:** macOS (MPS/CPU), Windows (CUDA/DirectML/CPU), Linux (CUDA/ROCm/CPU)
+**Recommended configuration** (`~/.claude/config.json`):
 
-## OAuth Storage Configuration (v9.0.6+)
-
-**Persistent Storage**: Production deployments should use SQLite backend for multi-worker support.
-
-```bash
-# Development (default)
-export MCP_OAUTH_STORAGE_BACKEND=memory
-
-# Production (recommended)
-export MCP_OAUTH_STORAGE_BACKEND=sqlite
-export MCP_OAUTH_SQLITE_PATH=./data/oauth.db
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "python",
+      "args": ["-m", "mcp_memory_service.server"],
+      "env": {
+        "MCP_MEMORY_STORAGE_BACKEND": "hybrid"
+      }
+    }
+  }
+}
 ```
 
-**Features**:
-- Multi-worker safe (WAL mode)
-- Survives server restarts
-- Atomic code consumption (prevents replay attacks)
-- <10ms performance
-
-**Documentation**: [docs/oauth-storage-backends.md](docs/oauth-storage-backends.md)
-
-## Claude Code Hooks Configuration 🆕
-
-> **✅ Windows SessionStart Fixed** (Claude Code 2.0.76+): SessionStart hooks now work correctly on Windows. The subprocess lifecycle bug (#160) was fixed in Claude Code core. No workaround needed.
-
-**Natural Memory Triggers v7.1.3** - 85%+ trigger accuracy, multi-tier processing (50ms → 150ms → 500ms)
-
-**Installation:**
-```bash
-cd claude-hooks && python install_hooks.py --natural-triggers
-
-# CLI Management
-node ~/.claude/hooks/memory-mode-controller.js status
-node ~/.claude/hooks/memory-mode-controller.js profile balanced
-```
-
-**Performance Profiles:**
-- `speed_focused`: <100ms, minimal memory awareness
-- `balanced`: <200ms, optimal for general development (recommended)
-- `memory_aware`: <500ms, maximum context awareness
-
-→ Complete configuration: [`.claude/directives/hooks-configuration.md`](.claude/directives/hooks-configuration.md)
-
-## Storage Backends
-
-| Backend | Performance | Use Case | Installation |
-|---------|-------------|----------|--------------|
-| **Hybrid** ⚡ | Fast (5ms read) | **🌟 Production (Recommended)** | `--storage-backend hybrid` |
-| **Cloudflare** ☁️ | Network dependent | Cloud-only deployment | `--storage-backend cloudflare` |
-| **SQLite-Vec** 🪶 | Fast (5ms read) | Development, single-user | `--storage-backend sqlite_vec` |
-
-**Hybrid Backend Benefits:**
-- 5ms read/write + multi-device sync + graceful offline operation
-
-**Database Lock Prevention (v8.9.0+):**
-- After adding `MCP_MEMORY_SQLITE_PRAGMAS` to `.env`, **restart all servers**
-- SQLite pragmas are per-connection, not global
-
-→ Complete details: [`.claude/directives/storage-backends.md`](.claude/directives/storage-backends.md)
+**Alternative:** Use `uv run memory server` or direct script path (see v6.17.0+ migration notes in README).
 
 ## Development Guidelines
 
-**Read first:**
-→ [`.claude/directives/development-setup.md`](.claude/directives/development-setup.md) - Editable install
-→ [`.claude/directives/pr-workflow.md`](.claude/directives/pr-workflow.md) - Pre-PR checks
-→ [`.claude/directives/refactoring-checklist.md`](.claude/directives/refactoring-checklist.md) - Refactoring safety
-→ [`.claude/directives/version-management.md`](.claude/directives/version-management.md) - Release workflow
+### Code Quality Standards
 
-**Quick:**
-- `pip install -e .` (dev mode)
-- `bash scripts/pr/pre_pr_check.sh` (before PR, MANDATORY)
-- Use github-release-manager agent for releases
-- Tag memories with `mcp-memory-service` as first tag
-
-## Code Quality Monitoring
-
-**Three-layer strategy:**
-1. **Pre-commit** (<5s) - Groq/Gemini complexity + security (blocks: complexity >8, any security issues)
-2. **PR Quality Gate** (10-60s) - `quality_gate.sh --with-pyscn` (blocks: security, health <50)
+**Three-layer quality strategy:**
+1. **Pre-commit** (<5s) - Groq/Gemini complexity + security (blocks: complexity >8, security issues)
+2. **PR Quality Gate** (10-60s) - `bash scripts/pr/pre_pr_check.sh` (blocks: security, health <50)
 3. **Periodic Review** (weekly) - pyscn analysis + trend tracking
 
 **Health Score Thresholds:**
-- <50: 🔴 Release blocker (cannot merge)
-- 50-69: 🟡 Action required (refactor within 2 weeks)
-- 70+: ✅ Continue development
+- `<50`: 🔴 Release blocker (cannot merge)
+- `50-69`: 🟡 Action required (refactor within 2 weeks)
+- `70+`: ✅ Continue development
 
-→ Complete workflow: [`.claude/directives/code-quality-workflow.md`](.claude/directives/code-quality-workflow.md)
+**Utility Modules Pattern** (v8.61.0 - Phase 3 Refactoring):
+- Strategy Pattern: `utils/health_check.py` (5 strategies)
+- Orchestrator Pattern: `utils/startup_orchestrator.py` (3 orchestrators)
+- Processor Pattern: `utils/directory_ingestion.py` (3 processors)
+- Analyzer Pattern: `utils/quality_analytics.py` (3 analyzers)
 
-## Configuration Management
+**Target:** All complexity A-B grade (complexity ≤8)
 
-**Quick Validation:**
-```bash
-python scripts/validation/validate_configuration_complete.py  # Comprehensive validation
-python scripts/validation/diagnose_backend_config.py          # Cloudflare diagnostics
-```
+### Development Workflow
 
-**Configuration Hierarchy:**
-- Global: `~/.claude.json` (authoritative)
-- Project: `.env` file (Cloudflare credentials)
-- **Avoid**: Local `.mcp.json` overrides
+**Read first:**
+- [`.claude/directives/development-setup.md`](.claude/directives/development-setup.md) - Editable install
+- [`.claude/directives/pr-workflow.md`](.claude/directives/pr-workflow.md) - Pre-PR checks (MANDATORY)
+- [`.claude/directives/refactoring-checklist.md`](.claude/directives/refactoring-checklist.md) - Refactoring safety
+- [`.claude/directives/version-management.md`](.claude/directives/version-management.md) - Release workflow
 
-**Common Issues & Quick Fixes:**
+**Quick workflow:**
+1. `pip install -e .` - Install in editable mode
+2. Make changes
+3. `pytest` - Run tests
+4. `bash scripts/pr/pre_pr_check.sh` - Pre-PR validation (MANDATORY)
+5. Create PR - Use github-release-manager agent for releases
+
+**Memory Tagging:** Always tag memories with `mcp-memory-service` as first tag (see `.claude/directives/memory-tagging.md`)
+
+### Common Development Tasks
+
+**Add a new MCP tool:**
+1. Add handler method to `src/mcp_memory_service/server_impl.py`
+2. Register tool in `MemoryServer.__init__` tool list
+3. Add tests in `tests/server/test_handlers.py`
+4. Update MCP schema if needed
+
+**Add a new storage backend:**
+1. Implement `BaseStorage` interface from `src/mcp_memory_service/storage/base.py`
+2. Add factory method in `src/mcp_memory_service/storage/factory.py`
+3. Add tests in `tests/storage/test_<backend>.py`
+4. Update configuration options
+
+**Add a new document loader:**
+1. Implement `DocumentLoader` interface from `src/mcp_memory_service/ingestion/base.py`
+2. Register loader in `src/mcp_memory_service/ingestion/registry.py`
+3. Add tests in `tests/ingestion/test_<loader>.py`
+
+## Troubleshooting
+
+### Common Issues
 
 | Issue | Quick Fix |
 |-------|-----------|
 | Wrong backend showing | `python scripts/validation/diagnose_backend_config.py` |
 | Port mismatch (hooks timeout) | Verify same port in `~/.claude/hooks/config.json` and server (default: 8000) |
 | Schema validation errors after PR merge | Run `/mcp` in Claude Code to reconnect with new schema |
-| Accidental `data/memory.db` | Delete safely: `rm -rf data/` (gitignored) |
+| Database lock errors | Ensure `MCP_MEMORY_SQLITE_PRAGMAS` in `.env`, restart servers |
+| Tests failing after git pull | Run `./scripts/update_and_restart.sh` (installs deps, restarts server) |
 
-See [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-quick-reference.md) for comprehensive troubleshooting.
+**Comprehensive troubleshooting:** [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-quick-reference.md)
 
-## Hook Troubleshooting
-
-**SessionEnd Hooks:**
-- Trigger on `/exit`, terminal close (NOT Ctrl+C)
-- Require 100+ characters, confidence > 0.1
-- Memory creation: topics, decisions, insights, code changes
-
-**Windows SessionStart (Fixed in Claude Code 2.0.76+):**
-- ✅ SessionStart hooks now work correctly on Windows
-- The subprocess lifecycle bug (#160) was fixed in Claude Code core
-
-See [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-quick-reference.md) for full troubleshooting guide.
+**Configuration validation:**
+```bash
+python scripts/validation/validate_configuration_complete.py  # Comprehensive
+python scripts/validation/diagnose_backend_config.py          # Backend-specific
+```
 
 ## Agent Integrations
 
-Workflow automation: `@agent github-release-manager`, `./scripts/utils/groq "task"`, `bash scripts/pr/auto_review.sh <PR>`
+**Workflow automation:**
+- **github-release-manager** - Complete release workflow (version bump, CHANGELOG, PR creation)
+- **amp-bridge** - Fast refactoring with Amp CLI
+- **code-quality-guard** - Quality analysis before commits
+- **gemini-pr-automator** - Automated PR reviews and fixes
 
-**Agents:** github-release-manager (releases), amp-bridge (refactoring), code-quality-guard (quality), gemini-pr-automator (PRs)
+**Usage:** See [`.claude/directives/agents.md`](.claude/directives/agents.md) for complete workflows.
 
-→ Workflows: [`.claude/directives/agents.md`](.claude/directives/agents.md)
+## Key Design Patterns
 
-> **For detailed troubleshooting, architecture, and deployment guides:**
-> - **Backend Configuration Issues**: See [Wiki Troubleshooting Guide](https://github.com/doobidoo/mcp-memory-service/wiki/07-TROUBLESHOOTING#backend-configuration-issues) for comprehensive solutions to missing memories, environment variable issues, Cloudflare auth, hooks timeouts, and more
-> - **Historical Context**: Retrieve memories tagged with `claude-code-reference`
-> - **Quick Diagnostic**: Run `python scripts/validation/diagnose_backend_config.py`
+1. **Strategy Pattern** - Storage backends, health checks, quality analytics
+2. **Orchestrator Pattern** - Startup orchestrator, consolidation scheduler
+3. **Processor Pattern** - Document ingestion, file processing
+4. **Registry Pattern** - Document loaders, storage factory
+5. **Singleton Pattern** - Global caching (storage, service instances)
+
+## Performance Characteristics
+
+**Key Metrics** (from production deployments):
+- **5ms reads** - SQLite-Vec local storage
+- **534,628x faster** - Global caching optimization (v8.26.0)
+- **90% token reduction** - Consolidation via HTTP API vs MCP tools
+- **85%+ trigger accuracy** - Natural memory triggers (v7.1.3+)
+- **80-150ms** - Local ONNX quality scoring
+
+## Documentation
+
+**Where to find information:**
+- **CLAUDE.md** (this file) - Development guide for Claude Code
+- **README.md** - User-facing documentation, installation, features
+- **CHANGELOG.md** - Version history, breaking changes, migrations
+- **scripts/README.md** - Complete script reference
+- **docs/** - Guides, troubleshooting, architecture specs
+- **Wiki** - Comprehensive documentation (https://github.com/doobidoo/mcp-memory-service/wiki)
+- **`.claude/directives/`** - Topic-specific directives for Claude Code
+
+**When to update each:**
+- **CLAUDE.md** - Architecture changes, new patterns, development workflows
+- **README.md** - New features, installation changes, user-facing updates
+- **CHANGELOG.md** - Every version bump (use github-release-manager agent)
+- **Wiki** - Detailed guides, troubleshooting, tutorials
+
+## Additional Resources
+
+- **Storage Backends:** [`.claude/directives/storage-backends.md`](.claude/directives/storage-backends.md)
+- **Hooks Configuration:** [`.claude/directives/hooks-configuration.md`](.claude/directives/hooks-configuration.md)
+- **Quality System:** [`.claude/directives/quality-system-details.md`](.claude/directives/quality-system-details.md)
+- **Consolidation:** [`.claude/directives/consolidation-details.md`](.claude/directives/consolidation-details.md)
+- **Code Quality:** [`.claude/directives/code-quality-workflow.md`](.claude/directives/code-quality-workflow.md)
+
+---
+
+**Quick Start Checklist for New Contributors:**
+1. ✅ Read this file (CLAUDE.md)
+2. ✅ Read `.claude/directives/memory-tagging.md` (MANDATORY)
+3. ✅ Run `pip install -e .` (editable install)
+4. ✅ Run `pytest` (verify tests pass)
+5. ✅ Read relevant directive files for your work area
+6. ✅ Make changes and run `bash scripts/pr/pre_pr_check.sh` before PR
