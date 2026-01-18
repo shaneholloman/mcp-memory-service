@@ -146,37 +146,43 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ☁️ **Cloud Sync** – Optional Cloudflare backend for team collaboration
 🔒 **Privacy-First** – Local-first, you control your data
 📊 **Web Dashboard** – Visualize and manage memories at `http://localhost:8000`
+🧬 **Knowledge Graph** – Interactive D3.js visualization of memory relationships 🆕
 
 ---
 
 
-## 🆕 Latest Release: **v9.0.6** (January 18, 2026)
+## 🆕 Latest Release: **v9.2.0** (January 18, 2026)
 
-**Production-Ready OAuth & Test Infrastructure Improvements**
+**Knowledge Graph Dashboard - Interactive Memory Visualization**
 
 **What's New:**
-- 🔐 **OAuth Persistent Storage Backend** - SQLite-based OAuth storage for multi-worker deployments (Issue #360)
-- ⚡ **<10ms Token Operations** - Atomic one-time authorization code consumption prevents replay attacks
-- 🔧 **Pluggable Storage Architecture** - `MCP_OAUTH_STORAGE_BACKEND=sqlite` for production, `memory` for dev/testing
-- ✅ **uvx Test Compatibility Fixed** - All HTTP endpoint tests now pass in uvx CI environment (Issue #361)
+- 🧬 **Knowledge Graph Dashboard** - Interactive D3.js force-directed graph visualization with zoom, pan, and drag
+- 📊 **Relationship Analytics** - Chart.js bar chart showing distribution of 6 relationship types
+- 🌐 **Multi-Language Support** - Full UI localization in 7 languages (en, zh, de, es, fr, ja, ko)
+- 🎨 **Dark Mode Integration** - Seamless theme switching with existing dashboard
+- ⚡ **Performance Optimized** - Successfully tested with 2,730 relationships
 
-**Key Features:**
-- WAL mode for multi-process safety
-- 30 comprehensive OAuth storage tests (parametrized across backends)
-- Backward compatible (defaults to memory backend, no breaking changes)
+**Key Capabilities:**
+- **Typed Relationships**: causes, fixes, contradicts, supports, follows, related
+- **Visual Exploration**: Interactive graph with zoom, pan, drag
+- **Relationship Distribution**: Bar chart showing type breakdown
+- **Multi-Language**: 7 languages supported (154 new i18n keys)
+- **Dark Mode**: Seamless theme integration
 
-**Configuration:**
+**Access:**
 ```bash
-export MCP_OAUTH_STORAGE_BACKEND=sqlite  # Production multi-worker
-export MCP_OAUTH_SQLITE_PATH=./data/oauth.db  # Database location
+# Start HTTP dashboard server
+./start_all_servers.sh
+# Navigate to http://localhost:8000 → Analytics → Knowledge Graph
 ```
 
-**Documentation:** See [docs/oauth-storage-backends.md](docs/oauth-storage-backends.md) for complete guide
+**Documentation:** See [docs/features/knowledge-graph-dashboard.md](docs/features/knowledge-graph-dashboard.md) for complete guide
 
 **Migration from v9.0.0:**
 📖 [v9.0.0 Migration Guide](#migration-to-v900) - Breaking changes require database migration
 
 **Previous Releases**:
+- **v9.0.6** - OAuth Persistent Storage Backend (SQLite-based for multi-worker deployments, <10ms token operations)
 - **v9.0.5** - CRITICAL HOTFIX: OAuth 2.1 token endpoint routing bug fixed (HTTP 422 errors eliminated)
 - **v9.0.4** - OAuth validation blocking server startup fixed (OAUTH_ENABLED default changed to False, validation made non-fatal)
 - **v9.0.2** - Critical hotfix: Includes actual code fix for mass deletion bug (confirm_count parameter now REQUIRED)
@@ -386,8 +392,7 @@ If you encounter issues during migration:
 - **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
 - **[Architecture Overview](docs/architecture.md)** – How it works under the hood
 - **[Team Setup Guide](docs/teams.md)** – OAuth and cloud collaboration
-- **[Knowledge Graph Guide](docs/guides/knowledge-graph-guide.md)** 🆕 – Typed relationships and semantic reasoning
-- **[Memory Ontology Guide](docs/guides/memory-ontology-guide.md)** 🆕 – Type taxonomy and classification
+- **[Knowledge Graph Dashboard](docs/features/knowledge-graph-dashboard.md)** 🆕 – Interactive graph visualization guide
 - **[Troubleshooting](docs/troubleshooting/)** – Common issues and solutions
 - **[API Reference](docs/api.md)** – Programmatic usage
 - **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** – Complete documentation
@@ -588,7 +593,27 @@ These warnings disappear after the first successful run. The service is working 
 - **Semantic Reasoning** - Automatic causal chain analysis and contradiction detection
 - **Performance** - 5-25ms queries, 30x faster than table scans
 
-📖 See [Knowledge Graph Guide](docs/guides/knowledge-graph-guide.md) for examples.
+### 🧬 **Knowledge Graph Dashboard** 🆕 v9.2.0
+
+Visualize your memory relationships with an interactive force-directed graph powered by D3.js v7.9.0.
+
+**Features:**
+- **Interactive Graph**: Zoom, pan, drag nodes, hover for details
+- **6 Typed Relationships**: causes, fixes, contradicts, supports, follows, related
+- **Relationship Chart**: Bar chart showing distribution of relationship types
+- **Multi-Language Support**: Fully localized in 7 languages (en, zh, de, es, fr, ja, ko)
+- **Dark Mode**: Seamless theme integration with dashboard
+- **Performance**: Handles thousands of relationships smoothly (tested with 2,730 relationships)
+
+**Access:** Navigate to Analytics → Knowledge Graph in the dashboard at http://localhost:8000
+
+**Key Capabilities:**
+- **Visual Exploration**: Discover hidden connections between memories
+- **Semantic Networks**: See causal chains, fix relationships, and contradictions
+- **Memory Types**: Color-coded nodes by memory type (observation, decision, learning, error)
+- **Real-time Updates**: Graph automatically updates as you add new relationships
+
+📖 See [Knowledge Graph Dashboard Guide](docs/features/knowledge-graph-dashboard.md) for complete documentation.
 
 ### 🔗 **Universal Compatibility**
 - **Claude Desktop** - Native MCP integration

@@ -10,6 +10,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [9.2.0] - 2026-01-18
+
+### Added
+- **Knowledge Graph Dashboard with D3.js v7.9.0** - Interactive force-directed graph visualization
+  - **Interactive Force-Directed Graph**: Zoom, pan, drag nodes to explore memory relationships
+  - **Relationship Type Distribution Chart**: Bar chart showing breakdown of 6 relationship types (Chart.js)
+  - **6 Typed Relationships**: causes, fixes, contradicts, supports, follows, related
+  - **2 New API Endpoints**:
+    - `/api/analytics/relationship-types` - Get distribution of relationship types
+    - `/api/analytics/graph-visualization` - Get graph data for visualization
+  - **Interactive Controls**:
+    - Zoom with mouse wheel or touch
+    - Pan by dragging background
+    - Drag nodes to explore connections
+    - Hover tooltips with memory details
+  - **Multi-Language Support**: Full UI localization for 7 languages (en, zh, de, es, fr, ja, ko)
+  - **154 New i18n Translation Keys**: 22 translation keys per language for graph UI
+  - **Dark Mode Integration**: Seamless theme switching with existing dashboard
+  - **Performance**: Successfully tested with 2,730 relationships
+
+### Changed
+- **Extended Storage Interface**: Added graph analytics methods
+  - `get_relationship_type_distribution()` - Query relationship type counts
+  - `get_graph_visualization_data()` - Fetch graph data optimized for D3.js rendering
+
+### Database
+- **Migration Required**: Added `relationship_type` column to `memory_graph` table
+  - **SQLite Migration**: `python scripts/migration/add_relationship_type_column.py`
+  - **Cloudflare D1**: Not required (graph is SQLite-only in current version)
+  - **Default Value**: All existing relationships set to 'related' type
+  - **Backward Compatible**: Migration is idempotent and safe to re-run
+
+### Documentation
+- **New Guide**: Complete Knowledge Graph Dashboard documentation in `docs/features/knowledge-graph-dashboard.md`
+- **Updated README**: Added Knowledge Graph Dashboard section with features and screenshots
+
 ## [9.0.6] - 2026-01-18
 
 ### Added
