@@ -556,6 +556,11 @@ class MemoryDashboard {
         document.getElementById('topTagsPeriodSelect')?.addEventListener('change', this.handleTopTagsPeriodChange.bind(this));
         document.getElementById('activityGranularitySelect')?.addEventListener('change', this.handleActivityGranularityChange.bind(this));
 
+        // Knowledge Graph controls (v9.2.0)
+        document.getElementById('refreshGraphBtn')?.addEventListener('click', this.handleGraphRefresh.bind(this));
+        document.getElementById('graphLimitSelect')?.addEventListener('change', this.handleGraphRefresh.bind(this));
+        document.getElementById('graphMinConnectionsSelect')?.addEventListener('change', this.handleGraphRefresh.bind(this));
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -4134,7 +4139,9 @@ class MemoryDashboard {
                 this.loadActivityHeatmapChart(),
                 this.loadTopTagsReport(),
                 this.loadRecentActivityReport(),
-                this.loadStorageReport()
+                this.loadStorageReport(),
+                this.loadRelationshipTypesChart(),
+                this.loadGraphVisualization()
             ]);
         } catch (error) {
             console.error('Failed to load analytics data:', error);
@@ -4630,6 +4637,268 @@ class MemoryDashboard {
      */
     async handleGrowthPeriodChange() {
         await this.loadMemoryGrowthChart();
+    }
+
+    // ===== KNOWLEDGE GRAPH METHODS (v9.2.0) =====
+
+    /**
+     * Load relationship types chart
+     */
+    async loadRelationshipTypesChart() {
+        const container = document.getElementById('relationshipTypesChart');
+        if (!container) return;
+
+        try {
+            const response = await fetch(`${this.apiBase}/analytics/relationship-types`);
+            if (!response.ok) throw new Error('Failed to load relationship types');
+
+            const data = await response.json();
+            this.renderRelationshipTypesChart(container, data);
+        } catch (error) {
+            console.error('Failed to load relationship types:', error);
+            container.innerHTML = '<p class="error">Failed to load relationship types chart</p>';
+        }
+    }
+
+    /**
+     * Render relationship types chart
+     */
+    renderRelationshipTypesChart(container, data) {
+        if (!data || Object.keys(data).length === 0) {
+            container.innerHTML = '<p>No relationships found</p>';
+            return;
+        }
+
+        // Convert object to array and sort by count
+        const types = Object.entries(data)
+            .map(([type, count]) => ({ type, count }))
+            .sort((a, b) => b.count - a.count);
+
+        const total = types.reduce((sum, t) => sum + t.count, 0);
+
+        // Color mapping for relationship types
+        const colors = {
+            'causes': '#E74C3C',
+            'fixes': '#27AE60',
+            'contradicts': '#E67E22',
+            'supports': '#3498DB',
+            'follows': '#9B59B6',
+            'related': '#95A5A6',
+            'untyped': '#BDC3C7'
+        };
+
+        let html = '<div class="simple-chart">';
+
+        types.forEach(item => {
+            const percentage = ((item.count / total) * 100).toFixed(1);
+            const barWidthPx = (percentage / 100) * 200;
+            const color = colors[item.type] || '#95A5A6';
+
+            html += `<div class="chart-row">
+                <div class="chart-bar" style="width: ${barWidthPx}px; background: ${color}"></div>
+                <span class="chart-value">${item.count} (${percentage}%)</span>
+                <span class="chart-label" title="${item.type}">${item.type}</span>
+            </div>`;
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    /**
+     * Load graph visualization
+     */
+    async loadGraphVisualization() {
+        const container = document.getElementById('graphVisualizationContainer');
+        if (!container) return;
+
+        try {
+            const limit = document.getElementById('graphLimitSelect')?.value || 100;
+            const minConnections = document.getElementById('graphMinConnectionsSelect')?.value || 1;
+
+            const response = await fetch(`${this.apiBase}/analytics/graph-visualization?limit=${limit}&min_connections=${minConnections}`);
+            if (!response.ok) throw new Error('Failed to load graph visualization');
+
+            const data = await response.json();
+            this.renderGraphVisualization(container, data);
+        } catch (error) {
+            console.error('Failed to load graph visualization:', error);
+            container.innerHTML = '<p class="error">Failed to load graph visualization</p>';
+        }
+    }
+
+    /**
+     * Render graph visualization using D3.js force-directed graph
+     */
+    renderGraphVisualization(container, data) {
+        if (!data.nodes || data.nodes.length === 0) {
+            container.innerHTML = '<p>No connected memories found. Try lowering the minimum connections filter.</p>';
+            return;
+        }
+
+        // Clear previous content
+        container.innerHTML = '';
+
+        // Get container dimensions
+        const width = container.clientWidth;
+        const height = 500;
+
+        // Create SVG
+        const svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('viewBox', [0, 0, width, height]);
+
+        // Add zoom behavior
+        const g = svg.append('g');
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+        svg.call(zoom);
+
+        // Color mapping for memory types
+        const nodeColors = {
+            'observation': '#4A90E2',
+            'decision': '#E24A4A',
+            'learning': '#50C878',
+            'error': '#F39C12',
+            'untyped': '#9B59B6'
+        };
+
+        // Color mapping for relationship types
+        const edgeColors = {
+            'causes': '#E74C3C',
+            'fixes': '#27AE60',
+            'contradicts': '#E67E22',
+            'supports': '#3498DB',
+            'follows': '#9B59B6',
+            'related': '#95A5A6'
+        };
+
+        // Create force simulation
+        const simulation = d3.forceSimulation(data.nodes)
+            .force('link', d3.forceLink(data.edges).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(30));
+
+        // Create links (edges)
+        const link = g.append('g')
+            .selectAll('line')
+            .data(data.edges)
+            .join('line')
+            .attr('class', d => `graph-link link-${d.relationship_type || 'related'}`)
+            .attr('stroke-width', 1.5);
+
+        // Create nodes
+        const node = g.append('g')
+            .selectAll('circle')
+            .data(data.nodes)
+            .join('circle')
+            .attr('class', 'graph-node')
+            .attr('r', d => Math.min(20, 8 + Math.sqrt(d.connections) * 2))
+            .attr('fill', d => nodeColors[d.type] || nodeColors['untyped'])
+            .call(this.dragBehavior(simulation));
+
+        // Add labels
+        const label = g.append('g')
+            .selectAll('text')
+            .data(data.nodes)
+            .join('text')
+            .attr('class', 'graph-label')
+            .attr('dy', -15)
+            .text(d => {
+                const content = d.content || '';
+                return content.length > 20 ? content.substring(0, 20) + '...' : content;
+            });
+
+        // Create tooltip
+        const tooltip = d3.select(container)
+            .append('div')
+            .attr('class', 'graph-tooltip')
+            .style('position', 'absolute')
+            .style('opacity', 0);
+
+        // Add hover behavior
+        node.on('mouseover', (event, d) => {
+            tooltip.transition()
+                .duration(200)
+                .style('opacity', 1);
+
+            tooltip.html(`
+                <div class="graph-tooltip-title">${d.type || 'untyped'}</div>
+                <div class="graph-tooltip-content">${this.escapeHtml(d.content || '')}</div>
+                <div class="graph-tooltip-meta">
+                    ${d.connections} connections
+                    ${d.tags && d.tags.length > 0 ? '<br>Tags: ' + d.tags.join(', ') : ''}
+                </div>
+            `)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 28) + 'px');
+        })
+        .on('mouseout', () => {
+            tooltip.transition()
+                .duration(500)
+                .style('opacity', 0);
+        });
+
+        // Update positions on each tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+
+            label
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+
+        // Store references for cleanup
+        this.graphSimulation = simulation;
+        this.graphSvg = svg;
+    }
+
+    /**
+     * Create drag behavior for graph nodes
+     */
+    dragBehavior(simulation) {
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        return d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended);
+    }
+
+    /**
+     * Handle graph refresh button click
+     */
+    async handleGraphRefresh() {
+        await this.loadGraphVisualization();
     }
 
     // ===== QUALITY ANALYTICS METHODS =====
