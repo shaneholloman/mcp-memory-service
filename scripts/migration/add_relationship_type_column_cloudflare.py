@@ -40,22 +40,30 @@ from mcp_memory_service.config import (
 async def check_column_exists(storage: CloudflareStorage) -> bool:
     """Check if relationship_type column already exists."""
     try:
-        # Try to query the column - if it exists, this will work
-        query = "SELECT relationship_type FROM memory_graph LIMIT 1"
-        await storage._d1_query(query)
-        return True
+        # Use PRAGMA table_info to check schema
+        check_sql = "PRAGMA table_info(memory_graph)"
+        payload = {"sql": check_sql}
+        response = await storage._retry_request("POST", f"{storage.d1_url}/query", json=payload)
+        result = response.json()
+
+        if result.get("success") and result.get("result", [{}])[0].get("results"):
+            columns = {row["name"] for row in result["result"][0]["results"] if "name" in row}
+            return "relationship_type" in columns
+        return False
     except Exception:
-        # Column doesn't exist or query failed
         return False
 
 
 async def count_relationships(storage: CloudflareStorage) -> int:
     """Count total relationships in memory_graph."""
     try:
-        query = "SELECT COUNT(*) as count FROM memory_graph"
-        result = await storage._d1_query(query)
-        if result and len(result) > 0:
-            return result[0].get('count', 0)
+        count_sql = "SELECT COUNT(*) as count FROM memory_graph"
+        payload = {"sql": count_sql}
+        response = await storage._retry_request("POST", f"{storage.d1_url}/query", json=payload)
+        result = response.json()
+
+        if result.get("success") and result.get("result", [{}])[0].get("results"):
+            return result["result"][0]["results"][0].get("count", 0)
         return 0
     except Exception as e:
         print(f"⚠️  Warning: Could not count relationships: {e}")
@@ -75,7 +83,7 @@ async def add_relationship_type_column_cloudflare(
         storage = CloudflareStorage(
             api_token=api_token,
             account_id=account_id,
-            database_id=database_id,
+            d1_database_id=database_id,
             vectorize_index="mcp-memory-index"  # Not needed for migration
         )
 
@@ -101,7 +109,13 @@ async def add_relationship_type_column_cloudflare(
             ADD COLUMN relationship_type TEXT DEFAULT 'related'
         """
 
-        await storage._d1_query(alter_query)
+        payload = {"sql": alter_query}
+        response = await storage._retry_request("POST", f"{storage.d1_url}/query", json=payload)
+        result = response.json()
+
+        if not result.get("success"):
+            print(f"❌ Failed to add column: {result}")
+            return False
 
         # Verify the column was added
         print("🔍 Verifying column was added...")
