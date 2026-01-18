@@ -276,20 +276,27 @@ export MCP_OAUTH_SQLITE_PATH=./data/oauth.db  # Database location
 - **v8.23.1** - Stale Virtual Environment Prevention System (6-layer developer protection)
 - **v8.23.0** - Consolidation Scheduler via Code Execution API (88% token reduction)
 
-**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md#8222---2025-11-09) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+**📖 Full Details**: [CHANGELOG.md](CHANGELOG.md) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
 ---
 
 ## Migration to v9.0.0
 
-**⚡ TL;DR**: Run `python scripts/migrate_ontology.py` to migrate your database.
+**⚡ TL;DR**: No manual migration needed - upgrades happen automatically!
 
 **Breaking Changes:**
-- **Memory Type Ontology**: 38 legacy types auto-migrated (task→observation, note→observation)
+- **Memory Type Ontology**: Legacy types auto-migrate to new taxonomy (task→observation, note→observation)
 - **Asymmetric Relationships**: Directed edges only (no longer bidirectional)
 
-**Time**: ~30 seconds for 10k memories
-**Safety**: Creates backup before migration
+**Migration Process:**
+1. Stop your MCP server
+2. Update to latest version (`git pull` or `pip install --upgrade mcp-memory-service`)
+3. Restart server - automatic migrations run on startup:
+   - Database schema migrations (009, 010)
+   - Memory type soft-validation (legacy types → observation)
+   - No tag migration needed (backward compatible)
+
+**Safety**: Migrations are idempotent and safe to re-run
 
 ---
 
@@ -302,11 +309,13 @@ export MCP_OAUTH_SQLITE_PATH=./data/oauth.db  # Database location
 - New formal taxonomy: 5 base types (observation, decision, learning, error, pattern) with 21 subtypes
 - Type validation now defaults to 'observation' for invalid types (soft validation)
 
-**Migration Required:**
-```bash
-# Run migration script to update existing memories
-python scripts/migrate_ontology.py
-```
+**Migration Process:**
+✅ **Automatic** - No manual action required!
+
+When you restart the server with v9.0.0:
+- Invalid memory types are automatically soft-validated to 'observation'
+- Database schema updates run automatically
+- Existing memories continue to work without modification
 
 **New Memory Types:**
 - observation: General observations, facts, and discoveries
