@@ -178,9 +178,9 @@ class TestBurst16GetAllTypes:
     """Tests for Burst 1.6: Get All Types Function"""
 
     def test_returns_correct_count(self):
-        """Should return 5 base types + 21 subtypes = 26 total"""
+        """Should return 5 base types + 24 subtypes = 29 total"""
         all_types = get_all_types()
-        assert len(all_types) == 26
+        assert len(all_types) == 29
 
     def test_no_duplicates_in_list(self):
         """Should not have duplicate types in the list"""
@@ -251,7 +251,7 @@ class TestBurst18OntologyClassIntegration:
     def test_get_all_types_via_class(self):
         """get_all_types should work via class method"""
         all_types = MemoryTypeOntology.get_all_types()
-        assert len(all_types) == 26
+        assert len(all_types) == 29
         assert "observation" in all_types
         assert "code_edit" in all_types
 
