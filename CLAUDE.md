@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop and 13+ AI applications. It uses vector embeddings for semantic search, supports multiple storage backends (SQLite-vec, Cloudflare, Hybrid), and includes advanced features like memory consolidation, quality scoring, and OAuth 2.1 team collaboration.
 
-**Current Version:** v9.0.6 (see [CHANGELOG.md](CHANGELOG.md) for details)
+**Current Version:** v9.3.0 - Relationship Inference Engine for knowledge graph relationships (see [CHANGELOG.md](CHANGELOG.md) for details)
 
 ## Essential Commands
 
@@ -170,9 +170,17 @@ src/mcp_memory_service/
 **Components:**
 - `decay.py` - Exponential decay scoring (importance × recency)
 - `association_discovery.py` - Find semantic relationships
+- `relationship_inference.py` - **NEW (v9.3.0+):** Intelligent relationship type classification
 - `compression.py` - Semantic clustering and merging
 - `forgetting.py` - Quality-based archival (High: 365d, Medium: 180d, Low: 30-90d)
 - `scheduler.py` - Automatic consolidation scheduling (daily/weekly/monthly)
+
+**Relationship Inference Engine (v9.3.0+):**
+- Multi-factor analysis: memory type combinations, content semantics, temporal patterns, contradictions
+- Automatic classification: causes, fixes, contradicts, supports, follows, related
+- Confidence scoring (0.0-1.0) with default threshold of 0.6
+- Integrated into association discovery - new associations automatically get inferred relationship types
+- Retroactive updates: Use `scripts/maintenance/update_graph_relationship_types.py` for existing relationships
 
 **Pattern:** Runs via HTTP API (90% token reduction vs MCP tools) with APScheduler.
 
@@ -337,6 +345,12 @@ export MCP_CONSOLIDATION_ENABLED=true
 1. Implement `DocumentLoader` interface from `src/mcp_memory_service/ingestion/base.py`
 2. Register loader in `src/mcp_memory_service/ingestion/registry.py`
 3. Add tests in `tests/ingestion/test_<loader>.py`
+
+**Improve memory ontology and relationship types:**
+1. **Memory types:** Run `scripts/maintenance/improve_memory_ontology.py` to re-classify memory types using high-confidence patterns
+2. **Relationship types:** Run `scripts/maintenance/update_graph_relationship_types.py` to infer relationship types for existing associations
+3. **Test first:** Both scripts support `--dry-run` to preview changes before applying
+4. **Cleanup:** Use `scripts/maintenance/cleanup_memories.py` to remove test memories and orphaned data
 
 ## Troubleshooting
 
