@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Invalid memory type 'knowledge' in Web UI** (#364)
+  - Removed invalid "knowledge" option from document upload form
+  - Added missing memory types to ontology: `document`, `note`, `reference`
+  - Fixed Knowledge Graph display issues for uploaded documents
+  - All 34 ontology tests passing
+  - No more validation warnings in server logs
+
+- **wandb dependency conflict causing embedding failures** (#311)
+  - Fixed incompatibility between wandb 0.15.2 and protobuf 5.x
+  - Set `WANDB_DISABLED=true` environment variable to prevent wandb loading
+  - Updated dependency constraint to `wandb>=0.18.0` in pyproject.toml
+  - Restored semantic search functionality with proper SentenceTransformer embeddings
+  - Fixed 3 failing tests related to embedding model initialization
+  - Added regression test to prevent future embedding model fallback issues
+
 ## [9.2.1] - 2026-01-19
 
 ### Fixed
