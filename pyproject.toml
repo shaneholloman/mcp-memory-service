@@ -64,7 +64,8 @@ dependencies = [
 # Machine learning dependencies for semantic search and embeddings
 ml = [
     "sentence-transformers>=2.2.2",
-    "torch>=2.0.0"
+    "torch>=2.0.0",
+    "wandb>=0.18.0"  # Fix for Issue #311: Ensure wandb is compatible with protobuf 5.x
 ]
 # SQLite-vec with lightweight ONNX embeddings (recommended for most users)
 sqlite = [

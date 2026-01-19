@@ -34,6 +34,12 @@ from datetime import datetime, timezone, timedelta, date
 import asyncio
 import random
 
+# Disable wandb BEFORE importing sentence-transformers to prevent protobuf dependency conflicts
+# wandb is not needed for mcp-memory-service (only used by accelerate for experiment tracking)
+# See Issue #311: wandb.proto.wandb_internal_pb2 missing 'Result' attribute
+os.environ['WANDB_DISABLED'] = 'true'
+os.environ['WANDB_MODE'] = 'disabled'
+
 # Import sqlite-vec with fallback
 try:
     import sqlite_vec
