@@ -49,6 +49,50 @@ class MigrationRunner:
         """
         self.migrations_dir = migrations_dir
 
+    def _get_migration_sql(self, filename: str) -> str | None:
+        """Read SQL content from migration file.
+
+        Args:
+            filename: Name of migration file
+
+        Returns:
+            SQL content if file exists, None otherwise
+        """
+        migration_path = self.migrations_dir / filename
+        if not migration_path.exists():
+            logger.warning(f"Migration file not found: {filename}")
+            return None
+        return migration_path.read_text()
+
+    @staticmethod
+    def _is_idempotent_error(error: Exception) -> bool:
+        """Check if error indicates migration already applied.
+
+        Args:
+            error: Exception from migration execution
+
+        Returns:
+            True if error indicates idempotent operation (already applied)
+        """
+        error_msg = str(error).lower()
+        return "duplicate column" in error_msg or "already exists" in error_msg
+
+    @staticmethod
+    def _format_result_message(executed_count: int, skipped_count: int) -> str:
+        """Format migration result message.
+
+        Args:
+            executed_count: Number of migrations executed
+            skipped_count: Number of migrations skipped
+
+        Returns:
+            Formatted result message
+        """
+        message = f"Successfully executed {executed_count} migrations"
+        if skipped_count > 0:
+            message += f" ({skipped_count} already applied)"
+        return message
+
     def run_migrations_sync(
         self, conn: sqlite3.Connection, migration_files: List[str]
     ) -> Tuple[bool, str]:
@@ -82,13 +126,11 @@ class MigrationRunner:
             skipped_count = 0
 
             for filename in sorted(migration_files):
-                migration_path = self.migrations_dir / filename
-                if not migration_path.exists():
-                    logger.warning(f"Migration file not found: {filename}")
+                sql = self._get_migration_sql(filename)
+                if sql is None:
                     continue
 
                 logger.info(f"Executing migration: {filename}")
-                sql = migration_path.read_text()
 
                 try:
                     # Execute all statements in the migration file
@@ -98,20 +140,15 @@ class MigrationRunner:
                     logger.info(f"Migration completed: {filename}")
 
                 except sqlite3.OperationalError as e:
-                    error_msg = str(e).lower()
                     # Handle idempotent migrations (e.g., column already exists)
-                    if "duplicate column" in error_msg or "already exists" in error_msg:
+                    if self._is_idempotent_error(e):
                         logger.info(f"Migration {filename} already applied (skipped): {e}")
                         skipped_count += 1
                     else:
                         # Re-raise other operational errors
                         raise
 
-            message = f"Successfully executed {executed_count} migrations"
-            if skipped_count > 0:
-                message += f" ({skipped_count} already applied)"
-
-            return True, message
+            return True, self._format_result_message(executed_count, skipped_count)
 
         except Exception as e:
             logger.error(f"Migration failed: {e}")
@@ -154,13 +191,11 @@ class MigrationRunner:
                 skipped_count = 0
 
                 for filename in sorted(migration_files):
-                    migration_path = self.migrations_dir / filename
-                    if not migration_path.exists():
-                        logger.warning(f"Migration file not found: {filename}")
+                    sql = self._get_migration_sql(filename)
+                    if sql is None:
                         continue
 
                     logger.info(f"Executing migration: {filename}")
-                    sql = migration_path.read_text()
 
                     try:
                         # Execute all statements in the migration file
@@ -170,20 +205,15 @@ class MigrationRunner:
                         logger.info(f"Migration completed: {filename}")
 
                     except aiosqlite.OperationalError as e:
-                        error_msg = str(e).lower()
                         # Handle idempotent migrations (e.g., column already exists)
-                        if "duplicate column" in error_msg or "already exists" in error_msg:
+                        if self._is_idempotent_error(e):
                             logger.info(f"Migration {filename} already applied (skipped): {e}")
                             skipped_count += 1
                         else:
                             # Re-raise other operational errors
                             raise
 
-            message = f"Successfully executed {executed_count} migrations"
-            if skipped_count > 0:
-                message += f" ({skipped_count} already applied)"
-
-            return True, message
+            return True, self._format_result_message(executed_count, skipped_count)
 
         except Exception as e:
             logger.error(f"Migration failed: {e}")
