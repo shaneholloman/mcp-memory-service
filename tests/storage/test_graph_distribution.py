@@ -366,8 +366,25 @@ async def test_graph_visualization_data_empty_graph(storage):
 async def test_graph_visualization_data_basic_structure(storage, graph_storage):
     """Test basic visualization data structure with nodes and edges."""
     # Create memories and relationships
-    mem1 = await storage.store("Memory 1", tags=["test"], memory_type="note")
-    mem2 = await storage.store("Memory 2", tags=["test"], memory_type="observation")
+    memory1 = Memory(
+        content="Memory 1",
+        content_hash=generate_content_hash("Memory 1"),
+        tags=["test"],
+        memory_type="note"
+    )
+    success1, _ = await storage.store(memory1)
+    assert success1
+    mem1 = memory1.content_hash
+
+    memory2 = Memory(
+        content="Memory 2",
+        content_hash=generate_content_hash("Memory 2"),
+        tags=["test"],
+        memory_type="observation"
+    )
+    success2, _ = await storage.store(memory2)
+    assert success2
+    mem2 = memory2.content_hash
 
     await graph_storage.store_association(
         mem1, mem2, 0.8, ["semantic"], relationship_type="related"
