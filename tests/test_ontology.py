@@ -178,9 +178,10 @@ class TestBurst16GetAllTypes:
     """Tests for Burst 1.6: Get All Types Function"""
 
     def test_returns_correct_count(self):
-        """Should return 5 base types + 21 subtypes = 26 total"""
+        """Should return the correct total count of base and subtypes"""
         all_types = get_all_types()
-        assert len(all_types) == 26
+        expected_count = len(BaseMemoryType) + sum(len(subtypes) for subtypes in TAXONOMY.values())
+        assert len(all_types) == expected_count
 
     def test_no_duplicates_in_list(self):
         """Should not have duplicate types in the list"""
@@ -204,6 +205,24 @@ class TestBurst16GetAllTypes:
         assert "insight" in all_types
         assert "bug" in all_types
         assert "code_smell" in all_types
+
+    def test_document_types_are_valid(self):
+        """Document-related types should be valid observation subtypes"""
+        # Validate that new document types are recognized
+        assert validate_memory_type("document") is True
+        assert validate_memory_type("note") is True
+        assert validate_memory_type("reference") is True
+
+        # Validate parent type hierarchy
+        assert get_parent_type("document") == "observation"
+        assert get_parent_type("note") == "observation"
+        assert get_parent_type("reference") == "observation"
+
+        # Validate they appear in the full type list
+        all_types = get_all_types()
+        assert "document" in all_types
+        assert "note" in all_types
+        assert "reference" in all_types
 
 
 class TestBurst17RelationshipTypeValidation:
@@ -251,7 +270,8 @@ class TestBurst18OntologyClassIntegration:
     def test_get_all_types_via_class(self):
         """get_all_types should work via class method"""
         all_types = MemoryTypeOntology.get_all_types()
-        assert len(all_types) == 26
+        expected_count = len(BaseMemoryType) + sum(len(subtypes) for subtypes in TAXONOMY.values())
+        assert len(all_types) == expected_count
         assert "observation" in all_types
         assert "code_edit" in all_types
 

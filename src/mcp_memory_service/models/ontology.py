@@ -45,7 +45,10 @@ TAXONOMY: Final[Dict[str, List[str]]] = {
         "file_access",
         "search",
         "command",
-        "conversation"
+        "conversation",
+        "document",
+        "note",
+        "reference"
     ],
     "decision": [
         "architecture",
