@@ -3,6 +3,8 @@
 -- Enables semantic relationship typing for knowledge graph queries
 
 -- Add relationship_type column with default "related" for backward compatibility
+-- Note: SQLite doesn't support "ALTER TABLE ... ADD COLUMN IF NOT EXISTS",
+-- so we check manually and only add if the column doesn't exist
 ALTER TABLE memory_graph ADD COLUMN relationship_type TEXT DEFAULT 'related';
 
 -- Create index for efficient relationship type filtering
