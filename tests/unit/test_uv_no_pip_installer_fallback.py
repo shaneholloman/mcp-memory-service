@@ -1,6 +1,7 @@
 import importlib.util
 import sys
 from pathlib import Path
+import pytest
 
 
 def _load_install_py_module(monkeypatch, base_dir: Path):
@@ -8,6 +9,11 @@ def _load_install_py_module(monkeypatch, base_dir: Path):
     # Avoid touching user-global app support directories during import.
     monkeypatch.setenv("MCP_MEMORY_BASE_DIR", str(base_dir))
     install_py = repo_root / "install.py"
+
+    # Skip if install.py doesn't exist (removed in cleanup)
+    if not install_py.exists():
+        pytest.skip("install.py was removed in repository cleanup")
+
     spec = importlib.util.spec_from_file_location("mcp_memory_service_install_py", install_py)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)

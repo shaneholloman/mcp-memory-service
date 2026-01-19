@@ -28,6 +28,7 @@ import platform
 import hashlib
 import struct
 from collections import Counter
+from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional, Set, Callable
 from datetime import datetime, timezone, timedelta, date
 import asyncio
@@ -51,6 +52,7 @@ except ImportError:
     logging.getLogger(__name__).warning("sentence_transformers not available. Install for embedding support.")
 
 from .base import MemoryStorage
+from .migration_runner import MigrationRunner
 from ..models.memory import Memory, MemoryQueryResult
 from ..utils.hashing import generate_content_hash
 from ..utils.system_detection import (
@@ -320,6 +322,39 @@ class SqliteVecMemoryStorage(MemoryStorage):
 
         await self._execute_with_retry(update_metadata)
 
+    def _run_graph_migrations(self):
+        """Execute Knowledge Graph table migrations.
+
+        Runs migration files for the Knowledge Graph feature (v9.0.0+):
+        - 008_add_graph_table.sql: Creates memory_graph table
+        - 009_add_relationship_type.sql: Adds relationship_type column
+        - 010_fix_asymmetric_relationships.sql: Fixes asymmetric relationships
+
+        This is called during database initialization (both existing and new databases).
+        Migration failures are non-fatal and logged as warnings.
+        """
+        try:
+            migrations_dir = Path(__file__).parent / "migrations"
+            if migrations_dir.exists():
+                migration_runner = MigrationRunner(migrations_dir)
+                graph_migrations = [
+                    "008_add_graph_table.sql",
+                    "009_add_relationship_type.sql",
+                    "010_fix_asymmetric_relationships.sql"
+                ]
+                success, message = migration_runner.run_migrations_sync(
+                    self.conn,
+                    graph_migrations
+                )
+                if not success:
+                    logger.warning(f"Graph migrations warning: {message}")
+                else:
+                    logger.info(f"Graph migrations completed: {message}")
+            else:
+                logger.debug("Migrations directory not found, skipping graph migrations")
+        except Exception as e:
+            logger.warning(f"Failed to run graph migrations (non-fatal): {e}")
+
     def _check_extension_support(self):
         """Check if Python's sqlite3 supports loading extensions."""
         test_conn = None
@@ -544,6 +579,9 @@ SOLUTIONS:
                     except Exception as e:
                         logger.warning(f"Migration check for deleted_at (non-fatal): {e}")
 
+                    # Execute graph table migrations (Knowledge Graph feature v9.0.0+)
+                    self._run_graph_migrations()
+
                     await self._initialize_embedding_model()
                     self._initialized = True
                     logger.info(f"SQLite-vec storage initialized successfully (existing database) with embedding dimension: {self.embedding_dimension}")
@@ -693,6 +731,9 @@ SOLUTIONS:
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_memory_type ON memories(memory_type)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_deleted_at ON memories(deleted_at)')
+
+            # Execute graph table migrations (Knowledge Graph feature v9.0.0+)
+            self._run_graph_migrations()
 
             # Mark as initialized to prevent re-initialization
             self._initialized = True

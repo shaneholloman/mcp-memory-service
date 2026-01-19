@@ -25,7 +25,6 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from mcp_memory_service.config import OAUTH_ENABLED
-from mcp_memory_service.backup.scheduler import get_backup_service, get_backup_scheduler
 
 # OAuth authentication imports (conditional)
 if OAUTH_ENABLED or TYPE_CHECKING:
@@ -88,6 +87,7 @@ async def get_backup_status(
     Returns backup configuration, last backup time, and next scheduled backup.
     """
     try:
+        from mcp_memory_service.backup.scheduler import get_backup_scheduler
         scheduler = get_backup_scheduler()
         status = scheduler.get_status()
 
@@ -118,6 +118,7 @@ async def trigger_backup(
     Creates a new backup of the database regardless of the schedule.
     """
     try:
+        from mcp_memory_service.backup.scheduler import get_backup_service
         backup_service = get_backup_service()
         result = await backup_service.create_backup(description="Manual backup from dashboard")
 
@@ -149,6 +150,7 @@ async def list_backups(
     Returns list of backups sorted by date (newest first).
     """
     try:
+        from mcp_memory_service.backup.scheduler import get_backup_service
         backup_service = get_backup_service()
         backups = backup_service.list_backups()
 
