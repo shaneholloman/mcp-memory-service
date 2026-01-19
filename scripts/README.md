@@ -148,12 +148,18 @@ Scripts for maintaining database integrity and performance.
 
 | Script | Purpose | Quick Usage |
 |--------|---------|-------------|
+| `improve_memory_ontology.py` | **NEW (v9.3.0+):** Re-classify memory types and standardize tags | `python maintenance/improve_memory_ontology.py --dry-run` |
+| `update_graph_relationship_types.py` | **NEW (v9.3.0+):** Infer relationship types using RelationshipInferenceEngine | `python maintenance/update_graph_relationship_types.py --dry-run` |
+| `cleanup_memories.py` | General memory cleanup, enhanced with HTTP/HTTPS auto-detection | `python maintenance/cleanup_memories.py` |
 | `find_duplicates.py` | Find and remove duplicate memories | `python maintenance/find_duplicates.py --execute` |
 | `cleanup_corrupted_encoding.py` | Fix corrupted emoji encoding | `python maintenance/cleanup_corrupted_encoding.py --execute` |
 | `repair_memories.py` | Repair corrupted memory entries | `python maintenance/repair_memories.py` |
-| `cleanup_memories.py` | General memory cleanup | `python maintenance/cleanup_memories.py` |
 | `repair_sqlite_vec_embeddings.py` | Fix embedding inconsistencies | `python maintenance/repair_sqlite_vec_embeddings.py` |
 | `repair_zero_embeddings.py` | Fix zero/null embeddings | `python maintenance/repair_zero_embeddings.py` |
+
+**New in v9.3.0+:**
+- `improve_memory_ontology.py` - Batch re-classify memory types using high-confidence patterns, convert legacy tags to namespace format (topic:, proj:, q:)
+- `update_graph_relationship_types.py` - Use RelationshipInferenceEngine to infer relationship types (causes, fixes, contradicts, supports, follows, related) for existing associations
 
 **Safety Features:**
 - ✅ Dry-run mode available for all scripts

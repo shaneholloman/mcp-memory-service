@@ -151,29 +151,28 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v9.2.1** (January 19, 2026)
+## 🆕 Latest Release: **v9.3.0** (January 19, 2026)
 
-**Critical Bug Fix - Knowledge Graph Table Initialization**
+**Relationship Inference Engine for Knowledge Graphs**
+
+**What's New:**
+- 🧠 **Intelligent Association Typing**: Automatically classifies relationships as causes, fixes, contradicts, supports, follows, or related
+- 🔍 **Multi-Factor Analysis**: Memory type combinations, content semantics, temporal patterns, contradiction detection
+- 📊 **Confidence Scoring**: 0.0-1.0 confidence scores with configurable minimum threshold (default: 0.6)
+- 🛠️ **Maintenance Scripts**: Batch re-classify existing memory types and graph relationships retroactively
+- ✨ **Rich Knowledge Graphs**: Meaningful relationship types beyond simple "related" connections
 
 **What's Fixed:**
-- 🚨 **CRITICAL**: Knowledge Graph operations now work correctly (fixed "no such table: memory_graph" errors)
-- ✅ **MigrationRunner**: Automatic SQL migration execution during storage initialization
-- 📈 **Test Results**: Knowledge Graph tests improved from 14/51 to 44/51 passing (37 fixes)
-- 🔄 **Idempotency**: Safe to run multiple times, handles duplicate migrations gracefully
-- ⚡ **Zero Regressions**: 910 tests passing, no functionality broken
+- 🐛 **Invalid 'knowledge' memory type** (#364): Removed from Web UI, added missing types (document, note, reference)
+- 🔧 **wandb dependency conflict** (#311): Fixed embedding model initialization failures, updated to wandb>=0.18.0
 
-**What Changed:**
-- Migration files now execute automatically during SqliteVecMemoryStorage.initialize()
-- Graph table (memory_graph) is always available for Knowledge Graph operations
-- No user action required - migrations run automatically on next server start
-
-**Technical Details:**
-- New `MigrationRunner` utility class (190 lines, fully tested)
-- Executes graph migrations (008, 009, 010) automatically
-- Non-fatal error handling (logs warnings, doesn't crash)
-- 340 lines of comprehensive unit tests (10 test cases)
+**Technical Highlights:**
+- New RelationshipInferenceEngine (433 lines) with 4 analysis methods
+- Automatic relationship type inference during consolidation
+- Comprehensive test coverage with all 34 ontology tests passing
 
 **Previous Releases**:
+- **v9.2.1** - Critical Knowledge Graph bug fix (MigrationRunner, 37 test fixes, idempotent migrations)
 - **v9.2.0** - Knowledge Graph Dashboard with D3.js v7.9.0 (Interactive force-directed visualization, 6 typed relationships, 7-language support)
 - **v9.0.6** - OAuth Persistent Storage Backend (SQLite-based for multi-worker deployments, <10ms token operations)
 - **v9.0.5** - CRITICAL HOTFIX: OAuth 2.1 token endpoint routing bug fixed (HTTP 422 errors eliminated)

@@ -10,6 +10,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [9.3.0] - 2026-01-19
+
+### Added
+- **Relationship Inference Engine** (Commit 40db489)
+  - Intelligent association typing for knowledge graph relationships
+  - Multi-factor analysis: memory type combinations, content semantics, temporal patterns, contradictions
+  - Pattern-based classification: causes, fixes, contradicts, supports, follows, related
+  - Confidence scoring (0.0-1.0) with configurable minimum threshold (default: 0.6)
+  - **Implementation**:
+    - New module: `src/mcp_memory_service/consolidation/relationship_inference.py` (433 lines)
+    - `RelationshipInferenceEngine` class with async relationship type inference
+    - 4 analysis methods: type combination, content semantics, temporal, contradictions
+  - **Maintenance Scripts**:
+    - `scripts/maintenance/improve_memory_ontology.py` - Batch re-classify memory types and standardize tags
+    - `scripts/maintenance/update_graph_relationship_types.py` - Batch update existing graph relationships
+    - Enhanced `scripts/maintenance/cleanup_memories.py` with HTTP/HTTPS auto-detection
+  - **Benefits**:
+    - Rich knowledge graphs with meaningful relationship types beyond "related"
+    - Automatic relationship type inference during consolidation
+    - Retroactive classification of existing relationships
+
 ### Fixed
 - **Invalid memory type 'knowledge' in Web UI** (#364)
   - Removed invalid "knowledge" option from document upload form
