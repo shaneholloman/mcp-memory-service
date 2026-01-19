@@ -1324,6 +1324,63 @@ if __name__ == "__main__":
             
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
-    
+
     # Run the basic tests
     asyncio.run(run_basic_tests())
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not SQLITE_VEC_AVAILABLE, reason="sqlite-vec not available")
+async def test_embedding_model_initialization():
+    """Regression test for Issue #311: Verify SentenceTransformer loads correctly.
+
+    This test ensures that the wandb dependency conflict fix (setting WANDB_DISABLED)
+    prevents fallback to _HashEmbeddingModel and correctly initializes SentenceTransformer.
+    """
+    temp_dir = tempfile.mkdtemp()
+    db_path = os.path.join(temp_dir, "test_embedding_model.db")
+
+    try:
+        storage = SqliteVecMemoryStorage(db_path)
+        await storage.initialize()
+
+        # Verify SentenceTransformer is loaded (not hash fallback)
+        assert hasattr(storage, 'embedding_model'), "Storage should have embedding_model attribute"
+        model_type_name = type(storage.embedding_model).__name__
+
+        # Should be SentenceTransformer, not _HashEmbeddingModel
+        assert model_type_name == "SentenceTransformer", \
+            f"Expected SentenceTransformer but got {model_type_name}. " \
+            "This indicates wandb dependency conflict is not resolved."
+
+        # Verify correct embedding dimension (all-MiniLM-L6-v2 produces 384-dim vectors)
+        assert storage.embedding_dimension == 384, \
+            f"Expected 384-dim embeddings but got {storage.embedding_dimension}"
+
+        # Test that embeddings are actually generated (not hash-based)
+        test_content = "Test embedding generation"
+        embedding = storage._generate_embedding(test_content)
+
+        assert embedding is not None, "Embedding should not be None"
+        assert len(embedding) == 384, f"Expected 384-dim embedding but got {len(embedding)}"
+
+        # Hash-based embeddings would be deterministic and produce same values
+        # Real embeddings should have floating-point values in reasonable range
+        import numpy as np
+        embedding_array = np.array(embedding)
+
+        # Check that values are in typical range for normalized embeddings
+        assert embedding_array.min() >= -1.5, "Embedding values too small (hash-based?)"
+        assert embedding_array.max() <= 1.5, "Embedding values too large (hash-based?)"
+
+        # Check that not all values are the same (hash would produce patterns)
+        unique_values = len(set(embedding))
+        assert unique_values > 10, \
+            f"Too few unique values ({unique_values}), suspicious for real embeddings"
+
+        print(f"✅ SentenceTransformer initialized correctly (Issue #311 fixed)")
+
+    finally:
+        if storage.conn:
+            storage.conn.close()
+        shutil.rmtree(temp_dir, ignore_errors=True)
