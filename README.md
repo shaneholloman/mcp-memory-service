@@ -151,12 +151,12 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ### 🖥️ Dashboard Preview (v9.3.0)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/doobidoo/mcp-memory-service/wiki/images/dashboard/mcp-memory-dashboard-v9.3.0-tour.gif" alt="MCP Memory Dashboard Tour" width="800"/>
+  <img src="https://raw.githubusercontent.com/wiki/doobidoo/mcp-memory-service/images/dashboard/mcp-memory-dashboard-v9.3.0-tour.gif" alt="MCP Memory Dashboard Tour" width="800"/>
 </p>
 
 | Dashboard | Quality Analytics | Browse Tags |
 |:---------:|:-----------------:|:-----------:|
-| ![Dashboard](https://raw.githubusercontent.com/doobidoo/mcp-memory-service/wiki/images/dashboard/01-dashboard.png) | ![Quality](https://raw.githubusercontent.com/doobidoo/mcp-memory-service/wiki/images/dashboard/13-quality.png) | ![Browse](https://raw.githubusercontent.com/doobidoo/mcp-memory-service/wiki/images/dashboard/03-browse.png) |
+| ![Dashboard](https://raw.githubusercontent.com/wiki/doobidoo/mcp-memory-service/images/dashboard/01-dashboard.png) | ![Quality](https://raw.githubusercontent.com/wiki/doobidoo/mcp-memory-service/images/dashboard/13-quality.png) | ![Browse](https://raw.githubusercontent.com/wiki/doobidoo/mcp-memory-service/images/dashboard/03-browse.gif) |
 
 **8 Dashboard Tabs:** Dashboard • Search • Browse • Documents • Manage • Analytics • **Quality** (NEW) • API Docs
 
