@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.0.1] - 2026-01-23
+
+### Fixed
+- **CRITICAL: MCP tools not loading in Claude Desktop**
+  - Fixed NameError in `handle_list_tools()` caused by JavaScript-style booleans (`false`/`true`) instead of Python booleans (`False`/`True`)
+  - Affected locations: `src/mcp_memory_service/server_impl.py` lines 1446, 1662, 2182, 2380
+  - Impact: v10.0.0 prevented ALL MCP tools from loading in Claude Desktop
+  - Error message: "name 'false' is not defined"
+  - Resolution: All tool schemas now use proper Python boolean literals
+  - Tools now load correctly in Claude Desktop
+  - Commit: 2958aef
+
 ## [10.0.0] - 2026-01-23
 
 ### Major Changes

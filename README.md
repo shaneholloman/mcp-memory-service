@@ -165,29 +165,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.0.0** (January 23, 2026)
+## 🆕 Latest Release: **v10.0.1** (January 23, 2026)
 
-**Major API Redesign: 64% Tool Consolidation**
+**CRITICAL HOTFIX: MCP Tools Loading Restored**
 
-**What's New:**
-- 🎯 **API Simplification**: 34 tools consolidated to 12 unified tools (64% reduction)
-- 🔄 **100% Backwards Compatible**: All 33 deprecated tools continue working with warnings
-- 🚀 **Enhanced Capabilities**: Unified tools combine functionality (e.g., filter by tags + time range in one call)
-- 📚 **Migration Guide**: Complete documentation in `docs/MIGRATION.md`
-- ✅ **Zero Breaking Changes**: Existing integrations work unchanged until v11.0.0
-- 🧪 **62 New Tests**: 100% pass rate maintained (968 total tests)
+**What's Fixed:**
+- 🚨 **v10.0.0 Tool Loading Bug**: Fixed critical NameError preventing ALL MCP tools from loading in Claude Desktop
+- 🔧 **Root Cause**: JavaScript-style booleans (`false`/`true`) in tool schemas instead of Python booleans (`False`/`True`)
+- ✅ **Resolution**: All tool schemas now use proper Python boolean literals
+- 📍 **Affected Lines**: `server_impl.py` lines 1446, 1662, 2182, 2380
+- ⚡ **Impact**: Tools now load correctly - v10.0.0 was completely broken for Claude Desktop users
 
-**Highlights:**
-- Delete operations: 6 tools → `memory_delete` (tags + time filters + dry_run mode)
-- Search operations: 6 tools → `memory_search` (semantic/exact/hybrid modes + quality boost)
-- Consolidation: 7 tools → `memory_consolidate` (run/status/recommend/pause/resume actions)
-- Simple renames: `store_memory` → `memory_store`, `check_database_health` → `memory_health`, etc.
-
-**Migration Timeline:**
-- v10.0+: Old tools work with deprecation warnings (current release)
-- v11.0: Old tools removed (breaking change, date TBD)
+**Apology**: We sincerely apologize for releasing v10.0.0 with this critical bug. The issue was caught and fixed within hours, and we've improved our testing to prevent similar issues in future releases.
 
 **Previous Releases**:
+- **v10.0.0** - ⚠️ BROKEN: Major API Redesign (64% Tool Consolidation) - Tools failed to load, use v10.0.1 instead
 - **v9.3.1** - Critical shutdown bug fix (SIGTERM/SIGINT handling, clean server termination)
 - **v9.3.0** - Relationship Inference Engine (Intelligent association typing, multi-factor analysis, confidence scoring)
 - **v9.2.1** - Critical Knowledge Graph bug fix (MigrationRunner, 37 test fixes, idempotent migrations)
