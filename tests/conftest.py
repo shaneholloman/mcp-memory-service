@@ -64,15 +64,47 @@ def pytest_sessionfinish(session, exitstatus):
     """
     Cleanup all test memories at end of test session.
 
-    Deletes all memories tagged with TEST_MEMORY_TAG to prevent
-    test data from polluting the production database.
+    SAFETY: Only cleans test databases, never production.
+    Deletes all memories tagged with TEST_MEMORY_TAG.
     """
     try:
         from mcp_memory_service.api import delete_by_tag
-        result = delete_by_tag([TEST_MEMORY_TAG])
+        from mcp_memory_service.config import DATABASE_PATH
+        import tempfile
+
+        # SAFETY CHECK 1: Verify database path is in temp directory
+        db_path = str(DATABASE_PATH)
+        temp_prefix = tempfile.gettempdir()
+
+        if not db_path.startswith(temp_prefix):
+            # Check if it's a production path
+            production_indicators = [
+                "Library/Application Support/mcp-memory",
+                ".mcp-memory",
+                "mcp-memory-service/data"
+            ]
+
+            if any(indicator in db_path for indicator in production_indicators):
+                print(f"\n[Test Cleanup] ⚠️  SAFETY ABORT: Refusing to clean production database!")
+                print(f"[Test Cleanup] Database path: {db_path}")
+                print(f"[Test Cleanup] Tests must use temp_db_path fixture for isolation.")
+                return
+
+        # SAFETY CHECK 2: Log which database we're cleaning
+        print(f"\n[Test Cleanup] Cleaning test database: {db_path}")
+
+        # Perform cleanup
+        # Use allow_production=True since we already validated path above
+        result = delete_by_tag([TEST_MEMORY_TAG], allow_production=True)
         deleted = result.get('deleted', 0) if isinstance(result, dict) else 0
+
         if deleted > 0:
-            print(f"\n[Test Cleanup] Deleted {deleted} test memories tagged with '{TEST_MEMORY_TAG}'")
+            print(f"[Test Cleanup] ✅ Deleted {deleted} test memories tagged with '{TEST_MEMORY_TAG}'")
+        else:
+            print(f"[Test Cleanup] ✅ No test memories to clean")
+
     except Exception as e:
-        # Don't fail the test session if cleanup fails
-        print(f"\n[Test Cleanup] Warning: Could not cleanup test memories: {e}")
+        # Make errors VISIBLE instead of silent
+        print(f"\n[Test Cleanup] ❌ ERROR during cleanup: {e}")
+        print(f"[Test Cleanup] This may indicate a configuration problem.")
+        # Still don't fail the test session

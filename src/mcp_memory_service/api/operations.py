@@ -447,7 +447,7 @@ async def _scheduler_status_async() -> CompactSchedulerStatus:
 
 
 @sync_wrapper
-async def delete_by_tag(tags: Union[str, List[str]]) -> dict:
+async def delete_by_tag(tags: Union[str, List[str]], allow_production: bool = False) -> dict:
     """
     Delete memories by tag(s).
 
@@ -456,13 +456,15 @@ async def delete_by_tag(tags: Union[str, List[str]]) -> dict:
 
     Args:
         tags: Single tag string or list of tags. Memories matching ANY tag will be deleted.
+        allow_production: Safety flag to allow production deletion (default: False).
+                         Only set to True if you explicitly want to delete from production.
 
     Returns:
         Dict with 'deleted' count and 'message' string
 
     Raises:
         RuntimeError: If storage backend is not available
-        ValueError: If tags is empty
+        ValueError: If tags is empty or attempting production deletion without explicit flag
 
     Example:
         >>> from mcp_memory_service.api import delete_by_tag
@@ -477,6 +479,10 @@ async def delete_by_tag(tags: Union[str, List[str]]) -> dict:
     Performance:
         - Execution time: ~10-50ms (depends on number of matches)
         - Uses soft-delete (sets deleted_at timestamp)
+
+    Safety:
+        - Prevents accidental deletion from production database
+        - Requires allow_production=True flag for non-temp databases
     """
     # Normalize tags to list
     if isinstance(tags, str):
@@ -487,6 +493,29 @@ async def delete_by_tag(tags: Union[str, List[str]]) -> dict:
     # Validate input
     if not tag_list:
         raise ValueError("At least one tag must be provided")
+
+    # SAFETY CHECK: Prevent accidental production deletion
+    if not allow_production:
+        from mcp_memory_service.config import DATABASE_PATH
+        import tempfile
+
+        db_path = str(DATABASE_PATH)
+        temp_prefix = tempfile.gettempdir()
+
+        # Only allow deletion from temp databases by default
+        if not db_path.startswith(temp_prefix):
+            production_indicators = [
+                "Library/Application Support/mcp-memory",
+                ".mcp-memory",
+                "mcp-memory-service/data"
+            ]
+
+            if any(indicator in db_path for indicator in production_indicators):
+                raise ValueError(
+                    f"Safety check: Refusing to delete from production database.\n"
+                    f"Database path: {db_path}\n"
+                    f"If you really want to delete from production, pass allow_production=True"
+                )
 
     # Get storage instance
     storage = await get_storage_async()
