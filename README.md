@@ -165,21 +165,30 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v9.3.1** (January 20, 2026)
+## 🆕 Latest Release: **v10.0.0** (January 23, 2026)
 
-**Critical Shutdown Bug Fix**
+**Major API Redesign: 64% Tool Consolidation**
 
-**What's Fixed:**
-- 🔧 **Fatal Python error during shutdown** (#368): Resolved "database is locked" crash when Claude Desktop sends shutdown signals (SIGTERM/SIGINT)
-- ✨ **Clean Server Shutdown**: Server now terminates cleanly without "Server disconnected" errors in Claude Desktop
-- 🐛 **Root Cause Fix**: Changed signal handler from `sys.exit(0)` to `os._exit(0)` to avoid buffered I/O lock deadlock during interpreter shutdown
+**What's New:**
+- 🎯 **API Simplification**: 34 tools consolidated to 12 unified tools (64% reduction)
+- 🔄 **100% Backwards Compatible**: All 33 deprecated tools continue working with warnings
+- 🚀 **Enhanced Capabilities**: Unified tools combine functionality (e.g., filter by tags + time range in one call)
+- 📚 **Migration Guide**: Complete documentation in `docs/MIGRATION.md`
+- ✅ **Zero Breaking Changes**: Existing integrations work unchanged until v11.0.0
+- 🧪 **62 New Tests**: 100% pass rate maintained (968 total tests)
 
-**Technical Details:**
-- Previous behavior: `sys.exit(0)` attempted to flush buffered streams, causing deadlock on held locks
-- New behavior: `os._exit(0)` bypasses I/O cleanup after proper `_cleanup_on_shutdown()` completes
-- Impact: Eliminates "Fatal Python error: _enter_buffered_busy: could not acquire lock" during shutdown
+**Highlights:**
+- Delete operations: 6 tools → `memory_delete` (tags + time filters + dry_run mode)
+- Search operations: 6 tools → `memory_search` (semantic/exact/hybrid modes + quality boost)
+- Consolidation: 7 tools → `memory_consolidate` (run/status/recommend/pause/resume actions)
+- Simple renames: `store_memory` → `memory_store`, `check_database_health` → `memory_health`, etc.
+
+**Migration Timeline:**
+- v10.0+: Old tools work with deprecation warnings (current release)
+- v11.0: Old tools removed (breaking change, date TBD)
 
 **Previous Releases**:
+- **v9.3.1** - Critical shutdown bug fix (SIGTERM/SIGINT handling, clean server termination)
 - **v9.3.0** - Relationship Inference Engine (Intelligent association typing, multi-factor analysis, confidence scoring)
 - **v9.2.1** - Critical Knowledge Graph bug fix (MigrationRunner, 37 test fixes, idempotent migrations)
 - **v9.2.0** - Knowledge Graph Dashboard with D3.js v7.9.0 (Interactive force-directed visualization, 6 typed relationships, 7-language support)

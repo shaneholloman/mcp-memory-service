@@ -10,6 +10,128 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.0.0] - 2026-01-23
+
+### Major Changes
+
+**MCP Tool Consolidation: 34 → 12 Tools (64% API Simplification)**
+
+The most significant API redesign in MCP Memory Service history - consolidating 34 tools into 12 unified tools for better usability, maintainability, and MCP best practices compliance. While technically maintaining 100% backwards compatibility, this represents a new generation of the API architecture warranting a major version bump.
+
+**Key Achievements:**
+- **64% Tool Reduction**: 34 tools → 12 tools with enhanced capabilities
+- **100% Backwards Compatibility**: All 33 deprecated tools continue working with deprecation warnings
+- **Zero Breaking Changes**: Existing integrations work unchanged until v11.0.0
+- **Enhanced Capabilities**: New unified tools offer combined functionality (e.g., filter by tags + time range)
+- **Comprehensive Testing**: 62 new tests added (100% pass rate, 968 total tests)
+- **Migration Guide**: Complete documentation in `docs/MIGRATION.md`
+
+### Tool Consolidation Details
+
+**Delete Operations (6 → 1):**
+- `delete_memory`, `delete_by_tag`, `delete_by_tags`, `delete_by_all_tags`, `delete_by_timeframe`, `delete_before_date`
+- **Unified as:** `memory_delete` with combined filters (tags + time range + dry_run mode)
+
+**Search Operations (6 → 1):**
+- `retrieve_memory`, `recall_memory`, `recall_by_timeframe`, `retrieve_with_quality_boost`, `exact_match_retrieve`, `debug_retrieve`
+- **Unified as:** `memory_search` with modes (semantic/exact/hybrid), quality boost, and time filtering
+
+**Consolidation Operations (7 → 1):**
+- `consolidate_memories`, `consolidation_status`, `consolidation_recommendations`, `scheduler_status`, `trigger_consolidation`, `pause_consolidation`, `resume_consolidation`
+- **Unified as:** `memory_consolidate` with action parameter (run/status/recommend/scheduler/pause/resume)
+
+**Ingestion Operations (2 → 1):**
+- `ingest_document`, `ingest_directory`
+- **Unified as:** `memory_ingest` with automatic directory detection
+
+**Quality Operations (3 → 1):**
+- `rate_memory`, `get_memory_quality`, `analyze_quality_distribution`
+- **Unified as:** `memory_quality` with action parameter (rate/get/analyze)
+
+**Graph Operations (3 → 1):**
+- `find_connected_memories`, `find_shortest_path`, `get_memory_subgraph`
+- **Unified as:** `memory_graph` with action parameter (connected/path/subgraph)
+
+**Simple Renames (5 tools):**
+- `store_memory` → `memory_store`
+- `check_database_health` → `memory_health`
+- `get_cache_stats` → `memory_stats`
+- `cleanup_duplicates` → `memory_cleanup`
+- `update_memory_metadata` → `memory_update`
+
+**New Tool:**
+- `memory_list` - Browse memories with pagination (replaces `search_by_tag` with enhanced features)
+
+### Deprecation Architecture
+
+**New Compatibility Layer:** `src/mcp_memory_service/server/compat.py` (318 lines)
+- Centralized `DEPRECATED_TOOLS` mapping with migration hints
+- Automatic warning emission for deprecated tool usage
+- Clean delegation to new unified handlers
+- Zero performance overhead for new tools
+
+**Deprecation Timeline:**
+- **v10.0+**: All old tools work with warnings (current release)
+- **v11.0**: Old tools removed (breaking change)
+
+### Technical Improvements
+
+**Code Quality:**
+- Reduced API surface area by 64%
+- Eliminated duplicate validation logic across 33 handlers
+- Improved maintainability with unified error handling
+- Better parameter naming consistency (e.g., `n_results` → `limit`, `content_hash` standardized)
+
+**Testing:**
+- 62 new comprehensive tests covering all tool migrations
+- 100% test pass rate maintained (968 total tests)
+- Validation of deprecation warnings and parameter transformations
+- Integration tests for unified handler flows
+
+**Documentation:**
+- Complete migration guide with side-by-side examples
+- Deprecation warnings with actionable migration hints
+- Updated MCP schema with new tool definitions
+- CLAUDE.md updated with new tool reference
+
+### Migration Guide
+
+**For Existing Users:**
+1. **No Action Required**: Old tool names continue working
+2. **Optional**: Update to new tool names to eliminate deprecation warnings
+3. **Follow Migration Guide**: `docs/MIGRATION.md` provides mapping for all tools
+4. **Timeline**: Update before v11.0.0 (removal date TBD)
+
+**Example Migration:**
+```python
+# Old (v9.x) - Still works in v10.0 with warning
+{"tool": "retrieve_memory", "query": "python", "n_results": 5}
+
+# New (v10.0+) - No warnings
+{"tool": "memory_search", "query": "python", "limit": 5, "mode": "semantic"}
+```
+
+**Enhanced Capabilities:**
+```python
+# Old (v9.x) - Required multiple tool calls
+delete_by_tags(tags=["temp"])  # First call
+delete_by_timeframe(start="2024-01-01")  # Second call
+
+# New (v10.0+) - Single unified call
+memory_delete(tags=["temp"], after="2024-01-01", tag_match="any")
+```
+
+### Related Issues
+
+- Closes #372 - MCP Tool Optimization
+- Related #374 - Follow-up performance optimizations
+
+### Contributors
+
+Special thanks to the community for feedback on API design and testing the deprecation layer during development.
+
+---
+
 ## [9.3.1] - 2026-01-20
 
 ### Fixed
