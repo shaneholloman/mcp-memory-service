@@ -262,11 +262,16 @@ export MCP_QUALITY_SYSTEM_ENABLED=true
 
 # Consolidation (v8.23.0+)
 export MCP_CONSOLIDATION_ENABLED=true
+
+# SQLite Concurrent Access (CRITICAL for HTTP + MCP servers)
+export MCP_MEMORY_SQLITE_PRAGMAS=journal_mode=WAL,busy_timeout=15000,cache_size=20000
 ```
 
 **Configuration Precedence:** Environment variables > .env file > Global Claude Config > defaults
 
 **Important:** After updating `.env`, always restart servers. Use `./scripts/update_and_restart.sh` for automated workflow.
+
+**CRITICAL:** `MCP_MEMORY_SQLITE_PRAGMAS` must include `journal_mode=WAL` for concurrent access. Omitting WAL disables concurrent reads/writes and causes "database is locked" errors when HTTP server and MCP server run simultaneously.
 
 ### Claude Desktop Integration
 
@@ -361,7 +366,7 @@ export MCP_CONSOLIDATION_ENABLED=true
 | Wrong backend showing | `python scripts/validation/diagnose_backend_config.py` |
 | Port mismatch (hooks timeout) | Verify same port in `~/.claude/hooks/config.json` and server (default: 8000) |
 | Schema validation errors after PR merge | Run `/mcp` in Claude Code to reconnect with new schema |
-| Database lock errors | Ensure `MCP_MEMORY_SQLITE_PRAGMAS` in `.env`, restart servers |
+| Database lock errors | Add `journal_mode=WAL` to `MCP_MEMORY_SQLITE_PRAGMAS` in `.env`, restart servers |
 | Tests failing after git pull | Run `./scripts/update_and_restart.sh` (installs deps, restarts server) |
 
 **Comprehensive troubleshooting:** [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-quick-reference.md)
