@@ -165,21 +165,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.0.1** (January 23, 2026)
+## 🆕 Latest Release: **v10.0.2** (January 23, 2026)
 
-**CRITICAL HOTFIX: MCP Tools Loading Restored**
+**FINAL FIX: Tool List Cleanup (64% Tool Reduction Now Complete)**
 
 **What's Fixed:**
-- 🚨 **v10.0.0 Tool Loading Bug**: Fixed critical NameError preventing ALL MCP tools from loading in Claude Desktop
-- 🔧 **Root Cause**: JavaScript-style booleans (`false`/`true`) in tool schemas instead of Python booleans (`False`/`True`)
-- ✅ **Resolution**: All tool schemas now use proper Python boolean literals
-- 📍 **Affected Lines**: `server_impl.py` lines 1446, 1662, 2182, 2380
-- ⚡ **Impact**: Tools now load correctly - v10.0.0 was completely broken for Claude Desktop users
-
-**Apology**: We sincerely apologize for releasing v10.0.0 with this critical bug. The issue was caught and fixed within hours, and we've improved our testing to prevent similar issues in future releases.
+- ✅ **Clean Tool List**: Only 12 unified tools now visible in Claude Desktop (previously showed 29)
+- 🎯 **Achieved Promise**: "64% tool reduction" (34→12 tools) now realized in practice
+- 🔄 **Full Backwards Compatibility**: All 20 deprecated tool names still work via routing layer
+- 📋 **User Experience**: Cleaner, more focused tool list in MCP clients
+- 🛠️ **No Breaking Changes**: Existing integrations continue working unchanged
 
 **Previous Releases**:
-- **v10.0.0** - ⚠️ BROKEN: Major API Redesign (64% Tool Consolidation) - Tools failed to load, use v10.0.1 instead
+- **v10.0.1** - CRITICAL HOTFIX: MCP tools loading restored (Python boolean fix)
+- **v10.0.0** - ⚠️ BROKEN: Major API Redesign (64% Tool Consolidation) - Tools failed to load, use v10.0.2 instead
 - **v9.3.1** - Critical shutdown bug fix (SIGTERM/SIGINT handling, clean server termination)
 - **v9.3.0** - Relationship Inference Engine (Intelligent association typing, multi-factor analysis, confidence scoring)
 - **v9.2.1** - Critical Knowledge Graph bug fix (MigrationRunner, 37 test fixes, idempotent migrations)

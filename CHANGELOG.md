@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.0.2] - 2026-01-23
+
+### Fixed
+- **Tool list now shows only 12 unified tools**
+  - Removed 20 deprecated tool definitions from MCP tool list advertisement
+  - Deprecated tools still work via backwards compatibility routing in `compat.py`
+  - Achieves the promised "64% tool reduction" (34→12 visible tools)
+  - Claude Desktop and other MCP clients now see clean, focused tool list
+  - No breaking changes - all old tool names continue working with deprecation warnings
+  - Tools removed from advertisement: `recall_memory`, `retrieve_memory`, `retrieve_with_quality_boost`, `debug_retrieve`, `exact_match_retrieve`, `recall_by_timeframe`, `delete_memory`, `delete_by_tag`, `delete_by_tags`, `delete_by_all_tags`, `delete_by_timeframe`, `delete_before_date`, `get_raw_embedding`, `consolidate_memories`, `consolidation_status`, `consolidation_recommendations`, `scheduler_status`, `trigger_consolidation`, `pause_consolidation`, `resume_consolidation`
+
 ## [10.0.1] - 2026-01-23
 
 ### Fixed
