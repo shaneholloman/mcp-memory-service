@@ -1443,7 +1443,7 @@ Examples:
                                 },
                                 "include_debug": {
                                     "type": "boolean",
-                                    "default": false,
+                                    "default": False,
                                     "description": "Include debug information in response"
                                 },
                                 "max_response_chars": {
@@ -1659,7 +1659,7 @@ Examples:
                                 },
                                 "dry_run": {
                                     "type": "boolean",
-                                    "default": false,
+                                    "default": False,
                                     "description": "Preview deletions without executing"
                                 }
                             }
@@ -2179,7 +2179,7 @@ Examples:
                                     },
                                     "immediate": {
                                         "type": "boolean",
-                                        "default": true,
+                                        "default": True,
                                         "description": "For 'run' action: execute immediately vs schedule for later"
                                     }
                                 },
@@ -2377,7 +2377,7 @@ Examples:
                                 },
                                 "recursive": {
                                     "type": "boolean",
-                                    "default": true,
+                                    "default": True,
                                     "description": "For directory mode: process subdirectories"
                                 },
                                 "file_extensions": {
