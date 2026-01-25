@@ -165,18 +165,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.0.2** (January 23, 2026)
+## 🆕 Latest Release: **v10.0.3** (January 25, 2026)
 
-**FINAL FIX: Tool List Cleanup (64% Tool Reduction Now Complete)**
+**CRITICAL FIX: Backup Scheduler Now Works (2 Critical Bugs Fixed)**
 
 **What's Fixed:**
-- ✅ **Clean Tool List**: Only 12 unified tools now visible in Claude Desktop (previously showed 29)
-- 🎯 **Achieved Promise**: "64% tool reduction" (34→12 tools) now realized in practice
-- 🔄 **Full Backwards Compatibility**: All 20 deprecated tool names still work via routing layer
-- 📋 **User Experience**: Cleaner, more focused tool list in MCP clients
-- 🛠️ **No Breaking Changes**: Existing integrations continue working unchanged
+- 🔧 **Scheduler Never Started**: Automatic backups now work as intended (FastAPI lifespan integration)
+- 📅 **Past Dates Fixed**: "Next Scheduled" always shows future timestamp (multi-interval downtime handling)
+- ✅ **Comprehensive Testing**: 8 new tests covering hourly/daily/weekly intervals and past-due scenarios
+- 🐛 **Bug Existed Since**: November 2025 (commit 8a19ba8, PR #233)
 
 **Previous Releases**:
+- **v10.0.2** - Tool List Cleanup (Only 12 unified tools visible, 64% tool reduction complete)
 - **v10.0.1** - CRITICAL HOTFIX: MCP tools loading restored (Python boolean fix)
 - **v10.0.0** - ⚠️ BROKEN: Major API Redesign (64% Tool Consolidation) - Tools failed to load, use v10.0.2 instead
 - **v9.3.1** - Critical shutdown bug fix (SIGTERM/SIGINT handling, clean server termination)
