@@ -333,20 +333,36 @@ class BackupService:
         }
 
     def _calculate_next_backup_time(self) -> Optional[datetime]:
-        """Calculate the next scheduled backup time."""
+        """Calculate the next scheduled backup time.
+
+        Ensures the returned time is always in the future by incrementing
+        by the interval until a future time is found. This handles cases
+        where the server was offline longer than the backup interval.
+        """
         if not BACKUP_ENABLED or not self.last_backup_time:
             return None
 
         last_backup_dt = datetime.fromtimestamp(self.last_backup_time, tz=timezone.utc)
 
+        # Determine interval
         if BACKUP_INTERVAL == 'hourly':
-            return last_backup_dt + timedelta(hours=1)
+            interval = timedelta(hours=1)
         elif BACKUP_INTERVAL == 'daily':
-            return last_backup_dt + timedelta(days=1)
+            interval = timedelta(days=1)
         elif BACKUP_INTERVAL == 'weekly':
-            return last_backup_dt + timedelta(weeks=1)
+            interval = timedelta(weeks=1)
+        else:
+            return None
 
-        return None
+        # Calculate next time, ensuring it's in the future
+        next_time = last_backup_dt + interval
+        now = datetime.now(timezone.utc)
+
+        # Keep adding intervals until we get a future time
+        while next_time <= now:
+            next_time += interval
+
+        return next_time
 
 
 class BackupScheduler:

@@ -164,6 +164,28 @@ def test_server_handles_invalid_json():
     assert response.status_code in [400, 422]
 
 
+@pytest.mark.asyncio
+async def test_backup_scheduler_integrates_with_lifespan():
+    """Test that backup scheduler starts and stops with FastAPI lifespan."""
+    from mcp_memory_service.web.app import app
+    from mcp_memory_service.config import BACKUP_ENABLED
+
+    if not BACKUP_ENABLED:
+        pytest.skip("Backup scheduler disabled in config")
+
+    # Access the lifespan context manager
+    async with app.router.lifespan_context(app):
+        # Import the global backup_scheduler
+        from mcp_memory_service.web.app import backup_scheduler
+
+        # Should be started
+        assert backup_scheduler is not None
+        assert backup_scheduler.is_running
+
+    # After context exit, should be stopped
+    assert not backup_scheduler.is_running
+
+
 if __name__ == "__main__":
     # Allow running tests directly for quick verification
     pytest.main([__file__, "-v"])

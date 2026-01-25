@@ -1,0 +1,110 @@
+"""Unit tests for backup scheduler."""
+import pytest
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+from mcp_memory_service.backup.scheduler import BackupScheduler
+
+
+@pytest.fixture
+def scheduler():
+    """Create a backup scheduler instance."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_ENABLED', True):
+        scheduler = BackupScheduler()
+        yield scheduler
+
+
+def test_next_backup_time_hourly_past_due(scheduler):
+    """Test next backup calculation when 5 hours overdue (hourly interval)."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_INTERVAL', 'hourly'):
+        # Set last backup to 5 hours ago
+        five_hours_ago = datetime.now(timezone.utc) - timedelta(hours=5)
+        scheduler.backup_service.last_backup_time = five_hours_ago.timestamp()
+
+        next_time = scheduler.backup_service._calculate_next_backup_time()
+
+        assert next_time is not None
+        assert next_time > datetime.now(timezone.utc)
+        # Should be within 1 hour from now
+        assert next_time <= datetime.now(timezone.utc) + timedelta(hours=1, minutes=5)
+
+
+def test_next_backup_time_daily_past_due(scheduler):
+    """Test next backup calculation when 10 days overdue (daily interval)."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_INTERVAL', 'daily'):
+        # Set last backup to 10 days ago
+        ten_days_ago = datetime.now(timezone.utc) - timedelta(days=10)
+        scheduler.backup_service.last_backup_time = ten_days_ago.timestamp()
+
+        next_time = scheduler.backup_service._calculate_next_backup_time()
+
+        assert next_time is not None
+        assert next_time > datetime.now(timezone.utc)
+        # Should be within 1 day from now
+        assert next_time <= datetime.now(timezone.utc) + timedelta(days=1, hours=1)
+
+
+def test_next_backup_time_weekly_past_due(scheduler):
+    """Test next backup calculation when 4 weeks overdue (weekly interval)."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_INTERVAL', 'weekly'):
+        # Set last backup to 4 weeks ago
+        four_weeks_ago = datetime.now(timezone.utc) - timedelta(weeks=4)
+        scheduler.backup_service.last_backup_time = four_weeks_ago.timestamp()
+
+        next_time = scheduler.backup_service._calculate_next_backup_time()
+
+        assert next_time is not None
+        assert next_time > datetime.now(timezone.utc)
+        # Should be within 1 week from now
+        assert next_time <= datetime.now(timezone.utc) + timedelta(weeks=1, hours=1)
+
+
+def test_next_backup_time_recent_backup(scheduler):
+    """Test next backup calculation when backup was recent."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_INTERVAL', 'hourly'):
+        # Set last backup to 30 minutes ago
+        thirty_min_ago = datetime.now(timezone.utc) - timedelta(minutes=30)
+        scheduler.backup_service.last_backup_time = thirty_min_ago.timestamp()
+
+        next_time = scheduler.backup_service._calculate_next_backup_time()
+
+        assert next_time is not None
+        assert next_time > datetime.now(timezone.utc)
+        # Should be ~30 minutes from now
+        expected = datetime.now(timezone.utc) + timedelta(minutes=30)
+        assert abs((next_time - expected).total_seconds()) < 60  # Within 1 minute tolerance
+
+
+def test_next_backup_time_disabled(scheduler):
+    """Test next backup calculation when backups are disabled."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_ENABLED', False):
+        scheduler.backup_service.last_backup_time = datetime.now(timezone.utc).timestamp()
+
+        next_time = scheduler.backup_service._calculate_next_backup_time()
+
+        assert next_time is None
+
+
+def test_next_backup_time_no_last_backup(scheduler):
+    """Test next backup calculation when no last backup exists."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_INTERVAL', 'hourly'):
+        scheduler.backup_service.last_backup_time = None
+
+        next_time = scheduler.backup_service._calculate_next_backup_time()
+
+        assert next_time is None
+
+
+@pytest.mark.asyncio
+async def test_scheduler_lifecycle(scheduler):
+    """Test scheduler start/stop lifecycle."""
+    with patch('mcp_memory_service.backup.scheduler.BACKUP_ENABLED', True):
+        # Mock the background task
+        scheduler._task = MagicMock()
+
+        # Start should succeed
+        await scheduler.start()
+        assert scheduler.is_running
+
+        # Stop should succeed
+        await scheduler.stop()
+        assert not scheduler.is_running

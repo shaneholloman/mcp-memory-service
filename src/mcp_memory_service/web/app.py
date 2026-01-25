@@ -44,7 +44,8 @@ from ..config import (
     OAUTH_ENABLED,
     CONSOLIDATION_ENABLED,
     CONSOLIDATION_CONFIG,
-    CONSOLIDATION_SCHEDULE
+    CONSOLIDATION_SCHEDULE,
+    BACKUP_ENABLED
 )
 from .dependencies import set_storage, get_storage, create_storage_backend
 from .api.health import router as health_router
@@ -76,6 +77,9 @@ oauth_cleanup_task: Optional[asyncio.Task] = None
 consolidator: Optional["DreamInspiredConsolidator"] = None
 consolidation_scheduler: Optional["ConsolidationScheduler"] = None
 
+# Global backup scheduler instance
+backup_scheduler: Optional["BackupScheduler"] = None
+
 
 async def oauth_cleanup_background_task():
     """Background task to periodically clean up expired OAuth tokens and codes."""
@@ -103,7 +107,7 @@ async def oauth_cleanup_background_task():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan management."""
-    global storage, mdns_advertiser, oauth_cleanup_task, consolidator, consolidation_scheduler
+    global storage, mdns_advertiser, oauth_cleanup_task, consolidator, consolidation_scheduler, backup_scheduler
 
     # Startup
     logger.info("Starting MCP Memory Service HTTP interface...")
@@ -187,7 +191,23 @@ async def lifespan(app: FastAPI):
                 mdns_advertiser = None
         else:
             logger.info("mDNS service advertisement disabled")
-            
+
+        # Start backup scheduler if enabled
+        if BACKUP_ENABLED:
+            try:
+                from ..backup.scheduler import get_backup_scheduler
+                backup_scheduler = get_backup_scheduler()
+                await backup_scheduler.start()
+                logger.info("Backup scheduler started")
+            except ImportError:
+                logger.warning("Backup scheduler not available (backup module not installed)")
+                backup_scheduler = None
+            except Exception as e:
+                logger.error(f"Error starting backup scheduler: {e}")
+                backup_scheduler = None
+        else:
+            logger.info("Backup scheduler disabled")
+
     except Exception as e:
         logger.error(f"Failed to initialize storage: {e}")
         raise
@@ -204,6 +224,14 @@ async def lifespan(app: FastAPI):
             logger.info("Consolidation scheduler stopped")
         except Exception as e:
             logger.error(f"Error stopping consolidation scheduler: {e}")
+
+    # Stop backup scheduler
+    if backup_scheduler:
+        try:
+            await backup_scheduler.stop()
+            logger.info("Backup scheduler stopped")
+        except Exception as e:
+            logger.error(f"Error stopping backup scheduler: {e}")
 
     # Stop mDNS advertisement
     if mdns_advertiser:
