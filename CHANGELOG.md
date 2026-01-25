@@ -10,13 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-### Changed
-- **Python 3.14 Support**: Updated tokenizers dependency from ==0.20.3 to >=0.22.2 (Fixes #376)
+## [10.1.0] - 2026-01-25
+
+### Added
+- **Python 3.14 Support**: Extended Python compatibility to 3.10-3.14 (Fixes #376)
+  - Upgraded tokenizers dependency from ==0.20.3 to >=0.22.2
   - Resolves PyO3 compatibility issues preventing installation on Python 3.14
-  - Fixed tokenizers API change: `encode((query, text))` → `encode(query, pair=text)`
-  - No breaking changes - tokenizers API remains compatible
-  - Tested on Python 3.10-3.14
-  - All 968 tests passing
+  - Fixed tokenizers API change: `encode((query, text))` → `encode(query, pair=text)` in ONNX ranker
+  - No breaking changes - maintains full backward compatibility
+  - All 1005 tests passing across all supported Python versions
+  - Enables adoption by projects requiring Python 3.14
 
 ## [10.0.3] - 2026-01-25
 

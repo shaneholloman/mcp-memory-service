@@ -165,17 +165,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.0.3** (January 25, 2026)
+## 🆕 Latest Release: **v10.1.0** (January 25, 2026)
 
-**CRITICAL FIX: Backup Scheduler Now Works (2 Critical Bugs Fixed)**
+**NEW FEATURE: Python 3.14 Support**
 
-**What's Fixed:**
-- 🔧 **Scheduler Never Started**: Automatic backups now work as intended (FastAPI lifespan integration)
-- 📅 **Past Dates Fixed**: "Next Scheduled" always shows future timestamp (multi-interval downtime handling)
-- ✅ **Comprehensive Testing**: 8 new tests covering hourly/daily/weekly intervals and past-due scenarios
-- 🐛 **Bug Existed Since**: November 2025 (commit 8a19ba8, PR #233)
+**What's New:**
+- 🐍 **Python 3.14 Compatibility**: Expanded Python support from 3.10-3.13 to 3.10-3.14
+- 📦 **Tokenizers Upgrade**: Updated to >=0.22.2 (resolves PyO3 compatibility issues)
+- 🔄 **Zero Breaking Changes**: Full backward compatibility maintained across all Python versions
+- ✅ **1005 Tests Passing**: All tests verified across Python 3.10-3.14
 
 **Previous Releases**:
+- **v10.0.3** - CRITICAL FIX: Backup Scheduler Now Works (2 critical bugs fixed, FastAPI lifespan integration)
 - **v10.0.2** - Tool List Cleanup (Only 12 unified tools visible, 64% tool reduction complete)
 - **v10.0.1** - CRITICAL HOTFIX: MCP tools loading restored (Python boolean fix)
 - **v10.0.0** - ⚠️ BROKEN: Major API Redesign (64% Tool Consolidation) - Tools failed to load, use v10.0.2 instead
