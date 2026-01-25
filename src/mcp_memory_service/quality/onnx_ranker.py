@@ -359,7 +359,7 @@ class ONNXRankerModel:
                     # Use tokenizers package's ability to encode pairs, which correctly handles special tokens and token type IDs.
                     self._tokenizer.enable_truncation(max_length=512)
                     self._tokenizer.enable_padding(length=512)
-                    encoded = self._tokenizer.encode((query, memory_content))
+                    encoded = self._tokenizer.encode(query, pair=memory_content)
 
                     input_ids = np.array([encoded.ids], dtype=np.int64)
                     attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
