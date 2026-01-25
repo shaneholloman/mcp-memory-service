@@ -23,12 +23,14 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 
 # Add parent directory to path for imports
-sys.path.insert(0, "/home/hkr/repositories/mcp-memory-service/src")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from mcp_memory_service.consolidation.relationship_inference import (
     RelationshipInferenceEngine,
 )
 from mcp_memory_service.models.memory import Memory
+from mcp_memory_service.config import SQLITE_VEC_PATH
 
 # Configure logging
 logging.basicConfig(
@@ -328,8 +330,8 @@ def main():
     parser.add_argument(
         "--db-path",
         type=str,
-        default="/home/hkr/.local/share/mcp-memory/sqlite_vec.db",
-        help="Path to SQLite database",
+        default=str(SQLITE_VEC_PATH),
+        help=f"Path to SQLite database (default: {SQLITE_VEC_PATH})",
     )
     args = parser.parse_args()
 
