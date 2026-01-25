@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+- **Relationship Inference Threshold Tuning**: Improved relationship type diversity in memory graph analytics
+  - Relaxed default minimum confidence threshold recommendation from 0.6 to 0.4 for existing graphs
+  - Enables discovery of more nuanced relationship types (causes, fixes, contradicts, supports, follows)
+  - Production results: Improved from 2 to 3 relationship types with 0.4 threshold
+  - Distribution on 2,392 edges: related (75.52%), contradicts (18.09%), follows (6.39%)
+  - Script usage: `python scripts/maintenance/update_graph_relationship_types.py --min-confidence=0.4`
+  - Balances precision and recall - lower values (0.3) may introduce false positives
+  - Note: Script default remains 0.6 for conservative new deployments
+
 ## [10.1.0] - 2026-01-25
 
 ### Added
