@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.0.3] - 2026-01-25
+
+### Fixed
+- **Backup scheduler critical bugs** (Fixes #375)
+  - **Scheduler never started**: `BackupScheduler.start()` was never called in FastAPI lifespan
+    - Added `backup_scheduler` global variable to `app.py`
+    - Integrated scheduler startup into FastAPI lifespan context manager
+    - Added graceful shutdown handling in lifespan cleanup
+    - Automatic backups now work as intended
+  - **Past dates in "Next Scheduled"**: `_calculate_next_backup_time()` returned past dates when server was offline longer than backup interval
+    - Rewrote calculation logic with while loop to advance to future time
+    - Now correctly handles multi-interval downtime (e.g., server down for 5 days with daily backups)
+    - "Next Scheduled" field always shows a future timestamp
+  - **Comprehensive testing**: Added 8 new tests covering hourly/daily/weekly intervals, past-due scenarios (5h, 10d, 4w overdue), and edge cases
+  - Bug existed since commit 8a19ba8 (PR #233, Nov 2025)
+  - Commit: 94f3c3a
+
 ## [10.0.2] - 2026-01-23
 
 ### Fixed
