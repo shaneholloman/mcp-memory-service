@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Windows PowerShell 7+ compatibility**: Fixed `update_and_restart.ps1` SSL certificate validation
+  - PowerShell 5.1: Uses `ICertificatePolicy` (.NET Framework)
+  - PowerShell 7+: Uses `-SkipCertificateCheck` parameter on `Invoke-RestMethod`
+  - Script now detects PowerShell version and uses appropriate method
+  - Error was: `CS0246: The type or namespace name 'ICertificatePolicy' was not found`
+
 ### Changed
 - **Relationship Inference Threshold Tuning**: Improved relationship type diversity in memory graph analytics
   - Relaxed default minimum confidence threshold recommendation from 0.6 to 0.4 for existing graphs

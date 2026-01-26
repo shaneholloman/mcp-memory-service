@@ -52,25 +52,26 @@ $ManageServiceScript = Join-Path $PSScriptRoot "manage_service.ps1"
 $HealthUrl = "https://127.0.0.1:8000/api/health"
 
 # Skip SSL certificate validation for self-signed certificates
-# Modern approach compatible with both PowerShell 5.1 and 7+
+# Compatible with both PowerShell 5.1 and 7+
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 
-# Use ServerCertificateValidationCallback (works in .NET Core/.NET 5+)
-if (-not ("TrustAllCertsPolicy" -as [type])) {
-    Add-Type @"
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
+# Check if we're on PowerShell 7+ (has -SkipCertificateCheck parameter)
+$Script:SkipCertCheckSupported = $PSVersionTable.PSVersion.Major -ge 7
 
-public static class TrustAllCertsPolicy {
-    public static bool TrustAllCerts(object sender, X509Certificate certificate,
-        X509Chain chain, SslPolicyErrors sslPolicyErrors) {
-        return true;
-    }
+# For PowerShell 5.1, use callback approach
+if (-not $Script:SkipCertCheckSupported) {
+    if (-not ("TrustAllCertsPolicy" -as [type])) {
+        Add-Type @"
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
+public class TrustAllCertsPolicy : ICertificatePolicy {
+    public bool CheckValidationResult(ServicePoint srvPoint, X509Certificate certificate,
+        WebRequest request, int certificateProblem) { return true; }
 }
 "@
+    }
+    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
 }
-
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = [TrustAllCertsPolicy]::TrustAllCerts
 
 # Color helpers
 function Write-InfoLog { param($Message) Write-Host "[i] $Message" -ForegroundColor Cyan }
@@ -96,7 +97,13 @@ function Get-CurrentVersion {
 
 function Get-ServerVersion {
     try {
-        $Response = Invoke-RestMethod -Uri $HealthUrl -TimeoutSec 3 -ErrorAction SilentlyContinue
+        $params = @{
+            Uri = $HealthUrl
+            TimeoutSec = 3
+            ErrorAction = 'SilentlyContinue'
+        }
+        if ($Script:SkipCertCheckSupported) { $params['SkipCertificateCheck'] = $true }
+        $Response = Invoke-RestMethod @params
         return $Response.version
     } catch {
         return "unknown"
@@ -305,7 +312,13 @@ if ($NoRestart) {
 
     while ($WaitCount -lt $MaxWait) {
         try {
-            $HealthResponse = Invoke-RestMethod -Uri $HealthUrl -TimeoutSec 2 -ErrorAction SilentlyContinue
+            $params = @{
+                Uri = $HealthUrl
+                TimeoutSec = 2
+                ErrorAction = 'SilentlyContinue'
+            }
+            if ($Script:SkipCertCheckSupported) { $params['SkipCertificateCheck'] = $true }
+            $HealthResponse = Invoke-RestMethod @params
             $ServerVersion = $HealthResponse.version
 
             if ($ServerVersion -eq $NewVersion) {
