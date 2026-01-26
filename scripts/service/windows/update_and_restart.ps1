@@ -52,21 +52,25 @@ $ManageServiceScript = Join-Path $PSScriptRoot "manage_service.ps1"
 $HealthUrl = "https://127.0.0.1:8000/api/health"
 
 # Skip SSL certificate validation for self-signed certificates
-if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy').Type) {
+# Modern approach compatible with both PowerShell 5.1 and 7+
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+# Use ServerCertificateValidationCallback (works in .NET Core/.NET 5+)
+if (-not ("TrustAllCertsPolicy" -as [type])) {
     Add-Type @"
-    using System.Net;
-    using System.Security.Cryptography.X509Certificates;
-    public class TrustAllCertsPolicy : ICertificatePolicy {
-        public bool CheckValidationResult(
-            ServicePoint srvPoint, X509Certificate certificate,
-            WebRequest request, int certificateProblem) {
-            return true;
-        }
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+
+public static class TrustAllCertsPolicy {
+    public static bool TrustAllCerts(object sender, X509Certificate certificate,
+        X509Chain chain, SslPolicyErrors sslPolicyErrors) {
+        return true;
     }
+}
 "@
 }
-[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = [TrustAllCertsPolicy]::TrustAllCerts
 
 # Color helpers
 function Write-InfoLog { param($Message) Write-Host "[i] $Message" -ForegroundColor Cyan }
