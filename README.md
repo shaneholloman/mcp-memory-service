@@ -27,7 +27,12 @@ It automatically captures your project context, architecture decisions, and code
 #### 🎨 Desktop & IDE
 **Claude Desktop** · **VS Code** · **Cursor** · **Windsurf** · **Raycast** · **JetBrains** · **Sourcegraph** · **Qodo**
 
+#### 🤖 Chat Interfaces
+**ChatGPT** (Developer Mode) · **Claude Web**
+
 **Works seamlessly with any MCP-compatible client** - whether you code in the terminal, IDE, or browser.
+
+> **💡 NEW**: ChatGPT now supports MCP! Enable Developer Mode to connect your memory service directly. [See setup guide →](https://github.com/doobidoo/mcp-memory-service/discussions/377#discussioncomment-15605174)
 
 ---
 
@@ -622,8 +627,12 @@ Visualize your memory relationships with an interactive force-directed graph pow
 - **Claude Code** - **HTTP transport** + Memory-aware development with hooks
   - 🪟 **Windows Support**: `/session-start` command for manual session initialization (workaround for issue #160)
   - 🍎 **macOS/Linux**: Full automatic SessionStart hooks + slash command
+- **ChatGPT** (Sept 2025+) - **Full MCP support via Developer Mode** [Setup guide →](https://github.com/doobidoo/mcp-memory-service/discussions/377#discussioncomment-15605174)
+  - Supports Streaming HTTP/SSE transports
+  - OAuth, Bearer token, and no-auth options
+  - Available for Pro, Plus, Business, Enterprise, and Edu accounts
 - **VS Code, Cursor, Continue** - IDE extensions
-- **13+ AI applications** - REST API compatibility
+- **15+ AI applications** - REST API compatibility
 
 ### 💾 **Flexible Storage**
 - **Hybrid** 🌟 (RECOMMENDED) - Fast local SQLite + background Cloudflare sync (v8.9.0 default)
