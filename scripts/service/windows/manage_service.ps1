@@ -49,21 +49,26 @@ $PidFile = Join-Path $env:LOCALAPPDATA "mcp-memory\http-server.pid"
 $HealthUrl = "https://127.0.0.1:8000/api/health"
 
 # Skip SSL certificate validation for self-signed certificates
-if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy').Type) {
-    Add-Type @"
-    using System.Net;
-    using System.Security.Cryptography.X509Certificates;
-    public class TrustAllCertsPolicy : ICertificatePolicy {
-        public bool CheckValidationResult(
-            ServicePoint srvPoint, X509Certificate certificate,
-            WebRequest request, int certificateProblem) {
-            return true;
-        }
-    }
-"@
-}
-[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+# Compatible with both PowerShell 5.1 and 7+
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+# Check if we're on PowerShell 7+ (has -SkipCertificateCheck parameter)
+$Script:SkipCertCheckSupported = $PSVersionTable.PSVersion.Major -ge 7
+
+# For PowerShell 5.1, use callback approach (ICertificatePolicy exists in .NET Framework)
+if (-not $Script:SkipCertCheckSupported) {
+    if (-not ("TrustAllCertsPolicy" -as [type])) {
+        Add-Type @"
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
+public class TrustAllCertsPolicy : ICertificatePolicy {
+    public bool CheckValidationResult(ServicePoint srvPoint, X509Certificate certificate,
+        WebRequest request, int certificateProblem) { return true; }
+}
+"@
+    }
+    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+}
 
 function Show-Help {
     Write-Host ""
@@ -113,7 +118,14 @@ function Get-ServerStatus {
     $HttpHealthy = $false
     $HealthResponse = $null
     try {
-        $Response = Invoke-WebRequest -Uri $HealthUrl -TimeoutSec 3 -UseBasicParsing -ErrorAction SilentlyContinue
+        $params = @{
+            Uri = $HealthUrl
+            TimeoutSec = 3
+            UseBasicParsing = $true
+            ErrorAction = 'SilentlyContinue'
+        }
+        if ($Script:SkipCertCheckSupported) { $params['SkipCertificateCheck'] = $true }
+        $Response = Invoke-WebRequest @params
         if ($Response.StatusCode -eq 200) {
             $HttpHealthy = $true
             $HealthResponse = $Response.Content | ConvertFrom-Json
@@ -226,7 +238,14 @@ function Start-Server {
     for ($i = 1; $i -le 10; $i++) {
         Start-Sleep -Seconds 1
         try {
-            $Response = Invoke-WebRequest -Uri $HealthUrl -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue
+            $params = @{
+                Uri = $HealthUrl
+                TimeoutSec = 2
+                UseBasicParsing = $true
+                ErrorAction = 'SilentlyContinue'
+            }
+            if ($Script:SkipCertCheckSupported) { $params['SkipCertificateCheck'] = $true }
+            $Response = Invoke-WebRequest @params
             if ($Response.StatusCode -eq 200) {
                 Write-Host "[SUCCESS] Server started successfully!" -ForegroundColor Green
                 Write-Host "Dashboard: https://127.0.0.1:8000/" -ForegroundColor Cyan
@@ -300,7 +319,13 @@ function Show-Logs {
 function Check-Health {
     Write-Host "[INFO] Checking health endpoint..." -ForegroundColor Yellow
     try {
-        $Response = Invoke-WebRequest -Uri $HealthUrl -TimeoutSec 5 -UseBasicParsing
+        $params = @{
+            Uri = $HealthUrl
+            TimeoutSec = 5
+            UseBasicParsing = $true
+        }
+        if ($Script:SkipCertCheckSupported) { $params['SkipCertificateCheck'] = $true }
+        $Response = Invoke-WebRequest @params
         Write-Host "[SUCCESS] Server is healthy!" -ForegroundColor Green
         Write-Host ""
         $Response.Content | ConvertFrom-Json | Format-List
