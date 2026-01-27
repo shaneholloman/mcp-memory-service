@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Windows PowerShell 7+ compatibility**: Fixed SSL certificate validation in `manage_service.ps1`
+  - Extends previous fix from `update_and_restart.ps1` to `manage_service.ps1`
+  - PowerShell 5.1: Uses `ICertificatePolicy` (.NET Framework)
+  - PowerShell 7+: Uses `-SkipCertificateCheck` parameter on `Invoke-WebRequest`
+  - Error was: `CS0246: The type or namespace name 'ICertificatePolicy' was not found`
+
 ## [10.1.1] - 2026-01-27
 
 ### Fixed
