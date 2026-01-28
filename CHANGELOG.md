@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.2.1] - 2026-01-28
+
+### Fixed
+- **Integer Enum Incompatibility** (#387): Fixed OpenCode with Gemini model failure
+  - Changed `memory_quality` tool `rating` parameter from integer enum to string enum
+  - Added backwards-compatible conversion logic in quality handler
+  - Resolves MCP client compatibility issues with integer enum values
+  - Files: `server_impl.py`, `server/handlers/quality.py`
+- **Wrong Method Name in delete_with_filters** (#389): Fixed delete operations with tag/time filters
+  - Replaced non-existent `list_memories()` calls with correct `get_all_memories()` method name
+  - Affected delete operations using tag or timeframe filters
+  - Files: `storage/base.py` (2 locations)
+  - All 8 delete tests now passing in `test_unified_tools.py`
+
 ## [10.2.0] - 2026-01-28
 
 ### Added

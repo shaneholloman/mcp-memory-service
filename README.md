@@ -170,20 +170,22 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.2.0** (January 28, 2026)
+## 🆕 Latest Release: **v10.2.1** (January 28, 2026)
 
-**NEW FEATURE: External Embedding API Support**
+**BUG FIXES: MCP Client Compatibility & Delete Operations**
 
 **What's New:**
-- 🔌 **External Embedding API Integration**: Connect to external OpenAI-compatible embedding APIs (vLLM, Ollama, Text Embeddings Inference, OpenAI)
-  - Use powerful embedding models hosted on your own infrastructure or cloud services
-  - Graceful fallback to local models if external API unavailable
-  - Automatic dimension detection and backend validation
-  - Simple configuration via environment variables
-  - See [docs/deployment/external-embeddings.md](docs/deployment/external-embeddings.md) for setup guide
-  - Thanks to @isiahw1 for this contribution!
+- 🔧 **Integer Enum Compatibility Fix**: Fixed OpenCode with Gemini model failure (Issue #387)
+  - Changed `memory_quality` tool `rating` parameter from integer to string enum
+  - Added backwards-compatible conversion logic for existing clients
+  - Resolves MCP client compatibility issues with integer enum values
+- 🛠️ **Delete Operations Fix**: Fixed `delete_with_filters` method errors (Issue #389)
+  - Corrected non-existent method call: `list_memories()` → `get_all_memories()`
+  - Restored tag and timeframe filtering functionality
+  - All 8 delete tests now passing
 
 **Previous Releases**:
+- **v10.2.0** - External Embedding API Support (vLLM, Ollama, TEI, OpenAI integration)
 - **v10.1.2** - Windows PowerShell 7+ Service Management Fix (SSL compatibility for manage_service.ps1)
 - **v10.1.1** - Dependency & Windows Compatibility Fixes (requests dependency, PowerShell 7+ SSL support)
 - **v10.1.0** - Python 3.14 Support (Extended compatibility to 3.10-3.14, tokenizers upgrade)
