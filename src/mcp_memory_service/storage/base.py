@@ -495,7 +495,7 @@ class MemoryStorage(ABC):
 
             # Case 3: Filter-based deletion (tags and/or time range)
             # Get all memories first for filtering
-            all_memories = await self.list_memories()
+            all_memories = await self.get_all_memories()
 
             # Apply filters
             filtered_memories = []
@@ -1053,7 +1053,7 @@ class MemoryStorage(ABC):
                     pre_filter_count = len(results)
                 else:
                     # Time-only or tag-only search - get all memories then filter
-                    all_memories = await self.list_memories()
+                    all_memories = await self.get_all_memories()
                     results = [
                         MemoryQueryResult(memory=m, relevance_score=0.5, debug_info=None)
                         for m in all_memories

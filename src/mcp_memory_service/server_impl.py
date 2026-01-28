@@ -1853,9 +1853,9 @@ Examples:
                                     "description": "Memory hash (required for rate/get)"
                                 },
                                 "rating": {
-                                    "type": "integer",
-                                    "enum": [-1, 0, 1],
-                                    "description": "For 'rate': -1 (thumbs down), 0 (neutral), 1 (thumbs up)"
+                                    "type": "string",
+                                    "enum": ["-1", "0", "1"],
+                                    "description": "For 'rate': '-1' (thumbs down), '0' (neutral), '1' (thumbs up)"
                                 },
                                 "feedback": {
                                     "type": "string",

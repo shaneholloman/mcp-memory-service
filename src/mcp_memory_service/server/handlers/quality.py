@@ -94,6 +94,14 @@ async def handle_rate_memory(server, arguments: dict) -> List[types.TextContent]
             return [types.TextContent(type="text", text="Error: content_hash is required")]
         if rating is None:
             return [types.TextContent(type="text", text="Error: rating is required")]
+
+        # Convert string rating to integer (support both string and integer for backwards compatibility)
+        if isinstance(rating, str):
+            try:
+                rating = int(rating)
+            except ValueError:
+                return [types.TextContent(type="text", text="Error: rating must be '-1', '0', or '1'")]
+
         if rating not in [-1, 0, 1]:
             return [types.TextContent(type="text", text="Error: rating must be -1, 0, or 1")]
 
