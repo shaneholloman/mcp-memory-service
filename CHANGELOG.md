@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.4.1] - 2026-01-29
+
+### Fixed
+- **Time Expression Parsing** (Issue #396): Fixed `time_expr` parameter to correctly parse natural language time expressions
+  - Changed from `extract_time_expression()` to `parse_time_expression()` in `search_memories()`
+  - Now correctly handles: "last week", "3 days ago", "last 5 days", "1 week ago"
+  - `extract_time_expression()` was designed for extracting time expressions from larger text queries
+  - `parse_time_expression()` is the correct function for isolated time expressions
+  - Added comprehensive regression tests covering reported failures and edge cases
+  - ISO date workaround (`after`/`before` parameters) continues to work as before
+
 ## [10.4.0] - 2026-01-29
 
 ### Added

@@ -170,26 +170,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.4.0** (January 29, 2026)
+## 🆕 Latest Release: **v10.4.1** (January 29, 2026)
 
-**QUALITY: Memory Hook Quality Improvements**
+**BUG FIX: Time Expression Parsing**
 
-**What's New:**
-- 🧠 **Semantic Deduplication**: Prevents storing duplicate memories using KNN similarity (Issues #390, #391)
-  - Configurable 85% similarity threshold with 24-hour time window
-  - Catches cross-hook duplicates (PostToolUse + SessionEnd reformulations)
-  - <100ms overhead with efficient sqlite-vec KNN search
-- 🏷️ **Tag Case-Normalization**: All tags stored lowercase with deduplication (Issue #391)
-  - Eliminates duplicate tags like `["Tag", "tag", "TAG"]` → `["tag"]`
-  - Applied across all tag sources for consistency
-- 📊 **Memory Budget Optimization**: 8 → 14 slots with reserved minimums (Issue #390)
-  - Smart slot allocation: 3 git + ~60% recent + at least 3 tag-based
-  - Prevents semantic search from crowding out curated memories
-- ✂️ **Enhanced Truncation**: Multi-delimiter support (9-10 types) for natural sentence boundaries (Issue #392)
-  - Expanded delimiters: `. ` `! ` `? ` `.\n` `!\n` `?\n` `.\t` `;\n` `\n\n`
-  - Eliminates mid-sentence cuts with 70% threshold
+**What's Fixed:**
+- 🔧 **Natural Language Time Expressions**: Fixed `time_expr` parameter parsing (Issue #396)
+  - Now correctly handles: "last week", "3 days ago", "last 5 days", "1 week ago"
+  - Changed from incorrect `extract_time_expression()` to proper `parse_time_expression()`
+  - ISO date workaround (`after`/`before` parameters) continues to work
+  - Comprehensive regression tests added for all time expression patterns
 
 **Previous Releases**:
+- **v10.4.0** - Memory Hook Quality Improvements (semantic deduplication, tag normalization, budget optimization)
 - **v10.3.0** - SQL-Level Filtering Optimization (115x performance speedup, efficient bulk operations)
 - **v10.2.1** - MCP Client Compatibility & Delete Operations Fixes (integer enum fix, method name corrections)
 - **v10.2.0** - External Embedding API Support (vLLM, Ollama, TEI, OpenAI integration)
