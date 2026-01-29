@@ -503,11 +503,11 @@ class MemoryStorage(ABC):
                 # Optimized path: tag-only deletion with ANY match
                 if hasattr(self, 'delete_by_tags') and not dry_run:
                     use_optimized = True
-                    count, message = await self.delete_by_tags(tags)
+                    count, message, deleted_hashes = await self.delete_by_tags(tags)
                     return {
                         "success": count > 0,
                         "deleted_count": count,
-                        "deleted_hashes": [],  # Optimized path doesn't track individual hashes
+                        "deleted_hashes": deleted_hashes,
                         "dry_run": False,
                         "message": message
                     }
