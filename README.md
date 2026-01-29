@@ -170,23 +170,27 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.3.0** (January 29, 2026)
+## 🆕 Latest Release: **v10.4.0** (January 29, 2026)
 
-**PERFORMANCE: SQL-Level Filtering Optimization**
+**QUALITY: Memory Hook Quality Improvements**
 
 **What's New:**
-- ⚡ **115x Performance Speedup**: SQL-level filtering for large datasets (Issue #374)
-  - Tag filtering: 116ms → 1ms (115x faster at 1,000 memories)
-  - Time range filtering: 36ms → 0.49ms (74x faster)
-  - Memory usage: 147MB → 2.5MB (98% reduction at 10,000 memories)
-- 🚀 **New Backend Methods**: Enhanced filtering capabilities
-  - `delete_by_tags`: Efficient bulk deletion by tags
-  - `get_memories_by_time_range`: Time-based memory retrieval
-- 🔧 **API Consistency**: Standardized `delete_by_tags` signature across all backends
-  - Returns 3-tuple `(count, message, deleted_hashes)` for audit trail
-  - Enhanced exception handling and validation
+- 🧠 **Semantic Deduplication**: Prevents storing duplicate memories using KNN similarity (Issues #390, #391)
+  - Configurable 85% similarity threshold with 24-hour time window
+  - Catches cross-hook duplicates (PostToolUse + SessionEnd reformulations)
+  - <100ms overhead with efficient sqlite-vec KNN search
+- 🏷️ **Tag Case-Normalization**: All tags stored lowercase with deduplication (Issue #391)
+  - Eliminates duplicate tags like `["Tag", "tag", "TAG"]` → `["tag"]`
+  - Applied across all tag sources for consistency
+- 📊 **Memory Budget Optimization**: 8 → 14 slots with reserved minimums (Issue #390)
+  - Smart slot allocation: 3 git + ~60% recent + at least 3 tag-based
+  - Prevents semantic search from crowding out curated memories
+- ✂️ **Enhanced Truncation**: Multi-delimiter support (9-10 types) for natural sentence boundaries (Issue #392)
+  - Expanded delimiters: `. ` `! ` `? ` `.\n` `!\n` `?\n` `.\t` `;\n` `\n\n`
+  - Eliminates mid-sentence cuts with 70% threshold
 
 **Previous Releases**:
+- **v10.3.0** - SQL-Level Filtering Optimization (115x performance speedup, efficient bulk operations)
 - **v10.2.1** - MCP Client Compatibility & Delete Operations Fixes (integer enum fix, method name corrections)
 - **v10.2.0** - External Embedding API Support (vLLM, Ollama, TEI, OpenAI integration)
 - **v10.1.2** - Windows PowerShell 7+ Service Management Fix (SSL compatibility for manage_service.ps1)
