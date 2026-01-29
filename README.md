@@ -170,21 +170,24 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.2.1** (January 28, 2026)
+## 🆕 Latest Release: **v10.3.0** (January 29, 2026)
 
-**BUG FIXES: MCP Client Compatibility & Delete Operations**
+**PERFORMANCE: SQL-Level Filtering Optimization**
 
 **What's New:**
-- 🔧 **Integer Enum Compatibility Fix**: Fixed OpenCode with Gemini model failure (Issue #387)
-  - Changed `memory_quality` tool `rating` parameter from integer to string enum
-  - Added backwards-compatible conversion logic for existing clients
-  - Resolves MCP client compatibility issues with integer enum values
-- 🛠️ **Delete Operations Fix**: Fixed `delete_with_filters` method errors (Issue #389)
-  - Corrected non-existent method call: `list_memories()` → `get_all_memories()`
-  - Restored tag and timeframe filtering functionality
-  - All 8 delete tests now passing
+- ⚡ **115x Performance Speedup**: SQL-level filtering for large datasets (Issue #374)
+  - Tag filtering: 116ms → 1ms (115x faster at 1,000 memories)
+  - Time range filtering: 36ms → 0.49ms (74x faster)
+  - Memory usage: 147MB → 2.5MB (98% reduction at 10,000 memories)
+- 🚀 **New Backend Methods**: Enhanced filtering capabilities
+  - `delete_by_tags`: Efficient bulk deletion by tags
+  - `get_memories_by_time_range`: Time-based memory retrieval
+- 🔧 **API Consistency**: Standardized `delete_by_tags` signature across all backends
+  - Returns 3-tuple `(count, message, deleted_hashes)` for audit trail
+  - Enhanced exception handling and validation
 
 **Previous Releases**:
+- **v10.2.1** - MCP Client Compatibility & Delete Operations Fixes (integer enum fix, method name corrections)
 - **v10.2.0** - External Embedding API Support (vLLM, Ollama, TEI, OpenAI integration)
 - **v10.1.2** - Windows PowerShell 7+ Service Management Fix (SSL compatibility for manage_service.ps1)
 - **v10.1.1** - Dependency & Windows Compatibility Fixes (requests dependency, PowerShell 7+ SSL support)

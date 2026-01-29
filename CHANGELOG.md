@@ -10,6 +10,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.3.0] - 2026-01-29
+
+### Added
+- **SQL-Level Filtering Optimization** (#374): Dramatic performance improvements for large datasets
+  - Optimized `delete_memories` path using SQL filtering instead of Python-level filtering
+  - New `delete_by_tags` method for Cloudflare backend for efficient bulk deletion
+  - New `get_memories_by_time_range` support for time-based filtering
+  - Performance benchmarks demonstrating significant improvements:
+    - **115x speedup** for tag filtering (1000 memories: 116ms → 1ms)
+    - **74x speedup** for time range filtering (1000 memories: 36ms → 0.49ms)
+    - **98% memory reduction** (10,000 memories: 147MB → 2.5MB)
+  - Contributor: @isiahw1
+
+### Fixed
+- **API Consistency** (#393): Standardized `delete_by_tags` signature across all backends
+  - All backends now return 3-tuple `(count, message, deleted_hashes)`
+  - Prevents unpacking errors and provides audit trail for deleted content
+  - Enhanced tracking for sync operations in hybrid backend
+- **Enhanced Exception Handling**: Improved error handling in external embedding API
+  - Specific JSONDecodeError catch for better error messages
+  - Duplicate index detection and validation
+  - Missing 'index' field validation in API responses
+- **Test Fixes**: Corrected test class name typo in `test_external_embeddings.py`
+
 ## [10.2.1] - 2026-01-28
 
 ### Fixed
