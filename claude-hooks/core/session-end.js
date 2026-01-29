@@ -275,20 +275,28 @@ function storeSessionMemory(endpoint, apiKey, content, projectContext, analysis)
         const isHttps = url.protocol === 'https:';
         const requestModule = isHttps ? https : http;
 
-        // Generate tags based on analysis and project context
+        // Generate and normalize tags
         const tags = [
             'claude-code-session',
             'session-consolidation',
             projectContext.name,
-            `language:${projectContext.language}`,
-            ...analysis.topics.slice(0, 3), // Top 3 topics as tags
-            ...projectContext.frameworks.slice(0, 2), // Top 2 frameworks
+            projectContext.language ? `language:${projectContext.language}` : null,
+            ...analysis.topics.slice(0, 3),
+            ...projectContext.frameworks.slice(0, 2),
             `confidence:${Math.round(analysis.confidence * 100)}`
-        ].filter(Boolean);
+        ]
+        .filter(Boolean) // Remove any null/undefined values
+        .map(tag => String(tag).toLowerCase()); // Normalize all to lowercase strings
+
+        // Deduplicate tags
+        const uniqueTags = [...new Set(tags)];
+
+        // Deduplicate case-insensitively
+        const uniqueTags = [...new Set(tags.map(t => t.toLowerCase()))];
 
         const postData = JSON.stringify({
             content: content,
-            tags: tags,
+            tags: uniqueTags,
             memory_type: 'session-summary',
             metadata: {
                 session_analysis: {
