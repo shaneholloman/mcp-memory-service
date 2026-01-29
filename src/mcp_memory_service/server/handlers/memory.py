@@ -556,7 +556,7 @@ async def handle_delete_by_tag(server, arguments: dict) -> List[types.TextConten
         # Initialize storage lazily when needed
         storage = await server._ensure_storage_initialized()
         # Use delete_by_tags (plural) since tags is a list after normalize_tags
-        count, message = await storage.delete_by_tags(tags)
+        count, message, deleted_hashes = await storage.delete_by_tags(tags)
         return [types.TextContent(type="text", text=message)]
     except Exception as e:
         logger.error(f"Error deleting by tag: {str(e)}\n{traceback.format_exc()}")
@@ -595,7 +595,7 @@ async def handle_delete_by_tags(server, arguments: dict) -> List[types.TextConte
             )
         else:
             await server.send_progress_notification(operation_id, 50, "Deleting memories...")
-            count, message = await storage.delete_by_tags(tags)
+            count, message, deleted_hashes = await storage.delete_by_tags(tags)
             await server.send_progress_notification(operation_id, 90, f"Deleted {count} memories")
 
         # Complete the operation

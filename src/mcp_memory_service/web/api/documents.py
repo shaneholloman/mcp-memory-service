@@ -635,7 +635,7 @@ async def remove_document(upload_id: str, remove_from_memory: bool = True):
 
             try:
                 # Delete all memories with this upload_id tag
-                count, _ = await storage.delete_by_tags([upload_tag])
+                count, _, _ = await storage.delete_by_tags([upload_tag])
                 memories_deleted = count
                 logger.info(f"Deleted {memories_deleted} memories with tag {upload_tag}")
 
@@ -693,8 +693,8 @@ async def remove_documents_by_tags(tags: List[str]):
         storage = get_storage()
 
         # Delete memories by tags
-        result = await storage.delete_by_tags(tags)
-        memories_deleted = result.get('deleted_count', 0) if isinstance(result, dict) else 0
+        count, message, deleted_hashes = await storage.delete_by_tags(tags)
+        memories_deleted = count
 
         # Find and remove affected upload sessions
         affected_sessions = []

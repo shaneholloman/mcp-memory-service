@@ -1383,15 +1383,18 @@ class HybridMemoryStorage(MemoryStorage):
 
         return count_deleted, message
 
-    async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str]:
+    async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str, List[str]]:
         """
         Delete memories matching ANY of the given tags from primary storage and queue for secondary sync.
 
         Optimized to use primary storage's delete_by_tags if available, otherwise falls back to
         calling delete_by_tag for each tag.
+
+        Returns:
+            Tuple[int, str, List[str]]: (count deleted, message, list of deleted content hashes)
         """
         if not tags:
-            return 0, "No tags provided"
+            return 0, "No tags provided", []
 
         # First, get all memories with any of these tags for sync queue
         memories_to_delete = await self.primary.search_by_tags(tags, operation="OR")
@@ -1400,7 +1403,7 @@ class HybridMemoryStorage(MemoryStorage):
         unique_memories = {m.content_hash: m for m in memories_to_delete}.values()
 
         # Delete from primary using optimized method if available
-        count_deleted, message = await self.primary.delete_by_tags(tags)
+        count_deleted, message, deleted_hashes = await self.primary.delete_by_tags(tags)
 
         # Queue individual deletes for secondary sync
         if count_deleted > 0 and self.sync_service:
@@ -1408,7 +1411,7 @@ class HybridMemoryStorage(MemoryStorage):
                 operation = SyncOperation(operation='delete', content_hash=memory.content_hash)
                 await self.sync_service.enqueue_operation(operation)
 
-        return count_deleted, message
+        return count_deleted, message, deleted_hashes
 
     async def get_by_exact_content(self, content: str) -> List[Memory]:
         """Retrieve memories by exact content match from primary storage."""

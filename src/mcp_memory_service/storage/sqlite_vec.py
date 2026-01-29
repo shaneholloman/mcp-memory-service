@@ -1674,18 +1674,21 @@ SOLUTIONS:
             logger.error(error_msg)
             return 0, error_msg
 
-    async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str]:
+    async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str, List[str]]:
         """
         Soft-delete memories matching ANY of the given tags (optimized single-query version).
 
         Overrides base class implementation for better performance using OR conditions.
+
+        Returns:
+            Tuple[int, str, List[str]]: (count, message, deleted_hashes)
         """
         try:
             if not self.conn:
-                return 0, "Database not initialized"
+                return 0, "Database not initialized", []
 
             if not tags:
-                return 0, "No tags provided"
+                return 0, "No tags provided", []
 
             # Build OR condition with GLOB for case-sensitive exact tag matching
             # Pattern: (',' || tags || ',') GLOB '*,tag,*' matches exact tag in comma-separated list
@@ -1694,10 +1697,12 @@ SOLUTIONS:
             conditions = " OR ".join(["(',' || REPLACE(tags, ' ', '') || ',') GLOB ?" for _ in stripped_tags])
             params = [f"*,{tag},*" for tag in stripped_tags]
 
-            # Get the ids first to delete corresponding embeddings (only non-deleted)
-            query = f'SELECT id FROM memories WHERE ({conditions}) AND deleted_at IS NULL'
+            # Get the ids and content_hashes first to delete corresponding embeddings (only non-deleted)
+            query = f'SELECT id, content_hash FROM memories WHERE ({conditions}) AND deleted_at IS NULL'
             cursor = self.conn.execute(query, params)
-            memory_ids = [row[0] for row in cursor.fetchall()]
+            rows = cursor.fetchall()
+            memory_ids = [row[0] for row in rows]
+            deleted_hashes = [row[1] for row in rows]
 
             # Delete from embeddings table using single query with IN clause
             if memory_ids:
@@ -1713,14 +1718,14 @@ SOLUTIONS:
             logger.info(f"Soft-deleted {count} memories matching tags: {tags}")
 
             if count > 0:
-                return count, f"Successfully deleted {count} memories matching {len(tags)} tag(s)"
+                return count, f"Successfully deleted {count} memories matching {len(tags)} tag(s)", deleted_hashes
             else:
-                return 0, f"No memories found matching any of the {len(tags)} tags"
+                return 0, f"No memories found matching any of the {len(tags)} tags", []
 
         except Exception as e:
             error_msg = f"Failed to delete by tags: {str(e)}"
             logger.error(error_msg)
-            return 0, error_msg
+            return 0, error_msg, []
 
     async def delete_by_timeframe(self, start_date: date, end_date: date, tag: Optional[str] = None) -> Tuple[int, str]:
         """Delete memories within a specific date range."""

@@ -521,7 +521,7 @@ async def delete_by_tag(tags: Union[str, List[str]], allow_production: bool = Fa
     storage = await get_storage_async()
 
     # Delete by tags (uses optimized delete_by_tags if available)
-    count_deleted, message = await storage.delete_by_tags(tag_list)
+    count_deleted, message, deleted_hashes = await storage.delete_by_tags(tag_list)
 
     return {
         'deleted': count_deleted,

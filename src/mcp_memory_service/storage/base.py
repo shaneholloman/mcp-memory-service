@@ -345,7 +345,7 @@ class MemoryStorage(ABC):
         """Delete memories by tag. Returns (count_deleted, message)."""
         pass
 
-    async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str]:
+    async def delete_by_tags(self, tags: List[str]) -> Tuple[int, str, List[str]]:
         """
         Delete memories matching ANY of the given tags.
 
@@ -356,10 +356,13 @@ class MemoryStorage(ABC):
             tags: List of tags - memories matching ANY tag will be deleted
 
         Returns:
-            Tuple of (total_count_deleted, message)
+            Tuple of (total_count_deleted, message, deleted_hashes)
+            Note: Base implementation returns empty list for deleted_hashes since
+            delete_by_tag doesn't track individual hashes. Override in concrete
+            implementations to provide hash tracking.
         """
         if not tags:
-            return 0, "No tags provided"
+            return 0, "No tags provided", []
 
         total_count = 0
         errors = []
@@ -377,9 +380,9 @@ class MemoryStorage(ABC):
             error_summary = "; ".join(errors[:3])  # Limit error details
             if len(errors) > 3:
                 error_summary += f" (+{len(errors) - 3} more errors)"
-            return total_count, f"Deleted {total_count} memories with partial failures: {error_summary}"
+            return total_count, f"Deleted {total_count} memories with partial failures: {error_summary}", []
 
-        return total_count, f"Deleted {total_count} memories across {len(tags)} tag(s)"
+        return total_count, f"Deleted {total_count} memories across {len(tags)} tag(s)", []
 
     async def delete_memories(
         self,
