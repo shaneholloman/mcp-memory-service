@@ -177,6 +177,9 @@ SESSION_MEMORY_2025-08-11.md
 # Git tools
 .git-rewrite/
 
+# Git worktrees (isolated development workspaces)
+.worktrees/
+
 # Node.js dependencies and artifacts
 node_modules/
 npm-debug.log*
