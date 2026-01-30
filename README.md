@@ -19,6 +19,15 @@ Your AI assistant forgets everything when you start a new chat. After 50 tool us
 
 It automatically captures your project context, architecture decisions, and code patterns. When you start fresh sessions, your AI already knows everything—no re-explaining, no context loss, no wasted time.
 
+## 🎥 2-Minute Video Demo
+
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=veJME5qVu-A">
+    <img src="https://img.youtube.com/vi/veJME5qVu-A/maxresdefault.jpg" alt="MCP Memory Service Demo" width="700">
+  </a>
+  <p><em>Technical showcase: Performance, Architecture, AI/ML Intelligence & Developer Experience</em></p>
+</div>
+
 ### ⚡ Works With Your Favorite AI Tools
 
 #### 🖥️ CLI & Terminal AI
