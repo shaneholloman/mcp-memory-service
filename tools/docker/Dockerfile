@@ -54,13 +54,17 @@ COPY tools/docker/docker-entrypoint-persistent.sh /usr/local/bin/
 COPY tools/docker/docker-entrypoint-unified.sh /usr/local/bin/
 
 # Install the package with UV (configurable dependency group)
+# First install core dependencies, then add extras to ensure all dependencies are installed
 # Use CPU-only PyTorch by default to save disk space in CI/test environments
 RUN if [ "$FORCE_CPU_PYTORCH" = "true" ] || [ "$INSTALL_EXTRA" = "[sqlite]" ]; then \
         echo "Installing CPU-only PyTorch to save disk space..."; \
         python -m uv pip install torch --index-url https://download.pytorch.org/whl/cpu; \
-        python -m uv pip install -e .${INSTALL_EXTRA}; \
-    else \
-        python -m uv pip install -e .${INSTALL_EXTRA}; \
+    fi && \
+    echo "Installing core dependencies..." && \
+    python -m uv pip install -e . && \
+    if [ -n "$INSTALL_EXTRA" ] && [ "$INSTALL_EXTRA" != "[]" ]; then \
+        echo "Installing optional dependencies: ${INSTALL_EXTRA}..." && \
+        python -m uv pip install -e ".${INSTALL_EXTRA}"; \
     fi
 
 # Conditionally pre-download ONNX models for lightweight embedding
