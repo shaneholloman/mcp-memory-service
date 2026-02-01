@@ -179,18 +179,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.4.1** (January 29, 2026)
+## 🆕 Latest Release: **v10.4.2** (February 1, 2026)
 
-**BUG FIX: Time Expression Parsing**
+**CRITICAL FIX: Docker Container Startup**
 
 **What's Fixed:**
-- 🔧 **Natural Language Time Expressions**: Fixed `time_expr` parameter parsing (Issue #396)
-  - Now correctly handles: "last week", "3 days ago", "last 5 days", "1 week ago"
-  - Changed from incorrect `extract_time_expression()` to proper `parse_time_expression()`
-  - ISO date workaround (`after`/`before` parameters) continues to work
-  - Comprehensive regression tests added for all time expression patterns
+- 🐛 **Docker ModuleNotFoundError**: Fixed critical bug preventing Docker container startup (Issue #400)
+  - Container failed with "ModuleNotFoundError: No module named 'aiosqlite'"
+  - Root cause: Core dependencies not installed properly with optional dependency groups
+  - Split installation into three steps ensuring core dependencies always installed
+  - All Docker users should upgrade immediately to this version
 
 **Previous Releases**:
+- **v10.4.1** - Bug Fix: Time Expression Parsing (natural language time expressions fixed)
 - **v10.4.0** - Memory Hook Quality Improvements (semantic deduplication, tag normalization, budget optimization)
 - **v10.3.0** - SQL-Level Filtering Optimization (115x performance speedup, efficient bulk operations)
 - **v10.2.1** - MCP Client Compatibility & Delete Operations Fixes (integer enum fix, method name corrections)

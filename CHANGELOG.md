@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.4.2] - 2026-02-01
+
+### Fixed
+- **Docker Container Startup** (Issue #400): Fixed ModuleNotFoundError for aiosqlite and core dependencies
+  - Docker container failed to start with "ModuleNotFoundError: No module named 'aiosqlite'"
+  - Root cause: `uv pip install -e .${INSTALL_EXTRA}` was not properly installing core dependencies
+  - Solution: Split Docker package installation into three clear steps:
+    1. Install CPU-only PyTorch if needed (conditional)
+    2. Always install core dependencies with `python -m uv pip install -e .`
+    3. Install optional dependencies with `python -m uv pip install -e ".${INSTALL_EXTRA}"`
+  - This ensures all core dependencies (aiosqlite, fastapi, sqlite-vec, etc.) are always installed
+  - Preserved backward compatibility with all build argument combinations
+  - Verified with testing: core dependencies properly installed in all configurations
+
 ## [10.4.1] - 2026-01-29
 
 ### Fixed
