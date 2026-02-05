@@ -194,7 +194,6 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 **Previous Releases**:
 - **v10.4.4** - CRITICAL Security Fix: Timing attack vulnerability in API key comparison (CWE-208) + API Key Auth without OAuth
 - **v10.4.3** - Windows Task Scheduler & Consolidation Stability (6 bugs fixed, logger NameError resolved)
-- **v10.4.3** - Windows Task Scheduler & Consolidation Stability (6 bugs fixed, logger NameError resolved)
 - **v10.4.2** - Docker Container Startup Fix (ModuleNotFoundError: aiosqlite)
 - **v10.4.1** - Bug Fix: Time Expression Parsing (natural language time expressions fixed)
 - **v10.4.0** - Memory Hook Quality Improvements (semantic deduplication, tag normalization, budget optimization)
