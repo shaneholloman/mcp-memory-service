@@ -184,11 +184,7 @@ jobs:
         python scripts/validation/check_handler_coverage.py
 
         # Run tests with coverage
-        # Set env vars BEFORE pytest to disable auth for integration tests
         source .venv/bin/activate
-        export MCP_API_KEY=""
-        export MCP_OAUTH_ENABLED="false"
-        export MCP_ALLOW_ANONYMOUS_ACCESS="true"
         python -m pytest tests/ -v \
           --cov=src/mcp_memory_service \
           --cov-report=term-missing \

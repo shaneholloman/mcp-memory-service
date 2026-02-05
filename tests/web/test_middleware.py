@@ -39,17 +39,39 @@ async def temp_storage(temp_db_path):
 
 
 @pytest.fixture
-def client(temp_storage, monkeypatch):
-    """Create FastAPI test client with initialized storage."""
-    # Set test environment variables
-    monkeypatch.setenv("MCP_API_KEY", "test-secret-key-12345")
-    monkeypatch.setenv("MCP_OAUTH_ENABLED", "false")
-    monkeypatch.setenv("MCP_ALLOW_ANONYMOUS_ACCESS", "false")
-
-    # Import app after storage is set
+def client(temp_storage):
+    """Create FastAPI test client with initialized storage and auth config."""
+    import importlib
+    from mcp_memory_service import config
     from mcp_memory_service.web.app import app
 
-    return TestClient(app)
+    # Store original values
+    original_api_key = config.API_KEY
+    original_oauth_enabled = config.OAUTH_ENABLED
+    original_allow_anonymous = config.ALLOW_ANONYMOUS_ACCESS
+
+    # Set test configuration directly on the module
+    config.API_KEY = "test-secret-key-12345"
+    config.OAUTH_ENABLED = False
+    config.ALLOW_ANONYMOUS_ACCESS = False
+
+    # Reload the middleware module to pick up new config
+    from mcp_memory_service.web.oauth import middleware
+    importlib.reload(middleware)
+
+    # Reload the app to pick up new middleware
+    from mcp_memory_service.web import app as app_module
+    importlib.reload(app_module)
+
+    # Get the reloaded app
+    from mcp_memory_service.web.app import app as reloaded_app
+
+    yield TestClient(reloaded_app)
+
+    # Restore original configuration
+    config.API_KEY = original_api_key
+    config.OAUTH_ENABLED = original_oauth_enabled
+    config.ALLOW_ANONYMOUS_ACCESS = original_allow_anonymous
 
 
 class TestAPIKeyAuthentication:
