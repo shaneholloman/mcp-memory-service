@@ -14,6 +14,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src
 # which would be caught by semantic dedup and cause unexpected failures
 os.environ['MCP_SEMANTIC_DEDUP_ENABLED'] = 'false'
 
+# Disable authentication for tests (unless overridden by specific test)
+# This must be set BEFORE any app/middleware imports happen
+os.environ.setdefault('MCP_API_KEY', '')
+os.environ.setdefault('MCP_OAUTH_ENABLED', 'false')
+os.environ.setdefault('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
+
 # Reserved tag for test memories - enables automatic cleanup
 TEST_MEMORY_TAG = "__test__"
 
