@@ -557,16 +557,12 @@ async def test_end_to_end_workflow_with_real_storage(temp_db):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_http_api_store_memory_endpoint(temp_db, unique_content, monkeypatch):
+async def test_http_api_store_memory_endpoint(temp_db, unique_content, reload_app_with_auth_disabled):
     """
     Test POST /api/memories endpoint with real HTTP request.
 
     Uses TestClient to make actual HTTP request to FastAPI app.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
 
     # Create real storage
     storage = SqliteVecMemoryStorage(temp_db)
@@ -791,16 +787,12 @@ async def test_http_api_get_memory_by_hash_endpoint(temp_db, unique_content, mon
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_http_api_delete_memory_endpoint(temp_db, unique_content, monkeypatch):
+async def test_http_api_delete_memory_endpoint(temp_db, unique_content, reload_app_with_auth_disabled):
     """
     Test DELETE /api/memories/{hash} endpoint with real HTTP request.
 
     Verifies deletion works through HTTP API.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
 
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
@@ -984,16 +976,12 @@ async def test_http_api_client_hostname_header(temp_db, unique_content, monkeypa
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_http_api_complete_crud_workflow(temp_db, unique_content, monkeypatch):
+async def test_http_api_complete_crud_workflow(temp_db, unique_content, reload_app_with_auth_disabled):
     """
     Complete end-to-end CRUD workflow through real HTTP API.
 
     This verifies the entire HTTP API stack works correctly.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
 
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()

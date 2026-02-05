@@ -4,6 +4,7 @@ import sys
 import tempfile
 import shutil
 import uuid
+import importlib
 from typing import Callable, Optional, List
 
 # Add src directory to Python path
@@ -14,14 +15,48 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src
 # which would be caught by semantic dedup and cause unexpected failures
 os.environ['MCP_SEMANTIC_DEDUP_ENABLED'] = 'false'
 
-# Disable authentication for tests (unless overridden by specific test)
-# This must be set BEFORE any app/middleware imports happen
-os.environ.setdefault('MCP_API_KEY', '')
-os.environ.setdefault('MCP_OAUTH_ENABLED', 'false')
-os.environ.setdefault('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
-
 # Reserved tag for test memories - enables automatic cleanup
 TEST_MEMORY_TAG = "__test__"
+
+
+@pytest.fixture
+def reload_app_with_auth_disabled(monkeypatch):
+    """
+    Reload config and app modules after disabling authentication.
+
+    Use this fixture for tests that need to import the app with auth disabled.
+    This ensures environment variables are applied before module initialization.
+
+    Usage:
+        async def test_something(reload_app_with_auth_disabled):
+            from mcp_memory_service.web.app import app
+            # app will have auth disabled
+    """
+    # Set environment variables
+    monkeypatch.setenv('MCP_API_KEY', '')
+    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
+    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
+
+    # Reload config module to pick up new environment variables
+    if 'mcp_memory_service.config' in sys.modules:
+        importlib.reload(sys.modules['mcp_memory_service.config'])
+
+    # Reload app module if it was already imported
+    if 'mcp_memory_service.web.app' in sys.modules:
+        # Also need to reload dependencies
+        if 'mcp_memory_service.web.oauth.middleware' in sys.modules:
+            importlib.reload(sys.modules['mcp_memory_service.web.oauth.middleware'])
+        importlib.reload(sys.modules['mcp_memory_service.web.app'])
+
+    yield
+
+    # Reload again after test to restore original state
+    if 'mcp_memory_service.config' in sys.modules:
+        importlib.reload(sys.modules['mcp_memory_service.config'])
+    if 'mcp_memory_service.web.app' in sys.modules:
+        if 'mcp_memory_service.web.oauth.middleware' in sys.modules:
+            importlib.reload(sys.modules['mcp_memory_service.web.oauth.middleware'])
+        importlib.reload(sys.modules['mcp_memory_service.web.app'])
 
 @pytest.fixture
 def temp_db_path():
