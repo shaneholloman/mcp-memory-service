@@ -701,7 +701,7 @@ pip install mcp-memory-service-lite
 ### 📄 **Document Ingestion** (v8.6.0+)
 ```bash
 # Start HTTP dashboard server (separate from MCP server)
-uv run python scripts/server/run_http_server.py
+memory server --http
 
 # Access interactive dashboard
 open http://127.0.0.1:8000/
@@ -721,7 +721,7 @@ curl -X POST http://127.0.0.1:8000/api/search \
 ```bash
 # Start OAuth-enabled HTTP server for team collaboration
 export MCP_OAUTH_ENABLED=true
-uv run python scripts/server/run_http_server.py
+memory server --http
 
 # Claude Code team members connect via HTTP transport
 claude mcp add --transport http memory-service http://your-server:8000/mcp
