@@ -179,21 +179,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.4.4** (February 5, 2026)
+## 🆕 Latest Release: **v10.4.5** (February 5, 2026)
 
-**CRITICAL Security Fix & API Key Authentication**
+**Unified CLI Interface & Improved UX**
 
 **What's New:**
-- 🔒 **CRITICAL Security Fix**: Fixed timing attack vulnerability in API key comparison (CWE-208)
-  - Prevents attackers from determining API keys via timing analysis
-  - Immediate upgrade recommended for all API key deployments
-- 🔑 **API Key Authentication Fixed**: Works independently without OAuth (Issue #407)
-  - X-API-Key header support (recommended, secure)
-  - Query parameter fallback (convenient for scripts)
-  - Bearer token backward compatibility
-- 🛡️ **Single-User Deployments**: Simple API key setup without OAuth overhead
+- 🚀 **Unified CLI Interface**: New `memory server --http` flag for starting HTTP REST API (Issue #410)
+  - Simple unified command replaces manual script invocation
+  - Single command interface: `memory server` (MCP) or `memory server --http` (REST API)
+  - Easier to discover in `--help`, better user experience
+- 📝 **Documentation Update**: README now uses unified CLI throughout
+  - Removes confusion about separate MCP vs HTTP server commands
 
 **Previous Releases**:
+- **v10.4.4** - CRITICAL Security Fix: Timing attack vulnerability in API key comparison (CWE-208) + API Key Auth without OAuth
+- **v10.4.3** - Windows Task Scheduler & Consolidation Stability (6 bugs fixed, logger NameError resolved)
 - **v10.4.3** - Windows Task Scheduler & Consolidation Stability (6 bugs fixed, logger NameError resolved)
 - **v10.4.2** - Docker Container Startup Fix (ModuleNotFoundError: aiosqlite)
 - **v10.4.1** - Bug Fix: Time Expression Parsing (natural language time expressions fixed)

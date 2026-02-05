@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.4.5] - 2026-02-05
+
+### Added
+- **Unified CLI Interface** (Issue #410, PR #261d324): `memory server --http` flag for starting HTTP REST API server
+  - **Before**: Required manual script invocation: `python scripts/server/run_http_server.py`
+  - **After**: Simple unified command: `memory server --http`
+  - Direct uvicorn.run() integration (no subprocess overhead)
+  - Respects `MCP_HTTP_PORT` and `MCP_HTTP_HOST` environment variables
+  - Clear user feedback with URLs and graceful error handling
+  - Better UX: Single command interface, easier to discover in --help
+
+### Changed
+- **Documentation Update** (PR #301ba2d): Updated README.md to use `memory server --http` instead of script invocation
+  - Simplifies user workflow with unified command interface
+  - Removes confusion about separate MCP vs HTTP server commands
+
 ## [10.4.4] - 2026-02-05
 
 ### Security
