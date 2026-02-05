@@ -28,6 +28,7 @@ from ...storage.base import MemoryStorage
 from ...models.memory import Memory
 from ...services.memory_service import MemoryService
 from ...utils.hashing import generate_content_hash
+from ...config import INCLUDE_HOSTNAME
 # OAuth config no longer needed - auth is always enabled
 from ..dependencies import get_storage, get_memory_service
 from ..sse import sse_manager, create_memory_stored_event, create_memory_deleted_event
