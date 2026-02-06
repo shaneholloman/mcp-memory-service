@@ -179,21 +179,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.5.0** (February 6, 2026)
+## 🆕 Latest Release: **v10.5.1** (February 6, 2026)
 
-**Dashboard Authentication UI: Graceful User Experience**
+**Test Environment Safety: Prevent Production Data Loss**
 
 **What's New:**
-- 🔐 **Authentication Detection & UI** (Issue #414, #410): Comprehensive authentication handling for HTTP dashboard
-  - Automatic authentication state detection with graceful 401/403 error handling
-  - User-friendly authentication modal with API key and OAuth flows
-  - Security improvements: autocomplete=off, HTTPS warnings, credential cleanup
-  - Dark mode compatible styling across all authentication UI components
-  - Resolves user confusion when accessing dashboard without authentication
+- 🛡️ **Test Environment Safety Scripts** (Issue #419, PR #418): 4 critical scripts (524 lines) to prevent production database testing
+  - Mandatory backup before testing with date-stamped archives
+  - Isolated test environment setup (port 8001, separate data directory)
+  - Safe test data cleanup with environment verification
+  - Comprehensive testing workflow documentation (250 lines)
+  - **CRITICAL**: Prevents data loss incidents from running tests against production databases
 
 **Previous Releases**:
+- **v10.5.0** - Dashboard Authentication UI: Graceful user experience (authentication modal, API key/OAuth flows)
 - **v10.4.6** - Documentation Enhancement: HTTP dashboard authentication requirements clarified (authentication setup examples)
-- **v10.4.5** - Unified CLI Interface: `memory server --http` flag (easier UX, single command)
 - **v10.4.5** - Unified CLI Interface: `memory server --http` flag (easier UX, single command)
 - **v10.4.4** - CRITICAL Security Fix: Timing attack vulnerability in API key comparison (CWE-208) + API Key Auth without OAuth
 - **v10.4.3** - Windows Task Scheduler & Consolidation Stability (6 bugs fixed, logger NameError resolved)

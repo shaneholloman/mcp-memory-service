@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.5.1] - 2026-02-06
+
+### Added
+- **Test Environment Safety Scripts** (Issue #419, PR #418): 4 critical scripts (524 lines) to prevent production database testing
+  - **backup-before-test.sh**: Mandatory backup before testing with date-stamped archives and environment isolation
+  - **setup-test-environment.sh**: Isolated test environment setup (port 8001) with separate data directory
+  - **cleanup-test-environment.sh**: Safe test data cleanup with environment verification
+  - **scripts/test/README.md**: Comprehensive testing workflow documentation (250 lines)
+  - **Testing Workflow**: Complete development-to-deployment test lifecycle
+  - **Safety Guarantees**: Environment validation prevents production database corruption
+  - **Developer Experience**: Clear instructions for safe testing practices
+  - **CRITICAL**: Prevents data loss incidents from running tests against production databases
+  - Note: Security improvements (command injection fixes, atomic backups) tracked in Issue #419
+
 ## [10.5.0] - 2026-02-06
 
 ### Added
