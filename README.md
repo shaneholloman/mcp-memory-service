@@ -179,18 +179,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.4.6** (February 6, 2026)
+## 🆕 Latest Release: **v10.5.0** (February 6, 2026)
 
-**Documentation Enhancement: HTTP Dashboard Authentication Clarity**
+**Dashboard Authentication UI: Graceful User Experience**
 
 **What's New:**
-- 📝 **Improved Documentation**: Clarified HTTP dashboard authentication requirements (Issue #410, #414)
-  - Added authentication setup to Document Ingestion example with `MCP_ALLOW_ANONYMOUS_ACCESS=true` for local development
-  - Added prominent warning callout explaining why dashboard returns 403 errors without authentication
-  - Documented all three authentication options: API Key (production), Anonymous (dev), OAuth (teams)
-  - Improves first-time user experience with clear security configuration guidance
+- 🔐 **Authentication Detection & UI** (Issue #414, #410): Comprehensive authentication handling for HTTP dashboard
+  - Automatic authentication state detection with graceful 401/403 error handling
+  - User-friendly authentication modal with API key and OAuth flows
+  - Security improvements: autocomplete=off, HTTPS warnings, credential cleanup
+  - Dark mode compatible styling across all authentication UI components
+  - Resolves user confusion when accessing dashboard without authentication
 
 **Previous Releases**:
+- **v10.4.6** - Documentation Enhancement: HTTP dashboard authentication requirements clarified (authentication setup examples)
+- **v10.4.5** - Unified CLI Interface: `memory server --http` flag (easier UX, single command)
 - **v10.4.5** - Unified CLI Interface: `memory server --http` flag (easier UX, single command)
 - **v10.4.4** - CRITICAL Security Fix: Timing attack vulnerability in API key comparison (CWE-208) + API Key Auth without OAuth
 - **v10.4.3** - Windows Task Scheduler & Consolidation Stability (6 bugs fixed, logger NameError resolved)

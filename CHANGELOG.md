@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.5.0] - 2026-02-06
+
+### Added
+- **Dashboard Authentication UI** (Issue #414, Issue #410, PR #416): Comprehensive authentication detection and graceful user experience
+  - **Authentication Detection**: Automatically detects authentication state on dashboard load (HTTP 401/403 responses)
+  - **User-Friendly Modal**: Authentication modal with clear instructions for API key and OAuth flows
+  - **API Key Authentication**: Secure input field with autocomplete=off, session storage, and automatic page reload after auth
+  - **OAuth Flow**: Prominent "Sign in with OAuth" button for team collaboration
+  - **Security Improvements**: HTTPS warning for production deployments, credential cleanup on state changes
+  - **Dark Mode Compatible**: Fully styled authentication UI with dark mode support
+  - **State Management**: Robust authentication state tracking across page loads
+  - **Error Handling**: Clear error messages for authentication failures with retry guidance
+  - **~400 lines** across 3 files: app.js (state management), index.html (modal UI), style.css (dark mode styling)
+  - Resolves user confusion when accessing HTTP dashboard without authentication (Issue #410)
+  - Provides discoverable authentication flow replacing raw 403 errors (Issue #414)
+
 ## [10.4.6] - 2026-02-06
 
 ### Changed
