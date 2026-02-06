@@ -179,25 +179,24 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.4.5** (February 5, 2026)
+## 🆕 Latest Release: **v10.4.6** (February 6, 2026)
 
-**Unified CLI Interface & Improved UX**
+**Documentation Enhancement: HTTP Dashboard Authentication Clarity**
 
 **What's New:**
-- 🚀 **Unified CLI Interface**: New `memory server --http` flag for starting HTTP REST API (Issue #410)
-  - Simple unified command replaces manual script invocation
-  - Single command interface: `memory server` (MCP) or `memory server --http` (REST API)
-  - Easier to discover in `--help`, better user experience
-- 📝 **Documentation Update**: README now uses unified CLI throughout
-  - Removes confusion about separate MCP vs HTTP server commands
+- 📝 **Improved Documentation**: Clarified HTTP dashboard authentication requirements (Issue #410, #414)
+  - Added authentication setup to Document Ingestion example with `MCP_ALLOW_ANONYMOUS_ACCESS=true` for local development
+  - Added prominent warning callout explaining why dashboard returns 403 errors without authentication
+  - Documented all three authentication options: API Key (production), Anonymous (dev), OAuth (teams)
+  - Improves first-time user experience with clear security configuration guidance
 
 **Previous Releases**:
+- **v10.4.5** - Unified CLI Interface: `memory server --http` flag (easier UX, single command)
 - **v10.4.4** - CRITICAL Security Fix: Timing attack vulnerability in API key comparison (CWE-208) + API Key Auth without OAuth
 - **v10.4.3** - Windows Task Scheduler & Consolidation Stability (6 bugs fixed, logger NameError resolved)
 - **v10.4.2** - Docker Container Startup Fix (ModuleNotFoundError: aiosqlite)
 - **v10.4.1** - Bug Fix: Time Expression Parsing (natural language time expressions fixed)
 - **v10.4.0** - Memory Hook Quality Improvements (semantic deduplication, tag normalization, budget optimization)
-- **v10.3.0** - SQL-Level Filtering Optimization (115x performance speedup, efficient bulk operations)
 - **v10.2.1** - MCP Client Compatibility & Delete Operations Fixes (integer enum fix, method name corrections)
 - **v10.2.0** - External Embedding API Support (vLLM, Ollama, TEI, OpenAI integration)
 - **v10.1.2** - Windows PowerShell 7+ Service Management Fix (SSL compatibility for manage_service.ps1)

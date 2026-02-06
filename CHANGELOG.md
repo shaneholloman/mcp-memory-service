@@ -10,6 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.4.6] - 2026-02-06
+
+### Changed
+- **Documentation Enhancement** (Issue #410, Issue #414, PR #415): Clarified HTTP dashboard authentication requirements in README.md
+  - Added authentication setup example to Document Ingestion section with `MCP_ALLOW_ANONYMOUS_ACCESS=true` for local development
+  - Added prominent warning callout explaining authentication requirement by default
+  - Documented all three authentication options in Configuration section:
+    - **Option 1**: API Key authentication (`MCP_API_KEY`) - recommended for production
+    - **Option 2**: Anonymous access (`MCP_ALLOW_ANONYMOUS_ACCESS=true`) - local development only
+    - **Option 3**: OAuth team collaboration (`MCP_OAUTH_ENABLED=true`)
+  - Improves first-time user experience by clarifying why dashboard returns 403 errors without authentication
+  - Addresses user confusion when accessing HTTP dashboard with default secure configuration
+
+### Fixed
+- **CHANGELOG Cleanup** (PR f1de0ca): Removed duplicate v10.4.3 release entry from Previous Releases section
+
 ## [10.4.5] - 2026-02-05
 
 ### Added
