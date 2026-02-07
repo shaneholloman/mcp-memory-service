@@ -14,6 +14,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src
 # which would be caught by semantic dedup and cause unexpected failures
 os.environ['MCP_SEMANTIC_DEDUP_ENABLED'] = 'false'
 
+# CRITICAL: Force sqlite_vec backend for tests to prevent accidental Cloudflare operations
+# This prevents tests from soft-deleting production memories in Cloudflare D1
+#
+# To explicitly test Cloudflare/Hybrid backends, set:
+#   MCP_TEST_ALLOW_CLOUD_BACKEND=true pytest tests/integration/test_cloudflare_*.py
+#
+_original_backend = os.environ.get('MCP_MEMORY_STORAGE_BACKEND')
+_allow_cloud = os.environ.get('MCP_TEST_ALLOW_CLOUD_BACKEND', 'false').lower() == 'true'
+
+if not _allow_cloud:
+    os.environ['MCP_MEMORY_STORAGE_BACKEND'] = 'sqlite_vec'
+    if _original_backend and _original_backend != 'sqlite_vec':
+        print(f"\n[Test Safety] ⚠️  Overriding MCP_MEMORY_STORAGE_BACKEND from '{_original_backend}' to 'sqlite_vec'")
+        print(f"[Test Safety] This prevents tests from modifying production Cloudflare data.")
+        print(f"[Test Safety] To allow cloud backends: MCP_TEST_ALLOW_CLOUD_BACKEND=true pytest ...")
+
 # Reserved tag for test memories - enables automatic cleanup
 TEST_MEMORY_TAG = "__test__"
 
