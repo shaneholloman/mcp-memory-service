@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Test Safety: Prevent accidental Cloudflare data deletion** (Commit d3d8425): Tests now force `sqlite_vec` backend to prevent soft-deleting production memories in Cloudflare D1
+  - Automatically overrides `MCP_MEMORY_STORAGE_BACKEND` to `sqlite_vec` for all test runs
+  - Prints warning when overriding a cloud backend setting
+  - Allows explicit cloud testing via `MCP_TEST_ALLOW_CLOUD_BACKEND=true`
+
 ## [10.7.2] - 2026-02-07
 
 ### Fixed
