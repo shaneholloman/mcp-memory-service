@@ -10,12 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.10.0] - 2026-02-08
+
 ### Added
+- **Environment Configuration Viewer**: New Settings Panel tab for comprehensive environment configuration visibility
+  - **New API Endpoint**: `GET /api/config/env` returns 11 categorized parameter groups
+  - **11 Configuration Categories**: Storage Backend, Database Settings, HTTP Server, Security, Quality System, Consolidation, OAuth, Embeddings, Logging, Graph Storage, Advanced Settings
+  - **Security Features**: Sensitive value masking for API tokens, keys, and credentials
+  - **User Experience**: Copy-to-clipboard functionality, dark mode optimization, organized accordion layout
+  - **1405+ Lines**: 5 files modified (config_env.py, config.html, config.css, config.js, analytics.py)
+  - **Use Cases**: Configuration troubleshooting, team onboarding, environment verification
 - **Changelog Archival Agent**: New `changelog-archival` agent automates archival of older CHANGELOG entries when main file exceeds ~1000 lines
   - Automated version boundary detection and safe file splitting
   - Preserves all content in `docs/archive/CHANGELOG-HISTORIC.md`
   - Triggered after major version milestones or on explicit request
   - Maintains lean CHANGELOG focused on recent releases
+
+### Enhanced
+- **Graph Visualization Enrichment**: Added quality scores, updated timestamps, and metadata to graph nodes
+  - Parse `metadata` JSON field for enriched node information (quality_score extraction)
+  - Include `updated_at` timestamp for tracking node freshness
+  - Increased max node limit from 500 to 1000 for larger graph visualization
+  - Improved data completeness for analytics and visualization rendering
 
 ### Fixed
 - **Installation Script Errors** (PR #439): Fixed three critical bugs preventing successful installation

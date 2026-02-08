@@ -175,23 +175,24 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.9.0** (February 8, 2026)
+## 🆕 Latest Release: **v10.10.0** (February 8, 2026)
 
-**Batched Inference Performance** 🚀
+**Environment Configuration Viewer** 🛠️
 
 **What's New:**
-- ⚡ **4-16x GPU Performance** (PR #432): Batched ONNX and PyTorch inference for consolidation pipeline
-  - GPU: 4-16x speedup on RTX 5050 (0.7ms/item for batch=32 vs 5.2ms/item sequential)
-  - CPU: 2.3-2.5x speedup with batched inference
-  - Adaptive GPU dispatch: automatically falls back to sequential for small batches (<16 items)
-  - Configuration: `MCP_QUALITY_BATCH_SIZE=32` (default), `MCP_QUALITY_MIN_GPU_BATCH=16`
-  - 100% backward compatible: set `MCP_QUALITY_BATCH_SIZE=1` for instant rollback
-- 🔧 **Token Truncation Fix**: Proper tokenizer truncation (512 tokens ~2000 chars) instead of character-based [:512]
-- 🔗 **Embedding Orphan Prevention**: SAVEPOINT atomicity in `store()` and `store_batch()` ensures all memories searchable
-- 🎮 **ONNX Float32 GPU Fix**: Cast model to float32 before export for Ampere+ GPU compatibility (RTX 5050 validated)
-- 🔄 **Concurrent Write Stability**: Retry budget increased (3→5 retries, 0.1s→0.2s delay) for WAL mode
+- 🔍 **Environment Configuration Viewer**: New Settings Panel tab with comprehensive configuration visibility
+  - 11 categorized parameter groups (Storage, Database, HTTP Server, Security, Quality, Consolidation, OAuth, Embeddings, Logging, Graph, Advanced)
+  - Sensitive value masking (API tokens, keys, credentials automatically redacted)
+  - Copy-to-clipboard functionality for easy configuration sharing
+  - New API endpoint: `GET /api/config/env` for programmatic access
+  - Dark mode optimized with organized accordion layout
+- 📊 **Graph Visualization Enhancement**: Enriched node data with quality scores, updated timestamps, and metadata parsing
+  - Max node limit increased from 500 to 1000 for larger visualizations
+- 🐛 **Installation Script Fixes** (PR #439): Three critical bugs resolved (NameError, ModuleNotFoundError, Cloudflare API 401)
+- 📝 **Changelog Archival Agent**: Automated CHANGELOG maintenance for lean, focused release history
 
 **Previous Releases**:
+- **v10.9.0** - Batched Inference Performance (4-16x GPU speedup, 2.3-2.5x CPU speedup with adaptive GPU dispatch)
 - **v10.8.0** - Hybrid BM25 + Vector Search (combines keyword matching with semantic search, solves exact match problem)
 - **v10.7.2** - Server Management Button Fix (Settings modal buttons causing page reload)
 - **v10.7.1** - Dashboard API Authentication Fix (complete auth coverage for all endpoints)
