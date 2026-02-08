@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **Changelog Archival Agent**: New `changelog-archival` agent automates archival of older CHANGELOG entries when main file exceeds ~1000 lines
+  - Automated version boundary detection and safe file splitting
+  - Preserves all content in `docs/archive/CHANGELOG-HISTORIC.md`
+  - Triggered after major version milestones or on explicit request
+  - Maintains lean CHANGELOG focused on recent releases
+
 ## [10.9.0] - 2026-02-08
 
 ### Added
