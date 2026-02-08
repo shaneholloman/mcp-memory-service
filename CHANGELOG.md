@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Test Safety: Comprehensive safeguards to prevent production database deletion** (PR #438): Implemented triple safety system after incident on 2026-02-08 where test cleanup deleted 8,663 production memories
+  - **Forced Test Database Path**: Creates isolated temp directory with `mcp-test-` prefix at module import time, forces `MCP_MEMORY_SQLITE_PATH` to test database
+  - **Pre-Test Verification**: `pytest_sessionstart` hook verifies database is in temp directory, **aborts test run** if production path detected
+  - **Triple-Check Cleanup**: `pytest_sessionfinish` validates (1) temp directory location, (2) no production indicators, (3) test markers present
+  - **Critical Change**: Removed `allow_production=True` bypass flag - now relies on `delete_by_tag`'s own safety checks
+  - **Additional Safeguards**: Backend forced to `sqlite_vec` unless explicitly allowed, verbose logging, explicit error handling
+  - **Impact**: Defense in depth with 4 layers - environment override, pre-test abort, triple-check cleanup, backend-level safety
+  - **Files Modified**: `tests/conftest.py` (+130 lines of safety code)
+- **Dashboard Version Display**: Updated `src/mcp_memory_service/_version.py` to v10.8.0 (was showing v10.7.2 in dashboard)
+
 ## [10.8.0] - 2026-02-08
 
 ### Added
