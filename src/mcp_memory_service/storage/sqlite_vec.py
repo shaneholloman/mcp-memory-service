@@ -3261,7 +3261,9 @@ SOLUTIONS:
                     m.content,
                     m.memory_type,
                     m.created_at,
+                    m.updated_at,
                     m.tags,
+                    m.metadata,
                     COUNT(DISTINCT mg.target_hash) as connection_count
                 FROM memories m
                 INNER JOIN memory_graph mg ON m.content_hash = mg.source_hash
@@ -3277,12 +3279,20 @@ SOLUTIONS:
             node_hashes = set()
 
             for row in cursor.fetchall():
-                content_hash, content, memory_type, created_at, tags_str, connection_count = row
+                content_hash, content, memory_type, created_at, updated_at, tags_str, metadata_str, connection_count = row
 
                 # Parse tags
                 tags = []
                 if tags_str:
                     tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+
+                # Parse metadata to extract quality_score
+                metadata = {}
+                if metadata_str:
+                    try:
+                        metadata = json.loads(metadata_str)
+                    except json.JSONDecodeError:
+                        pass
 
                 # Create node
                 nodes.append({
@@ -3291,6 +3301,8 @@ SOLUTIONS:
                     "content": content[:100] if content else "",  # Preview only
                     "connections": connection_count,
                     "created_at": created_at,
+                    "updated_at": updated_at,
+                    "quality_score": metadata.get("quality_score", 0.5),
                     "tags": tags
                 })
                 node_hashes.add(content_hash)

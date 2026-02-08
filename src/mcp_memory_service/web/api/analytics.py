@@ -692,7 +692,7 @@ class GraphVisualizationData(BaseModel):
 
 @router.get("/graph-visualization", response_model=GraphVisualizationData, tags=["analytics"])
 async def get_graph_visualization(
-    limit: int = Query(100, description="Maximum number of nodes to include", ge=1, le=500),
+    limit: int = Query(100, description="Maximum number of nodes to include", ge=1, le=1000),
     min_connections: int = Query(1, description="Minimum connections per node", ge=1),
     storage: MemoryStorage = Depends(get_storage),
     user: AuthenticationResult = Depends(require_read_access)
