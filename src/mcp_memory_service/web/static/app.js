@@ -577,6 +577,9 @@ class MemoryDashboard {
             this.closeModal(document.getElementById('settingsModal'));
         });
 
+        // Initialize settings tabs
+        this.initializeSettingsTabs();
+
         // Tag cloud event delegation
         document.getElementById('tagsCloudContainer')?.addEventListener('click', (e) => {
             if (e.target.classList.contains('tag-bubble') || e.target.closest('.tag-bubble')) {
@@ -606,6 +609,8 @@ class MemoryDashboard {
         document.getElementById('refreshGraphBtn')?.addEventListener('click', this.handleGraphRefresh.bind(this));
         document.getElementById('graphLimitSelect')?.addEventListener('change', this.handleGraphRefresh.bind(this));
         document.getElementById('graphMinConnectionsSelect')?.addEventListener('change', this.handleGraphRefresh.bind(this));
+        document.getElementById('graphFullscreenBtn')?.addEventListener('click', this.enterGraphFullscreen.bind(this));
+        document.getElementById('graphExitFullscreenBtn')?.addEventListener('click', this.exitGraphFullscreen.bind(this));
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -4190,6 +4195,177 @@ class MemoryDashboard {
         this.showToast(this.t('toast.settingsSaved', 'Settings saved successfully'), 'success');
     }
 
+    /**
+     * Initialize settings tabs
+     */
+    initializeSettingsTabs() {
+        const tabs = document.querySelectorAll('.settings-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const targetTab = e.target.dataset.tab;
+                this.switchSettingsTab(targetTab);
+            });
+        });
+
+        // Initialize copy button for environment config
+        document.getElementById('copyEnvBtn')?.addEventListener('click', () => {
+            this.copyEnvironmentConfig();
+        });
+    }
+
+    /**
+     * Switch settings tab
+     * @param {string} tabName - Tab name (preferences, environment, system, backup)
+     */
+    switchSettingsTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.settings-tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+
+        // Remove active class from all tabs
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Show selected tab
+        const tabContent = document.getElementById(`${tabName}Tab`);
+        if (tabContent) {
+            tabContent.style.display = 'block';
+        }
+
+        // Add active class to selected tab
+        const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active');
+        }
+
+        // Load environment config when switching to environment tab
+        if (tabName === 'environment') {
+            this.loadEnvironmentConfig();
+        }
+    }
+
+    /**
+     * Load environment configuration
+     */
+    async loadEnvironmentConfig() {
+        const container = document.getElementById('envConfigContainer');
+        if (!container) return;
+
+        try {
+            container.innerHTML = '<div class="loading-spinner"></div>';
+
+            const config = await this.apiCall('/config/env');
+
+            container.innerHTML = '';
+
+            config.categories.forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'env-category';
+
+                categoryDiv.innerHTML = `
+                    <h4 class="env-category-title">${this.escapeHtml(category.name)}</h4>
+                    <p class="env-param-description">${this.escapeHtml(category.description)}</p>
+                    <div class="env-params">
+                        ${category.parameters.map(param => `
+                            <div class="env-param-row">
+                                <div class="env-param-key">
+                                    <strong>${this.escapeHtml(param.key)}</strong>
+                                    ${param.sensitive ? '<span class="sensitive-badge">🔒 Sensitive</span>' : ''}
+                                </div>
+                                <div class="env-param-value ${param.sensitive ? 'masked' : ''}">
+                                    ${this.renderParamValue(param)}
+                                </div>
+                                ${param.description ? `
+                                    <div class="env-param-description">${this.escapeHtml(param.description)}</div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                container.appendChild(categoryDiv);
+            });
+
+            // Store config for copy functionality
+            this.currentEnvConfig = config;
+
+        } catch (error) {
+            console.error('Failed to load environment config:', error);
+            container.innerHTML = '<p class="error">Failed to load configuration</p>';
+        }
+    }
+
+    /**
+     * Render parameter value with appropriate formatting
+     * @param {Object} param - Parameter object
+     * @returns {string} HTML string for parameter value
+     */
+    renderParamValue(param) {
+        if (!param.value) {
+            return '<span class="env-value-empty">(not set)</span>';
+        }
+
+        if (param.sensitive) {
+            return `<code class="env-value">${this.escapeHtml(param.value)}</code>`;
+        }
+
+        if (param.type === 'boolean') {
+            const isTrue = param.value === 'true' || param.value === true;
+            return `<span class="env-value-boolean ${isTrue ? 'true' : 'false'}">${isTrue ? '✓ Enabled' : '✗ Disabled'}</span>`;
+        }
+
+        if (param.choices && param.choices.length > 0) {
+            return `<code class="env-value">${this.escapeHtml(param.value)}</code> <span class="env-choices">(options: ${param.choices.map(c => this.escapeHtml(c)).join(', ')})</span>`;
+        }
+
+        return `<code class="env-value">${this.escapeHtml(param.value)}</code>`;
+    }
+
+    /**
+     * Copy environment configuration to clipboard
+     */
+    async copyEnvironmentConfig() {
+        if (!this.currentEnvConfig) {
+            this.showToast('No configuration loaded', 'error');
+            return;
+        }
+
+        let configText = '# MCP Memory Service Configuration\n';
+        configText += `# Exported: ${new Date().toISOString()}\n\n`;
+
+        this.currentEnvConfig.categories.forEach(category => {
+            configText += `# ========================================\n`;
+            configText += `# ${category.name}\n`;
+            configText += `# ========================================\n`;
+            if (category.description) {
+                configText += `# ${category.description}\n`;
+            }
+            configText += '\n';
+
+            category.parameters.forEach(param => {
+                if (param.description) {
+                    configText += `# ${param.description}\n`;
+                }
+                if (param.value && !param.sensitive) {
+                    configText += `${param.key}=${param.value}\n`;
+                } else {
+                    configText += `# ${param.key}=\n`;
+                }
+            });
+            configText += '\n';
+        });
+
+        try {
+            await navigator.clipboard.writeText(configText);
+            this.showToast('Configuration copied to clipboard', 'success');
+        } catch (error) {
+            console.error('Failed to copy:', error);
+            this.showToast('Failed to copy to clipboard', 'error');
+        }
+    }
+
     // ===== MANAGE TAB METHODS =====
 
     /**
@@ -5057,7 +5233,21 @@ class MemoryDashboard {
             const limit = document.getElementById('graphLimitSelect')?.value || 100;
             const minConnections = document.getElementById('graphMinConnectionsSelect')?.value || 1;
 
+            // Warn about performance for large graphs
+            if (limit >= 750) {
+                this.showToast(`Loading ${limit} nodes may impact performance. Consider using filters.`, 'warning', 5000);
+            }
+
             const data = await this.apiCall(`/analytics/graph-visualization?limit=${limit}&min_connections=${minConnections}`);
+
+            if (!data || !data.nodes || data.nodes.length === 0) {
+                container.innerHTML = '<p>No connected memories found. Try lowering the minimum connections filter.</p>';
+                return;
+            }
+
+            // Store data for fullscreen use
+            this.currentGraphData = data;
+
             this.renderGraphVisualization(container, data);
         } catch (error) {
             console.error('Failed to load graph visualization:', error);
@@ -5079,7 +5269,15 @@ class MemoryDashboard {
 
         // Get container dimensions
         const width = container.clientWidth;
-        const height = 500;
+        const height = 600;
+
+        this.renderGraphVisualizationInContainer(container, data, width, height, false);
+    }
+
+    /**
+     * Render graph in a specific container with custom dimensions
+     */
+    renderGraphVisualizationInContainer(container, data, width, height, isFullscreen) {
 
         // Create SVG
         const svg = d3.select(container)
@@ -5116,10 +5314,15 @@ class MemoryDashboard {
             'related': '#95A5A6'
         };
 
+        // Adjust force parameters based on node count for performance
+        const nodeCount = data.nodes.length;
+        const chargeStrength = nodeCount > 500 ? -200 : -300;
+        const linkDistance = nodeCount > 500 ? 80 : 100;
+
         // Create force simulation
         const simulation = d3.forceSimulation(data.nodes)
-            .force('link', d3.forceLink(data.edges).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-300))
+            .force('link', d3.forceLink(data.edges).id(d => d.id).distance(linkDistance))
+            .force('charge', d3.forceManyBody().strength(chargeStrength))
             .force('center', d3.forceCenter(width / 2, height / 2))
             .force('collision', d3.forceCollide().radius(30));
 
@@ -5139,7 +5342,12 @@ class MemoryDashboard {
             .attr('class', 'graph-node')
             .attr('r', d => Math.min(20, 8 + Math.sqrt(d.connections) * 2))
             .attr('fill', d => nodeColors[d.type] || nodeColors['untyped'])
+            .style('cursor', 'pointer')
+            .on('click', (event, d) => this.handleGraphNodeClick(event, d))
             .call(this.dragBehavior(simulation));
+
+        // Adjust text size for large graphs
+        const fontSize = nodeCount > 750 ? '8px' : nodeCount > 500 ? '10px' : '12px';
 
         // Add labels
         const label = g.append('g')
@@ -5147,6 +5355,8 @@ class MemoryDashboard {
             .data(data.nodes)
             .join('text')
             .attr('class', 'graph-label')
+            .attr('font-size', fontSize)
+            .attr('fill', isFullscreen ? '#ffffff' : 'currentColor')
             .attr('dy', -15)
             .text(d => {
                 const content = d.content || '';
@@ -5166,14 +5376,7 @@ class MemoryDashboard {
                 .duration(200)
                 .style('opacity', 1);
 
-            tooltip.html(`
-                <div class="graph-tooltip-title">${d.type || 'untyped'}</div>
-                <div class="graph-tooltip-content">${this.escapeHtml(d.content || '')}</div>
-                <div class="graph-tooltip-meta">
-                    ${d.connections} connections
-                    ${d.tags && d.tags.length > 0 ? '<br>Tags: ' + d.tags.join(', ') : ''}
-                </div>
-            `)
+            tooltip.html(this.formatGraphTooltip(d))
                 .style('left', (event.pageX + 10) + 'px')
                 .style('top', (event.pageY - 28) + 'px');
         })
@@ -5201,8 +5404,12 @@ class MemoryDashboard {
         });
 
         // Store references for cleanup
-        this.graphSimulation = simulation;
-        this.graphSvg = svg;
+        if (isFullscreen) {
+            this.fullscreenSimulation = simulation;
+        } else {
+            this.graphSimulation = simulation;
+            this.graphSvg = svg;
+        }
     }
 
     /**
@@ -5237,6 +5444,154 @@ class MemoryDashboard {
      */
     async handleGraphRefresh() {
         await this.loadGraphVisualization();
+    }
+
+    /**
+     * Format enhanced tooltip with quality score, timestamps, and metadata
+     */
+    formatGraphTooltip(d) {
+        const qualityClass = d.quality_score >= 0.7 ? 'high' : d.quality_score >= 0.4 ? 'medium' : 'low';
+        const qualityColor = qualityClass === 'high' ? '#50C878' : qualityClass === 'medium' ? '#F39C12' : '#E24A4A';
+
+        const createdDate = new Date(d.created_at * 1000);
+        const updatedDate = d.updated_at ? new Date(d.updated_at * 1000) : null;
+        const now = new Date();
+
+        const formatRelativeTime = (date) => {
+            const seconds = Math.floor((now - date) / 1000);
+            if (seconds < 60) return `${seconds}s ago`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
+        };
+
+        return `
+            <div class="graph-tooltip-title">${this.escapeHtml(d.type || 'untyped')}</div>
+            <div class="graph-tooltip-content">${this.escapeHtml(d.content || '')}</div>
+            <div class="graph-tooltip-meta">
+                <div class="tooltip-row">
+                    <span class="tooltip-icon">🔗</span>
+                    <span>${d.connections} connection${d.connections !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-icon">⭐</span>
+                    <span style="color: ${qualityColor}">Quality: ${(d.quality_score * 100).toFixed(0)}%</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-icon">📅</span>
+                    <span>Created ${formatRelativeTime(createdDate)}</span>
+                </div>
+                ${updatedDate ? `
+                <div class="tooltip-row">
+                    <span class="tooltip-icon">🔄</span>
+                    <span>Updated ${formatRelativeTime(updatedDate)}</span>
+                </div>
+                ` : ''}
+                ${d.tags && d.tags.length > 0 ? `
+                <div class="tooltip-row">
+                    <span class="tooltip-icon">🏷️</span>
+                    <span>${this.escapeHtml(d.tags.join(', '))}</span>
+                </div>
+                ` : ''}
+                <div class="tooltip-row tooltip-id">
+                    <span class="tooltip-icon">🔑</span>
+                    <span title="${d.id}">${d.id.substring(0, 12)}...</span>
+                </div>
+                <div class="tooltip-hint">💡 Click node to view full memory</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Handle click on graph node to show memory details
+     */
+    async handleGraphNodeClick(event, nodeData) {
+        event.stopPropagation();
+
+        // Visual feedback - highlight selected node
+        d3.selectAll('.graph-node').classed('selected', false);
+        d3.select(event.currentTarget).classed('selected', true);
+
+        try {
+            // Show loading indicator
+            this.showToast('Loading memory details...', 'info');
+
+            // Fetch full memory details
+            const memory = await this.apiCall(`/memories/${nodeData.id}`);
+
+            // Open existing memory detail modal
+            this.showMemoryDetails(memory);
+
+        } catch (error) {
+            console.error('Failed to load memory:', error);
+            this.showToast('Failed to load memory details', 'error');
+        }
+    }
+
+    /**
+     * Enter fullscreen mode for graph visualization
+     */
+    enterGraphFullscreen() {
+        const modal = document.getElementById('graphFullscreenModal');
+        const container = document.getElementById('graphFullscreenContainer');
+        const legend = document.getElementById('graphFullscreenLegend');
+        const nodeCount = document.getElementById('graphFullscreenNodeCount');
+
+        // Clone legend from main graph
+        const originalLegend = document.getElementById('graphLegend');
+        legend.innerHTML = originalLegend.innerHTML;
+
+        // Show modal
+        modal.style.display = 'flex';
+
+        // Get window dimensions for fullscreen
+        const width = window.innerWidth - 80;
+        const height = window.innerHeight - 180;
+
+        // Show node count
+        if (this.currentGraphData) {
+            nodeCount.textContent = `${this.currentGraphData.nodes.length} nodes, ${this.currentGraphData.edges.length} edges`;
+        }
+
+        // Re-render graph in fullscreen with larger dimensions
+        if (this.currentGraphData) {
+            this.renderGraphVisualizationInContainer(
+                container,
+                this.currentGraphData,
+                width,
+                height,
+                true // isFullscreen flag
+            );
+        }
+
+        // Add escape key listener
+        this.fullscreenEscapeHandler = (e) => {
+            if (e.key === 'Escape') this.exitGraphFullscreen();
+        };
+        document.addEventListener('keydown', this.fullscreenEscapeHandler);
+    }
+
+    /**
+     * Exit fullscreen mode
+     */
+    exitGraphFullscreen() {
+        const modal = document.getElementById('graphFullscreenModal');
+        modal.style.display = 'none';
+
+        // Clear container
+        document.getElementById('graphFullscreenContainer').innerHTML = '';
+
+        // Remove escape listener
+        if (this.fullscreenEscapeHandler) {
+            document.removeEventListener('keydown', this.fullscreenEscapeHandler);
+            this.fullscreenEscapeHandler = null;
+        }
+
+        // Stop any running simulation
+        if (this.fullscreenSimulation) {
+            this.fullscreenSimulation.stop();
+            this.fullscreenSimulation = null;
+        }
     }
 
     // ===== QUALITY ANALYTICS METHODS =====

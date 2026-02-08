@@ -1326,6 +1326,32 @@ body.dark-mode .lang-option.active {
     min-height: 120px;
 }
 
+/* Dark mode form elements */
+body.dark-mode .form-group input,
+body.dark-mode .form-group textarea,
+body.dark-mode .form-group select {
+    background: rgba(31, 41, 55, 0.6);
+    border-color: rgba(75, 85, 99, 0.5);
+    color: #F3F4F6;
+}
+
+body.dark-mode .form-group select option {
+    background: #1F2937;
+    color: #F3F4F6;
+}
+
+body.dark-mode .form-group input:focus,
+body.dark-mode .form-group textarea:focus,
+body.dark-mode .form-group select:focus {
+    background: rgba(31, 41, 55, 0.8);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+body.dark-mode .form-group label {
+    color: var(--neutral-300);
+}
+
 /* System Info in Settings Modal */
 .system-info {
     display: flex;
@@ -5046,6 +5072,11 @@ body.dark-mode .quality-tier-low,
     font-weight: 600;
 }
 
+/* White labels in fullscreen mode */
+#graphFullscreenContainer .graph-label {
+    fill: #ffffff !important;
+}
+
 /* Graph Tooltip */
 .graph-tooltip {
     position: absolute;
@@ -5079,11 +5110,149 @@ body.dark-mode .quality-tier-low,
 }
 
 .graph-tooltip-meta {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tooltip-icon {
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+}
+
+.tooltip-id {
+    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+    font-size: 10px;
+    color: #999;
+    margin-top: 4px;
+}
+
+.tooltip-hint {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 11px;
+    font-style: italic;
+    color: #999;
+    text-align: center;
+}
+
+/* Graph Node Styles */
+.graph-node {
+    cursor: pointer;
+    transition: stroke-width 0.2s, stroke 0.2s;
+}
+
+.graph-node:hover {
+    stroke-width: 3px;
+}
+
+.graph-node.selected {
+    stroke: #FFD700;
+    stroke-width: 4px;
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+}
+
+/* Fullscreen Graph Modal */
+#graphFullscreenModal {
+    z-index: 10000;
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    align-items: center;
+    justify-content: center;
+}
+
+.graph-fullscreen-content {
+    width: calc(100% - 40px);
+    height: calc(100% - 40px);
+    background: var(--card-background);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.graph-fullscreen-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.graph-fullscreen-header h3 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.graph-fullscreen-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.graph-node-count {
+    font-size: 14px;
+    color: var(--text-primary);
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+#graphFullscreenContainer {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
+}
+
+#graphFullscreenLegend {
+    padding: 10px 20px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#graphFullscreenLegend h4 {
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+    font-size: 14px;
+}
+
+#graphFullscreenLegend .legend-section {
+    margin: 5px 0;
+}
+
+#graphFullscreenLegend .legend-section > span {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+#graphFullscreenLegend .legend-items {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+#graphFullscreenLegend .legend-item {
+    color: var(--text-primary);
 }
 
 /* Graph Controls */
@@ -5433,4 +5602,305 @@ body.dark-mode .backup-filename {
 
 body.dark-mode .backup-meta {
     color: var(--neutral-500);
+}
+
+/* =========================================================
+   Settings Modal Tabs & Environment Configuration
+   ========================================================= */
+
+/* Settings Modal - Larger Size */
+.settings-modal-large {
+    max-width: 900px;
+    max-height: 85vh;
+}
+
+/* Settings Tabs */
+.settings-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--neutral-200);
+    margin-bottom: var(--space-5);
+    padding: 0 var(--space-6);
+}
+
+body.dark-mode .settings-tabs {
+    border-bottom-color: var(--neutral-700);
+}
+
+.settings-tab {
+    padding: var(--space-3) var(--space-5);
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: var(--text-sm);
+    color: var(--neutral-600);
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+body.dark-mode .settings-tab {
+    color: var(--neutral-400);
+}
+
+.settings-tab:hover {
+    color: var(--primary);
+    background: var(--neutral-100);
+}
+
+body.dark-mode .settings-tab:hover {
+    background: var(--neutral-800);
+}
+
+.settings-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.settings-tab-content {
+    display: none;
+}
+
+.settings-tab-content.active {
+    display: block;
+}
+
+/* Environment Configuration */
+.env-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-5);
+    padding: var(--space-4);
+    background: var(--neutral-100);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--neutral-200);
+}
+
+body.dark-mode .env-config-header {
+    background: rgba(31, 41, 55, 0.6);
+    border-color: rgba(75, 85, 99, 0.5);
+}
+
+.env-config-description {
+    margin: 0;
+    color: var(--neutral-600);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+body.dark-mode .env-config-description {
+    color: var(--neutral-300);
+}
+
+#copyEnvBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+}
+
+.env-category {
+    margin-bottom: var(--space-6);
+    background: var(--neutral-50);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    border: 1px solid var(--neutral-200);
+}
+
+body.dark-mode .env-category {
+    background: rgba(17, 24, 39, 0.4);
+    border-color: rgba(75, 85, 99, 0.3);
+}
+
+.env-category-title {
+    margin: 0 0 var(--space-4) 0;
+    color: var(--neutral-900);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    border-bottom: 2px solid var(--neutral-200);
+    padding-bottom: var(--space-3);
+}
+
+body.dark-mode .env-category-title {
+    color: var(--neutral-50);
+    border-bottom-color: rgba(75, 85, 99, 0.5);
+}
+
+.env-params {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.env-param-row {
+    padding: var(--space-3);
+    background: var(--neutral-100);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--neutral-300);
+    transition: border-color var(--transition-base);
+}
+
+body.dark-mode .env-param-row {
+    background: rgba(31, 41, 55, 0.5);
+    border-left-color: rgba(107, 114, 128, 0.6);
+}
+
+.env-param-row:hover {
+    border-left-color: var(--primary);
+}
+
+body.dark-mode .env-param-row:hover {
+    background: rgba(31, 41, 55, 0.7);
+    border-left-color: var(--primary);
+}
+
+.env-param-key {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.env-param-key strong {
+    color: var(--neutral-900);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+body.dark-mode .env-param-key strong {
+    color: #D1D5DB;
+}
+
+.sensitive-badge {
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
+    background: var(--warning);
+    color: var(--neutral-900);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+body.dark-mode .sensitive-badge {
+    background: rgba(245, 158, 11, 0.2);
+    color: #FDB022;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.env-param-value {
+    margin: var(--space-2) 0;
+}
+
+.env-value {
+    background: var(--neutral-200);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--success);
+    display: inline-block;
+}
+
+body.dark-mode .env-value {
+    background: rgba(17, 24, 39, 0.6);
+    color: #6EE7B7;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.env-value-empty {
+    color: var(--neutral-400);
+    font-style: italic;
+    font-size: var(--text-sm);
+}
+
+body.dark-mode .env-value-empty {
+    color: var(--neutral-500);
+}
+
+.env-value-boolean {
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    display: inline-block;
+}
+
+.env-value-boolean.true {
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.env-value-boolean.false {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+body.dark-mode .env-value-boolean.true {
+    color: #6EE7B7;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+body.dark-mode .env-value-boolean.false {
+    color: #FCA5A5;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.env-choices {
+    color: var(--neutral-500);
+    font-size: var(--text-xs);
+    margin-left: var(--space-2);
+}
+
+body.dark-mode .env-choices {
+    color: var(--neutral-400);
+}
+
+.env-param-description {
+    margin-top: var(--space-2);
+    color: var(--neutral-600);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+}
+
+body.dark-mode .env-param-description {
+    color: var(--neutral-400);
+}
+
+/* Loading state */
+#envConfigContainer .loading-spinner {
+    margin: var(--space-8) auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .settings-modal-large {
+        max-width: 100%;
+        max-height: 95vh;
+    }
+
+    .env-config-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-3);
+    }
+
+    #copyEnvBtn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .settings-tabs {
+        flex-wrap: wrap;
+        gap: var(--space-1);
+        padding: 0 var(--space-3);
+    }
+
+    .settings-tab {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-xs);
+    }
 }
