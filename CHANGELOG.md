@@ -10,7 +10,73 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.9.0] - 2026-02-08
+
+### Added
+- **Batched Inference for Consolidation Pipeline** (PR #432): 4-16x performance improvement with GPU support
+  - **GPU Performance**: 4-16x speedup on RTX 5050 Blackwell (1.4ms/item for batch=16, 0.7ms/item for batch=32 vs 5.2ms/item sequential)
+  - **CPU Performance**: 2.3-2.5x speedup with batched ONNX inference
+  - **Adaptive GPU Dispatch**: Automatically falls back to sequential processing for small batches (<16 items) to avoid padding overhead
+  - **Configuration**:
+    - `MCP_QUALITY_BATCH_SIZE` (default: 32) - controls batch size for quality scoring
+    - `MCP_QUALITY_MIN_GPU_BATCH` (default: 16) - minimum batch size to use GPU (below threshold uses CPU sequential)
+  - **New Methods**:
+    - `ONNXRankerModel.score_quality_batch()` - batched DeBERTa classifier and MS-MARCO cross-encoder scoring
+    - `QualityEvaluator.evaluate_quality_batch()` - two-pass batch evaluation with fallback strategy
+    - `SqliteVecMemoryStorage.store_batch()` - batched embedding generation with atomic transaction handling
+    - `SemanticCompressionEngine` - parallel cluster compression via `asyncio.gather`
+  - **Backward Compatibility**: 100% backward compatible, set `MCP_QUALITY_BATCH_SIZE=1` for instant rollback
+  - **Test Coverage**: 442 lines of new tests (17 tests in `test_batch_inference.py`)
+  - **Contributors**: @rodboev
+
 ### Fixed
+- **Token Truncation**: Fixed character-based [:512] truncation to proper tokenizer truncation (PR #432)
+  - **Root Cause**: Classifier scoring truncated at 512 characters before tokenization, discarding ~75% of DeBERTa's 512-token context window (~2000 chars)
+  - **Fix**: Enable `truncation(max_length=512)` at tokenizer initialization for all paths (classifier, cross-encoder, sequential, batch)
+  - **Impact**: Better quality scores by utilizing full model context window
+- **Embedding Orphan Prevention**: Fixed orphaned embeddings in `store()` and `store_batch()` methods (PR #432)
+  - **Root Cause**: When embedding INSERT failed, fallback inserted without rowid, breaking `memories.id <-> memory_embeddings.rowid` JOIN
+  - **Fix**: Wrap both memory INSERT and embedding INSERT in SAVEPOINT for atomicity - both succeed or both roll back
+  - **Impact**: All memories now guaranteed to be searchable via semantic search
+- **ONNX Float32 GPU Compatibility**: Cast model to float32 before ONNX export (PR #437)
+  - **Root Cause**: DeBERTa v3 stores some weights in float16, producing mixed-precision ONNX graph that ONNX Runtime rejects
+  - **Error Message**: "Type parameter (T) of Optype (MatMul) bound to different types (tensor(float16) and tensor(float))"
+  - **Fix**: Add `model.float()` after `model.eval()` to cast all parameters to float32 before export
+  - **Validation**: Tested on RTX 5050 Blackwell with PyTorch 2.10.0+cu128, ONNX Runtime 1.24.1 (CUDAExecutionProvider)
+  - **Contributors**: @rodboev
+- **Concurrent Write Stability**: Increased retry budget for WAL mode write contention (PR #435)
+  - **Root Cause**: 3 retries with 0.1s initial delay (~0.7s total backoff) insufficient for multiple connections contending for SQLite RESERVED write lock
+  - **Fix**: Bumped to 5 retries with 0.2s initial delay (~6.2s total backoff: 0.2+0.4+0.8+1.6+3.2)
+  - **Impact**: `test_two_clients_concurrent_write` now passes consistently under WAL mode
+  - **Contributors**: @rodboev
+
+## [10.8.0] - 2026-02-08
+
+### Added
+- **Hybrid BM25 + Vector Search** (Issue #175, PR #436): Combines keyword matching with semantic search for improved exact match scoring
+  - FTS5-based BM25 keyword search with trigram tokenizer for multilingual support
+  - Parallel execution of BM25 and vector searches (<15ms typical latency)
+  - Configurable score fusion weights (default: 30% keyword, 70% semantic)
+  - Automatic FTS5 index synchronization via database triggers
+  - Backward compatible: existing `mode="semantic"` searches unchanged
+  - Available via unified search interface: `mode="hybrid"`
+  - Configuration options:
+    - `MCP_HYBRID_SEARCH_ENABLED`: Enable hybrid search (default: true)
+    - `MCP_HYBRID_KEYWORD_WEIGHT`: BM25 weight (default: 0.3)
+    - `MCP_HYBRID_SEMANTIC_WEIGHT`: Vector weight (default: 0.7)
+  - Comprehensive test suite: 12 tests covering unit, integration, performance
+  - Performance: <50ms average latency for 100 memories
+  - Reference implementation: AgentKits Memory (sub-10ms latency, 70% token efficiency gains)
+
+### Fixed
+- **search_memories() Response Format** (PR #436): Corrected pre-existing bug where `search_memories()` returned Memory objects instead of dictionaries with `similarity_score`
+  - Now returns flat dictionaries with all memory fields plus `similarity_score`
+  - Updated affected tests (test_issue_396, hybrid search tests) to use dictionary access
+  - Maintains API specification compliance
+- **Test Safety: Prevent accidental Cloudflare data deletion** (Commit d3d8425): Tests now force `sqlite_vec` backend to prevent soft-deleting production memories in Cloudflare D1
+  - Automatically overrides `MCP_MEMORY_STORAGE_BACKEND` to `sqlite_vec` for all test runs
+  - Prints warning when overriding a cloud backend setting
+  - Allows explicit cloud testing via `MCP_TEST_ALLOW_CLOUD_BACKEND=true`
 - **Test Safety: Comprehensive safeguards to prevent production database deletion** (PR #438): Implemented triple safety system after incident on 2026-02-08 where test cleanup deleted 8,663 production memories
   - **Forced Test Database Path**: Creates isolated temp directory with `mcp-test-` prefix at module import time, forces `MCP_MEMORY_SQLITE_PATH` to test database
   - **Pre-Test Verification**: `pytest_sessionstart` hook verifies database is in temp directory, **aborts test run** if production path detected
@@ -20,8 +86,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Impact**: Defense in depth with 4 layers - environment override, pre-test abort, triple-check cleanup, backend-level safety
   - **Files Modified**: `tests/conftest.py` (+130 lines of safety code)
 - **Dashboard Version Display**: Updated `src/mcp_memory_service/_version.py` to v10.8.0 (was showing v10.7.2 in dashboard)
-
-## [10.8.0] - 2026-02-08
 
 ### Added
 - **Hybrid BM25 + Vector Search** (Issue #175, PR #436): Combines keyword matching with semantic search for improved exact match scoring
