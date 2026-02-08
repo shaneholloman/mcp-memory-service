@@ -414,6 +414,7 @@ python scripts/validation/diagnose_backend_config.py          # Backend-specific
 ## Agent Integrations
 
 **Workflow automation:**
+- **changelog-archival** - Maintains lean CHANGELOG by archiving older versions
 - **github-release-manager** - Complete release workflow (version bump, CHANGELOG, PR creation)
 - **amp-bridge** - Fast refactoring with Amp CLI
 - **code-quality-guard** - Quality analysis before commits
