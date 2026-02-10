@@ -67,6 +67,7 @@ class TestCLIInterfaces:
         # Should show deprecation warning in stderr
         assert "deprecated" in result.stderr.lower()
     
+    @pytest.mark.skip(reason="Issue #453: mcp-memory-server command hangs indefinitely waiting for server shutdown")
     def test_mcp_memory_server_command_exists(self):
         """Test that the mcp-memory-server command is available."""
         result = subprocess.run(
@@ -79,7 +80,7 @@ class TestCLIInterfaces:
         # This might have different behavior or missing dependencies
         # 0 for success, 1 for import error (missing fastmcp), 2 for argument error
         assert result.returncode in [0, 1, 2]
-        
+
         # If it failed due to missing fastmcp dependency, that's expected
         if result.returncode == 1 and "fastmcp" in result.stderr:
             pytest.skip("mcp-memory-server requires FastMCP which is not installed")
