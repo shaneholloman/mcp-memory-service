@@ -64,6 +64,14 @@ def test_app(initialized_storage, monkeypatch):
     monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
     monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
 
+    # Force reload of config module to pick up new environment variables
+    import sys
+    import importlib
+    if 'mcp_memory_service.config' in sys.modules:
+        importlib.reload(sys.modules['mcp_memory_service.config'])
+    if 'mcp_memory_service.web.oauth.middleware' in sys.modules:
+        importlib.reload(sys.modules['mcp_memory_service.web.oauth.middleware'])
+
     # Import here to avoid circular dependencies
     from mcp_memory_service.web.app import app
 
