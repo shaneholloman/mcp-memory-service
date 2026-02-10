@@ -591,12 +591,13 @@ class TestSqliteVecStorage:
         assert stats["database_size_bytes"] > 0
         assert stats["embedding_dimension"] == storage.embedding_dimension
     
-    def test_close_connection(self, storage):
+    @pytest.mark.asyncio
+    async def test_close_connection(self, storage):
         """Test closing the database connection."""
         assert storage.conn is not None
-        
-        storage.close()
-        
+
+        await storage.close()
+
         assert storage.conn is None
     
     @pytest.mark.asyncio

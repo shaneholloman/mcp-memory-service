@@ -67,10 +67,15 @@ def test_app(initialized_storage, monkeypatch):
     # Force reload of config module to pick up new environment variables
     import sys
     import importlib
-    if 'mcp_memory_service.config' in sys.modules:
-        importlib.reload(sys.modules['mcp_memory_service.config'])
-    if 'mcp_memory_service.web.oauth.middleware' in sys.modules:
-        importlib.reload(sys.modules['mcp_memory_service.web.oauth.middleware'])
+    try:
+        if 'mcp_memory_service.config' in sys.modules:
+            importlib.reload(sys.modules['mcp_memory_service.config'])
+        if 'mcp_memory_service.web.oauth.middleware' in sys.modules:
+            importlib.reload(sys.modules['mcp_memory_service.web.oauth.middleware'])
+    except (AttributeError, ImportError):
+        # Module reload may fail in some test environments (e.g., editable installs)
+        # In that case, we'll rely on the environment variables being set before import
+        pass
 
     # Import here to avoid circular dependencies
     from mcp_memory_service.web.app import app
