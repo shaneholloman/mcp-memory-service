@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.10.2] - 2026-02-10
+
+### Fixed
+- **Memory Injection Filtering (#449):** Fixed two critical bugs preventing proper memory filtering for empty/new projects
+  - **minRelevanceScore Enforcement:** Applied configured relevance threshold (default 0.3) in memory scoring filter - was loaded but never enforced, allowing low-relevance cross-project memories (scored ~12% after 85% penalty) to pass through
+  - **Project-Affinity Filter:** Added Phase 2 tag-based search filter to prevent cross-project memory pollution - tag searches now require project tag presence or project name mention in content
+  - Generic tags (architecture, key-decisions, claude-code-reference) previously returned memories from ALL projects due to OR logic in `/api/search/by-tag` endpoint
+
+### Security
+- **Command Injection Prevention (#449):** Replaced `execSync` with `execFileSync` in memory service queries to prevent command injection via project names
+- **Log Sanitization (#449):** Added `sanitizeForLog()` function to strip ANSI/control characters from logged project names
+- **Null Guards (#449):** Added defensive null/empty checks for `projectTag` in affinity filter
+
 ## [10.10.1] - 2026-02-09
 
 ### Fixed
