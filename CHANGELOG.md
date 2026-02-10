@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Memory Scoring (#450):** Fixed score inflation in memory-scorer.js - capped finalScore to 1.0 before applying 0.5x penalty to prevent bonus inflation while preserving cross-project technology sharing
+
 ## [10.10.2] - 2026-02-10
 
 ### Fixed
