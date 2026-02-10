@@ -134,9 +134,7 @@ jobs:
   test-uvx-compatibility:
     runs-on: ubuntu-latest
     name: Test uvx compatibility
-    # Temporarily skip on feature branches due to HuggingFace model download timeouts
-    # TODO: Fix in separate PR (add timeout + better caching)
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
@@ -148,11 +146,12 @@ jobs:
         python-version: '3.11'
 
     - name: Cache HuggingFace models
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/huggingface
-        key: ${{ runner.os }}-huggingface-models-${{ hashFiles('**/pyproject.toml') }}
+        key: ${{ runner.os }}-huggingface-models-v2-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
+          ${{ runner.os }}-huggingface-models-v2-
           ${{ runner.os }}-huggingface-models-
 
     - name: Install uv
@@ -172,9 +171,26 @@ jobs:
         # Install test dependencies
         uv pip install pytest pytest-asyncio pytest-cov
 
-        # Pre-download HuggingFace embedding model to populate cache
+        # Pre-download HuggingFace embedding model with timeout and fallback
         source .venv/bin/activate
-        python -c "from sentence_transformers import SentenceTransformer; print('Downloading embedding model...'); SentenceTransformer('all-MiniLM-L6-v2'); print('✓ Model cached')"
+        timeout 300 python -c "
+from sentence_transformers import SentenceTransformer
+import sys
+import os
+try:
+    print('Downloading embedding model...')
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    print('✓ Model cached successfully')
+except Exception as e:
+    print(f'⚠️ Model download failed: {e}', file=sys.stderr)
+    print('Setting SKIP_MODEL_TESTS=true')
+    with open(os.environ['GITHUB_ENV'], 'a') as f:
+        f.write('SKIP_MODEL_TESTS=true\n')
+    sys.exit(0)
+" || {
+    echo "⚠️ Model download timed out after 5 minutes"
+    echo "SKIP_MODEL_TESTS=true" >> $GITHUB_ENV
+}
 
         # Run import validation (fast-fail before tests)
         echo "=== Import Validation ==="
