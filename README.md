@@ -175,17 +175,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.10.3** (February 10, 2026)
+## 🆕 Latest Release: **v10.10.4** (February 10, 2026)
 
-**Test Infrastructure & Memory Scoring Fixes** 🧪
+**CLI & Test Infrastructure Fixes** 🛠️
 
 **What's New:**
-- 🧪 **Test Infrastructure Fix (#451)**: Resolved 15 test failures in test_analytics_graph.py causing CI pipeline failures
-- 📊 **Graph Visualization Validation**: Tightened limit validation (le=1000 → le=500) for consistency with other API limits
-- 🔐 **Test Authentication Fix**: Resolved module import order issue causing 401 errors across all 15 tests
-- 🎯 **Memory Scoring Fix (#450)**: Capped finalScore to 1.0 before penalty to prevent bonus inflation
+- 🔧 **CLI Batch Ingestion Fix (#447)**: Fixed async bug causing "NoneType object can't be awaited" errors - 100% success rate restored (was 9.4%)
+- 🧪 **Test Infrastructure Fix (#451)**: Resolved 15 test failures in graph visualization and authentication (14 failed → 15 passed)
+- ⚡ **Performance Restored**: CLI `ingest-directory` command now works reliably for batch document imports
 
 **Previous Releases**:
+- **v10.10.3** - Test Infrastructure & Memory Scoring Fixes (graph validation, test authentication, score capping)
 - **v10.10.2** - Memory Injection Filtering (minRelevanceScore enforcement, project-affinity filter, security hardening)
 - **v10.10.1** - Search Handler Fix, Import Error Fix, Security Enhancement, Improved Exact Search
 - **v10.10.0** - Environment Configuration Viewer (11 categorized parameters, sensitive masking, Settings Panel integration)

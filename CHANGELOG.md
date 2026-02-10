@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.10.4] - 2026-02-10
+
+### Fixed
+- **CLI Batch Ingestion (#447):** Fixed async bug in `ingest-directory` command causing "NoneType object can't be awaited" errors
+  - Made `sqlite_vec.close()` async to match other storage backend interfaces
+  - **Result:** CLI batch ingestion now works at 100% success rate (was 9.4% before fix)
+- **Test Infrastructure (#451):** Fixed graph visualization validation and test authentication setup
+  - **Graph Visualization:** Tightened limit validation from le=1000 to le=500 for consistency with test expectations
+  - **Test Authentication:** Fixed module import order causing 15 tests to fail with 401 errors
+  - **Result:** All 15 tests now pass (previously 14 failed, 1 xpassed)
+
 ## [10.10.3] - 2026-02-10
 
 ### Fixed
