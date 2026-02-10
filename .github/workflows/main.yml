@@ -169,7 +169,7 @@ jobs:
         uv pip install -e .
 
         # Install test dependencies
-        uv pip install pytest pytest-asyncio pytest-cov
+        uv pip install pytest pytest-asyncio pytest-cov pytest-benchmark
 
         # Pre-download HuggingFace embedding model with timeout and fallback
         source .venv/bin/activate
