@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.10.5] - 2026-02-10
+
+### Fixed
+- **Embedding Dimension Cache (#412):** Fixed embedding dimension not being restored from model cache, causing dimension mismatches (384 vs 768) across multiple storage instances
+  - Added `_DIMENSION_CACHE` dictionary alongside `_MODEL_CACHE` to track embedding dimensions
+  - Store dimension when caching models (external API, ONNX, SentenceTransformer)
+  - Restore dimension when retrieving cached models
+  - **Result:** Consistent embedding dimensions across all storage instances
+
 ## [10.10.4] - 2026-02-10
 
 ### Fixed

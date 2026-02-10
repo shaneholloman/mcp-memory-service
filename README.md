@@ -175,16 +175,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.10.4** (February 10, 2026)
+## 🆕 Latest Release: **v10.10.5** (February 10, 2026)
 
-**CLI & Test Infrastructure Fixes** 🛠️
+**Embedding Dimension Cache Fix** 🔧
 
 **What's New:**
-- 🔧 **CLI Batch Ingestion Fix (#447)**: Fixed async bug causing "NoneType object can't be awaited" errors - 100% success rate restored (was 9.4%)
-- 🧪 **Test Infrastructure Fix (#451)**: Resolved 15 test failures in graph visualization and authentication (14 failed → 15 passed)
-- ⚡ **Performance Restored**: CLI `ingest-directory` command now works reliably for batch document imports
+- 🔧 **Embedding Dimension Cache Fix (#412)**: Fixed embedding dimensions not being restored from model cache, preventing dimension mismatches (384 vs 768)
+- ⚡ **Cache Consistency**: Added `_DIMENSION_CACHE` to track embedding dimensions alongside `_MODEL_CACHE` for all embedding types
+- ✅ **Stability Improvement**: Consistent embedding dimensions across multiple storage instances
 
 **Previous Releases**:
+- **v10.10.4** - CLI Batch Ingestion Fix (async bug causing "NoneType" errors, 100% success rate restored)
 - **v10.10.3** - Test Infrastructure & Memory Scoring Fixes (graph validation, test authentication, score capping)
 - **v10.10.2** - Memory Injection Filtering (minRelevanceScore enforcement, project-affinity filter, security hardening)
 - **v10.10.1** - Search Handler Fix, Import Error Fix, Security Enhancement, Improved Exact Search
