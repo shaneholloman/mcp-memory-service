@@ -322,10 +322,10 @@ async function queryMemoryServiceViaCode(query, config) {
     const enableMetrics = config?.codeExecution?.enableMetrics !== false;
 
     try {
-        const { execSync } = require('child_process');
+        const { execFileSync } = require('child_process');
 
-        // Escape query strings for safe shell execution
-        const escapeForPython = (str) => str.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        // Sanitize inputs to prevent injection via project names or queries
+        const sanitize = (str) => String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
         // Build Python code for memory search
         // Use v8.19.0+ Code Execution Interface API for optimal performance
@@ -338,7 +338,7 @@ from mcp_memory_service.api import search
 
 try:
     # Execute search with semantic query and limit (time filtering done server-side)
-    results = search("${escapeForPython(query.semanticQuery || '')}", limit=${query.limit || 8})
+    results = search('${sanitize(query.semanticQuery || '')}', limit=${parseInt(query.limit, 10) || 8})
 
     # Format compact output
     output = {
@@ -370,8 +370,8 @@ except Exception as e:
         const pythonPath = config?.codeExecution?.pythonPath || 'python3';
         const timeout = config?.codeExecution?.timeout || 5000;
 
-        // Execute Python code with timeout (suppress warnings to avoid stderr failures)
-        const result = execSync(`${pythonPath} -W ignore -c "${pythonCode.replace(/"/g, '\\"')}"`, {
+        // Use execFileSync with args array to avoid shell injection
+        const result = execFileSync(pythonPath, ['-W', 'ignore', '-c', pythonCode], {
             encoding: 'utf-8',
             timeout: timeout,
             stdio: ['pipe', 'pipe', 'pipe']
@@ -501,6 +501,13 @@ function calculateContentSimilarity(str1, str2) {
  * Check if a new memory is a duplicate of any existing memory
  * Uses 80% similarity threshold and never deduplicates cluster memories
  */
+/** Strip ANSI escape sequences and control characters to prevent terminal/log injection */
+function sanitizeForLog(str) {
+    if (!str) return '';
+    // eslint-disable-next-line no-control-regex
+    return String(str).replace(/[\x00-\x1f\x7f-\x9f]/g, '').replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+}
+
 function isDuplicateMemory(newMemory, existingMemories) {
     if (!newMemory || !newMemory.content) return false;
 
@@ -915,9 +922,10 @@ async function executeSessionStart(context) {
             const effectiveMaxForPhase2 = currentMemoryCount + remainingForTags;
 
             if (remainingForTags > 0) {
-                // Build tag list for important memories
+                // Build tag list scoped to current project
+                const projectTag = projectContext.name;
                 const importantTags = [
-                    projectContext.name,
+                    projectTag,
                     'key-decisions',
                     'architecture',
                     'claude-code-reference'
@@ -926,7 +934,7 @@ async function executeSessionStart(context) {
                 const timeFilter = 'last-2-weeks';
 
                 if (verbose && showMemoryDetails && showPhaseDetails && !cleanMode) {
-                    console.log(`${CONSOLE_COLORS.BLUE}🎯 Phase 2${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Searching important tagged memories (${remainingForTags} slots)`);
+                    console.log(`${CONSOLE_COLORS.BLUE}🎯 Phase 2${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Searching important tagged memories (${remainingForTags} slots, project: ${sanitizeForLog(projectTag)})`);
                 }
 
                 // Use new tag-time filtering method for efficient recency prioritization
@@ -934,8 +942,19 @@ async function executeSessionStart(context) {
                     await memoryClient.queryMemoriesByTagsAndTime(importantTags, timeFilter, remainingForTags, false) :
                     [];
 
+                // Filter to require project affinity: memory must have the project
+                // tag OR mention the project name in content. This prevents generic
+                // "architecture" tags from pulling in unrelated project memories.
+                const projectTagLower = projectTag?.toLowerCase();
+                const projectScoped = (importantMemories || []).filter(mem => {
+                    if (!projectTagLower) return false;
+                    const tags = (mem.tags || []).map(t => t.toLowerCase());
+                    const content = (mem.content || mem.preview || '').toLowerCase();
+                    return tags.includes(projectTagLower) || content.includes(projectTagLower);
+                });
+
                 // Filter out duplicates using similarity-based deduplication (80% threshold)
-                const newMemories = (importantMemories || []).filter(newMem =>
+                const newMemories = projectScoped.filter(newMem =>
                     !isDuplicateMemory(newMem, allMemories)
                 );
 
@@ -1118,11 +1137,11 @@ async function executeSessionStart(context) {
                 return memory;
             }).sort((a, b) => b.relevanceScore - a.relevanceScore); // Re-sort after boost
 
-            // Filter out zero-scored memories (project affinity filtered)
+            // Filter memories below minimum relevance threshold (loaded from config, default 0.3)
             const preFilterCount = scoredMemories.length;
-            scoredMemories = scoredMemories.filter(m => m.relevanceScore > 0);
+            scoredMemories = scoredMemories.filter(m => m.relevanceScore >= minRelevanceScore);
             if (verbose && showMemoryDetails && !cleanMode && preFilterCount !== scoredMemories.length) {
-                console.log(`[Memory Filter] Removed ${preFilterCount - scoredMemories.length} unrelated memories (no project affinity)`);
+                console.log(`[Memory Filter] Removed ${preFilterCount - scoredMemories.length} low-relevance memories (below ${(minRelevanceScore * 100).toFixed(0)}% threshold)`);
             }
 
             // Show top scoring memories with recency info and detailed breakdown
