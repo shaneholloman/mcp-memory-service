@@ -173,24 +173,24 @@ jobs:
 
         # Pre-download HuggingFace embedding model with timeout and fallback
         source .venv/bin/activate
-        timeout 300 python -c "
-from sentence_transformers import SentenceTransformer
-import sys
-import os
-try:
-    print('Downloading embedding model...')
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    print('✓ Model cached successfully')
-except Exception as e:
-    print(f'⚠️ Model download failed: {e}', file=sys.stderr)
-    print('Setting SKIP_MODEL_TESTS=true')
-    with open(os.environ['GITHUB_ENV'], 'a') as f:
-        f.write('SKIP_MODEL_TESTS=true\n')
-    sys.exit(0)
-" || {
-    echo "⚠️ Model download timed out after 5 minutes"
-    echo "SKIP_MODEL_TESTS=true" >> $GITHUB_ENV
-}
+        timeout 300 python << 'PYTHON_SCRIPT' || {
+          echo "⚠️ Model download timed out after 5 minutes"
+          echo "SKIP_MODEL_TESTS=true" >> $GITHUB_ENV
+        }
+        from sentence_transformers import SentenceTransformer
+        import sys
+        import os
+        try:
+            print('Downloading embedding model...')
+            model = SentenceTransformer('all-MiniLM-L6-v2')
+            print('✓ Model cached successfully')
+        except Exception as e:
+            print(f'⚠️ Model download failed: {e}', file=sys.stderr)
+            print('Setting SKIP_MODEL_TESTS=true')
+            with open(os.environ['GITHUB_ENV'], 'a') as f:
+                f.write('SKIP_MODEL_TESTS=true\n')
+            sys.exit(0)
+        PYTHON_SCRIPT
 
         # Run import validation (fast-fail before tests)
         echo "=== Import Validation ==="
