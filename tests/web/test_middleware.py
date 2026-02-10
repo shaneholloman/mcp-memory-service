@@ -35,7 +35,7 @@ async def temp_storage(temp_db_path):
     await storage.initialize()
     set_storage(storage)
     yield storage
-    storage.close()
+    await storage.close()
 
 
 @pytest.fixture

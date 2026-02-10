@@ -29,7 +29,7 @@ async def temp_storage():
         await storage.initialize()
         set_storage(storage)
         yield storage
-        storage.close()
+        await storage.close()
 
 
 @pytest.mark.asyncio

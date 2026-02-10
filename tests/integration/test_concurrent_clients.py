@@ -59,8 +59,8 @@ class TestConcurrentClients:
                 # Small delay to simulate real-world timing
                 await asyncio.sleep(0.01)
         finally:
-            storage.close()
-        
+            await storage.close()
+
         return results
     
     async def client_reader(self, db_path: str, client_id: str, num_reads: int) -> List[int]:
@@ -77,8 +77,8 @@ class TestConcurrentClients:
                 # Small delay between reads
                 await asyncio.sleep(0.02)
         finally:
-            storage.close()
-        
+            await storage.close()
+
         return counts
     
     @pytest.mark.asyncio
@@ -112,7 +112,7 @@ class TestConcurrentClients:
             all_memories = await storage.search_by_tag(["concurrent"])
             assert len(all_memories) == 20, f"Expected 20 memories, found {len(all_memories)}"
         finally:
-            storage.close()
+            await storage.close()
     
     @pytest.mark.asyncio
     async def test_reader_writer_concurrent(self, db_path):
@@ -128,8 +128,8 @@ class TestConcurrentClients:
                 memory_type="test"
             )
             await initial_storage.store(memory)
-        initial_storage.close()
-        
+        await initial_storage.close()
+
         # Run reader and writer concurrently
         results = await asyncio.gather(
             self.client_reader(db_path, "reader", 10),
@@ -195,8 +195,8 @@ class TestConcurrentClients:
                     await storage.store(memory)
                     # No delay - rapid fire
             finally:
-                storage.close()
-        
+                await storage.close()
+
         async def rapid_reader(client_id: str):
             storage = await self.create_client(db_path, client_id)
             try:
@@ -204,7 +204,7 @@ class TestConcurrentClients:
                     await storage.search_by_tag(["rapid"])
                     # No delay - rapid fire
             finally:
-                storage.close()
+                await storage.close()
         
         # Run multiple clients with rapid access
         tasks = [
@@ -240,7 +240,7 @@ class TestConcurrentClients:
                     if success:
                         hashes.append(memory.content_hash)
             finally:
-                storage.close()
+                await storage.close()
             return hashes
         
         # Run concurrent writes
@@ -270,7 +270,7 @@ class TestConcurrentClients:
             for hash_val in all_hashes:
                 assert hash_val in db_hashes, f"Memory {hash_val} not found in database"
         finally:
-            storage.close()
+            await storage.close()
 
 
 if __name__ == "__main__":

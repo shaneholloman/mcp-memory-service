@@ -3362,7 +3362,7 @@ SOLUTIONS:
             logger.error(f"Unexpected error getting graph visualization data: {str(e)}")
             return {"nodes": [], "edges": []}
 
-    def close(self):
+    async def close(self):
         """Close the database connection."""
         if self.conn:
             self.conn.close()

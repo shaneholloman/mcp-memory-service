@@ -53,7 +53,7 @@ async def initialized_storage(temp_db, monkeypatch):
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
     yield storage
-    storage.close()
+    await storage.close()
 
 
 @pytest.fixture
