@@ -175,18 +175,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.10.1** (February 9, 2026)
+## 🆕 Latest Release: **v10.10.3** (February 10, 2026)
 
-**Critical Bug Fixes & Search Improvements** 🐛
+**Test Infrastructure & Memory Scoring Fixes** 🧪
 
 **What's New:**
-- 🐛 **Search Handler Fix (#444, #446)**: Resolved AttributeError when storage backends return dictionaries
-- 🔌 **Import Error Fix (#443)**: Fixed response_limiter path - max_response_chars feature now works
-- 🛡️ **Security Enhancement (#441)**: SQL injection prevention in maintenance scripts with allowlist validation
-- 🔍 **Improved Exact Search (#445)**: Case-insensitive substring matching (LIKE) replaces full-content equality
-  - ⚠️ **Breaking Change**: Exact mode now performs substring search instead of full match
+- 🧪 **Test Infrastructure Fix (#451)**: Resolved 15 test failures in test_analytics_graph.py causing CI pipeline failures
+- 📊 **Graph Visualization Validation**: Tightened limit validation (le=1000 → le=500) for consistency with other API limits
+- 🔐 **Test Authentication Fix**: Resolved module import order issue causing 401 errors across all 15 tests
+- 🎯 **Memory Scoring Fix (#450)**: Capped finalScore to 1.0 before penalty to prevent bonus inflation
 
 **Previous Releases**:
+- **v10.10.2** - Memory Injection Filtering (minRelevanceScore enforcement, project-affinity filter, security hardening)
+- **v10.10.1** - Search Handler Fix, Import Error Fix, Security Enhancement, Improved Exact Search
 - **v10.10.0** - Environment Configuration Viewer (11 categorized parameters, sensitive masking, Settings Panel integration)
 - **v10.9.0** - Batched Inference Performance (4-16x GPU speedup, 2.3-2.5x CPU speedup with adaptive GPU dispatch)
 - **v10.9.0** - Batched Inference Performance (4-16x GPU speedup, 2.3-2.5x CPU speedup with adaptive GPU dispatch)

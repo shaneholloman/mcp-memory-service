@@ -10,7 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.10.3] - 2026-02-10
+
 ### Fixed
+- **Test Infrastructure (#451):** Fixed test_analytics_graph.py failures causing CI pipeline failures
+  - **Graph Visualization Validation:** Tightened limit validation from le=1000 to le=500 for consistency with test expectations and other API limits
+  - **Test Authentication:** Fixed module import order issue where config loaded before test environment variables, causing all 15 tests to fail with 401 errors
+  - **Result:** All 15 tests now pass (previously 14 failed, 1 xpassed)
 - **Memory Scoring (#450):** Fixed score inflation in memory-scorer.js - capped finalScore to 1.0 before applying 0.5x penalty to prevent bonus inflation while preserving cross-project technology sharing
 
 ## [10.10.2] - 2026-02-10
