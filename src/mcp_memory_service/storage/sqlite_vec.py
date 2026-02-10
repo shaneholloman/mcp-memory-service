@@ -74,6 +74,7 @@ logger = logging.getLogger(__name__)
 
 # Global model cache for performance optimization
 _MODEL_CACHE = {}
+_DIMENSION_CACHE = {}  # Cache embedding dimensions alongside models (Issue #412)
 _EMBEDDING_CACHE = {}
 
 
@@ -874,6 +875,8 @@ SOLUTIONS:
 
                     if cache_key in _MODEL_CACHE:
                         self.embedding_model = _MODEL_CACHE[cache_key]
+                        if cache_key in _DIMENSION_CACHE:
+                            self.embedding_dimension = _DIMENSION_CACHE[cache_key]
                         logger.info("Using cached external embedding model")
                         return
 
@@ -881,6 +884,7 @@ SOLUTIONS:
                     self.embedding_model = ext_model
                     self.embedding_dimension = ext_model.embedding_dimension
                     _MODEL_CACHE[cache_key] = ext_model
+                    _DIMENSION_CACHE[cache_key] = self.embedding_dimension
 
                     # Warn if dimension differs from default ONNX dimension
                     if self.embedding_dimension != 384:
@@ -909,6 +913,8 @@ SOLUTIONS:
                     cache_key = f"onnx_{self.embedding_model_name}"
                     if cache_key in _MODEL_CACHE:
                         self.embedding_model = _MODEL_CACHE[cache_key]
+                        if cache_key in _DIMENSION_CACHE:
+                            self.embedding_dimension = _DIMENSION_CACHE[cache_key]
                         logger.info(f"Using cached ONNX embedding model: {self.embedding_model_name}")
                         return
 
@@ -918,6 +924,7 @@ SOLUTIONS:
                         self.embedding_model = onnx_model
                         self.embedding_dimension = onnx_model.embedding_dimension
                         _MODEL_CACHE[cache_key] = onnx_model
+                        _DIMENSION_CACHE[cache_key] = self.embedding_dimension
                         logger.info(f"ONNX embedding model loaded successfully. Dimension: {self.embedding_dimension}")
                         return
                     else:
@@ -939,6 +946,8 @@ SOLUTIONS:
             cache_key = self.embedding_model_name
             if cache_key in _MODEL_CACHE:
                 self.embedding_model = _MODEL_CACHE[cache_key]
+                if cache_key in _DIMENSION_CACHE:
+                    self.embedding_dimension = _DIMENSION_CACHE[cache_key]
                 logger.info(f"Using cached embedding model: {self.embedding_model_name}")
                 return
 
@@ -1028,8 +1037,9 @@ SOLUTIONS:
             test_embedding = self.embedding_model.encode(["test"], convert_to_numpy=True)
             self.embedding_dimension = test_embedding.shape[1]
 
-            # Cache the model
+            # Cache the model and its dimension
             _MODEL_CACHE[cache_key] = self.embedding_model
+            _DIMENSION_CACHE[cache_key] = self.embedding_dimension
 
             logger.info(f"✅ Embedding model loaded successfully. Dimension: {self.embedding_dimension}")
 
