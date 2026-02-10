@@ -45,6 +45,7 @@ class TestCLIInterfaces:
             ["uv", "run", "memory", "--help"],
             capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
         assert result.returncode == 0
@@ -56,8 +57,9 @@ class TestCLIInterfaces:
         """Test that the memory-server command is available."""
         result = subprocess.run(
             ["uv", "run", "memory-server", "--help"],
-            capture_output=True, 
+            capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
         assert result.returncode == 0
@@ -70,7 +72,8 @@ class TestCLIInterfaces:
         result = subprocess.run(
             ["uv", "run", "mcp-memory-server", "--help"],
             capture_output=True,
-            text=True, 
+            text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
         # This might have different behavior or missing dependencies
@@ -87,6 +90,7 @@ class TestCLIInterfaces:
             ["uv", "run", "memory-server", "--version"],
             capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
         assert result.returncode == 0
@@ -100,14 +104,16 @@ class TestCLIInterfaces:
             ["uv", "run", "memory-server", "--help"],
             capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
-        
-        # Test memory server --help  
+
+        # Test memory server --help
         result2 = subprocess.run(
             ["uv", "run", "memory", "server", "--help"],
             capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
         
@@ -149,6 +155,7 @@ class TestCLIInterfaces:
             ["uv", "run", "memory-server", "--help"],
             capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
         
@@ -242,8 +249,8 @@ print(f'DEBUG_IN_OUTPUT:{\"--debug\" in result.output}')
             ["uv", "run", "memory", "server", "--storage-backend", "invalid"],
             capture_output=True,
             text=True,
-            cwd=current_dir.parent.parent,
-            timeout=10
+            timeout=60,
+            cwd=current_dir.parent.parent
         )
         
         # Should fail with clear error message
@@ -259,14 +266,16 @@ print(f'DEBUG_IN_OUTPUT:{\"--debug\" in result.output}')
             ["uv", "run", "memory", "server", "--help"],
             capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
-        
+
         # Test memory-server arguments
         result2 = subprocess.run(
             ["uv", "run", "memory-server", "--help"],
             capture_output=True,
             text=True,
+            timeout=60,
             cwd=current_dir.parent.parent
         )
         
