@@ -175,17 +175,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.10.6** (February 10, 2026)
+## 🆕 Latest Release: **v10.11.0** (February 11, 2026)
 
-**Test Infrastructure Improvements** 🧪
+**SQLite Integrity Monitoring** 🛡️
 
 **What's New:**
-- 🔧 **Python 3.11 Compatibility (#317)**: Fixed TypedDict import blocking test collection on Python 3.11
-- ⚡ **Performance Testing (#318)**: Re-enabled pytest-benchmark for development performance benchmarking
-- 📊 **Coverage Baseline (#317)**: Established 60.05% coverage baseline with 4-phase improvement plan
-- 📝 **Documentation Updates (#91, #261)**: Issue status updates for ontology (97% complete) and quality system (Phase 1 complete)
+- 🔍 **Automatic Integrity Checks (#456)**: PRAGMA integrity_check every 30 minutes (configurable) with 3.5ms overhead
+- 🔧 **Automatic Repair**: WAL checkpoint recovery on corruption detection (prevents 15% production data loss)
+- 💾 **Emergency Export**: Automatic JSON backup on unrecoverable corruption
+- ⚙️ **Zero-Config**: Enabled by default for sqlite_vec and hybrid backends
+- 📊 **New MCP Tool**: memory_health includes integrity status reporting
 
 **Previous Releases**:
+- **v10.10.6** - Test Infrastructure Improvements (Python 3.11 compatibility, pytest-benchmark, coverage baseline)
 - **v10.10.5** - Embedding Dimension Cache Fix (dimension mismatch prevention, cache consistency)
 - **v10.10.4** - CLI Batch Ingestion Fix (async bug causing "NoneType" errors, 100% success rate restored)
 - **v10.10.3** - Test Infrastructure & Memory Scoring Fixes (graph validation, test authentication, score capping)

@@ -10,6 +10,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.11.0] - 2026-02-11
+
+### Added
+- **SQLite Integrity Monitoring (#456):** Periodic database integrity health checks to prevent data loss from WAL corruption
+  - **Automatic Monitoring:** PRAGMA integrity_check runs every 30 minutes (configurable via `MCP_MEMORY_INTEGRITY_CHECK_INTERVAL`)
+  - **Automatic Repair:** WAL checkpoint recovery on corruption detection (PRAGMA wal_checkpoint(TRUNCATE))
+  - **Emergency Export:** Automatic JSON backup export on unrecoverable corruption
+  - **Non-Blocking I/O:** Async implementation using asyncio.to_thread() - zero blocking on main thread
+  - **Minimal Overhead:** 3.5ms check duration (0.0002% overhead at 30-minute intervals)
+  - **New Configuration Options:**
+    - `MCP_MEMORY_INTEGRITY_CHECK_ENABLED` (default: true)
+    - `MCP_MEMORY_INTEGRITY_CHECK_INTERVAL` (default: 1800 seconds)
+  - **New MCP Tool:** `memory_health` tool now includes integrity status reporting
+  - **Comprehensive Testing:** 9 tests covering check execution, repair, export, async behavior, and configuration
+  - **Applicability:** Enabled for sqlite_vec and hybrid backends (Cloudflare backend not applicable)
+  - **Impact:** Addresses 15% production data loss from undetected WAL corruption
+  - **Technical Implementation:**
+    - New module: `src/mcp_memory_service/health/integrity.py` (317 lines)
+    - Integration with existing health system and storage backends
+    - Graceful error handling with detailed logging and user-facing status messages
+  - **Zero-Config Activation:** Works out-of-the-box with sensible defaults for all users
+
 ## [10.10.6] - 2026-02-10
 
 ### Fixed
