@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.11.1] - 2026-02-12
+
+### Fixed
+- **MCP Prompt Handlers (#458, #459):** Fixed AttributeError in all 5 MCP prompt handlers (memory_review, memory_analysis, knowledge_export, memory_cleanup, learning_session)
+  - **Root Cause:** Prompt handlers defined as nested functions inside handle_get_prompt() but called as instance methods (self._prompt_*)
+  - **Fix:** Changed dispatcher to call nested functions directly by passing self as first argument instead of calling as methods
+  - **Impact:** All prompt handlers now work correctly - was causing 100% failure rate
+  - **Tests Added:** 5 integration tests in tests/integration/test_prompt_handlers.py to prevent regression
+
 ## [10.11.0] - 2026-02-11
 
 ### Added

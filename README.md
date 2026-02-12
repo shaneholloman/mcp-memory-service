@@ -175,18 +175,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.11.0** (February 11, 2026)
+## 🆕 Latest Release: **v10.11.1** (February 12, 2026)
 
-**SQLite Integrity Monitoring** 🛡️
+**MCP Prompt Handlers Fix** 🐛
 
 **What's New:**
-- 🔍 **Automatic Integrity Checks (#456)**: PRAGMA integrity_check every 30 minutes (configurable) with 3.5ms overhead
-- 🔧 **Automatic Repair**: WAL checkpoint recovery on corruption detection (prevents 15% production data loss)
-- 💾 **Emergency Export**: Automatic JSON backup on unrecoverable corruption
-- ⚙️ **Zero-Config**: Enabled by default for sqlite_vec and hybrid backends
-- 📊 **New MCP Tool**: memory_health includes integrity status reporting
+- 🔧 **Critical Bugfix (#458, #459)**: Fixed all 5 MCP prompt handlers (memory_review, memory_analysis, knowledge_export, memory_cleanup, learning_session)
+- ✅ **100% Success Rate**: All prompt handlers now work correctly (was 100% failure rate)
+- 🧪 **Regression Tests**: Added 5 integration tests to prevent future breakage
+- 🎯 **Root Cause**: Nested functions called as instance methods - dispatcher corrected to call functions directly
 
 **Previous Releases**:
+- **v10.11.0** - SQLite Integrity Monitoring (automatic corruption detection/repair, 3.5ms overhead, emergency export)
 - **v10.10.6** - Test Infrastructure Improvements (Python 3.11 compatibility, pytest-benchmark, coverage baseline)
 - **v10.10.5** - Embedding Dimension Cache Fix (dimension mismatch prevention, cache consistency)
 - **v10.10.4** - CLI Batch Ingestion Fix (async bug causing "NoneType" errors, 100% success rate restored)
