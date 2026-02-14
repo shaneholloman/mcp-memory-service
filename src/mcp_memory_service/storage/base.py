@@ -96,14 +96,23 @@ class MemoryStorage(ABC):
         return final_results
     
     @abstractmethod
-    async def retrieve(self, query: str, n_results: int = 5) -> List[MemoryQueryResult]:
-        """Retrieve memories by semantic search."""
+    async def retrieve(self, query: str, n_results: int = 5, tags: Optional[List[str]] = None) -> List[MemoryQueryResult]:
+        """Retrieve memories by semantic search.
+
+        Args:
+            query: The search query text.
+            n_results: Maximum number of results to return.
+            tags: Optional list of tags to filter by (match ANY tag).
+                  When provided, the implementation should over-fetch
+                  vector candidates and filter by tag at the SQL level.
+        """
         pass
 
     async def retrieve_with_quality_boost(
         self,
         query: str,
         n_results: int = 10,
+        tags: Optional[List[str]] = None,
         quality_boost: Optional[bool] = None,
         quality_weight: Optional[float] = None
     ) -> List[MemoryQueryResult]:
@@ -117,6 +126,7 @@ class MemoryStorage(ABC):
         Args:
             query: Search query
             n_results: Number of results to return
+            tags: Optional list of tags to filter by (match ANY tag)
             quality_boost: Enable quality reranking (default from config)
             quality_weight: Weight for quality score 0.0-1.0 (default 0.3, meaning 30% quality, 70% semantic)
 
@@ -149,12 +159,12 @@ class MemoryStorage(ABC):
 
         if not quality_boost:
             # Standard retrieval, no reranking
-            return await self.retrieve(query, n_results)
+            return await self.retrieve(query, n_results, tags=tags)
 
         # Quality-boosted retrieval
         # Step 1: Over-fetch (3x) to have pool for reranking
         oversample_factor = 3
-        candidates = await self.retrieve(query, n_results * oversample_factor)
+        candidates = await self.retrieve(query, n_results * oversample_factor, tags=tags)
 
         if not candidates:
             return []
@@ -1096,8 +1106,10 @@ class MemoryStorage(ABC):
                     }
 
                 if query:
-                    # Determine fetch limit (over-fetch if quality boost enabled)
-                    fetch_limit = limit * 3 if quality_boost > 0 and mode == "hybrid" else limit
+                    # Determine fetch limit (over-fetch when post-filtering is needed)
+                    fetch_limit = limit
+                    if quality_boost > 0 and mode == "hybrid":
+                        fetch_limit = limit * 3
 
                     # Choose search method based on mode and available features
                     if mode == "hybrid" and hasattr(self, 'retrieve_hybrid'):
@@ -1115,22 +1127,24 @@ class MemoryStorage(ABC):
                                 results = await self.retrieve_with_quality_boost(
                                     query,
                                     n_results=fetch_limit,
+                                    tags=tags,
                                     quality_boost=True,
                                     quality_weight=quality_boost
                                 )
                             else:
-                                results = await self.retrieve(query, n_results=fetch_limit)
+                                results = await self.retrieve(query, n_results=fetch_limit, tags=tags)
                     elif quality_boost > 0:
                         # Use quality-boosted retrieval
                         results = await self.retrieve_with_quality_boost(
                             query,
                             n_results=fetch_limit,
+                            tags=tags,
                             quality_boost=True,
                             quality_weight=quality_boost
                         )
                     else:
                         # Standard semantic search
-                        results = await self.retrieve(query, n_results=fetch_limit)
+                        results = await self.retrieve(query, n_results=fetch_limit, tags=tags)
 
                     pre_filter_count = len(results)
                 else:

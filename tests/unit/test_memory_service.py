@@ -759,6 +759,95 @@ def test_normalize_tags_non_string_elements():
     assert result == ["tag1", "tag2", "tag3"]
 
 
+def test_normalize_tags_json_encoded_array():
+    """Test that JSON-encoded array strings are parsed correctly.
+
+    When a tool schema uses oneOf (array or string) for tags, the MCP
+    protocol may deserialize array values as JSON strings rather than
+    native lists. normalize_tags should handle this transparently.
+    """
+    from mcp_memory_service.services.memory_service import normalize_tags
+
+    # Single-element JSON array
+    result = normalize_tags('["preference"]')
+    assert result == ["preference"]
+
+    # Multi-element JSON array
+    result = normalize_tags('["tag1", "tag2", "TAG1"]')
+    assert result == ["tag1", "tag2"]  # deduped, lowercased
+
+    # JSON array with whitespace
+    result = normalize_tags('  ["python", "java"]  ')
+    assert result == ["python", "java"]
+
+    # Malformed JSON starting with [ should not crash
+    result = normalize_tags('[not valid json')
+    assert result == ["[not valid json"]
+
+    # Empty JSON array
+    result = normalize_tags('[]')
+    assert result == []
+
+    # Large JSON string (DoS protection) - should be treated as literal
+    large_json = '[' + ','.join(['"tag"'] * 2000) + ']'  # >4KB JSON
+    result = normalize_tags(large_json)
+    # Should treat entire string as single tag (DoS protection)
+    # Note: Commas are replaced with hyphens, and tag is truncated to 100 chars
+    assert len(result) == 1
+    assert len(result[0]) == 100  # Truncated to _MAX_TAG_LENGTH
+    assert result[0].startswith('["tag"-"tag"-')  # Commas replaced with hyphens
+
+
+def test_normalize_tags_comma_sanitization():
+    """Test that commas are removed from tags to prevent LIKE-based search breakage.
+
+    Tags are stored comma-separated in SQLite. If a tag contains a comma,
+    the LIKE '%,tag,%' pattern matching breaks. Commas should be replaced
+    with hyphens to preserve semantic meaning.
+    """
+    from mcp_memory_service.services.memory_service import normalize_tags
+
+    # Single tag with comma
+    result = normalize_tags(['machine,learning'])
+    assert result == ['machine-learning']
+
+    # Multiple tags with commas
+    result = normalize_tags(['data,science', 'web,dev', 'python'])
+    assert result == ['data-science', 'web-dev', 'python']
+
+    # JSON array with comma-containing tags
+    result = normalize_tags('["cloud,computing", "AI,ML"]')
+    assert result == ['cloud-computing', 'ai-ml']
+
+
+def test_normalize_tags_length_limiting():
+    """Test that excessively long tags and too many tags are limited."""
+    from mcp_memory_service.services.memory_service import normalize_tags
+
+    # Single very long tag (>100 chars)
+    long_tag = 'a' * 150
+    result = normalize_tags([long_tag])
+    assert len(result) == 1
+    assert len(result[0]) == 100  # Truncated to _MAX_TAG_LENGTH
+
+    # Too many tags (>100)
+    many_tags = [f'tag{i}' for i in range(150)]
+    result = normalize_tags(many_tags)
+    assert len(result) == 100  # Limited to _MAX_TAGS_PER_MEMORY
+
+
+def test_normalize_tags_recursion_error_handling():
+    """Test that deeply nested JSON structures don't crash the server."""
+    from mcp_memory_service.services.memory_service import normalize_tags
+
+    # Deeply nested JSON (would trigger RecursionError without proper handling)
+    deeply_nested = '[' * 500 + ']' * 500
+    result = normalize_tags(deeply_nested)
+    # Should treat as literal string instead of crashing
+    assert len(result) == 1
+    assert result[0].startswith('[[[')  # Commas don't exist, so no replacement
+
+
 @pytest.mark.asyncio
 async def test_store_memory_deduplicates_tags(memory_service, mock_storage):
     """Test that store_memory deduplicates tags case-insensitively."""
