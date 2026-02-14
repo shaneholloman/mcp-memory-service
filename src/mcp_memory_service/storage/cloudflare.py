@@ -681,7 +681,7 @@ class CloudflareStorage(MemoryStorage):
         if response.status_code not in [200, 201]:
             raise ValueError(f"Failed to store content in R2: {response.status_code}")
     
-    async def retrieve(self, query: str, n_results: int = 5) -> List[MemoryQueryResult]:
+    async def retrieve(self, query: str, n_results: int = 5, tags: Optional[List[str]] = None) -> List[MemoryQueryResult]:
         """Retrieve memories by semantic search."""
         try:
             # Generate query embedding
@@ -708,6 +708,11 @@ class CloudflareStorage(MemoryStorage):
             for match in matches:
                 memory = await self._load_memory_from_match(match)
                 if memory:
+                    # Filter by tags if specified
+                    if tags:
+                        if not any(tag in memory.tags for tag in tags):
+                            continue
+
                     # Record access for quality scoring (implicit signals)
                     memory.record_access(query)
 

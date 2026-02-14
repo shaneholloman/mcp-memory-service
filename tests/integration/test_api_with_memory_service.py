@@ -16,6 +16,20 @@ from mcp_memory_service.web.dependencies import set_storage, get_memory_service
 from mcp_memory_service.services.memory_service import MemoryService
 from mcp_memory_service.models.memory import Memory, MemoryQueryResult
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
+from mcp_memory_service.web.oauth.middleware import (
+    get_current_user, require_write_access, require_read_access,
+    AuthenticationResult
+)
+
+
+async def mock_get_current_user_for_integration():
+    """Mock authentication for integration tests."""
+    return AuthenticationResult(
+        authenticated=True,
+        client_id="test_client",
+        scope="read write admin",
+        auth_method="test"
+    )
 
 
 # Test Fixtures
@@ -631,17 +645,17 @@ async def test_http_api_list_memories_endpoint(temp_db, unique_content, monkeypa
 
     Verifies pagination and filtering work through HTTP API.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
-
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
 
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_write_access] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_read_access] = mock_get_current_user_for_integration
 
         # Store test memories first
         service = MemoryService(storage=storage)
@@ -665,7 +679,8 @@ async def test_http_api_list_memories_endpoint(temp_db, unique_content, monkeypa
         assert data["page"] == 1
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -676,17 +691,17 @@ async def test_http_api_search_endpoint(temp_db, unique_content, monkeypatch):
 
     Verifies semantic search works through HTTP API.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
-
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
 
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_write_access] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_read_access] = mock_get_current_user_for_integration
 
         # Store searchable memory
         service = MemoryService(storage=storage)
@@ -710,7 +725,8 @@ async def test_http_api_search_endpoint(temp_db, unique_content, monkeypatch):
         assert data["query"] == "python tutorial"
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -721,17 +737,17 @@ async def test_http_api_search_by_tag_endpoint(temp_db, unique_content, monkeypa
 
     Verifies tag search works through HTTP API.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
-
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
 
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_write_access] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_read_access] = mock_get_current_user_for_integration
 
         # Store memories with tags
         service = MemoryService(storage=storage)
@@ -760,7 +776,8 @@ async def test_http_api_search_by_tag_endpoint(temp_db, unique_content, monkeypa
         assert "important" in data["results"][0]["memory"]["tags"]
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -771,17 +788,17 @@ async def test_http_api_get_memory_by_hash_endpoint(temp_db, unique_content, mon
 
     Verifies retrieving specific memory by hash works.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
-
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
 
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_write_access] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_read_access] = mock_get_current_user_for_integration
 
         # Store a memory
         service = MemoryService(storage=storage)
@@ -804,7 +821,8 @@ async def test_http_api_get_memory_by_hash_endpoint(temp_db, unique_content, mon
         assert data["content_hash"] == content_hash
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -880,17 +898,17 @@ async def test_http_api_pagination_with_real_data(temp_db, unique_content, monke
 
     Verifies database-level pagination prevents O(n) loading.
     """
-    # Disable authentication for tests
-    monkeypatch.setenv('MCP_API_KEY', '')
-    monkeypatch.setenv('MCP_OAUTH_ENABLED', 'false')
-    monkeypatch.setenv('MCP_ALLOW_ANONYMOUS_ACCESS', 'true')
-
     storage = SqliteVecMemoryStorage(temp_db)
     await storage.initialize()
 
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_write_access] = mock_get_current_user_for_integration
+        app.dependency_overrides[require_read_access] = mock_get_current_user_for_integration
 
         # Store 25 memories
         service = MemoryService(storage=storage)
@@ -924,7 +942,8 @@ async def test_http_api_pagination_with_real_data(temp_db, unique_content, monke
         assert data3["has_more"] is False
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio

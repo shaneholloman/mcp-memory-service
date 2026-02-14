@@ -79,12 +79,32 @@ def test_app(initialized_storage, monkeypatch):
 
     # Import here to avoid circular dependencies
     from mcp_memory_service.web.app import app
+    from mcp_memory_service.web.oauth.middleware import (
+        get_current_user, require_write_access, require_read_access,
+        AuthenticationResult
+    )
 
     # Set storage for the app
     set_storage(initialized_storage)
 
+    # Mock authentication for test isolation
+    async def mock_get_current_user():
+        return AuthenticationResult(
+            authenticated=True,
+            client_id="test_client",
+            scope="read write admin",
+            auth_method="test"
+        )
+
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    app.dependency_overrides[require_write_access] = mock_get_current_user
+    app.dependency_overrides[require_read_access] = mock_get_current_user
+
     client = TestClient(app)
     yield client
+
+    # Cleanup
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture

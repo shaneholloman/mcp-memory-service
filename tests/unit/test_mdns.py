@@ -92,14 +92,17 @@ class TestServiceAdvertiser:
     
     def test_init_default_parameters(self):
         """Test ServiceAdvertiser initialization with default parameters."""
+        from mcp_memory_service import config
+
         advertiser = ServiceAdvertiser()
-        
+
         assert advertiser.service_name == "MCP Memory Service"
         assert advertiser.service_type == "_mcp-memory._tcp.local."
-        assert advertiser.host == "0.0.0.0"
-        assert advertiser.port == 8000
-        assert advertiser.https_enabled is False
-        assert advertiser.api_key_required is False
+        assert advertiser.host == config.HTTP_HOST
+        assert advertiser.port == config.HTTP_PORT
+        # Check actual configured values (can be overridden by .env)
+        assert advertiser.https_enabled == config.HTTPS_ENABLED
+        assert advertiser.api_key_required == (config.API_KEY is not None and config.API_KEY != "")
         assert advertiser._registered is False
     
     def test_init_custom_parameters(self):

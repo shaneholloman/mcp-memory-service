@@ -244,7 +244,9 @@ class TestConfigurationConstants:
             CONTENT_PRESERVE_BOUNDARIES
         )
 
-        assert CLOUDFLARE_MAX_CONTENT_LENGTH == 800
+        # Check constants exist and have sensible values (not exact values since .env can override)
+        assert isinstance(CLOUDFLARE_MAX_CONTENT_LENGTH, int)
+        assert 100 <= CLOUDFLARE_MAX_CONTENT_LENGTH <= 10000
         assert SQLITEVEC_MAX_CONTENT_LENGTH is None  # Unlimited
         assert HYBRID_MAX_CONTENT_LENGTH == CLOUDFLARE_MAX_CONTENT_LENGTH
         assert isinstance(ENABLE_AUTO_SPLIT, bool)

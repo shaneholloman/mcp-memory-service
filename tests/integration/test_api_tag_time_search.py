@@ -20,6 +20,20 @@ from mcp_memory_service.web.dependencies import set_storage
 from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 from mcp_memory_service.models.memory import Memory
 from mcp_memory_service.utils.hashing import generate_content_hash
+from mcp_memory_service.web.oauth.middleware import (
+    get_current_user, require_write_access, require_read_access,
+    AuthenticationResult
+)
+
+
+async def mock_get_current_user():
+    """Mock authentication for tests."""
+    return AuthenticationResult(
+        authenticated=True,
+        client_id="test_client",
+        scope="read write admin",
+        auth_method="test"
+    )
 
 
 @pytest.fixture
@@ -82,6 +96,11 @@ async def test_api_search_by_tag_with_time_filter_recent(temp_db):
         from mcp_memory_service.web.app import app
         set_storage(storage)
 
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
+
         client = TestClient(app)
 
         # Search for "task" tag with time_filter = 1 day ago
@@ -105,7 +124,8 @@ async def test_api_search_by_tag_with_time_filter_recent(temp_db):
         assert "Recent task from today" in data["results"][0]["memory"]["content"]
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -117,6 +137,11 @@ async def test_api_search_by_tag_with_time_filter_excludes_old(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         client = TestClient(app)
 
@@ -140,7 +165,8 @@ async def test_api_search_by_tag_with_time_filter_excludes_old(temp_db):
         assert len(data["results"]) == 0
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -152,6 +178,11 @@ async def test_api_search_by_tag_without_time_filter_backward_compat(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         client = TestClient(app)
 
@@ -174,7 +205,8 @@ async def test_api_search_by_tag_without_time_filter_backward_compat(temp_db):
         assert "recent" in tags_list
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -186,6 +218,11 @@ async def test_api_search_by_tag_with_empty_time_filter(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         client = TestClient(app)
 
@@ -206,7 +243,8 @@ async def test_api_search_by_tag_with_empty_time_filter(temp_db):
         assert len(data["results"]) == 2
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -218,6 +256,11 @@ async def test_api_search_by_tag_with_natural_language_time_filter(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         client = TestClient(app)
 
@@ -239,7 +282,8 @@ async def test_api_search_by_tag_with_natural_language_time_filter(temp_db):
         assert "recent" in data["results"][0]["memory"]["tags"]
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -251,6 +295,11 @@ async def test_api_search_by_tag_time_filter_with_multiple_tags(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         client = TestClient(app)
 
@@ -274,7 +323,8 @@ async def test_api_search_by_tag_time_filter_with_multiple_tags(temp_db):
         assert "recent" in data["results"][0]["memory"]["tags"]
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -286,6 +336,11 @@ async def test_api_search_by_tag_time_filter_with_match_all(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         # Store a memory with both "task" and "recent" tags
         # IMPORTANT: This must happen AFTER set_storage()
@@ -324,7 +379,8 @@ async def test_api_search_by_tag_time_filter_with_match_all(temp_db):
             assert "recent" in mem["memory"]["tags"]
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -336,6 +392,11 @@ async def test_api_search_by_tag_invalid_time_filter_format(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         client = TestClient(app)
 
@@ -360,7 +421,8 @@ async def test_api_search_by_tag_invalid_time_filter_format(temp_db):
             assert "results" in data
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
 
 
 @pytest.mark.asyncio
@@ -372,6 +434,11 @@ async def test_api_search_by_tag_time_filter_performance(temp_db):
     try:
         from mcp_memory_service.web.app import app
         set_storage(storage)
+
+        # Bypass authentication
+        app.dependency_overrides[get_current_user] = mock_get_current_user
+        app.dependency_overrides[require_write_access] = mock_get_current_user
+        app.dependency_overrides[require_read_access] = mock_get_current_user
 
         client = TestClient(app)
 
@@ -397,4 +464,5 @@ async def test_api_search_by_tag_time_filter_performance(temp_db):
         assert elapsed_ms < 200, f"Tag+time search took {elapsed_ms:.2f}ms (expected <200ms)"
 
     finally:
-        storage.close()
+        app.dependency_overrides.clear()
+        await storage.close()
