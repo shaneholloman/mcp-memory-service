@@ -175,18 +175,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.12.0** (February 14, 2026)
+## 🆕 Latest Release: **v10.12.1** (February 14, 2026)
 
-**Configurable Memory Type Ontology** 🧠
+**Custom Memory Type Configuration - Test Fixes** 🔧
 
 **What's New:**
-- 🎯 **Extended Memory Types (#464)**: From 29 developer-focused types to 75 types supporting project management and knowledge work
-- 📋 **Project Management Support**: 12 Agile types (sprint_goal, backlog_item, velocity) + 12 Traditional PM types (milestone, deliverable, risk)
-- 💼 **Knowledge Work Support**: 18 new types across meetings (action_item, minutes), research (finding, hypothesis), and communication (email_summary, announcement)
-- ⚙️ **Custom Types**: New `MCP_CUSTOM_MEMORY_TYPES` environment variable for dynamic type extension
-- ⚡ **Fully Backward Compatible**: All 29 original types unchanged, zero breaking changes
+- 🐛 **Test Infrastructure (#464)**: Fixed test failures in configurable memory type ontology feature
+- ✅ **Custom Type Support**: Fixed `get_all_types()` to properly include custom base types from environment variable
+- 🧪 **Test Isolation**: Improved test resilience by cleaning up environment variables in setup/teardown
+- 🎯 **100% Pass Rate**: All 47 ontology tests now pass reliably
 
 **Previous Releases**:
+- **v10.12.0** - Configurable Memory Type Ontology (75 types supporting PM and knowledge work, custom type configuration)
 - **v10.11.2** - Tag Filtering & Security Hardening (DoS protection, SQL-level optimization, comprehensive tests)
 - **v10.11.1** - MCP Prompt Handlers Fix (all 5 prompt handlers working, 100% success rate restored)
 - **v10.11.0** - SQLite Integrity Monitoring (automatic corruption detection/repair, 3.5ms overhead, emergency export)

@@ -22,7 +22,7 @@ except ImportError:
         from importlib.metadata import version as _get_version
         __version__ = _get_version("mcp-memory-service")
     except Exception:
-        __version__ = "0.0.0.dev0"
+        __version__ = "10.12.1"
 
 # Import core classes to establish package structure for pytest
 from .models import Memory, MemoryQueryResult

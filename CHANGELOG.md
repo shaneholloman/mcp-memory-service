@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.12.1] - 2026-02-14
+
+### Fixed
+- **Custom Memory Type Configuration (#464):** Fixed test failures in configurable memory type ontology feature
+  - Fixed `get_all_types()` to properly include custom base types from `MCP_CUSTOM_MEMORY_TYPES` environment variable
+  - Improved test isolation by clearing environment variables in setup/teardown to prevent test pollution
+  - Made custom type test more resilient to environment state from previous test runs
+  - Result: All 47 ontology tests now pass reliably with proper custom type support
+
 ## [10.12.0] - 2026-02-14
 
 ### Added
