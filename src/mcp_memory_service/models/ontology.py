@@ -22,6 +22,16 @@ from typing import Dict, List, Optional, Final
 _ALL_TYPES_CACHE: Optional[List[str]] = None
 _PARENT_TYPE_MAP_CACHE: Optional[Dict[str, str]] = None
 _BASE_TYPES_CACHE: Optional[set] = None
+_MERGED_TAXONOMY_CACHE: Optional[Dict[str, List[str]]] = None
+
+
+def clear_ontology_caches():
+    """Clear all ontology caches. Useful for testing and dynamic configuration changes."""
+    global _ALL_TYPES_CACHE, _PARENT_TYPE_MAP_CACHE, _BASE_TYPES_CACHE, _MERGED_TAXONOMY_CACHE
+    _ALL_TYPES_CACHE = None
+    _PARENT_TYPE_MAP_CACHE = None
+    _BASE_TYPES_CACHE = None
+    _MERGED_TAXONOMY_CACHE = None
 
 
 class BaseMemoryType(str, Enum):
@@ -31,15 +41,30 @@ class BaseMemoryType(str, Enum):
     These are the fundamental categories that all memories belong to.
     Each base type can have multiple subtypes for finer-grained classification.
     """
+    # Software Development (original 5 types)
     OBSERVATION = "observation"
     DECISION = "decision"
     LEARNING = "learning"
     ERROR = "error"
     PATTERN = "pattern"
 
+    # Project Management - Agile (2 new types)
+    PLANNING = "planning"
+    CEREMONY = "ceremony"
+
+    # Project Management - Traditional (2 new types)
+    MILESTONE = "milestone"
+    STAKEHOLDER = "stakeholder"
+
+    # General Knowledge Work (3 new types)
+    MEETING = "meeting"
+    RESEARCH = "research"
+    COMMUNICATION = "communication"
+
 
 # Taxonomy hierarchy: base types → subtypes
 TAXONOMY: Final[Dict[str, List[str]]] = {
+    # Software Development (26 types)
     "observation": [
         "code_edit",
         "file_access",
@@ -73,6 +98,65 @@ TAXONOMY: Final[Dict[str, List[str]]] = {
         "code_smell",
         "design_pattern",
         "workflow"
+    ],
+
+    # Project Management - Agile (12 types)
+    "planning": [
+        "sprint_goal",
+        "backlog_item",
+        "story_point_estimate",
+        "velocity",
+        "retrospective",
+        "standup_note",
+        "acceptance_criteria"
+    ],
+    "ceremony": [
+        "sprint_review",
+        "sprint_planning",
+        "daily_standup",
+        "retrospective_action",
+        "demo_feedback"
+    ],
+
+    # Project Management - Traditional (12 types)
+    "milestone": [
+        "deliverable",
+        "dependency",
+        "risk",
+        "constraint",
+        "assumption",
+        "deadline"
+    ],
+    "stakeholder": [
+        "requirement",
+        "feedback",
+        "escalation",
+        "approval",
+        "change_request",
+        "status_update"
+    ],
+
+    # General Knowledge Work (18 types)
+    "meeting": [
+        "action_item",
+        "attendee_note",
+        "agenda_item",
+        "follow_up",
+        "minutes"
+    ],
+    "research": [
+        "finding",
+        "comparison",
+        "recommendation",
+        "source",
+        "hypothesis"
+    ],
+    "communication": [
+        "email_summary",
+        "chat_summary",
+        "announcement",
+        "request",
+        "response"
     ]
 }
 
@@ -107,6 +191,108 @@ RELATIONSHIPS: Final[Dict[str, Dict[str, List[str]]]] = {
 
 # Symmetric relationships (bidirectional semantics)
 SYMMETRIC_RELATIONSHIPS: Final[set] = {"related", "contradicts"}
+
+
+def _load_custom_types_from_config() -> Dict[str, List[str]]:
+    """Load custom memory types from MCP_CUSTOM_MEMORY_TYPES environment variable.
+
+    Expected format: JSON dict mapping base types to list of subtypes
+    Example: {"planning": ["sprint_goal", "backlog_item"], "meeting": ["action_item"]}
+
+    Returns:
+        Dict mapping base type names to lists of subtype names
+    """
+    import os
+    import json
+    import logging
+
+    # Try to import project logger, fall back to standard logging if not available
+    try:
+        from mcp_memory_service.logger import logger
+    except ImportError:
+        logger = logging.getLogger(__name__)
+
+    custom_types_json = os.getenv('MCP_CUSTOM_MEMORY_TYPES')
+    if not custom_types_json:
+        return {}
+
+    try:
+        custom_types = json.loads(custom_types_json)
+
+        # Validation
+        if not isinstance(custom_types, dict):
+            logger.error("MCP_CUSTOM_MEMORY_TYPES must be a JSON object/dict")
+            return {}
+
+        validated_types = {}
+        for base_type, subtypes in custom_types.items():
+            # Validate base type name
+            if not isinstance(base_type, str) or not base_type.isidentifier():
+                logger.warning(f"Invalid base type name '{base_type}', skipping")
+                continue
+
+            # Validate subtypes
+            if not isinstance(subtypes, list):
+                logger.warning(f"Subtypes for '{base_type}' must be a list, skipping")
+                continue
+
+            valid_subtypes = [
+                st for st in subtypes
+                if isinstance(st, str) and st.replace('_', '').isalnum()
+            ]
+
+            if valid_subtypes:
+                validated_types[base_type.lower()] = valid_subtypes
+                logger.info(f"Loaded custom memory type '{base_type}' with {len(valid_subtypes)} subtypes")
+
+        return validated_types
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse MCP_CUSTOM_MEMORY_TYPES: {e}")
+        return {}
+
+
+def _get_merged_taxonomy() -> Dict[str, List[str]]:
+    """Get merged taxonomy combining built-in and custom types.
+
+    Returns:
+        Dict mapping all base types to their subtypes
+    """
+    global _MERGED_TAXONOMY_CACHE
+
+    # Return cached version if available
+    if _MERGED_TAXONOMY_CACHE is not None:
+        return _MERGED_TAXONOMY_CACHE
+
+    import logging
+
+    # Try to import project logger, fall back to standard logging if not available
+    try:
+        from mcp_memory_service.logger import logger
+    except ImportError:
+        logger = logging.getLogger(__name__)
+
+    # Start with built-in taxonomy
+    merged = dict(TAXONOMY)
+
+    # Load and merge custom types
+    custom_types = _load_custom_types_from_config()
+    for base_type, subtypes in custom_types.items():
+        if base_type in merged:
+            # Merge subtypes, avoiding duplicates
+            existing = set(merged[base_type])
+            new_subtypes = [st for st in subtypes if st not in existing]
+            merged[base_type].extend(new_subtypes)
+            logger.info(f"Extended '{base_type}' with {len(new_subtypes)} custom subtypes")
+        else:
+            # New base type
+            merged[base_type] = subtypes
+            logger.info(f"Added new custom base type '{base_type}' with {len(subtypes)} subtypes")
+
+    # Cache the merged taxonomy
+    _MERGED_TAXONOMY_CACHE = merged
+
+    return merged
 
 
 def validate_memory_type(memory_type: str) -> bool:
@@ -170,12 +356,15 @@ def get_parent_type(subtype: str) -> Optional[str]:
         # Build reverse lookup map: subtype → parent
         _PARENT_TYPE_MAP_CACHE = {}
 
+        # Use merged taxonomy instead of TAXONOMY
+        taxonomy = _get_merged_taxonomy()
+
         # Base types map to themselves
         for base_type in _BASE_TYPES_CACHE:
             _PARENT_TYPE_MAP_CACHE[base_type] = base_type
 
         # Subtypes map to their parent
-        for base_type, subtypes in TAXONOMY.items():
+        for base_type, subtypes in taxonomy.items():
             for st in subtypes:
                 _PARENT_TYPE_MAP_CACHE[st] = base_type
 
@@ -196,8 +385,8 @@ def get_all_types() -> List[str]:
         True
         >>> "code_edit" in types
         True
-        >>> len(types)  # 5 base + 21 subtypes
-        26
+        >>> len(types)  # 12 base + 63 subtypes
+        75
     """
     global _ALL_TYPES_CACHE
 
@@ -206,8 +395,11 @@ def get_all_types() -> List[str]:
         # Get all base types
         all_types = [member.value for member in BaseMemoryType]
 
+        # Use merged taxonomy instead of TAXONOMY
+        taxonomy = _get_merged_taxonomy()
+
         # Add all subtypes
-        for subtypes in TAXONOMY.values():
+        for subtypes in taxonomy.values():
             all_types.extend(subtypes)
 
         _ALL_TYPES_CACHE = all_types

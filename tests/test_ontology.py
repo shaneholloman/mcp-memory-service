@@ -29,18 +29,29 @@ MemoryTypeOntology = ontology.MemoryTypeOntology
 class TestBurst11BaseMemoryTypes:
     """Tests for Burst 1.1: Base Memory Types Enum"""
 
-    def test_enum_has_exactly_five_base_types(self):
-        """Base type enum should have exactly 5 types"""
-        assert len(BaseMemoryType) == 5
+    def test_enum_has_exactly_twelve_base_types(self):
+        """Base type enum should have exactly 12 types (5 original + 7 new)"""
+        assert len(BaseMemoryType) == 12
 
     def test_each_type_is_valid_string_constant(self):
         """Each base type should be a valid string constant"""
         expected_types = {
+            # Software Development (original 5)
             "observation",
             "decision",
             "learning",
             "error",
-            "pattern"
+            "pattern",
+            # Project Management - Agile (2 new)
+            "planning",
+            "ceremony",
+            # Project Management - Traditional (2 new)
+            "milestone",
+            "stakeholder",
+            # General Knowledge Work (3 new)
+            "meeting",
+            "research",
+            "communication"
         }
         actual_types = {member.value for member in BaseMemoryType}
         assert actual_types == expected_types
@@ -52,11 +63,20 @@ class TestBurst11BaseMemoryTypes:
 
     def test_base_types_accessible_as_enum_members(self):
         """Base types should be accessible as enum members"""
+        # Original types
         assert BaseMemoryType.OBSERVATION.value == "observation"
         assert BaseMemoryType.DECISION.value == "decision"
         assert BaseMemoryType.LEARNING.value == "learning"
         assert BaseMemoryType.ERROR.value == "error"
         assert BaseMemoryType.PATTERN.value == "pattern"
+        # New types
+        assert BaseMemoryType.PLANNING.value == "planning"
+        assert BaseMemoryType.CEREMONY.value == "ceremony"
+        assert BaseMemoryType.MILESTONE.value == "milestone"
+        assert BaseMemoryType.STAKEHOLDER.value == "stakeholder"
+        assert BaseMemoryType.MEETING.value == "meeting"
+        assert BaseMemoryType.RESEARCH.value == "research"
+        assert BaseMemoryType.COMMUNICATION.value == "communication"
 
 
 class TestBurst12TaxonomyHierarchy:
@@ -308,3 +328,182 @@ class TestBurst19SymmetricRelationshipClassification:
 
         with pytest.raises(ValueError):
             MemoryTypeOntology.is_symmetric_relationship("invalid")
+
+
+class TestBurst20NewProjectManagementTypes:
+    """Test new project management base types (Issue #464)."""
+
+    def test_new_base_types_exist(self):
+        """Verify all 7 new base types are defined."""
+        new_base_types = [
+            "planning", "ceremony", "milestone", "stakeholder",
+            "meeting", "research", "communication"
+        ]
+
+        all_types = get_all_types()
+        for base_type in new_base_types:
+            assert base_type in all_types, f"New base type '{base_type}' missing"
+
+    def test_planning_subtypes(self):
+        """Verify planning subtypes."""
+        expected = [
+            "sprint_goal", "backlog_item", "story_point_estimate",
+            "velocity", "retrospective", "standup_note", "acceptance_criteria"
+        ]
+
+        all_types = get_all_types()
+        for subtype in expected:
+            assert subtype in all_types
+            assert get_parent_type(subtype) == "planning"
+
+    def test_ceremony_subtypes(self):
+        """Verify ceremony subtypes."""
+        expected = [
+            "sprint_review", "sprint_planning", "daily_standup",
+            "retrospective_action", "demo_feedback"
+        ]
+
+        all_types = get_all_types()
+        for subtype in expected:
+            assert subtype in all_types
+            assert get_parent_type(subtype) == "ceremony"
+
+    def test_milestone_subtypes(self):
+        """Verify milestone subtypes."""
+        expected = [
+            "deliverable", "dependency", "risk", "constraint", "assumption", "deadline"
+        ]
+
+        all_types = get_all_types()
+        for subtype in expected:
+            assert subtype in all_types
+            assert get_parent_type(subtype) == "milestone"
+
+    def test_stakeholder_subtypes(self):
+        """Verify stakeholder subtypes."""
+        expected = [
+            "requirement", "feedback", "escalation", "approval",
+            "change_request", "status_update"
+        ]
+
+        all_types = get_all_types()
+        for subtype in expected:
+            assert subtype in all_types
+            assert get_parent_type(subtype) == "stakeholder"
+
+    def test_meeting_subtypes(self):
+        """Verify meeting subtypes."""
+        expected = ["action_item", "attendee_note", "agenda_item", "follow_up", "minutes"]
+
+        all_types = get_all_types()
+        for subtype in expected:
+            assert subtype in all_types
+            assert get_parent_type(subtype) == "meeting"
+
+    def test_research_subtypes(self):
+        """Verify research subtypes."""
+        expected = ["finding", "comparison", "recommendation", "source", "hypothesis"]
+
+        all_types = get_all_types()
+        for subtype in expected:
+            assert subtype in all_types
+            assert get_parent_type(subtype) == "research"
+
+    def test_communication_subtypes(self):
+        """Verify communication subtypes."""
+        expected = ["email_summary", "chat_summary", "announcement", "request", "response"]
+
+        all_types = get_all_types()
+        for subtype in expected:
+            assert subtype in all_types
+            assert get_parent_type(subtype) == "communication"
+
+    def test_total_type_count(self):
+        """Verify total type count is 75 (12 base + 63 subtypes)."""
+        all_types = get_all_types()
+        assert len(all_types) == 75, f"Expected 75 types, got {len(all_types)}"
+
+
+class TestBurst21CustomMemoryTypeConfiguration:
+    """Test configurable memory types via MCP_CUSTOM_MEMORY_TYPES."""
+
+    def setup_method(self):
+        """Clear caches before each test."""
+        ontology.clear_ontology_caches()
+
+    def teardown_method(self):
+        """Clear caches after each test."""
+        ontology.clear_ontology_caches()
+
+    def test_load_custom_types_json(self, monkeypatch):
+        """Test loading custom types from JSON environment variable."""
+        import json
+
+        # Set custom types
+        custom_config = json.dumps({
+            "legal": ["contract", "clause", "obligation"],
+            "sales": ["opportunity", "objection", "competitor"]
+        })
+        monkeypatch.setenv('MCP_CUSTOM_MEMORY_TYPES', custom_config)
+
+        # Clear all caches to force reload
+        ontology.clear_ontology_caches()
+
+        # Verify custom types loaded
+        all_types = ontology.get_all_types()
+        assert "legal" in all_types
+        assert "contract" in all_types
+        assert "sales" in all_types
+        assert "opportunity" in all_types
+
+        # Verify parent relationships
+        assert ontology.get_parent_type("contract") == "legal"
+        assert ontology.get_parent_type("opportunity") == "sales"
+
+    def test_merge_with_builtin_types(self, monkeypatch):
+        """Test that custom types merge with (not replace) built-in types."""
+        import json
+
+        custom_config = json.dumps({"meeting": ["board_meeting"]})
+        monkeypatch.setenv('MCP_CUSTOM_MEMORY_TYPES', custom_config)
+
+        # Clear caches to force reload
+        ontology.clear_ontology_caches()
+
+        all_types = ontology.get_all_types()
+
+        # Built-in meeting subtypes should still exist
+        assert "action_item" in all_types
+        assert "follow_up" in all_types
+
+        # Custom subtype should be added
+        assert "board_meeting" in all_types
+
+    def test_invalid_json_graceful_fallback(self, monkeypatch):
+        """Test graceful fallback on invalid JSON."""
+        monkeypatch.setenv('MCP_CUSTOM_MEMORY_TYPES', '{invalid json}')
+
+        # Clear caches to force reload
+        ontology.clear_ontology_caches()
+
+        # Should fall back to built-in types
+        all_types = ontology.get_all_types()
+        assert "observation" in all_types  # Built-in type still works
+
+    def test_no_custom_types_default_behavior(self, monkeypatch):
+        """Test default behavior when no custom types configured."""
+        # Ensure env var is not set
+        monkeypatch.delenv('MCP_CUSTOM_MEMORY_TYPES', raising=False)
+
+        # Clear caches to force reload
+        ontology.clear_ontology_caches()
+
+        all_types = ontology.get_all_types()
+
+        # Should have exactly 75 built-in types
+        assert len(all_types) == 75
+
+        # Verify standard types work
+        assert "observation" in all_types
+        assert "planning" in all_types
+        assert "meeting" in all_types
