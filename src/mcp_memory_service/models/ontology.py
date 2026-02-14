@@ -313,17 +313,7 @@ def validate_memory_type(memory_type: str) -> bool:
         >>> validate_memory_type("invalid")
         False
     """
-    global _BASE_TYPES_CACHE
-
-    # Initialize base types cache on first access
-    if _BASE_TYPES_CACHE is None:
-        _BASE_TYPES_CACHE = {member.value for member in BaseMemoryType}
-
-    # Check if it's a base type
-    if memory_type in _BASE_TYPES_CACHE:
-        return True
-
-    # Check if it's a subtype - leverage get_all_types cache
+    # Use get_all_types which includes both built-in and custom types
     all_types = get_all_types()
     return memory_type in all_types
 
@@ -346,11 +336,7 @@ def get_parent_type(subtype: str) -> Optional[str]:
         >>> get_parent_type("invalid")
         None
     """
-    global _PARENT_TYPE_MAP_CACHE, _BASE_TYPES_CACHE
-
-    # Initialize caches on first access
-    if _BASE_TYPES_CACHE is None:
-        _BASE_TYPES_CACHE = {member.value for member in BaseMemoryType}
+    global _PARENT_TYPE_MAP_CACHE
 
     if _PARENT_TYPE_MAP_CACHE is None:
         # Build reverse lookup map: subtype → parent
@@ -359,8 +345,8 @@ def get_parent_type(subtype: str) -> Optional[str]:
         # Use merged taxonomy instead of TAXONOMY
         taxonomy = _get_merged_taxonomy()
 
-        # Base types map to themselves
-        for base_type in _BASE_TYPES_CACHE:
+        # Base types (both built-in and custom) map to themselves
+        for base_type in taxonomy.keys():
             _PARENT_TYPE_MAP_CACHE[base_type] = base_type
 
         # Subtypes map to their parent
@@ -385,18 +371,18 @@ def get_all_types() -> List[str]:
         True
         >>> "code_edit" in types
         True
-        >>> len(types)  # 12 base + 63 subtypes
+        >>> len(types)  # 12 base + 63 subtypes (75 built-in, more with custom types)
         75
     """
     global _ALL_TYPES_CACHE
 
     # Initialize cache on first access
     if _ALL_TYPES_CACHE is None:
-        # Get all base types
-        all_types = [member.value for member in BaseMemoryType]
-
         # Use merged taxonomy instead of TAXONOMY
         taxonomy = _get_merged_taxonomy()
+
+        # Get all base types from merged taxonomy (includes custom base types)
+        all_types = list(taxonomy.keys())
 
         # Add all subtypes
         for subtypes in taxonomy.values():

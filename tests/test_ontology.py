@@ -428,11 +428,17 @@ class TestBurst21CustomMemoryTypeConfiguration:
     """Test configurable memory types via MCP_CUSTOM_MEMORY_TYPES."""
 
     def setup_method(self):
-        """Clear caches before each test."""
+        """Clear caches and environment before each test."""
+        import os
+        # Remove any custom types from environment to ensure clean state
+        os.environ.pop('MCP_CUSTOM_MEMORY_TYPES', None)
         ontology.clear_ontology_caches()
 
     def teardown_method(self):
-        """Clear caches after each test."""
+        """Clear caches and environment after each test."""
+        import os
+        # Remove any custom types from environment
+        os.environ.pop('MCP_CUSTOM_MEMORY_TYPES', None)
         ontology.clear_ontology_caches()
 
     def test_load_custom_types_json(self, monkeypatch):
@@ -492,16 +498,20 @@ class TestBurst21CustomMemoryTypeConfiguration:
 
     def test_no_custom_types_default_behavior(self, monkeypatch):
         """Test default behavior when no custom types configured."""
-        # Ensure env var is not set
-        monkeypatch.delenv('MCP_CUSTOM_MEMORY_TYPES', raising=False)
+        import os
 
-        # Clear caches to force reload
+        # Ensure env var is not set - must be done BEFORE clearing caches
+        # Use both monkeypatch AND direct removal to ensure clean state
+        monkeypatch.delenv('MCP_CUSTOM_MEMORY_TYPES', raising=False)
+        os.environ.pop('MCP_CUSTOM_MEMORY_TYPES', None)
+
+        # Now clear caches to force reload with no custom types
         ontology.clear_ontology_caches()
 
         all_types = ontology.get_all_types()
 
-        # Should have exactly 75 built-in types
-        assert len(all_types) == 75
+        # Should have exactly 75 built-in types (12 base + 63 subtypes)
+        assert len(all_types) == 75, f"Expected 75 types, got {len(all_types)}: {sorted(all_types)}"
 
         # Verify standard types work
         assert "observation" in all_types
