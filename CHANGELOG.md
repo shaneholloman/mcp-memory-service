@@ -10,6 +10,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- **Configurable Memory Type Ontology (#464):** Extended memory type system from 29 developer-focused types to 75 types supporting project management and knowledge work
+  - **7 New Base Types:** planning, ceremony, milestone, stakeholder, meeting, research, communication
+  - **39 New Subtypes:** Covering Agile PM, traditional PM, and general knowledge work domains
+  - **Agile PM Support (12 types):**
+    - `planning`: sprint_goal, backlog_item, story_point_estimate, velocity, retrospective, standup_note, acceptance_criteria
+    - `ceremony`: sprint_review, sprint_planning, daily_standup, retrospective_action, demo_feedback
+  - **Traditional PM Support (12 types):**
+    - `milestone`: deliverable, dependency, risk, constraint, assumption, deadline
+    - `stakeholder`: requirement, feedback, escalation, approval, change_request, status_update
+  - **Knowledge Work Support (18 types):**
+    - `meeting`: action_item, attendee_note, agenda_item, follow_up, minutes
+    - `research`: finding, comparison, recommendation, source, hypothesis
+    - `communication`: email_summary, chat_summary, announcement, request, response
+  - **Custom Type Configuration:** New `MCP_CUSTOM_MEMORY_TYPES` environment variable for dynamic type extension
+    - JSON format: `{"legal": ["contract", "clause"], "sales": ["opportunity"]}`
+    - Merges custom types with built-in 75 types
+    - Full validation and caching for performance
+  - **Total Ontology:** 12 base types + 63 subtypes = 75 types (up from 5 base + 24 subtypes = 29 types)
+  - **Backward Compatible:** All 29 original types unchanged and fully functional
+  - **Performance:** Cached taxonomy merging with zero performance impact
+  - **Impact:** Transforms MCP Memory Service from developer-only to general-purpose semantic memory supporting diverse professional workflows
+
 ## [10.11.2] - 2026-02-14
 
 ### Fixed
