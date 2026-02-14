@@ -175,17 +175,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.11.2** (February 14, 2026)
+## 🆕 Latest Release: **v10.12.0** (February 14, 2026)
 
-**Tag Filtering & Security Hardening** 🔒
+**Configurable Memory Type Ontology** 🧠
 
 **What's New:**
-- 🐛 **Critical Tag Filtering Fixes (#460)**: Fixed memory_search tag filtering returning empty results
-- 🔐 **DoS Protection**: Comprehensive security hardening (vector search caps, JSON limits, tag validation)
-- ⚡ **SQL-Level Optimization**: Tag filtering moved to SQL for better performance
-- 🧪 **Enhanced Tests**: 105+ tests passing with comprehensive coverage
+- 🎯 **Extended Memory Types (#464)**: From 29 developer-focused types to 75 types supporting project management and knowledge work
+- 📋 **Project Management Support**: 12 Agile types (sprint_goal, backlog_item, velocity) + 12 Traditional PM types (milestone, deliverable, risk)
+- 💼 **Knowledge Work Support**: 18 new types across meetings (action_item, minutes), research (finding, hypothesis), and communication (email_summary, announcement)
+- ⚙️ **Custom Types**: New `MCP_CUSTOM_MEMORY_TYPES` environment variable for dynamic type extension
+- ⚡ **Fully Backward Compatible**: All 29 original types unchanged, zero breaking changes
 
 **Previous Releases**:
+- **v10.11.2** - Tag Filtering & Security Hardening (DoS protection, SQL-level optimization, comprehensive tests)
 - **v10.11.1** - MCP Prompt Handlers Fix (all 5 prompt handlers working, 100% success rate restored)
 - **v10.11.0** - SQLite Integrity Monitoring (automatic corruption detection/repair, 3.5ms overhead, emergency export)
 - **v10.10.6** - Test Infrastructure Improvements (Python 3.11 compatibility, pytest-benchmark, coverage baseline)

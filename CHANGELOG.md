@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.12.0] - 2026-02-14
+
 ### Added
 - **Configurable Memory Type Ontology (#464):** Extended memory type system from 29 developer-focused types to 75 types supporting project management and knowledge work
   - **7 New Base Types:** planning, ceremony, milestone, stakeholder, meeting, research, communication
