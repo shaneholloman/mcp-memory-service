@@ -175,17 +175,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.11.1** (February 12, 2026)
+## 🆕 Latest Release: **v10.11.2** (February 14, 2026)
 
-**MCP Prompt Handlers Fix** 🐛
+**Tag Filtering & Security Hardening** 🔒
 
 **What's New:**
-- 🔧 **Critical Bugfix (#458, #459)**: Fixed all 5 MCP prompt handlers (memory_review, memory_analysis, knowledge_export, memory_cleanup, learning_session)
-- ✅ **100% Success Rate**: All prompt handlers now work correctly (was 100% failure rate)
-- 🧪 **Regression Tests**: Added 5 integration tests to prevent future breakage
-- 🎯 **Root Cause**: Nested functions called as instance methods - dispatcher corrected to call functions directly
+- 🐛 **Critical Tag Filtering Fixes (#460)**: Fixed memory_search tag filtering returning empty results
+- 🔐 **DoS Protection**: Comprehensive security hardening (vector search caps, JSON limits, tag validation)
+- ⚡ **SQL-Level Optimization**: Tag filtering moved to SQL for better performance
+- 🧪 **Enhanced Tests**: 105+ tests passing with comprehensive coverage
 
 **Previous Releases**:
+- **v10.11.1** - MCP Prompt Handlers Fix (all 5 prompt handlers working, 100% success rate restored)
 - **v10.11.0** - SQLite Integrity Monitoring (automatic corruption detection/repair, 3.5ms overhead, emergency export)
 - **v10.10.6** - Test Infrastructure Improvements (Python 3.11 compatibility, pytest-benchmark, coverage baseline)
 - **v10.10.5** - Embedding Dimension Cache Fix (dimension mismatch prevention, cache consistency)

@@ -10,6 +10,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.11.2] - 2026-02-14
+
+### Fixed
+- **Tag Filtering in memory_search (#460):** Fixed critical bugs causing tag filtering to return empty results
+  - **JSON Deserialization Bug:** normalize_tags now correctly parses JSON-encoded tag arrays from MCP protocol oneOf schemas (e.g., '["tag1", "tag2"]' → ["tag1", "tag2"])
+  - **Post-Limit Filtering Bug:** search_memories now over-fetches all candidates when tags specified (instead of limiting to top N by similarity before tag filtering)
+  - **SQL-Level Tag Filtering:** Optimized tag matching with SQL WHERE clauses for better performance
+  - **Impact:** Tag-based searches now reliably return all matching memories regardless of semantic similarity ranking
+
+### Security
+- **DoS Protection (#460):** Comprehensive hardening against denial-of-service attacks
+  - **Vector Search Caps:** Limited k_value to MAX_TAG_SEARCH_CANDIDATES (10,000) to prevent unbounded memory/CPU consumption
+  - **JSON Parsing Limits:** Added 4KB size limit (MAX_JSON_LENGTH) before json.loads() to prevent large/nested JSON DoS
+  - **Tag Validation:** Sanitized commas in tags (replaced with hyphens) to prevent LIKE-based search breakage
+  - **Tag Count Limits:** Capped search tags at 100 to prevent SQLite parameter exhaustion (max 999)
+  - **Result:** Balanced recall with resource constraints while maintaining system responsiveness
+
+### Tests
+- **Tag Normalization Coverage (#460):** Added 89 new test cases for normalize_tags function
+  - JSON-encoded arrays (single, multi-element, whitespace, malformed, empty)
+  - DoS protection (large JSON strings, excessive tag counts)
+  - Comma sanitization (tag names containing commas)
+  - Comprehensive edge cases (None, empty strings, special characters)
+
 ## [10.11.1] - 2026-02-12
 
 ### Fixed
