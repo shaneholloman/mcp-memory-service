@@ -391,6 +391,59 @@ export MCP_EXTERNAL_EMBEDDING_API_KEY=sk-xxx  # Optional
 3. **Test first:** Both scripts support `--dry-run` to preview changes before applying
 4. **Cleanup:** Use `scripts/maintenance/cleanup_memories.py` to remove test memories and orphaned data
 
+### Memory Field Access Pattern (CRITICAL)
+
+**ALWAYS use direct attribute access on Memory objects. NEVER access via metadata dict.**
+
+This anti-pattern has caused 3 production bugs (v10.13.1: PRs #466, #467, #469).
+
+**Memory Dataclass Structure:**
+```python
+@dataclass
+class Memory:
+    content: str
+    content_hash: str
+    tags: List[str] = field(default_factory=list)      # TOP-LEVEL FIELD
+    memory_type: Optional[str] = None                  # TOP-LEVEL FIELD
+    metadata: Dict[str, Any] = field(default_factory=dict)  # SEPARATE - for custom data only
+```
+
+**❌ WRONG - Common Anti-Patterns:**
+```python
+# WRONG - reads from metadata dict (returns default even if field exists)
+memory.metadata.get('tags', [])           # Always returns []
+memory.metadata.get('memory_type', '')    # Always returns ''
+
+# WRONG - dict-style access (raises AttributeError)
+memory['content_hash']
+memory['tags']
+```
+
+**✅ CORRECT - Direct Attribute Access:**
+```python
+# CORRECT - access top-level fields directly
+memory.tags              # Returns actual tags list
+memory.memory_type       # Returns actual memory type
+memory.content_hash      # Returns hash string
+memory.created_at        # Returns timestamp
+
+# Safe with fallback
+memory.tags or []
+memory.memory_type or ''
+```
+
+**Production Bugs Caused by This Pattern:**
+1. **PR #466 (CRITICAL)**: `retrieve_memories()` broke REST API - all filtered queries returned 0 results
+2. **PR #467 (HIGH)**: Tags displayed as individual characters ("python" → "p,y,t,h,o,n")
+3. **PR #469 (HIGH)**: Prompt handlers crashed with AttributeError
+
+**Key Insight:** `Memory.metadata` is for **custom key-value pairs only**, NOT standard fields (tags, memory_type, etc.). Standard fields are top-level dataclass attributes.
+
+**Prevention:**
+- Use type hints to catch dict-style access
+- Code review: Flag any `metadata.get('tags')` or `metadata.get('memory_type')` patterns
+- Add linting rule to detect this anti-pattern
+
 ## Troubleshooting
 
 ### ⚠️ Heredoc Permission Corruption
