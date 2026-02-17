@@ -1860,6 +1860,39 @@ class HybridMemoryStorage(MemoryStorage):
             f"Remaining in queue: {queue_size}"
         )
 
+    # ── Consolidation Protocol Proxy Methods ──────────────────────────
+    # These methods are required by the DreamInspiredConsolidator's
+    # StorageProtocol but were missing from HybridMemoryStorage,
+    # causing consolidation forgetting/archival to fail silently.
+    # See: https://github.com/doobidoo/mcp-memory-service/issues/TBD
+
+    async def delete_memory(self, content_hash: str) -> bool:
+        """Delete a memory by content hash (consolidation protocol).
+
+        Proxies to primary storage's delete() method and enqueues
+        the deletion for secondary (Cloudflare) sync.
+        """
+        success, message = await self.primary.delete(content_hash)
+        if success and self.sync_service:
+            await self.sync_service.enqueue_operation(
+                SyncOperation(operation='delete', content_hash=content_hash)
+            )
+        return success
+
+    async def get_memory_connections(self) -> Dict[str, int]:
+        """Get memory connection statistics (consolidation protocol).
+
+        Proxies to primary storage.
+        """
+        return await self.primary.get_memory_connections()
+
+    async def get_access_patterns(self) -> Dict[str, Any]:
+        """Get memory access pattern statistics (consolidation protocol).
+
+        Proxies to primary storage.
+        """
+        return await self.primary.get_access_patterns()
+
     def sanitized(self, tags):
         """Sanitize and normalize tags to a JSON string.
 
