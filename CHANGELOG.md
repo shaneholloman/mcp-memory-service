@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **CI: update hash assertion in integration test**: `test_store_memory_success` was asserting `"..." in text` (truncated hash), but commit `978af00` intentionally changed responses to show the full 64-character content hash. Updated assertion to `re.search(r'[0-9a-f]{64}', text)` to match current behaviour.
+
 ## [10.13.2] - 2026-02-17
 
 ### Fixed
