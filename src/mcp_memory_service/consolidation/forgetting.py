@@ -18,7 +18,7 @@ import os
 import json
 import shutil
 from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 import hashlib
@@ -130,7 +130,7 @@ class ControlledForgettingEngine(ConsolidationBase):
         )
 
         candidates = []
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc)
 
         for memory in memories:
             # Skip protected memories
@@ -155,7 +155,7 @@ class ControlledForgettingEngine(ConsolidationBase):
             # Access pattern check with quality-based thresholds
             last_accessed = access_patterns.get(memory.content_hash)
             if not last_accessed and memory.updated_at:
-                last_accessed = datetime.utcfromtimestamp(memory.updated_at)
+                last_accessed = datetime.fromtimestamp(memory.updated_at, tz=timezone.utc)
 
             if last_accessed:
                 days_since_access = (current_time - last_accessed).days
