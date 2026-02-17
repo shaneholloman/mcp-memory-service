@@ -1886,7 +1886,7 @@ class HybridMemoryStorage(MemoryStorage):
         """
         return await self.primary.get_memory_connections()
 
-    async def get_access_patterns(self) -> Dict[str, Any]:
+    async def get_access_patterns(self) -> Dict[str, datetime]:
         """Get memory access pattern statistics (consolidation protocol).
 
         Proxies to primary storage.
