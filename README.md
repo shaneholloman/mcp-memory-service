@@ -175,19 +175,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.13.1** (February 15, 2026)
+## 🆕 Latest Release: **v10.13.2** (February 17, 2026)
 
-**Critical Bug Fixes - Production Stability** 🔥
+**Consolidation & Hybrid Storage Bug Fixes**
 
 **What's New:**
-- 🚨 **Tag Search Fix**: Capped sqlite-vec k=4096 limit to prevent silent failures on large databases (#465)
-- 🚨 **REST API Fix**: Fixed retrieve_memories() field access bug causing 0 results (#466)
-- 🏷️ **Tag Display Fix**: Resolved metadata corruption causing tags to show as individual characters (#467)
-- 📋 **Hash Display**: Restored full 64-character content hashes for copy-paste workflows (#468)
-- 💥 **Crash Prevention**: Fixed Memory field access in MCP prompt handlers (#469)
-- 🙏 **Special Thanks**: All 5 fixes contributed by @binaryphile
+- **Consolidation Forgetting Phase**: Added missing `delete_memory()`, `get_memory_connections()`, and `get_access_patterns()` proxy methods to `HybridMemoryStorage` - consolidation no longer silently fails (#471)
+- **Timezone TypeError Crash Fix**: Replaced naive `datetime.utcfromtimestamp()` with timezone-aware `datetime.fromtimestamp(x, tz=timezone.utc)` across all consolidation files - quarterly/yearly runs no longer crash (#471)
+- **Refactored `delete_memory()`**: Delegates to `delete()` to eliminate duplicated sync logic in hybrid storage
+- **UTC Timestamp Normalization**: `compression.py` now formats timestamps as `Z`-suffix UTC strings consistently
+- **Thanks**: All fixes contributed by @VibeCodeChef (Kemal)
 
 **Previous Releases**:
+- **v10.13.1** - Critical Bug Fixes (tag search limits, REST API field access, metadata corruption, hash display, prompt handler crashes)
 - **v10.13.0** - Test Suite Stability (100% pass rate, 1,161 passing tests, authentication testing patterns)
 - **v10.12.1** - Custom Memory Type Configuration Test Fixes (test isolation, environment cleanup)
 - **v10.12.0** - Configurable Memory Type Ontology (75 types supporting PM and knowledge work, custom type configuration)

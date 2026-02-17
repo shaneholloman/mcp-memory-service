@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.13.2] - 2026-02-17
+
+### Fixed
+- **HybridMemoryStorage missing StorageProtocol proxy methods**: Added `delete_memory()`, `get_memory_connections()`, and `get_access_patterns()` proxy methods that delegate to the primary SQLite backend, matching the interface expected by `DreamInspiredConsolidator`. Without these, the consolidation forgetting phase silently failed when using hybrid storage (#471, thanks @VibeCodeChef)
+- **Timezone-aware datetime comparison TypeError**: Replaced `datetime.utcfromtimestamp()` (which creates naive datetimes) with `datetime.fromtimestamp(x, tz=timezone.utc)` throughout the consolidation module. Comparisons between naive `Memory.timestamp` values and timezone-aware `datetime.now(timezone.utc)` were crashing quarterly/yearly consolidation runs. Fixed in `consolidation/base.py`, `consolidation/clustering.py`, `consolidation/forgetting.py`, `consolidation/decay.py`, `consolidation/compression.py`, and `consolidation/consolidator.py` (#471, thanks @VibeCodeChef)
+- **Refactored `delete_memory()` in HybridMemoryStorage**: Delegates to `delete()` instead of duplicating sync logic, eliminating a potential source of divergence between the two code paths
+- **Added missing `datetime` import in `storage/hybrid.py`**: Required for timezone-aware type annotations in `get_access_patterns()` return values
+- **`compression.py` isoformat normalization**: Added `.replace('+00:00', 'Z')` for consistent UTC timestamp formatting in compressed memory outputs
+
+### Credits
+- All fixes in this release contributed by @VibeCodeChef (Kemal) - thank you for the thorough analysis and comprehensive patches to the consolidation and hybrid storage systems!
+
 ## [10.13.1] - 2026-02-15
 
 ### Fixed
