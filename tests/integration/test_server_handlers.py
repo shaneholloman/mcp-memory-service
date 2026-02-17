@@ -5,6 +5,7 @@ These tests verify that the MCP handlers correctly transform MemoryService
 responses to MCP TextContent format, particularly after the fix for issue #198.
 """
 
+import re
 import pytest
 from mcp import types
 from mcp_memory_service.server import MemoryServer
@@ -35,7 +36,7 @@ class TestHandleStoreMemory:
         text = result[0].text
         assert "successfully" in text.lower()
         assert "hash:" in text.lower()
-        assert "..." in text  # Hash should be truncated
+        assert re.search(r'[0-9a-f]{64}', text)  # Full content hash shown
 
     @pytest.mark.asyncio
     async def test_store_memory_chunked(self, unique_content):
