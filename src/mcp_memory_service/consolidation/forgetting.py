@@ -158,6 +158,8 @@ class ControlledForgettingEngine(ConsolidationBase):
                 last_accessed = datetime.fromtimestamp(memory.updated_at, tz=timezone.utc)
 
             if last_accessed:
+                if last_accessed.tzinfo is None:
+                    last_accessed = last_accessed.replace(tzinfo=timezone.utc)
                 days_since_access = (current_time - last_accessed).days
 
                 # Quality-based retention thresholds

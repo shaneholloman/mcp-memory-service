@@ -28,7 +28,7 @@ import time
 from typing import List, Dict, Any, Tuple, Optional
 from collections import deque
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from .base import MemoryStorage
 from .sqlite_vec import SqliteVecMemoryStorage
@@ -1869,14 +1869,9 @@ class HybridMemoryStorage(MemoryStorage):
     async def delete_memory(self, content_hash: str) -> bool:
         """Delete a memory by content hash (consolidation protocol).
 
-        Proxies to primary storage's delete() method and enqueues
-        the deletion for secondary (Cloudflare) sync.
+        Delegates to delete() to avoid duplicating sync logic.
         """
-        success, message = await self.primary.delete(content_hash)
-        if success and self.sync_service:
-            await self.sync_service.enqueue_operation(
-                SyncOperation(operation='delete', content_hash=content_hash)
-            )
+        success, _ = await self.delete(content_hash)
         return success
 
     async def get_memory_connections(self) -> Dict[str, int]:

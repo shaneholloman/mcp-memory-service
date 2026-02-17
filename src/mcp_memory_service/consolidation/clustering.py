@@ -275,7 +275,10 @@ class SemanticClusteringEngine(ConsolidationBase):
                 age_days = (now - created_dt).days
                 ages.append(age_days)
             elif memory.timestamp:
-                age_days = (now - memory.timestamp).days
+                ts = memory.timestamp
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                age_days = (now - ts).days
                 ages.append(age_days)
         
         return sum(ages) / len(ages) if ages else 0.0

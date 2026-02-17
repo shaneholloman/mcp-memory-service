@@ -141,7 +141,10 @@ class ConsolidationBase(ABC):
             created_dt = datetime.fromtimestamp(memory.created_at, tz=timezone.utc)
             return (ref_time - created_dt).days
         elif memory.timestamp:
-            return (ref_time - memory.timestamp).days
+            ts = memory.timestamp
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            return (ref_time - ts).days
         else:
             self.logger.warning(f"Memory {memory.content_hash} has no timestamp")
             return 0
