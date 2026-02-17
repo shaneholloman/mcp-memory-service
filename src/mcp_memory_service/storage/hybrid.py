@@ -1864,7 +1864,7 @@ class HybridMemoryStorage(MemoryStorage):
     # These methods are required by the DreamInspiredConsolidator's
     # StorageProtocol but were missing from HybridMemoryStorage,
     # causing consolidation forgetting/archival to fail silently.
-    # See: https://github.com/doobidoo/mcp-memory-service/issues/TBD
+    # See the project issue tracker for related consolidation bug details.
 
     async def delete_memory(self, content_hash: str) -> bool:
         """Delete a memory by content hash (consolidation protocol).
