@@ -117,7 +117,7 @@ def filter_memories_by_age(
     return [
         m
         for m in memories
-        if m.created_at and datetime.utcfromtimestamp(m.created_at) < cutoff_date
+        if m.created_at and datetime.fromtimestamp(m.created_at, tz=timezone.utc) < cutoff_date
     ]
 
 
@@ -875,7 +875,7 @@ class DreamInspiredConsolidator:
             memory_types = {}
             total_size = 0
             old_memories = 0
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
 
             for memory in memories:
                 memory_type = memory.memory_type or "standard"
@@ -883,7 +883,7 @@ class DreamInspiredConsolidator:
                 total_size += len(memory.content)
 
                 if memory.created_at:
-                    age_days = (now - datetime.utcfromtimestamp(memory.created_at)).days
+                    age_days = (now - datetime.fromtimestamp(memory.created_at, tz=timezone.utc)).days
                     if age_days > 30:
                         old_memories += 1
 

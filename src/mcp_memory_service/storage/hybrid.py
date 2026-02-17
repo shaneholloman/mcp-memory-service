@@ -28,7 +28,7 @@ import time
 from typing import List, Dict, Any, Tuple, Optional
 from collections import deque
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from .base import MemoryStorage
 from .sqlite_vec import SqliteVecMemoryStorage
@@ -1859,6 +1859,34 @@ class HybridMemoryStorage(MemoryStorage):
             f"Failed: {final_failed - initial_failed}, "
             f"Remaining in queue: {queue_size}"
         )
+
+    # ── Consolidation Protocol Proxy Methods ──────────────────────────
+    # These methods are required by the DreamInspiredConsolidator's
+    # StorageProtocol but were missing from HybridMemoryStorage,
+    # causing consolidation forgetting/archival to fail silently.
+    # See the project issue tracker for related consolidation bug details.
+
+    async def delete_memory(self, content_hash: str) -> bool:
+        """Delete a memory by content hash (consolidation protocol).
+
+        Delegates to delete() to avoid duplicating sync logic.
+        """
+        success, _ = await self.delete(content_hash)
+        return success
+
+    async def get_memory_connections(self) -> Dict[str, int]:
+        """Get memory connection statistics (consolidation protocol).
+
+        Proxies to primary storage.
+        """
+        return await self.primary.get_memory_connections()
+
+    async def get_access_patterns(self) -> Dict[str, datetime]:
+        """Get memory access pattern statistics (consolidation protocol).
+
+        Proxies to primary storage.
+        """
+        return await self.primary.get_access_patterns()
 
     def sanitized(self, tags):
         """Sanitize and normalize tags to a JSON string.
