@@ -2858,6 +2858,13 @@ def _cleanup_on_shutdown():
 def main():
     import signal
     import atexit
+    from mcp_memory_service.config import validate_config
+
+    # Log any configuration issues at startup for visibility
+    config_issues = validate_config()
+    if config_issues:
+        for issue in config_issues:
+            logger.warning("Configuration issue: %s", issue)
 
     # Register cleanup function for normal exit
     atexit.register(_cleanup_on_shutdown)

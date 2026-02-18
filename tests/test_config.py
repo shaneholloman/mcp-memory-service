@@ -67,6 +67,16 @@ def test_validate_config_returns_no_errors_for_valid_sqlite_config(monkeypatch):
     assert errors == [], f"Expected no errors for default config, got: {errors}"
 
 
+def test_validate_config_is_callable_and_returns_list(monkeypatch):
+    """validate_config() must be importable and return a list."""
+    import importlib
+    import mcp_memory_service.config as cfg
+    importlib.reload(cfg)
+
+    result = cfg.validate_config()
+    assert isinstance(result, list)
+
+
 def test_validate_config_returns_warning_for_hybrid_weight_normalization(monkeypatch):
     """Hybrid search weights not summing to 1.0 should return a warning in validate_config."""
     monkeypatch.setenv('MCP_MEMORY_STORAGE_BACKEND', 'sqlite_vec')

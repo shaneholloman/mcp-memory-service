@@ -153,8 +153,15 @@ def main():
         import uvicorn
         from mcp_memory_service.web.app import app
         from mcp_memory_service.config import (
-            HTTP_HOST, HTTP_PORT, HTTPS_ENABLED, SSL_CERT_FILE, SSL_KEY_FILE
+            HTTP_HOST, HTTP_PORT, HTTPS_ENABLED, SSL_CERT_FILE, SSL_KEY_FILE,
+            validate_config,
         )
+
+        # Log any configuration issues (HTTP server handles HTTPS gracefully itself)
+        config_issues = validate_config()
+        if config_issues:
+            for issue in config_issues:
+                print(f"CONFIG WARNING: {issue}", file=sys.stderr)
         
         # SSL configuration
         ssl_keyfile = None
