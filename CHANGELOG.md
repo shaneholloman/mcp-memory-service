@@ -10,6 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.16.0] - 2026-02-18
+
+### Added
+- **Agentic AI market repositioning**: Complete overhaul of README hero section with "Persistent Shared Memory for AI Agent Pipelines" narrative. Added "Why Agents Need This" comparison table (with/without mcp-memory-service), agent quick-start code example, and competitor comparison table against Mem0, Zep, and DIY approaches. Framework badges added for LangGraph, CrewAI, and AutoGen.
+- **`docs/agents/` integration guide collection**: Five new integration guides for AI agent frameworks:
+  - `docs/agents/README.md` — Overview and framework selection guide
+  - `docs/agents/langgraph.md` — LangGraph StateGraph memory nodes, cross-graph sharing patterns
+  - `docs/agents/crewai.md` — CrewAI BaseTool implementations for memory store/retrieve
+  - `docs/agents/autogen.md` — AutoGen 0.4+ FunctionTool schema with async patterns
+  - `docs/agents/http-generic.md` — Generic HTTP examples covering all 15 REST endpoints
+- **`NAMESPACE_AGENT` tag taxonomy entry**: New `"agent:"` namespace prefix added to tag taxonomy (`models/tag_taxonomy.py`) for agent-scoped memory isolation and retrieval.
+- **`X-Agent-ID` header auto-tagging**: The `POST /api/memories` REST endpoint now reads the `X-Agent-ID` request header and automatically prepends an `agent:<id>` tag to stored memories. Enables per-agent memory scoping without client-side tag management.
+- **Tests for `X-Agent-ID` behavior**: `tests/web/api/test_memories_api.py` with 3 tests covering header present, header absent, and tag deduplication edge cases.
+- **pyproject.toml discoverability improvements**: Updated description and keywords for agentic AI market discoverability (added `multi-agent`, `langgraph`, `crewai`, `autogen`, `agentic-ai`, `ai-agents`).
+
 ## [10.15.1] - 2026-02-18
 
 ### Fixed

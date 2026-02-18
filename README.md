@@ -259,14 +259,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.15.1** (February 18, 2026)
+## 🆕 Latest Release: **v10.16.0** (February 18, 2026)
 
-**Stale Venv Detection for Moved/Renamed Projects**
+**Agentic AI Market Repositioning with REST API Integration Guides**
 
 **What's New:**
-- **Auto-detect stale venv on project move**: `update_and_restart.sh` now reads the pip shebang and validates that the embedded interpreter path still exists. If the project directory has been moved or renamed, the venv is automatically recreated instead of failing with a misleading "network error" after 3 silent retries.
+- **Agent framework integration guides**: Five new guides in `docs/agents/` — LangGraph StateGraph memory nodes, CrewAI BaseTool implementations, AutoGen 0.4+ FunctionTool schema, and generic HTTP examples covering all 15 REST endpoints.
+- **`X-Agent-ID` header auto-tagging**: Send `X-Agent-ID: my-agent` in any `POST /api/memories` request to automatically scope memories to that agent identity — no client-side tag management required.
+- **`agent:` tag namespace**: New `NAMESPACE_AGENT` entry in tag taxonomy for agent-scoped memory isolation and retrieval.
+- **README overhaul**: New hero section "Persistent Shared Memory for AI Agent Pipelines", "Why Agents Need This" comparison table, competitor comparison (vs Mem0/Zep/DIY), and LangGraph/CrewAI/AutoGen framework badges.
+- **PyPI discoverability**: Updated description and keywords to target the multi-agent and agentic AI ecosystem.
 
 **Previous Releases**:
+- **v10.15.1** - Stale Venv Detection for Moved/Renamed Projects (auto-recreate venv when pip shebang interpreter path is missing)
 - **v10.15.0** - Config Validation & Safe Environment Parsing (`validate_config()` at startup, `safe_get_int_env()`, 8 new robustness tests)
 - **v10.14.0** - `conversation_id` Support for Incremental Conversation Saves (semantic dedup bypass, metadata storage, all backends)
 - **v10.13.2** - Consolidation & Hybrid Storage Bug Fixes (missing StorageProtocol proxy methods, timezone-aware datetime, contributed by @VibeCodeChef)
