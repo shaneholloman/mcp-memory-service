@@ -452,11 +452,11 @@ else:
 # Hybrid backend specific configuration
 if STORAGE_BACKEND == 'hybrid':
     # Sync service configuration
-    HYBRID_SYNC_INTERVAL = int(os.getenv('MCP_HYBRID_SYNC_INTERVAL', '300'))  # 5 minutes default
-    HYBRID_BATCH_SIZE = int(os.getenv('MCP_HYBRID_BATCH_SIZE', '100'))  # Increased from 50 for bulk operations
-    HYBRID_QUEUE_SIZE = int(os.getenv('MCP_HYBRID_QUEUE_SIZE', '2000'))  # Increased from 1000 for bulk operations
-    HYBRID_MAX_QUEUE_SIZE = int(os.getenv('MCP_HYBRID_MAX_QUEUE_SIZE', '1000'))  # Legacy - use HYBRID_QUEUE_SIZE
-    HYBRID_MAX_RETRIES = int(os.getenv('MCP_HYBRID_MAX_RETRIES', '3'))
+    HYBRID_SYNC_INTERVAL = safe_get_int_env('MCP_HYBRID_SYNC_INTERVAL', 300, min_value=10)  # 5 minutes default
+    HYBRID_BATCH_SIZE = safe_get_int_env('MCP_HYBRID_BATCH_SIZE', 100, min_value=1, max_value=10000)  # Increased from 50 for bulk operations
+    HYBRID_QUEUE_SIZE = safe_get_int_env('MCP_HYBRID_QUEUE_SIZE', 2000, min_value=10)  # Increased from 1000 for bulk operations
+    HYBRID_MAX_QUEUE_SIZE = safe_get_int_env('MCP_HYBRID_MAX_QUEUE_SIZE', 1000, min_value=10)  # Legacy - use HYBRID_QUEUE_SIZE
+    HYBRID_MAX_RETRIES = safe_get_int_env('MCP_HYBRID_MAX_RETRIES', 3, min_value=0, max_value=10)
 
     # Sync ownership control (v8.27.0+) - Prevents duplicate sync queues
     # Values: "http" (HTTP server only), "mcp" (MCP server only), "both" (both servers sync)
@@ -464,22 +464,22 @@ if STORAGE_BACKEND == 'hybrid':
     HYBRID_SYNC_OWNER = os.getenv('MCP_HYBRID_SYNC_OWNER', 'both').lower()
 
     # Performance tuning
-    HYBRID_ENABLE_HEALTH_CHECKS = os.getenv('MCP_HYBRID_ENABLE_HEALTH_CHECKS', 'true').lower() == 'true'
-    HYBRID_HEALTH_CHECK_INTERVAL = int(os.getenv('MCP_HYBRID_HEALTH_CHECK_INTERVAL', '60'))  # 1 minute
-    HYBRID_SYNC_ON_STARTUP = os.getenv('MCP_HYBRID_SYNC_ON_STARTUP', 'true').lower() == 'true'
+    HYBRID_ENABLE_HEALTH_CHECKS = safe_get_bool_env('MCP_HYBRID_ENABLE_HEALTH_CHECKS', True)
+    HYBRID_HEALTH_CHECK_INTERVAL = safe_get_int_env('MCP_HYBRID_HEALTH_CHECK_INTERVAL', 60, min_value=10)  # 1 minute
+    HYBRID_SYNC_ON_STARTUP = safe_get_bool_env('MCP_HYBRID_SYNC_ON_STARTUP', True)
 
     # Drift detection and metadata sync (v8.25.0+)
-    HYBRID_SYNC_UPDATES = os.getenv('MCP_HYBRID_SYNC_UPDATES', 'true').lower() == 'true'
-    HYBRID_DRIFT_CHECK_INTERVAL = int(os.getenv('MCP_HYBRID_DRIFT_CHECK_INTERVAL', '3600'))  # 1 hour default
-    HYBRID_DRIFT_BATCH_SIZE = int(os.getenv('MCP_HYBRID_DRIFT_BATCH_SIZE', '100'))
+    HYBRID_SYNC_UPDATES = safe_get_bool_env('MCP_HYBRID_SYNC_UPDATES', True)
+    HYBRID_DRIFT_CHECK_INTERVAL = safe_get_int_env('MCP_HYBRID_DRIFT_CHECK_INTERVAL', 3600, min_value=60)  # 1 hour default
+    HYBRID_DRIFT_BATCH_SIZE = safe_get_int_env('MCP_HYBRID_DRIFT_BATCH_SIZE', 100, min_value=1)
 
     # Initial sync behavior tuning (v7.5.4+)
     HYBRID_MAX_EMPTY_BATCHES = safe_get_int_env('MCP_HYBRID_MAX_EMPTY_BATCHES', 20, min_value=1)  # Stop after N batches without new syncs
     HYBRID_MIN_CHECK_COUNT = safe_get_int_env('MCP_HYBRID_MIN_CHECK_COUNT', 1000, min_value=1)  # Minimum memories to check before early stop
 
     # Fallback behavior
-    HYBRID_FALLBACK_TO_PRIMARY = os.getenv('MCP_HYBRID_FALLBACK_TO_PRIMARY', 'true').lower() == 'true'
-    HYBRID_WARN_ON_SECONDARY_FAILURE = os.getenv('MCP_HYBRID_WARN_ON_SECONDARY_FAILURE', 'true').lower() == 'true'
+    HYBRID_FALLBACK_TO_PRIMARY = safe_get_bool_env('MCP_HYBRID_FALLBACK_TO_PRIMARY', True)
+    HYBRID_WARN_ON_SECONDARY_FAILURE = safe_get_bool_env('MCP_HYBRID_WARN_ON_SECONDARY_FAILURE', True)
 
     logger.info(f"Hybrid storage configuration: sync_interval={HYBRID_SYNC_INTERVAL}s, batch_size={HYBRID_BATCH_SIZE}")
 
@@ -553,7 +553,7 @@ SSL_KEY_FILE = os.getenv('MCP_SSL_KEY_FILE', None)
 MDNS_ENABLED = os.getenv('MCP_MDNS_ENABLED', 'true').lower() == 'true'
 MDNS_SERVICE_NAME = os.getenv('MCP_MDNS_SERVICE_NAME', 'MCP Memory Service')
 MDNS_SERVICE_TYPE = os.getenv('MCP_MDNS_SERVICE_TYPE', '_mcp-memory._tcp.local.')
-MDNS_DISCOVERY_TIMEOUT = int(os.getenv('MCP_MDNS_DISCOVERY_TIMEOUT', '5'))
+MDNS_DISCOVERY_TIMEOUT = safe_get_int_env('MCP_MDNS_DISCOVERY_TIMEOUT', 5, min_value=1, max_value=60)
 
 # Database path for HTTP interface (use SQLite-vec by default)
 if (STORAGE_BACKEND in ['sqlite_vec', 'hybrid']) and SQLITE_VEC_PATH:
@@ -660,10 +660,10 @@ CONSOLIDATION_CONFIG = {
     # Decay settings
     'decay_enabled': os.getenv('MCP_DECAY_ENABLED', 'true').lower() == 'true',
     'retention_periods': {
-        'critical': int(os.getenv('MCP_RETENTION_CRITICAL', '365')),
-        'reference': int(os.getenv('MCP_RETENTION_REFERENCE', '180')),
-        'standard': int(os.getenv('MCP_RETENTION_STANDARD', '30')),
-        'temporary': int(os.getenv('MCP_RETENTION_TEMPORARY', '7'))
+        'critical': safe_get_int_env('MCP_RETENTION_CRITICAL', 365, min_value=1, max_value=3650),
+        'reference': safe_get_int_env('MCP_RETENTION_REFERENCE', 180, min_value=1, max_value=3650),
+        'standard': safe_get_int_env('MCP_RETENTION_STANDARD', 30, min_value=1, max_value=3650),
+        'temporary': safe_get_int_env('MCP_RETENTION_TEMPORARY', 7, min_value=1, max_value=365)
     },
     
     # Association settings
