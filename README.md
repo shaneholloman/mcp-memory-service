@@ -175,18 +175,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.14.0** (February 18, 2026)
+## 🆕 Latest Release: **v10.15.0** (February 18, 2026)
 
-**`conversation_id` Support for Incremental Conversation Saves**
+**Config Validation & Safe Environment Parsing**
 
 **What's New:**
-- **`conversation_id` parameter**: Pass a `conversation_id` to `memory_store` (MCP tool) or `POST /api/memories` (REST API) to allow incremental saves from the same conversation without being blocked by semantic deduplication (#463)
-- **Exact hash deduplication preserved**: Identical content is still deduplicated even when `conversation_id` is provided
-- **Metadata storage**: `conversation_id` is stored in memory metadata for future retrieval and grouping
-- **All storage backends supported**: Works with SQLite-Vec, Cloudflare (interface-compatible), and Hybrid backends
-- **CI fix**: Updated hash assertion in integration test to match full 64-character hash display
+- **`validate_config()` at startup**: New cross-field validation catches misconfiguration early - HTTPS enabled without cert/key files, hybrid search weights not summing to 1.0 (with auto-normalization notice). Called at both MCP server and HTTP server startup.
+- **Safe env-var parsing**: Replaced raw `int(os.getenv())` with `safe_get_int_env()` throughout the config - hybrid sync interval, batch size, queue size, retry count, health check interval, retention periods, and mDNS timeout no longer crash on invalid input.
+- **8 new tests**: Covering `safe_get_int_env` robustness (min/max bounds, non-numeric values) and `validate_config` cross-field checks.
 
 **Previous Releases**:
+- **v10.14.0** - `conversation_id` Support for Incremental Conversation Saves (semantic dedup bypass, metadata storage, all backends)
 - **v10.13.2** - Consolidation & Hybrid Storage Bug Fixes (missing StorageProtocol proxy methods, timezone-aware datetime, contributed by @VibeCodeChef)
 - **v10.13.1** - Critical Bug Fixes (tag search limits, REST API field access, metadata corruption, hash display, prompt handler crashes)
 - **v10.13.0** - Test Suite Stability (100% pass rate, 1,161 passing tests, authentication testing patterns)

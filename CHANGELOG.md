@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.15.0] - 2026-02-18
+
 ### Fixed
 - **Config: replace raw `int(os.getenv())` with `safe_get_int_env()`**: Hybrid backend sync interval, batch size, queue size, retry count, health check interval, drift check interval, retention periods, and mDNS discovery timeout were parsed with raw `int()` which crashes on invalid input. Now use `safe_get_int_env()` and `safe_get_bool_env()` with sensible min/max bounds.
 
