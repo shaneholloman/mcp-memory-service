@@ -157,10 +157,18 @@ async def store_memory(
             else:
                 client_hostname = socket.gethostname()
 
+        # Auto-tag with agent identity if provided via header
+        tags = list(request.tags)
+        agent_id = http_request.headers.get('X-Agent-ID')
+        if agent_id:
+            agent_tag = f"agent:{agent_id}"
+            if agent_tag not in tags:
+                tags.append(agent_tag)
+
         # Use injected MemoryService for consistent business logic (hostname tagging handled internally)
         result = await memory_service.store_memory(
             content=request.content,
-            tags=request.tags,
+            tags=tags,
             memory_type=request.memory_type,
             metadata=request.metadata,
             client_hostname=client_hostname,

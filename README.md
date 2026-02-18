@@ -1,11 +1,92 @@
-# MCP Memory Service
+# mcp-memory-service
+
+## Persistent Shared Memory for AI Agent Pipelines
+
+Open-source memory backend for multi-agent systems.
+Agents store decisions, share causal knowledge graphs, and retrieve
+context in 5ms — without cloud lock-in or API costs.
+
+**Works with LangGraph · CrewAI · AutoGen · any HTTP client · Claude Desktop**
+
+---
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![PyPI version](https://img.shields.io/pypi/v/mcp-memory-service?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/mcp-memory-service/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-memory-service?logo=python&logoColor=white)](https://pypi.org/project/mcp-memory-service/)
 [![GitHub stars](https://img.shields.io/github/stars/doobidoo/mcp-memory-service?style=social)](https://github.com/doobidoo/mcp-memory-service/stargazers)
+[![Works with LangGraph](https://img.shields.io/badge/Works%20with-LangGraph-green)](https://github.com/langchain-ai/langgraph)
+[![Works with CrewAI](https://img.shields.io/badge/Works%20with-CrewAI-orange)](https://crewai.com)
+[![Works with AutoGen](https://img.shields.io/badge/Works%20with-AutoGen-purple)](https://github.com/microsoft/autogen)
 [![Works with Claude](https://img.shields.io/badge/Works%20with-Claude-blue)](https://claude.ai)
 [![Works with Cursor](https://img.shields.io/badge/Works%20with-Cursor-orange)](https://cursor.sh)
+
+---
+
+## Why Agents Need This
+
+| Without mcp-memory-service | With mcp-memory-service |
+|---|---|
+| Each agent run starts from zero | Agents retrieve prior decisions in 5ms |
+| Memory is local to one graph/run | Memory is shared across all agents and runs |
+| You manage Redis + Pinecone + glue code | One self-hosted service, zero cloud cost |
+| No causal relationships between facts | Knowledge graph with typed edges (causes, fixes, contradicts) |
+| Context window limits create amnesia | Autonomous consolidation compresses old memories |
+
+**Key capabilities for agent pipelines:**
+- **Framework-agnostic REST API** — 15 endpoints, no MCP client library needed
+- **Knowledge graph** — agents share causal chains, not just facts
+- **`X-Agent-ID` header** — auto-tag memories by agent identity for scoped retrieval
+- **`conversation_id`** — bypass deduplication for incremental conversation storage
+- **SSE events** — real-time notifications when any agent stores or deletes a memory
+- **Embeddings run locally via ONNX** — memory never leaves your infrastructure
+
+## Agent Quick Start
+
+```bash
+pip install mcp-memory-service
+MCP_ALLOW_ANONYMOUS_ACCESS=true memory server --http
+# REST API running at http://localhost:8000
+```
+
+```python
+import httpx
+
+BASE_URL = "http://localhost:8000"
+
+# Store — auto-tag with X-Agent-ID header
+async with httpx.AsyncClient() as client:
+    await client.post(f"{BASE_URL}/api/memories", json={
+        "content": "API rate limit is 100 req/min",
+        "tags": ["api", "limits"],
+    }, headers={"X-Agent-ID": "researcher"})
+    # Stored with tags: ["api", "limits", "agent:researcher"]
+
+# Search — scope to a specific agent
+    results = await client.post(f"{BASE_URL}/api/memories/search", json={
+        "query": "API rate limits",
+        "tags": ["agent:researcher"],
+    })
+    print(results.json()["memories"])
+```
+
+**Framework-specific guides:** [docs/agents/](docs/agents/)
+
+## Comparison with Alternatives
+
+| | Mem0 | Zep | DIY Redis+Pinecone | **mcp-memory-service** |
+|---|---|---|---|---|
+| License | Proprietary | Enterprise | — | **Apache 2.0** |
+| Cost | Per-call API | Enterprise | Infra costs | **$0** |
+| Framework integration | SDK | SDK | Manual | **REST API (any HTTP client)** |
+| Knowledge graph | No | Limited | No | **Yes (typed edges)** |
+| Auto consolidation | No | No | No | **Yes (decay + compression)** |
+| On-premise embeddings | No | No | Manual | **Yes (ONNX, local)** |
+| Privacy | Cloud | Cloud | Partial | **100% local** |
+| Hybrid search | No | Yes | Manual | **Yes (BM25 + vector)** |
+| MCP protocol | No | No | No | **Yes** |
+| REST API | Yes | Yes | Manual | **Yes (15 endpoints)** |
+
+---
 
 ## Stop Re-Explaining Your Project to AI Every Session
 
@@ -30,16 +111,19 @@ It automatically captures your project context, architecture decisions, and code
 
 ### ⚡ Works With Your Favorite AI Tools
 
-#### 🖥️ CLI & Terminal AI
+#### 🤖 Agent Frameworks (REST API)
+**LangGraph** · **CrewAI** · **AutoGen** · **Any HTTP Client** · **OpenClaw/Nanobot** · **Custom Pipelines**
+
+#### 🖥️ CLI & Terminal AI (MCP)
 **Claude Code** · **Gemini Code Assist** · **Aider** · **GitHub Copilot CLI** · **Amp** · **Continue** · **Zed** · **Cody**
 
-#### 🎨 Desktop & IDE
+#### 🎨 Desktop & IDE (MCP)
 **Claude Desktop** · **VS Code** · **Cursor** · **Windsurf** · **Raycast** · **JetBrains** · **Sourcegraph** · **Qodo**
 
-#### 🤖 Chat Interfaces
+#### 💬 Chat Interfaces (MCP)
 **ChatGPT** (Developer Mode) · **Claude Web**
 
-**Works seamlessly with any MCP-compatible client** - whether you code in the terminal, IDE, or browser.
+**Works seamlessly with any MCP-compatible client or HTTP client** - whether you're building agent pipelines, coding in the terminal, IDE, or browser.
 
 > **💡 NEW**: ChatGPT now supports MCP! Enable Developer Mode to connect your memory service directly. [See setup guide →](https://github.com/doobidoo/mcp-memory-service/discussions/377#discussioncomment-15605174)
 
@@ -435,6 +519,7 @@ If you encounter issues during migration:
 
 ## 📚 Documentation & Resources
 
+- **[Agent Integration Guides](docs/agents/)** 🆕 – LangGraph, CrewAI, AutoGen, HTTP generic
 - **[Installation Guide](docs/installation.md)** – Detailed setup instructions
 - **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
 - **[Architecture Overview](docs/architecture.md)** – How it works under the hood

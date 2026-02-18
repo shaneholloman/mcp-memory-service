@@ -26,6 +26,7 @@ NAMESPACE_PROJECT: Final[str] = "proj:"     # Project/repository context
 NAMESPACE_TOPIC: Final[str] = "topic:"      # Subject matter topics
 NAMESPACE_TEMPORAL: Final[str] = "t:"       # Time-based tags (t:2024-01, t:sprint-3)
 NAMESPACE_USER: Final[str] = "user:"        # User-defined custom tags
+NAMESPACE_AGENT: Final[str] = "agent:"      # Agent identity tags (agent:<id>, crew:<name>)
 
 
 def parse_tag(tag: str) -> Tuple[Optional[str], str]:
@@ -63,7 +64,8 @@ VALID_NAMESPACES: Final[List[str]] = [
     NAMESPACE_PROJECT,
     NAMESPACE_TOPIC,
     NAMESPACE_TEMPORAL,
-    NAMESPACE_USER
+    NAMESPACE_USER,
+    NAMESPACE_AGENT
 ]
 
 
@@ -173,7 +175,8 @@ class TagTaxonomy:
         NAMESPACE_PROJECT,
         NAMESPACE_TOPIC,
         NAMESPACE_TEMPORAL,
-        NAMESPACE_USER
+        NAMESPACE_USER,
+        NAMESPACE_AGENT
     }
 
     @classmethod
