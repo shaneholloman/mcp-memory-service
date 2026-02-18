@@ -175,18 +175,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.13.2** (February 17, 2026)
+## 🆕 Latest Release: **v10.14.0** (February 18, 2026)
 
-**Consolidation & Hybrid Storage Bug Fixes**
+**`conversation_id` Support for Incremental Conversation Saves**
 
 **What's New:**
-- **Consolidation Forgetting Phase**: Added missing `delete_memory()`, `get_memory_connections()`, and `get_access_patterns()` proxy methods to `HybridMemoryStorage` - consolidation no longer silently fails (#471)
-- **Timezone TypeError Crash Fix**: Replaced naive `datetime.utcfromtimestamp()` with timezone-aware `datetime.fromtimestamp(x, tz=timezone.utc)` across all consolidation files - quarterly/yearly runs no longer crash (#471)
-- **Refactored `delete_memory()`**: Delegates to `delete()` to eliminate duplicated sync logic in hybrid storage
-- **UTC Timestamp Normalization**: `compression.py` now formats timestamps as `Z`-suffix UTC strings consistently
-- **Thanks**: All fixes contributed by @VibeCodeChef (Kemal)
+- **`conversation_id` parameter**: Pass a `conversation_id` to `memory_store` (MCP tool) or `POST /api/memories` (REST API) to allow incremental saves from the same conversation without being blocked by semantic deduplication (#463)
+- **Exact hash deduplication preserved**: Identical content is still deduplicated even when `conversation_id` is provided
+- **Metadata storage**: `conversation_id` is stored in memory metadata for future retrieval and grouping
+- **All storage backends supported**: Works with SQLite-Vec, Cloudflare (interface-compatible), and Hybrid backends
+- **CI fix**: Updated hash assertion in integration test to match full 64-character hash display
 
 **Previous Releases**:
+- **v10.13.2** - Consolidation & Hybrid Storage Bug Fixes (missing StorageProtocol proxy methods, timezone-aware datetime, contributed by @VibeCodeChef)
 - **v10.13.1** - Critical Bug Fixes (tag search limits, REST API field access, metadata corruption, hash display, prompt handler crashes)
 - **v10.13.0** - Test Suite Stability (100% pass rate, 1,161 passing tests, authentication testing patterns)
 - **v10.12.1** - Custom Memory Type Configuration Test Fixes (test isolation, environment cleanup)

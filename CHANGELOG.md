@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.14.0] - 2026-02-18
+
 ### Added
 - **`conversation_id` parameter for `memory_store` and REST API**: Pass `conversation_id` when storing memories from the same conversation to allow incremental saves without being blocked by semantic deduplication. Exact hash deduplication is always enforced. The `conversation_id` is stored in memory metadata for future retrieval/grouping. Applies to both the MCP `memory_store` tool and the `POST /api/memories` REST endpoint. Closes #463.
 
