@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+- **Config: replace raw `int(os.getenv())` with `safe_get_int_env()`**: Hybrid backend sync interval, batch size, queue size, retry count, health check interval, drift check interval, retention periods, and mDNS discovery timeout were parsed with raw `int()` which crashes on invalid input. Now use `safe_get_int_env()` and `safe_get_bool_env()` with sensible min/max bounds.
+
+### Added
+- **`validate_config()` function**: New cross-field validation callable at startup. Catches: HTTPS enabled without cert/key files, hybrid search weights not summing to 1.0 (with auto-normalization notice). Returns a list of issue strings; called at both MCP server and HTTP server startup. 8 new tests covering `safe_get_int_env` robustness and `validate_config` cross-field checks.
+
 ## [10.14.0] - 2026-02-18
 
 ### Added
