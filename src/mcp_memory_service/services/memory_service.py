@@ -329,7 +329,8 @@ class MemoryService:
         tags: Union[str, List[str], None] = None,
         memory_type: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        client_hostname: Optional[str] = None
+        client_hostname: Optional[str] = None,
+        conversation_id: Optional[str] = None
     ) -> Union[StoreMemorySingleSuccess, StoreMemoryChunkedSuccess, StoreMemoryFailure]:
         """
         Store a new memory with validation and content processing.
@@ -346,6 +347,9 @@ class MemoryService:
             memory_type: Optional memory type classification
             metadata: Optional additional metadata (can also contain tags)
             client_hostname: Optional client hostname for source tagging
+            conversation_id: Optional conversation identifier. When supplied, semantic
+                deduplication is skipped so all turns of the same conversation
+                can be saved independently. Exact hash dedup is always preserved.
 
         Returns:
             Dictionary with operation result
@@ -372,6 +376,11 @@ class MemoryService:
                 if source_tag not in final_tags:
                     final_tags.append(source_tag)
                 final_metadata["hostname"] = client_hostname
+
+            # Store conversation_id in metadata for future grouping/retrieval
+            skip_dedup = bool(conversation_id)
+            if skip_dedup:
+                final_metadata["conversation_id"] = conversation_id
 
             # Generate content hash for deduplication
             content_hash = generate_content_hash(content)
@@ -404,7 +413,7 @@ class MemoryService:
                         metadata=chunk_metadata
                     )
 
-                    success, message = await self.storage.store(memory)
+                    success, message = await self.storage.store(memory, skip_semantic_dedup=skip_dedup)
                     if success:
                         stored_memories.append(self._format_memory_response(memory))
                         # Queue chunk for AI quality scoring if enabled
@@ -442,7 +451,7 @@ class MemoryService:
                     metadata=final_metadata
                 )
 
-                success, message = await self.storage.store(memory)
+                success, message = await self.storage.store(memory, skip_semantic_dedup=skip_dedup)
 
                 if success:
                     # Queue for AI quality scoring if enabled

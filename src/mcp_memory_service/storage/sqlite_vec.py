@@ -1167,8 +1167,14 @@ SOLUTIONS:
 
         return False, None
 
-    async def store(self, memory: Memory) -> Tuple[bool, str]:
-        """Store a memory in the SQLite-vec database."""
+    async def store(self, memory: Memory, skip_semantic_dedup: bool = False) -> Tuple[bool, str]:
+        """Store a memory in the SQLite-vec database.
+
+        Args:
+            memory: The Memory object to store.
+            skip_semantic_dedup: If True, bypass semantic similarity check.
+                Exact hash deduplication is always enforced.
+        """
         try:
             if not self.conn:
                 return False, "Database not initialized"
@@ -1181,8 +1187,8 @@ SOLUTIONS:
             if cursor.fetchone():
                 return False, "Duplicate content detected (exact match)"
 
-            # Check for semantic duplicates within configured time window (only if enabled)
-            if self.semantic_dedup_enabled:
+            # Check for semantic duplicates (skipped when caller signals incremental save)
+            if self.semantic_dedup_enabled and not skip_semantic_dedup:
                 is_duplicate, existing_hash = await self._check_semantic_duplicate(
                     memory.content,
                     time_window_hours=self.semantic_dedup_time_window,
