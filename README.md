@@ -563,7 +563,7 @@ If you encounter issues during migration:
 - **[API Reference](docs/api.md)** – Programmatic usage
 - **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** – Complete documentation
 - [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/doobidoo/mcp-memory-service) – AI-powered documentation assistant
-- **[MCP Starter Kit](https://doobidoo.gumroad.com/l/mcp-starter-kit)** – Build your own MCP server using the patterns from this project
+- **[MCP Starter Kit](https://kruppster57.gumroad.com/l/glbhd)** – Build your own MCP server using the patterns from this project
 
 ---
 
