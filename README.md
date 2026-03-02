@@ -1273,5 +1273,5 @@ If it saves you time or helps your AI agents work better, consider supporting co
 - Documentation and onboarding guides
 - Community support and issue triage
 
-Every contribution — whether $5 or $50/month — directly supports development time.
+Every contribution — whether $5 or $50/month — directly supports development time. For more details, see our [sponsorship page](SPONSORS.md).
 
