@@ -131,30 +131,22 @@ It automatically captures your project context, architecture decisions, and code
 
 ## 🚀 Get Started in 60 Seconds
 
-**Express Install** (recommended for most users):
-
-```bash
-pip install mcp-memory-service
-# Auto-configure for Claude Desktop (macOS/Linux)
-python -m mcp_memory_service.scripts.installation.install --quick
-```
-
-**What just happened?**
-- ✅ Installed memory service
-- ✅ Configured optimal backend (SQLite)
-- ✅ Set up Claude Desktop integration
-- ✅ Enabled automatic context capture
-
-**Next:** Restart Claude Desktop. Your AI now remembers everything across sessions.
-
-<details>
-<summary><strong>📦 Alternative: PyPI + Manual Configuration</strong></summary>
+**1. Install:**
 
 ```bash
 pip install mcp-memory-service
 ```
 
-Then add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+**2. Configure your AI client:**
+
+<details open>
+<summary><strong>Claude Desktop</strong></summary>
+
+Add to your config file:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
 ```json
 {
   "mcpServers": {
@@ -165,6 +157,19 @@ Then add to `~/Library/Application Support/Claude/claude_desktop_config.json` (m
   }
 }
 ```
+
+Restart Claude Desktop. Your AI now remembers everything across sessions.
+
+</details>
+
+<details>
+<summary><strong>Claude Code</strong></summary>
+
+```bash
+claude mcp add memory -- memory server
+```
+
+Restart Claude Code. Memory tools will appear automatically.
 
 </details>
 
