@@ -19,6 +19,7 @@ context in 5ms — without cloud lock-in or API costs.
 [![Works with AutoGen](https://img.shields.io/badge/Works%20with-AutoGen-purple)](https://github.com/microsoft/autogen)
 [![Works with Claude](https://img.shields.io/badge/Works%20with-Claude-blue)](https://claude.ai)
 [![Works with Cursor](https://img.shields.io/badge/Works%20with-Cursor-orange)](https://cursor.sh)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/doobidoo)
 
 ---
 
@@ -1256,4 +1257,21 @@ The `retag_valuable_memories.py` script uses intelligent pattern matching:
 ### See Also
 - [AGENTS.md](AGENTS.md) - Memory cleanup commands reference
 - Scripts in `scripts/maintenance/` - Auto-retagging and cleanup tools
+
+## 💖 Support This Project
+
+mcp-memory-service is free and open source, maintained by a single developer.
+If it saves you time or helps your AI agents work better, consider supporting continued development:
+
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/doobidoo)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?logo=ko-fi)](https://ko-fi.com/doobidoo)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/doobidoo)
+
+**Sponsorship helps fund:**
+- New features (knowledge graph improvements, multi-agent coordination)
+- Security patches and dependency updates
+- Documentation and onboarding guides
+- Community support and issue triage
+
+Every contribution — whether $5 or $50/month — directly supports development time.
 
