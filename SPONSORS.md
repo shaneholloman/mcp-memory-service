@@ -15,10 +15,10 @@ MCP Memory Service is more than just a memory storage tool—it's a comprehensiv
 ## 📊 Project Impact
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Memories_Managed-319+-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Query_Time-828ms-green?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Memories_Managed-1700+-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Query_Time-<500ms-green?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Cache_Hit_Rate-100%25-brightgreen?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Operations-16-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Operations-20+-orange?style=for-the-badge" />
 </p>
 
 ## 💎 Sponsorship Tiers
@@ -55,13 +55,13 @@ MCP Memory Service is more than just a memory storage tool—it's a comprehensiv
 
 Your sponsorship directly funds:
 
-### Immediate Goals (Q3 2025)
-- [ ] **$200/month** - Automatic backup scheduling system
-- [ ] **$400/month** - Multi-language support (ES, FR, DE, JP)
-- [ ] **$600/month** - Cloud sync capabilities (AWS, GCP, Azure)
+### Immediate Goals (Q1 2026)
+- [x] **$200/month** - HTTP REST API with FastAPI dashboard
+- [x] **$400/month** - Document ingestion pipeline (PDF, URL, YouTube)
+- [ ] **$600/month** - Multi-language support (ES, FR, DE, JP)
 
-### Long-term Goals (Q4 2025)
-- [ ] **$800/month** - Advanced analytics dashboard
+### Growth Goals (Q2 2026)
+- [ ] **$800/month** - Cloud sync capabilities (AWS, GCP, Azure)
 - [ ] **$1000/month** - Plugin system for custom extensions
 - [ ] **$1500/month** - Enterprise authentication (SSO, LDAP)
 
@@ -120,7 +120,7 @@ Your sponsorship directly funds:
 
 For custom sponsorship packages or enterprise inquiries:
 - Email: [henry.krupp@gmail.com]
-- Discord: [Join our community](https://discord.gg/cc4BU9Hqfinder)
+- Discord: [Join our community](https://discord.gg/mcp-memory)
 - GitHub Discussions: [Start a conversation](https://github.com/doobidoo/mcp-memory-service/discussions)
 
 ## 🙏 Thank You
