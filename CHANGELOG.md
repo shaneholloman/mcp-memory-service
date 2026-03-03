@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.20.3] - 2026-03-03
+
+### Fixed
+- **HTTP server auto-start: wrong module path** (#529): Subprocess command used `src.mcp_memory_service.app` (source-tree path, broken for `pip`/`uvx` installs). Corrected to `mcp_memory_service.web.app` — the proper installed-package entrypoint.
+- **HTTP server auto-start: `MCP_HTTP_ENABLED` env var ignored** (#529): The auto-start gate only checked `MCP_MEMORY_HTTP_AUTO_START`; `MCP_HTTP_ENABLED` (the documented variable) was silently ignored. Both variables are now accepted as equivalent triggers.
+- **HTTP server auto-start: startup wait too short for model loading** (#529): A fixed 3-second sleep was replaced with a 30-second polling loop (2 s intervals) that probes whether the port is in use. This gives `sentence-transformers` enough time to load before the caller gives up with a false "port not in use" error.
+- **HTTP server auto-start: auth env vars not forwarded to subprocess** (#529): `MCP_API_KEY`, `MCP_ALLOW_ANONYMOUS_ACCESS`, `MCP_HTTP_PORT`, `MCP_HTTP_HOST`, and storage-path variables are now explicitly propagated to the HTTP server subprocess, enabling authenticated hook operations out-of-the-box.
+- **Hook installer: `uv run` without checking for `pyproject.toml`** (#531): `_build_mcp_server_command_config()` now verifies `pyproject.toml` exists in the current directory before emitting a `uv run` command. When absent (e.g., `uvx` installs or any non-source-tree context), it falls back to `uvx --from mcp-memory-service memory server`, avoiding stale/broken `serverWorkingDir` references.
+- **Hook installer: no API key generated** (#531): `install_configuration()` now auto-generates a cryptographically strong API key via `secrets.token_urlsafe(32)` and writes it to `~/.claude/hooks/config.json` under `memoryService.http.apiKey`. Any pre-existing non-placeholder value is preserved.
+- **Hook installer: no guidance on dual-server requirement** (#531): Post-installation output (`_print_post_install_instructions()`) now clearly explains that both the stdio MCP server and the HTTP server must be running and provides a ready-to-use bash wrapper snippet for `~/.claude.json` — including the generated API key.
+
 ## [10.20.2] - 2026-03-01
 
 ### Fixed

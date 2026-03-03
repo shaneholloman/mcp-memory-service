@@ -588,16 +588,22 @@ class HookInstaller:
     def _build_mcp_server_command_config(self) -> Dict:
         """Build the MCP server command configuration for the hooks config.json.
 
-        When the installer is run from a temporary directory (e.g. via uvx), use
-        ``uvx --from mcp-memory-service memory server`` so that the command remains
-        valid after the temp directory is cleaned up.  Otherwise fall back to
-        ``uv run python -m mcp_memory_service.server`` with the local working
-        directory.
+        Uses ``uvx --from mcp-memory-service memory server`` whenever the
+        installer cannot confirm a local ``pyproject.toml`` in the working
+        directory — this covers both temp-dir invocations (e.g. via uvx) and
+        any scenario where ``uv run`` would fail because there is no local
+        project.  When a valid ``pyproject.toml`` *is* present the classic
+        ``uv run`` form is kept so that local development workflows are not
+        broken.
 
-        Timeouts are set generously because the server needs 4-15 seconds to start
-        (uvx package resolution + embedding model loading on cold cache).
+        Timeouts are set generously because the server needs 4-15 seconds to
+        start (uvx package resolution + embedding model loading on cold cache).
         """
-        if self._is_running_from_temp_dir():
+        local_dir = self.script_dir.parent
+        has_local_project = (local_dir / "pyproject.toml").exists()
+
+        if self._is_running_from_temp_dir() or not has_local_project:
+            # Installed via uvx or no local project — use the published package.
             return {
                 "serverCommand": ["uvx", "--from", "mcp-memory-service", "memory", "server"],
                 "connectionTimeout": 30000,
@@ -605,7 +611,7 @@ class HookInstaller:
             }
         return {
             "serverCommand": ["uv", "run", "python", "-m", "mcp_memory_service.server"],
-            "serverWorkingDir": str(self.script_dir.parent),
+            "serverWorkingDir": str(local_dir),
             "connectionTimeout": 30000,
             "toolCallTimeout": 60000,
         }
@@ -948,6 +954,11 @@ class HookInstaller:
             self.error(f"Failed to install Natural Memory Triggers: {e}")
             return False
 
+    def _generate_api_key(self) -> str:
+        """Generate a cryptographically random API key for HTTP auth."""
+        import secrets
+        return secrets.token_urlsafe(32)
+
     def install_configuration(self, install_natural_triggers: bool = False, detected_mcp: Optional[Dict] = None, env_type: str = "standalone") -> bool:
         """Install or update configuration files.
 
@@ -1004,11 +1015,30 @@ class HookInstaller:
                 if install_natural_triggers:
                     config = self.enhance_config_for_natural_triggers(config)
 
+                # --- API key generation (fix for issue #531) ---
+                # The session-end and auto-capture hooks authenticate via Bearer
+                # token. Without a matching key on both sides the HTTP writes
+                # silently fail.  We generate a key here and embed it in the
+                # hooks config; the user still needs to add the same key as
+                # MCP_API_KEY in their MCP server env block (instructions printed
+                # below after the config is written).
+                existing_api_key = (
+                    config
+                    .get('memoryService', {})
+                    .get('http', {})
+                    .get('apiKey', 'auto-detect')
+                )
+                api_key = existing_api_key if existing_api_key not in ('', 'auto-detect') else self._generate_api_key()
+                config.setdefault('memoryService', {}).setdefault('http', {})['apiKey'] = api_key
+
                 # Write the final configuration
                 with open(config_dst, 'w', encoding='utf-8') as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
 
                 self.success("Configuration installed successfully")
+
+                # --- Post-install instructions (fix for issue #531 bugs 4-5) ---
+                self._print_post_install_instructions(api_key)
 
             except Exception as e:
                 self.warn(f"Failed to generate configuration: {e}")
@@ -1022,6 +1052,35 @@ class HookInstaller:
         except Exception as e:
             self.error(f"Failed to install configuration: {e}")
             return False
+
+    def _print_post_install_instructions(self, api_key: str) -> None:
+        """Print post-install guidance for dual-server setup and API key configuration."""
+        print()
+        print(f"{Colors.CYAN}{'=' * 60}{Colors.NC}")
+        print(f"{Colors.CYAN} IMPORTANT: Additional Setup Required{Colors.NC}")
+        print(f"{Colors.CYAN}{'=' * 60}{Colors.NC}")
+        print()
+        print(f"{Colors.YELLOW}Action Required: Update your MCP server configuration in ~/.claude.json{Colors.NC}")
+        print("The Claude hooks require both the stdio and HTTP servers to be running.")
+        print("Replace your existing 'memory' server definition under 'mcpServers' with this:")
+        print()
+        print('   "memory": {')
+        print('     "command": "bash",')
+        print('     "args": [')
+        print('       "-c",')
+        print('       "uvx --from mcp-memory-service memory server --http & HTTP_PID=$!; trap \\"kill $HTTP_PID 2>/dev/null\\" EXIT; uvx --from mcp-memory-service memory server"')
+        print('     ],')
+        print('     "env": {')
+        print(f'       "MCP_API_KEY": "{api_key}",')
+        print('       "MCP_HTTP_ENABLED": "true",')
+        print('       "MCP_HTTP_PORT": "8000",')
+        print('       "MCP_ALLOW_ANONYMOUS_ACCESS": "true"')
+        print('     }')
+        print('   }')
+        print()
+        print(f"{Colors.GREEN}The generated API key has been saved to:{Colors.NC}")
+        print(f"   {self.claude_hooks_dir}/config.json  →  memoryService.http.apiKey")
+        print()
 
     def configure_claude_settings(self, install_mid_conversation: bool = False, install_auto_capture: bool = False, install_permission_hook: bool = False) -> bool:
         """Configure Claude Code settings.json for hook integration."""
