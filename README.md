@@ -265,22 +265,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.20.3** (March 3, 2026)
+## 🆕 Latest Release: **v10.20.4** (March 4, 2026)
 
-**Bug Fix: HTTP server auto-start and hook installer reliability**
+**Bug Fix: Cloudflare/Hybrid tags column NULL in D1 INSERT**
 
 **What's Fixed:**
-- **HTTP server auto-start: wrong module path** (#529): Corrected subprocess command from `src.mcp_memory_service.app` to `mcp_memory_service.web.app` — fixes installs via `pip`/`uvx`.
-- **HTTP server auto-start: `MCP_HTTP_ENABLED` env var ignored** (#529): Both `MCP_HTTP_ENABLED` and `MCP_MEMORY_HTTP_AUTO_START` are now accepted as equivalent triggers.
-- **HTTP server auto-start: startup wait too short** (#529): Fixed 3-second sleep replaced with 30-second polling loop (2 s intervals) to handle `sentence-transformers` model loading time.
-- **HTTP server auto-start: auth env vars not forwarded** (#529): `MCP_API_KEY`, `MCP_HTTP_PORT`, `MCP_HTTP_HOST`, and storage-path variables are now propagated to the HTTP server subprocess.
-- **Hook installer: `uv run` without `pyproject.toml` check** (#531): Falls back to `uvx --from mcp-memory-service memory server` when not in a source-tree context.
-- **Hook installer: no API key generated** (#531): Auto-generates a cryptographically strong API key via `secrets.token_urlsafe(32)` and writes it to `~/.claude/hooks/config.json`.
-- **Hook installer: no guidance on dual-server requirement** (#531): Post-installation output now clearly explains both servers must run with a ready-to-use bash wrapper snippet.
+- **Cloudflare/Hybrid: tags column always NULL in D1 INSERT** (#534, contributor: shawnsw): The denormalized `tags` TEXT column was never populated, causing `delete_by_tags()` and `delete_by_timeframe()` to silently return success without deleting any memories on Cloudflare and Hybrid backends. Tags are now joined as a comma-separated string and written on every INSERT.
+- **Cloudflare/Hybrid: empty-tag LIKE false matches** (#534, contributor: shawnsw): Empty strings in the tags list produced trailing commas in LIKE patterns (e.g. `%,`) causing spurious matches. Empty tags are now filtered out before assembly.
 
 ---
 
 **Previous Releases**:
+- **v10.20.3** - Bug fixes: HTTP server auto-start (wrong module path, env var handling, startup polling, auth forwarding) + hook installer improvements (pyproject.toml check, API key generation, dual-server guidance) (PRs #529, #531)
 - **v10.20.2** - Bug fix: TypeError in `_prompt_learning_session` (missing `content_hash` in `Memory` constructor, PR #521)
 - **v10.20.1** - Security patch: serialize-javascript RCE (alerts #44 #45) + pypdf RAM exhaustion (CVE-2026-28351 / CVE-2026-27888, alerts #43 #46)
 - **v10.20.0** - Streamable HTTP transport with OAuth 2.1 + PKCE for Claude.ai remote MCP connectivity (`--streamable-http`, PKCE S256, RFC 9728, #518)
