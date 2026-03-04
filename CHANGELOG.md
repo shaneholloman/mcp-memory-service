@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.20.4] - 2026-03-04
+
+### Fixed
+- **Cloudflare/Hybrid: tags column always NULL in D1 INSERT** (#534, contributor: shawnsw): The denormalized `tags` TEXT column in the D1 INSERT statement was never populated — only `tag_relations` rows were written. This caused `delete_by_tags()` and `delete_by_timeframe()` to silently return success without deleting any memories on Cloudflare and Hybrid storage backends. Fix: the `tags` parameter is now joined as a comma-separated string and written to the `tags` column in every INSERT.
+- **Cloudflare/Hybrid: empty-tag LIKE false matches** (#534, contributor: shawnsw): When the `tags` list contained empty strings, the JOIN query produced a trailing comma in the LIKE pattern (e.g. `%,`) causing spurious matches. Empty strings are now filtered out before the `tags` column value is assembled.
+
 ## [10.20.3] - 2026-03-03
 
 ### Fixed
