@@ -626,17 +626,22 @@ class CloudflareStorage(MemoryStorage):
     
     async def _store_d1_memory(self, memory: Memory, vector_id: str, content_size: int, r2_key: Optional[str], stored_content: str) -> None:
         """Store memory metadata in D1."""
-        # Insert memory record
+        # Insert memory record.
+        # The `tags` TEXT column is a denormalized cache required by `delete_by_tags`
+        # and `delete_by_timeframe`, both of which query it with LIKE patterns.
+        # Tags are also stored relationally via `_store_d1_tags` (join table) for reads.
+        tags_str = ",".join(memory.tags) if memory.tags else None
+
         insert_sql = """
         INSERT INTO memories (
             content_hash, content, memory_type, created_at, created_at_iso,
-            updated_at, updated_at_iso, metadata_json, vector_id, content_size, r2_key
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            updated_at, updated_at_iso, metadata_json, vector_id, content_size, r2_key, tags
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        
+
         now = time.time()
         now_iso = datetime.now().isoformat()
-        
+
         params = [
             memory.content_hash,
             stored_content,
@@ -648,7 +653,8 @@ class CloudflareStorage(MemoryStorage):
             json.dumps(memory.metadata) if memory.metadata else None,
             vector_id,
             content_size,
-            r2_key
+            r2_key,
+            tags_str,
         ]
         
         payload = {"sql": insert_sql, "params": params}
