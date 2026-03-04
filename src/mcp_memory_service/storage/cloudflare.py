@@ -630,7 +630,7 @@ class CloudflareStorage(MemoryStorage):
         # The `tags` TEXT column is a denormalized cache required by `delete_by_tags`
         # and `delete_by_timeframe`, both of which query it with LIKE patterns.
         # Tags are also stored relationally via `_store_d1_tags` (join table) for reads.
-        tags_str = ",".join(memory.tags) if memory.tags else None
+        tags_str = ",".join(filter(None, memory.tags)) or None
 
         insert_sql = """
         INSERT INTO memories (
