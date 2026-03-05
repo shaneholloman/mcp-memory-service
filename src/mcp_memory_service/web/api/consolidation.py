@@ -240,9 +240,10 @@ async def get_recommendations(time_horizon: str, user: AuthenticationResult = De
         safe_reasons = []
         for r in recommendations.get("reasons", []):
             try:
-                safe_reasons.append(str(r)[:256])
-            except Exception:
-                pass
+                # Truncate to prevent large payloads; use repr to avoid exposing exception details
+                safe_reasons.append(repr(r)[:256] if not isinstance(r, str) else r[:256])
+            except Exception:  # noqa: BLE001 - intentionally silent, malformed reason is skipped
+                pass  # Skip malformed reason entries silently
 
         return {
             "recommendation": safe_rec,

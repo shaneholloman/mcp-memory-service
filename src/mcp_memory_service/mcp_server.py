@@ -16,7 +16,6 @@ Features:
 
 import asyncio
 import logging
-import os
 import sys
 import time
 from collections.abc import AsyncIterator

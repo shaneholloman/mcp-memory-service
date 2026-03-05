@@ -17,7 +17,6 @@ Health check endpoints for the HTTP interface.
 """
 
 import time
-import platform
 import psutil
 from datetime import datetime, timezone
 from typing import Dict, Any
