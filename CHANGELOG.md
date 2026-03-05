@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.22.0] - 2026-03-05
+
+### Fixed
+
+- **memory_consolidate status KeyError on empty statistics dict** (closes #542): The `memory_consolidate` MCP tool's `status` action raised `KeyError` when the consolidation engine returned an empty or partial `statistics` dict — a common state during the first run or immediately after a reset. All dict lookups in the status handler are now replaced with safe `.get()` calls with sensible defaults (empty lists, zero counts, `None` timestamps). 10 new `@pytest.mark.unit` tests added in `tests/consolidation/test_status_handler_issue542.py` covering: fully empty dict, partially populated dict, missing nested keys, and all status fields returning correct defaults.
+
+- **Exponential metadata prefix nesting in compression engine** (closes #543): The consolidation compression engine accumulated metadata prefixes (`consolidated_from_`, `compressed_from_`) exponentially across repeated consolidation cycles. Each cycle read existing prefixes and prepended new ones, so a memory consolidated three times would have triple-nested prefix strings. Two changes prevent re-accumulation: (1) a new `_strip_compression_prefixes()` static method strips all existing compression-related prefixes from source metadata before re-aggregating into the output memory, and (2) an `_INTERNAL_METADATA_KEYS` blocklist excludes consolidation-internal keys (prefix counters, cycle IDs, internal timestamps) from the aggregated metadata entirely. 14 new `@pytest.mark.unit` tests added in `tests/consolidation/test_compression_prefix_nesting.py` covering: single-cycle prefix addition, multi-cycle idempotency, blocklist exclusion, and mixed internal/external metadata handling.
+
+- **RelationshipInferenceEngine high false positive rate** (closes #541): The `RelationshipInferenceEngine` produced excessive `contradicts` relationship labels due to overly broad contradiction detection patterns. Three targeted changes reduce false positives: (1) weak conjunctions (`but`, `yet`, `although`, `however`, `nevertheless`) removed from contradiction pattern vocabulary — these words introduce contrast but not logical contradiction; (2) minimum confidence thresholds raised to `min_typed_confidence=0.75` and minimum semantic similarity raised to `min_typed_similarity=0.65` before a typed relationship label is emitted, so borderline associations fall back to the generic `related` label rather than receiving a specific but incorrect type; (3) a new `_shares_domain_keywords()` cross-content guard requires that two memories share at least one domain keyword before a contradiction label is assigned, preventing cross-domain false positives (e.g., labelling an astronomy fact and a cooking tip as contradicting). 16 new `@pytest.mark.unit` tests added in `tests/consolidation/test_relationship_inference_issue541.py` covering: removed conjunction patterns, threshold boundary conditions, domain keyword guard, and regression cases from the original false-positive report.
+
 ## [10.21.1] - 2026-03-05
 
 ### Security

@@ -265,18 +265,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.21.1** (March 5, 2026)
+## Latest Release: **v10.22.0** (March 5, 2026)
 
-**Security: Resolve 5 CodeQL code scanning alerts**
+**Consolidation Engine: Three stability and accuracy fixes**
 
 **What's New:**
-- **Remove unused imports** (CodeQL #359, #360, #361): Removed `os`, `platform`, and `Path` imports that were flagged as never-referenced.
-- **Fix empty except clause** (CodeQL #358): Bare `pass` in consolidation replaced with an explanatory comment documenting the intentional decision.
-- **Mitigate stack-trace exposure** (CodeQL #357): Non-string `reason` values in consolidation API responses now wrapped with `repr()` to prevent exception tracebacks leaking into HTTP responses.
+- **Fix memory_consolidate status KeyError** (closes #542): Safe `.get()` with defaults replaces dict lookups in the status handler — no more crash on empty or partial statistics dict. 10 new tests.
+- **Fix exponential metadata prefix nesting** (closes #543): `_strip_compression_prefixes()` strips existing prefixes before re-aggregating; `_INTERNAL_METADATA_KEYS` blocklist excludes internal consolidation metadata from output. 14 new tests.
+- **Reduce RelationshipInferenceEngine false positives** (closes #541): Removed weak conjunctions from contradiction patterns, raised `min_typed_confidence=0.75` and `min_typed_similarity=0.65` thresholds, added `_shares_domain_keywords()` cross-content guard. 16 new tests.
+- **1,373 tests** now passing (up from 1,288 before these consolidation fixes)
 
 ---
 
 **Previous Releases**:
+- **v10.21.1** - Security: Resolve 5 CodeQL code scanning alerts — removed unused imports, fixed empty except clause with explanatory comment, mitigated stack-trace exposure via `repr()` in consolidation API responses
 - **v10.21.0** - Security: Harden health endpoints against info disclosure (GHSA-73hc-m4hx-79pj, CVSS 5.3 Medium) — status-only `/api/health`, auth required on `/api/health/detailed`, default binding `127.0.0.1` (BREAKING), 7 regression tests
 - **v10.20.6** - Security patch: Fix MITM vulnerability in peer discovery TLS (GHSA-x9r8-q2qj-cgvw, CVSS 7.4 High) — TLS verification now enabled by default, `MCP_PEER_VERIFY_SSL` / `MCP_PEER_SSL_CA_FILE` opt-out options, AST regression test
 - **v10.20.5** - Fix: Standardize content-only hashing across all call sites — removed `metadata` param from `generate_content_hash()`, updated 5 call sites, 7 unit tests (PR #536, closes #522)
