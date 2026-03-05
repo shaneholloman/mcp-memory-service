@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.21.1] - 2026-03-05
+
+### Security
+- **Fix CodeQL code scanning alerts (5 alerts resolved)**: Closes CodeQL alerts #357, #358, #359, #360, #361.
+  - **Remove unused imports** (`py/unused-import` #359, #360, #361): Removed `os` from `mcp_server.py`, `platform` from `web/api/health.py`, and `Path` from `utils/http_server_manager.py`. These imports were never referenced and triggered CodeQL `unused-import` alerts.
+  - **Fix empty except clause** (`py/empty-except` #358): An empty `except` block in `consolidation/consolidation.py` (bare `pass`) was replaced with an explanatory comment (`# ignore unexpected non-list responses from LLM — continue processing`) that documents the intentional decision, satisfying CodeQL and improving maintainability.
+  - **Mitigate stack-trace exposure** (`py/stack-trace-exposure` #357): In `web/api/consolidation.py`, non-string `reason` values from consolidation recommendations are now converted via `repr()` before being included in HTTP responses. Previously, passing a raw exception object as `reason` would embed a full Python exception traceback string into the API response body, leaking internal implementation details to callers. `repr()` produces a bounded, safe representation without stack frames.
+
 ## [10.21.0] - 2026-03-04
 
 ### Security

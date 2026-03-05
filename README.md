@@ -265,18 +265,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## 🆕 Latest Release: **v10.21.0** (March 4, 2026)
+## 🆕 Latest Release: **v10.21.1** (March 5, 2026)
 
-**Security: Harden health endpoints against info disclosure (GHSA-73hc-m4hx-79pj)**
+**Security: Resolve 5 CodeQL code scanning alerts**
 
 **What's New:**
-- **Health endpoint info disclosure fix** (GHSA-73hc-m4hx-79pj, CVSS 5.3 Medium): `/api/health` no longer exposes OS/Python version, CPU count, RAM, disk sizes, or database filesystem path to unauthenticated users. `/api/health/detailed` now requires authentication (write access).
-- **BREAKING: Default HTTP binding changed to `127.0.0.1`**: Server no longer listens on all interfaces by default. Set `MCP_HTTP_HOST=0.0.0.0` to restore network-wide access.
-- **7 regression tests** added in `tests/web/api/test_health_info_disclosure.py`.
+- **Remove unused imports** (CodeQL #359, #360, #361): Removed `os`, `platform`, and `Path` imports that were flagged as never-referenced.
+- **Fix empty except clause** (CodeQL #358): Bare `pass` in consolidation replaced with an explanatory comment documenting the intentional decision.
+- **Mitigate stack-trace exposure** (CodeQL #357): Non-string `reason` values in consolidation API responses now wrapped with `repr()` to prevent exception tracebacks leaking into HTTP responses.
 
 ---
 
 **Previous Releases**:
+- **v10.21.0** - Security: Harden health endpoints against info disclosure (GHSA-73hc-m4hx-79pj, CVSS 5.3 Medium) — status-only `/api/health`, auth required on `/api/health/detailed`, default binding `127.0.0.1` (BREAKING), 7 regression tests
 - **v10.20.6** - Security patch: Fix MITM vulnerability in peer discovery TLS (GHSA-x9r8-q2qj-cgvw, CVSS 7.4 High) — TLS verification now enabled by default, `MCP_PEER_VERIFY_SSL` / `MCP_PEER_SSL_CA_FILE` opt-out options, AST regression test
 - **v10.20.5** - Fix: Standardize content-only hashing across all call sites — removed `metadata` param from `generate_content_hash()`, updated 5 call sites, 7 unit tests (PR #536, closes #522)
 - **v10.20.4** - Bug fixes: Cloudflare/Hybrid tags column always NULL in D1 INSERT (delete_by_tags silently failing) + empty-tag LIKE false matches guard (PR #534, contributor: shawnsw)
