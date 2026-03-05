@@ -439,9 +439,323 @@ class TestSemanticCompressionEngine:
         
         # Should handle gracefully without crashing
         temporal_span = compression_engine._calculate_temporal_span(memories)
-        
+
         # Memory model auto-sets timestamps, so these will be actual values
         assert temporal_span["start_time"] is not None
         assert temporal_span["end_time"] is not None
         assert temporal_span["span_days"] >= 0
         assert isinstance(temporal_span["span_description"], str)
+
+
+@pytest.mark.unit
+class TestAggregateMetadataPrefixNesting:
+    """Tests for the prefix-nesting bug fix described in GitHub issue #543.
+
+    Problem: _aggregate_metadata() prefixed metadata keys with ``common_`` or
+    ``varied_`` on every compression run.  When a memory produced by compression
+    (which already has prefixed keys) was compressed again, the prefixes
+    accumulated exponentially:
+        Run 1 → common_connection_boost
+        Run 2 → common_common_connection_boost
+        Run 3 → common_common_common_connection_boost  ... etc.
+
+    A single memory could end up with 261,749 characters of metadata, causing
+    MCP tool call failures and database bloat.
+
+    Fix: Strip existing compression prefixes (``common_``, ``varied_``) and
+    ``_variety_count`` suffixes from raw keys before re-applying new prefixes.
+    Internal consolidation keys are skipped entirely.
+
+    Reference: GitHub issue #543
+    """
+
+    @pytest.fixture
+    def engine(self, consolidation_config):
+        return SemanticCompressionEngine(consolidation_config)
+
+    # ------------------------------------------------------------------
+    # Helper
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _make_memory(content_hash: str, metadata: dict) -> Memory:
+        base_time = datetime.now().timestamp()
+        return Memory(
+            content=f"Compression prefix test memory {content_hash}",
+            content_hash=content_hash,
+            tags=["test", "compression"],
+            memory_type="pattern",
+            embedding=[0.1] * 320,
+            metadata=metadata,
+            created_at=base_time,
+            created_at_iso=datetime.fromtimestamp(base_time).isoformat() + 'Z',
+        )
+
+    # ------------------------------------------------------------------
+    # _strip_compression_prefixes unit tests
+    # ------------------------------------------------------------------
+
+    def test_strip_single_common_prefix(self, engine):
+        """common_foo → foo (single stripping pass)."""
+        assert engine._strip_compression_prefixes("common_foo") == "foo"
+
+    def test_strip_single_varied_prefix(self, engine):
+        """varied_foo → foo (single stripping pass)."""
+        assert engine._strip_compression_prefixes("varied_foo") == "foo"
+
+    def test_strip_double_common_prefix(self, engine):
+        """common_common_foo → foo (two stripping passes)."""
+        assert engine._strip_compression_prefixes("common_common_foo") == "foo"
+
+    def test_strip_mixed_prefixes(self, engine):
+        """common_varied_common_foo → foo (three stripping passes)."""
+        assert engine._strip_compression_prefixes("common_varied_common_foo") == "foo"
+
+    def test_strip_variety_count_suffix(self, engine):
+        """foo_variety_count → foo (suffix stripping)."""
+        assert engine._strip_compression_prefixes("foo_variety_count") == "foo"
+
+    def test_strip_prefix_then_suffix(self, engine):
+        """common_foo_variety_count → foo (prefix then suffix stripped)."""
+        assert engine._strip_compression_prefixes("common_foo_variety_count") == "foo"
+
+    def test_plain_key_unchanged(self, engine):
+        """Keys without prefix/suffix are returned as-is."""
+        assert engine._strip_compression_prefixes("my_key") == "my_key"
+
+    # ------------------------------------------------------------------
+    # _aggregate_metadata prefix-nesting tests (issue #543)
+    # ------------------------------------------------------------------
+
+    def test_no_double_prefix_on_already_prefixed_keys(self, engine):
+        """Keys that already carry common_/varied_ must NOT gain another prefix.
+
+        Simulates the state after one compression run: the output metadata from
+        that run (common_source / varied_source / etc.) is fed back into a
+        second compression run.  Output keys must still be single-prefixed.
+
+        Validates GitHub issue #543 fix.
+        """
+        # Memory metadata as it would look after a first compression pass
+        post_compression_metadata = {
+            "common_source": "database",   # already prefixed common_
+            "varied_version": ["1.0", "2.0"],  # already prefixed varied_
+            "plain_field": "value",         # not prefixed – normal metadata
+        }
+
+        memories = [
+            self._make_memory("h1", post_compression_metadata),
+            self._make_memory("h2", post_compression_metadata),
+        ]
+
+        result = engine._aggregate_metadata(memories)
+
+        # No key in the result may begin with a double prefix
+        for key in result:
+            assert not key.startswith("common_common_"), (
+                f"Double-nested 'common_common_' prefix found in key: {key!r}"
+            )
+            assert not key.startswith("varied_varied_"), (
+                f"Double-nested 'varied_varied_' prefix found in key: {key!r}"
+            )
+            assert not key.startswith("common_varied_"), (
+                f"Mixed double prefix found in key: {key!r}"
+            )
+            assert not key.startswith("varied_common_"), (
+                f"Mixed double prefix found in key: {key!r}"
+            )
+
+    def test_triple_nesting_does_not_occur(self, engine):
+        """Keys with triple-nested prefixes (common_common_common_…) must not appear.
+
+        Simulates the output from two previous compression runs being fed into a
+        third run.
+
+        Validates GitHub issue #543 fix.
+        """
+        triple_prefixed_metadata = {
+            "common_common_connection_boost": "0.5",
+            "common_common_decay_factor": "0.9",
+        }
+
+        memories = [
+            self._make_memory("h1", triple_prefixed_metadata),
+            self._make_memory("h2", triple_prefixed_metadata),
+        ]
+
+        result = engine._aggregate_metadata(memories)
+
+        for key in result:
+            parts = key.split("_")
+            leading_prefix_count = 0
+            for part in parts:
+                if part in ("common", "varied"):
+                    leading_prefix_count += 1
+                else:
+                    break
+            assert leading_prefix_count <= 1, (
+                f"Key {key!r} has {leading_prefix_count} leading prefix(es); expected at most 1"
+            )
+
+    def test_output_keys_have_at_most_one_prefix_level(self, engine):
+        """All output keys have zero or exactly one leading prefix level.
+
+        Validates the key invariant stated in GitHub issue #543 fix.
+        """
+        # Mix of raw, once-prefixed, and twice-prefixed keys
+        mixed_metadata = {
+            "raw_field": "hello",
+            "common_once_prefixed": "world",
+            "varied_once_prefixed_too": ["a", "b"],
+            "common_common_twice_prefixed": "boom",
+            "varied_varied_twice_prefixed": ["x", "y", "z"],
+        }
+
+        memories = [
+            self._make_memory("hA", mixed_metadata),
+            self._make_memory("hB", mixed_metadata),
+        ]
+
+        result = engine._aggregate_metadata(memories)
+
+        for key in result:
+            if key == "source_memory_hashes":
+                continue  # Built-in key, not subject to prefix rules
+            # Count contiguous leading prefix tokens
+            parts = key.split("_")
+            leading_count = 0
+            for part in parts:
+                if part in ("common", "varied"):
+                    leading_count += 1
+                else:
+                    break
+            assert leading_count <= 1, (
+                f"Key {key!r} has {leading_count} leading prefix token(s); expected ≤1"
+            )
+
+    def test_variety_count_suffix_not_re_suffixed(self, engine):
+        """Keys ending with _variety_count must not gain another _variety_count.
+
+        Validates GitHub issue #543 fix for suffix accumulation.
+        """
+        # Simulate metadata produced by a previous compression run with > 5 unique values
+        suffix_metadata = {
+            "user_id_variety_count": 42,
+        }
+
+        memories = [
+            self._make_memory("h1", suffix_metadata),
+            self._make_memory("h2", suffix_metadata),
+        ]
+
+        result = engine._aggregate_metadata(memories)
+
+        for key in result:
+            assert not key.endswith("_variety_count_variety_count"), (
+                f"Double _variety_count suffix found in key: {key!r}"
+            )
+
+    # ------------------------------------------------------------------
+    # Internal-key blocklist tests
+    # ------------------------------------------------------------------
+
+    def test_internal_keys_excluded_from_output(self, engine):
+        """Internal consolidation metadata keys must not appear in aggregated output.
+
+        These keys hold per-memory state that is meaningless after compression.
+
+        Validates GitHub issue #543 fix (internal key blocklist).
+        """
+        internal_metadata = {
+            "connection_boost": 1.2,
+            "decay_factor": 0.8,
+            "last_consolidated_at": "2024-01-01T00:00:00Z",
+            "access_boost": 0.3,
+            "_is_compressed": True,
+            "consolidation_run": "daily",
+            "normal_field": "keep me",  # Should appear in output
+        }
+
+        memories = [
+            self._make_memory("i1", internal_metadata),
+            self._make_memory("i2", internal_metadata),
+        ]
+
+        result = engine._aggregate_metadata(memories)
+
+        # Internal keys (and their prefixed variants) must not appear
+        forbidden_bases = {
+            "connection_boost", "decay_factor", "last_consolidated_at",
+            "access_boost", "_is_compressed", "consolidation_run",
+        }
+        for key in result:
+            clean = engine._strip_compression_prefixes(key)
+            assert clean not in forbidden_bases, (
+                f"Internal key {clean!r} (from {key!r}) leaked into aggregated metadata"
+            )
+
+        # The normal field must still be present
+        normal_keys = {k for k in result if "normal_field" in k}
+        assert normal_keys, "normal_field was unexpectedly excluded from aggregated metadata"
+
+    def test_private_underscore_keys_excluded(self, engine):
+        """Keys starting with '_' (private/internal) must be excluded from output."""
+        private_metadata = {
+            "_internal_state": "secret",
+            "_debug_info": {"level": 3},
+            "public_key": "visible",
+        }
+
+        memories = [
+            self._make_memory("p1", private_metadata),
+            self._make_memory("p2", private_metadata),
+        ]
+
+        result = engine._aggregate_metadata(memories)
+
+        for key in result:
+            clean = engine._strip_compression_prefixes(key)
+            assert not clean.startswith("_"), (
+                f"Private key {clean!r} (from {key!r}) leaked into aggregated metadata"
+            )
+
+    # ------------------------------------------------------------------
+    # Regression / idempotency test
+    # ------------------------------------------------------------------
+
+    def test_repeated_compression_idempotent_key_depth(self, engine):
+        """Simulates 3 sequential compression runs; prefix depth must stay at 1.
+
+        This is the exact regression scenario from GitHub issue #543:
+        compound prefixes (common_common_common_…) accumulate across runs,
+        causing metadata to balloon to hundreds of thousands of characters.
+        """
+        # Start with plain metadata
+        metadata = {"source": "db", "version": "1.0"}
+
+        for run in range(1, 4):  # Three simulated compression runs
+            memories = [
+                self._make_memory(f"r{run}_h1", metadata),
+                self._make_memory(f"r{run}_h2", metadata),
+            ]
+            result = engine._aggregate_metadata(memories)
+
+            # The next "run" starts with the output of this run as input metadata
+            metadata = {k: v for k, v in result.items() if k != "source_memory_hashes"}
+
+            # Check invariant after each run
+            for key in result:
+                if key == "source_memory_hashes":
+                    continue
+                parts = key.split("_")
+                leading_count = sum(1 for p in parts[:len(parts)] if p in ("common", "varied"))
+                # Count *contiguous* leading prefixes only
+                contiguous = 0
+                for part in key.split("_"):
+                    if part in ("common", "varied"):
+                        contiguous += 1
+                    else:
+                        break
+                assert contiguous <= 1, (
+                    f"After run {run}, key {key!r} has {contiguous} leading prefix(es)"
+                )

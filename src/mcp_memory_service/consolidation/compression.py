@@ -377,24 +377,68 @@ class SemanticCompressionEngine(ConsolidationBase):
         
         return aggregated_tags[:10]  # Limit to 10 tags
     
+    # Internal consolidation metadata keys that are per-memory state and
+    # become meaningless after compression.  Keys starting with '_' are also
+    # treated as private/internal and are excluded.
+    _INTERNAL_METADATA_KEYS = frozenset({
+        'connection_boost',
+        'decay_factor',
+        'last_consolidated_at',
+        'access_boost',
+        '_is_compressed',
+        'consolidation_run',
+    })
+
+    @staticmethod
+    def _strip_compression_prefixes(key: str) -> str:
+        """Remove all leading common_/varied_ prefixes and trailing _variety_count suffix.
+
+        Prevents exponential prefix nesting when _aggregate_metadata() is called
+        on memories that were themselves produced by a previous compression run
+        (fix for GitHub issue #543).
+        """
+        # Strip leading prefixes iteratively
+        while key.startswith('common_') or key.startswith('varied_'):
+            if key.startswith('common_'):
+                key = key[7:]   # len('common_') == 7
+            elif key.startswith('varied_'):
+                key = key[7:]   # len('varied_') == 7
+        # Strip trailing _variety_count suffix
+        if key.endswith('_variety_count'):
+            key = key[:-14]     # len('_variety_count') == 14
+        return key
+
     def _aggregate_metadata(self, memories: List[Memory]) -> Dict[str, Any]:
-        """Aggregate metadata from cluster memories."""
+        """Aggregate metadata from cluster memories.
+
+        Keys inherited from previously-compressed memories already carry
+        ``common_``/``varied_`` prefixes.  Those prefixes are stripped before
+        new ones are applied so that repeated compression runs do not cause
+        exponential key-name growth (GitHub issue #543).
+        """
         aggregated = {
             'source_memory_hashes': [m.content_hash for m in memories]
         }
-        
-        # Collect unique metadata keys and their values
-        all_metadata = {}
+
+        # Collect unique metadata keys and their values, normalising keys first
+        all_metadata: Dict[str, list] = {}
         for memory in memories:
-            for key, value in memory.metadata.items():
-                if key not in all_metadata:
-                    all_metadata[key] = []
-                all_metadata[key].append(value)
-        
-        # Aggregate metadata intelligently
+            for raw_key, value in memory.metadata.items():
+                # Derive the canonical (prefix-free) key
+                clean_key = self._strip_compression_prefixes(raw_key)
+
+                # Skip internal / private keys
+                if clean_key in self._INTERNAL_METADATA_KEYS or clean_key.startswith('_'):
+                    continue
+
+                if clean_key not in all_metadata:
+                    all_metadata[clean_key] = []
+                all_metadata[clean_key].append(value)
+
+        # Aggregate metadata intelligently using canonical keys
         for key, values in all_metadata.items():
             unique_values = list(set(str(v) for v in values))
-            
+
             if len(unique_values) == 1:
                 # All memories have the same value
                 aggregated[f'common_{key}'] = unique_values[0]
@@ -404,7 +448,7 @@ class SemanticCompressionEngine(ConsolidationBase):
             else:
                 # Many unique values, just note the variety
                 aggregated[f'{key}_variety_count'] = len(unique_values)
-        
+
         return aggregated
     
     async def estimate_compression_benefit(
