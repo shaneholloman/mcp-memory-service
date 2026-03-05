@@ -265,19 +265,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.22.0** (March 5, 2026)
+## Latest Release: **v10.23.0** (March 5, 2026)
 
-**Consolidation Engine: Three stability and accuracy fixes**
+**Quality scorer fix, consolidator improvements, two new opt-out flags**
 
 **What's New:**
-- **Fix memory_consolidate status KeyError** (closes #542): Safe `.get()` with defaults replaces dict lookups in the status handler — no more crash on empty or partial statistics dict. 10 new tests.
-- **Fix exponential metadata prefix nesting** (closes #543): `_strip_compression_prefixes()` strips existing prefixes before re-aggregating; `_INTERNAL_METADATA_KEYS` blocklist excludes internal consolidation metadata from output. 14 new tests.
-- **Reduce RelationshipInferenceEngine false positives** (closes #541): Removed weak conjunctions from contradiction patterns, raised `min_typed_confidence=0.75` and `min_typed_similarity=0.65` thresholds, added `_shares_domain_keywords()` cross-content guard. 16 new tests.
-- **1,373 tests** now passing (up from 1,288 before these consolidation fixes)
+- **Fix asyncio NameError in batch quality scoring** (closes #544): Missing `import asyncio` in `ai_evaluator.py` caused `NameError` crashes for all users without ONNX Runtime, leaving 41%+ of memories unscored.
+- **Fix consolidator memory_type and dedup bugs** (closes #545): Invalid `memory_type="association"` (not in ontology) and missing `skip_semantic_dedup=True` caused association content to be rejected as duplicates; store() failure reason now logged.
+- **MCP_TYPED_EDGES_ENABLED=false opt-out** (closes #546): Disable typed edge inference — all inferred relationships return as `"related"` when disabled (default: `true`).
+- **MCP_CONSOLIDATION_STORE_ASSOCIATIONS=false opt-out** (closes #547): Suppress writing association entries to `memories` table during consolidation; associations remain in `memory_graph` (default: `true`).
+- **1,387 tests** now passing (14 new regression tests for all four issues)
 
 ---
 
 **Previous Releases**:
+- **v10.22.0** - Consolidation engine stability: fix memory_consolidate status KeyError (#542), prevent exponential metadata prefix nesting (#543), reduce RelationshipInferenceEngine false positive rate (#541) — 40 new tests
 - **v10.21.1** - Security: Resolve 5 CodeQL code scanning alerts — removed unused imports, fixed empty except clause with explanatory comment, mitigated stack-trace exposure via `repr()` in consolidation API responses
 - **v10.21.0** - Security: Harden health endpoints against info disclosure (GHSA-73hc-m4hx-79pj, CVSS 5.3 Medium) — status-only `/api/health`, auth required on `/api/health/detailed`, default binding `127.0.0.1` (BREAKING), 7 regression tests
 - **v10.20.6** - Security patch: Fix MITM vulnerability in peer discovery TLS (GHSA-x9r8-q2qj-cgvw, CVSS 7.4 High) — TLS verification now enabled by default, `MCP_PEER_VERIFY_SSL` / `MCP_PEER_SSL_CA_FILE` opt-out options, AST regression test

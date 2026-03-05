@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.23.0] - 2026-03-05
+
+### Fixed
+
+- **[#544] Missing `import asyncio` in `ai_evaluator.py`**: `NameError` crashed batch quality scoring for all users without ONNX Runtime installed, leaving 41%+ of memories unscored.
+- **[#545] Consolidator used invalid `memory_type="association"`** (not in ontology) and omitted `skip_semantic_dedup=True`, causing templated association content to be rejected as duplicates; store() failure reason now captured and logged instead of discarded.
+
+### Added
+
+- **[#546] `MCP_TYPED_EDGES_ENABLED=false`**: Opt-out flag for typed edge inference; when disabled all inferred relationships return as `"related"` (default: `true`).
+- **[#547] `MCP_CONSOLIDATION_STORE_ASSOCIATIONS=false`**: Opt-out flag to suppress writing association entries to the `memories` table during consolidation; associations remain fully stored in `memory_graph` (default: `true` for backward compatibility).
+
+### Tests
+
+- 14 regression tests for all four issues (`tests/consolidation/test_issues_544_545_546_547.py`)
+- 1,387 total tests
+
 ## [10.22.0] - 2026-03-05
 
 ### Fixed
