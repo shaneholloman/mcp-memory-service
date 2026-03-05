@@ -856,7 +856,7 @@ SOLUTIONS:
             row = cursor.fetchone()
             if not row:
                 return None
-            import re
+            match = re.search(r'FLOAT\[(\d+)\]', row[0])
             match = re.search(r'FLOAT\[(\d+)\]', row[0])
             if match:
                 return int(match.group(1))
