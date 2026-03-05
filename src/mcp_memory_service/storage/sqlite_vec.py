@@ -859,8 +859,8 @@ SOLUTIONS:
             match = re.search(r'FLOAT\[(\d+)\]', row[0])
             if match:
                 return int(match.group(1))
-        except Exception as e:
-            logger.warning(f"Could not determine existing DB embedding dimension: {e}")
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Could not read embedding dimension from sqlite_master: %s", exc)
         return None
 
     async def _initialize_embedding_model(self):
@@ -928,20 +928,17 @@ SOLUTIONS:
                     # silently falling back to a local model with a different dimension
                     # corrupts the database. Fail loudly instead.
                     existing_dim = await asyncio.to_thread(self._get_existing_db_embedding_dimension)
-                    if existing_dim is not None:
-                    if existing_dim is not None:
-                        raise RuntimeError(
-                            f"External embedding API at {external_api_url} is unreachable: {e}. "
-                            f"The existing database uses dimension {existing_dim}. "
-                            f"Falling back to a local model would cause a dimension mismatch and "
-                            f"corrupt all store/search operations. "
-                            f"Ensure your embedding service is running before starting mcp-memory-service."
-                        ) from e
-                    else:
-                        raise RuntimeError(
-                            f"External embedding API at {external_api_url} is unreachable: {e}. "
-                            f"Ensure your embedding service is running before starting mcp-memory-service."
-                        ) from e
+                    dim_detail = (
+                        f" The existing database uses dimension {existing_dim}."
+                        f" Falling back to a local model would cause a dimension mismatch and"
+                        f" corrupt all store/search operations."
+                        if existing_dim is not None else ""
+                    )
+                    raise RuntimeError(
+                        f"External embedding API at {external_api_url} is unreachable: {e}."
+                        f"{dim_detail}"
+                        f" Ensure your embedding service is running before starting mcp-memory-service."
+                    ) from e
 
             # Check if we should use ONNX
             use_onnx = os.environ.get('MCP_MEMORY_USE_ONNX', '').lower() in ('1', 'true', 'yes')

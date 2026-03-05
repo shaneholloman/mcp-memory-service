@@ -45,29 +45,34 @@ class TestGetExistingDbEmbeddingDimension:
         storage.conn = conn
         assert storage._get_existing_db_embedding_dimension() is None
 
-    def test_reads_768_dimension_from_live_sqlite_master(self, tmp_path):
-        """Correctly parses FLOAT[768] from sqlite_master via a real in-memory DB."""
-        # We can't create a real vec0 table without the extension,
-        # but we can insert a fake row into sqlite_master via a writable shadow trick.
-        # Instead, directly test the regex parsing logic.
-        import re
-        sql = 'CREATE VIRTUAL TABLE memory_embeddings USING vec0(content_embedding FLOAT[768] distance_metric=cosine)'
-        match = re.search(r'FLOAT\[(\d+)\]', sql)
-        assert match and int(match.group(1)) == 768
+    def _make_conn_returning(self, sql_row):
+        """Return a MagicMock connection whose execute().fetchone() yields sql_row."""
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = sql_row
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_cursor
+        return mock_conn
 
-    def test_reads_384_dimension_from_schema_string(self):
-        """Correctly parses FLOAT[384] from schema."""
-        import re
+    def test_regex_parses_768_dimension_from_schema_string(self):
+        """Correctly parses FLOAT[768] from a mocked sqlite_master row."""
+        sql = 'CREATE VIRTUAL TABLE memory_embeddings USING vec0(content_embedding FLOAT[768] distance_metric=cosine)'
+        storage = _make_storage()
+        storage.conn = self._make_conn_returning((sql,))
+        assert storage._get_existing_db_embedding_dimension() == 768
+
+    def test_regex_parses_384_dimension_from_schema_string(self):
+        """Correctly parses FLOAT[384] from a mocked sqlite_master row."""
         sql = 'CREATE VIRTUAL TABLE memory_embeddings USING vec0(content_embedding FLOAT[384] distance_metric=cosine)'
-        match = re.search(r'FLOAT\[(\d+)\]', sql)
-        assert match and int(match.group(1)) == 384
+        storage = _make_storage()
+        storage.conn = self._make_conn_returning((sql,))
+        assert storage._get_existing_db_embedding_dimension() == 384
 
     def test_returns_none_when_no_float_pattern(self):
-        """Returns None when schema has no FLOAT[N] pattern."""
-        import re
+        """Returns None when schema row has no FLOAT[N] pattern."""
         sql = 'CREATE VIRTUAL TABLE memory_embeddings USING vec0(id INTEGER)'
-        match = re.search(r'FLOAT\[(\d+)\]', sql)
-        assert match is None
+        storage = _make_storage()
+        storage.conn = self._make_conn_returning((sql,))
+        assert storage._get_existing_db_embedding_dimension() is None
 
 
 class TestExternalEmbeddingFallbackBehavior:
@@ -154,5 +159,9 @@ class TestExternalEmbeddingFallbackBehavior:
             with patch("mcp_memory_service.storage.sqlite_vec.SentenceTransformer", return_value=mock_model):
                 try:
                     await storage._initialize_embedding_model()
+                except RuntimeError as exc:
+                    assert "unreachable" not in str(exc).lower(), (
+                        f"No external URL was configured, but got external-URL RuntimeError: {exc}"
+                    )
                 except Exception:
-                    pass  # May fail due to missing deps — what matters is no RuntimeError about external URL
+                    pass  # Other failures (missing deps etc.) are acceptable here
