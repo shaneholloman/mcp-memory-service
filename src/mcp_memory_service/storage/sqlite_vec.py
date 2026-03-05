@@ -928,7 +928,7 @@ SOLUTIONS:
                     # Issue #551: when MCP_EXTERNAL_EMBEDDING_URL is explicitly configured,
                     # silently falling back to a local model with a different dimension
                     # corrupts the database. Fail loudly instead.
-                    existing_dim = self._get_existing_db_embedding_dimension()
+                    existing_dim = await asyncio.to_thread(self._get_existing_db_embedding_dimension)
                     if existing_dim is not None:
                     if existing_dim is not None:
                         raise RuntimeError(
