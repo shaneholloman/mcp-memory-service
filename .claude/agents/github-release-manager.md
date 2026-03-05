@@ -370,7 +370,22 @@ Alternatively, use the github-release-manager agent locally to complete the work
    - **STOP HERE** - Provide manual PR creation instructions (see "GitHub Environment Workflow" section)
    - User completes: `uv lock` update → PR creation → Review process locally
 
-5. **Release Creation** (CRITICAL - Follow this exact sequence):
+5. **Code Review Gate** (MANDATORY - Before merging ANY PR):
+
+   **NEVER merge a PR before all code review feedback is addressed.**
+
+   - Check for open review comments: `gh api repos/OWNER/REPO/pulls/PR/reviews` and `gh api repos/OWNER/REPO/pulls/PR/comments`
+   - If any review has unresolved comments (state ≠ `APPROVED` or comments without a reply), **STOP** and address them first
+   - Address every reviewer comment (Gemini, Claude, human) by either:
+     - Applying the suggested fix and committing, OR
+     - Explicitly explaining why the suggestion is rejected (in a PR comment)
+   - After applying fixes, push to the PR branch and wait for re-review if needed
+   - **NEVER use `--admin` to bypass review checks** — use it only if CI has a confirmed flaky test unrelated to the changes, and only after all review comments are resolved
+   - Only proceed to merge once: all review comments are addressed AND all required CI checks pass
+
+   **Incident (v10.23.0)**: PR #553 was merged with `--admin` before Gemini's 3 valid test-quality comments were addressed (tautological `or True` assert, fragile `importlib.reload()` in tests). The fixes had to be applied as a post-release commit. This must not happen again.
+
+6. **Release Creation** (CRITICAL - Follow this exact sequence):
    - **Step 1**: Merge PR to develop branch
    - **Step 2**: Merge develop into main branch
    - **Step 3**: Switch to main branch: `git checkout main`

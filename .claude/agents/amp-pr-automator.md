@@ -159,8 +159,10 @@ cat /tmp/amp_quality_results.json | jq '.summary'
 
 ### 2. Post-PR Analysis (Review Automation)
 
+**This is the MERGE GATE — do not skip steps.**
+
 ```bash
-# After PR created, run complete analysis
+# Step 1: Run automated quality analysis
 bash scripts/pr/amp_pr_review.sh 215
 
 # Review outputs:
@@ -168,6 +170,17 @@ bash scripts/pr/amp_pr_review.sh 215
 # - /tmp/amp_tests/
 # - /tmp/amp_fixes_215.txt
 # - /tmp/amp_breaking_changes.txt
+
+# Step 2: Fetch ALL open review comments (MANDATORY)
+rtk proxy gh api repos/OWNER/REPO/pulls/215/reviews > /tmp/reviews.json
+rtk proxy gh api repos/OWNER/REPO/pulls/215/comments > /tmp/inline_comments.json
+
+# Step 3: For each unresolved inline comment:
+# - Apply the suggested fix, OR
+# - Post a reply explaining why the suggestion is rejected
+# Commit fixes to the PR branch and push.
+
+# Step 4: Only after all comments are addressed, report MERGE_READY to github-release-manager
 ```
 
 ### 3. Incremental Iteration (Fix → Recheck)
@@ -277,7 +290,15 @@ File content:
 
 ### github-release-manager
 - Creates PRs → amp-pr-automator runs pre-PR checks
-- Merges PRs → amp-pr-automator validates quality gates
+- **CRITICAL**: amp-pr-automator is the gatekeeper before any merge
+- The github-release-manager **MUST NOT merge** until amp-pr-automator confirms all review comments are resolved
+- amp-pr-automator is responsible for:
+  1. Fetching all open review comments (`gh api .../pulls/PR/reviews` + `.../pulls/PR/comments`)
+  2. Applying all suggested fixes or explicitly rejecting them with justification
+  3. Reporting a clear MERGE_READY or BLOCKED status to github-release-manager
+- github-release-manager treats any BLOCKED status as a hard stop — no `--admin` bypass
+
+**Incident (v10.23.0)**: amp-pr-automator ran quality checks but did NOT fetch and address the Gemini inline review comments on PR #553. github-release-manager then merged with `--admin` bypassing unresolved feedback. Three valid test-quality issues (tautological assert, fragile `importlib.reload()`) had to be fixed post-release. The fix: amp-pr-automator must always check and resolve inline comments before reporting MERGE_READY.
 
 ### gemini-pr-automator
 - amp-pr-automator runs quality gate first
