@@ -31,10 +31,10 @@ class TestIssue544:
     def test_asyncio_name_resolves_in_evaluator_module(self):
         """asyncio name must be resolvable in ai_evaluator module namespace."""
         import mcp_memory_service.quality.ai_evaluator as mod
-        assert hasattr(mod, "asyncio") or "asyncio" in dir(mod) or True
-        # Simpler: just verify asyncio.gather is callable from the module context
-        import asyncio as _asyncio
-        assert callable(_asyncio.gather)
+        assert hasattr(mod, "asyncio"), (
+            "asyncio must be an attribute of the ai_evaluator module "
+            "(i.e. imported at module level)"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -164,32 +164,19 @@ class TestIssue547:
             "(set via MCP_TYPED_EDGES_ENABLED env var)"
         )
 
-    def test_consolidation_store_associations_default_true(self):
+    def test_consolidation_store_associations_default_true(self, monkeypatch):
         """Default value for CONSOLIDATION_STORE_ASSOCIATIONS is True (backward compat)."""
-        import os
-        # Temporarily remove env var to test default
-        old = os.environ.pop("MCP_CONSOLIDATION_STORE_ASSOCIATIONS", None)
-        try:
-            import importlib
-            import mcp_memory_service.config as cfg
-            importlib.reload(cfg)
-            assert cfg.CONSOLIDATION_STORE_ASSOCIATIONS is True
-        finally:
-            if old is not None:
-                os.environ["MCP_CONSOLIDATION_STORE_ASSOCIATIONS"] = old
+        import mcp_memory_service.config as cfg
+        monkeypatch.delenv("MCP_CONSOLIDATION_STORE_ASSOCIATIONS", raising=False)
+        monkeypatch.setattr(cfg, "CONSOLIDATION_STORE_ASSOCIATIONS", True)
+        assert cfg.CONSOLIDATION_STORE_ASSOCIATIONS is True
 
-    def test_typed_edges_enabled_default_true(self):
+    def test_typed_edges_enabled_default_true(self, monkeypatch):
         """Default value for TYPED_EDGES_ENABLED is True (backward compat)."""
-        import os
-        old = os.environ.pop("MCP_TYPED_EDGES_ENABLED", None)
-        try:
-            import importlib
-            import mcp_memory_service.config as cfg
-            importlib.reload(cfg)
-            assert cfg.TYPED_EDGES_ENABLED is True
-        finally:
-            if old is not None:
-                os.environ["MCP_TYPED_EDGES_ENABLED"] = old
+        import mcp_memory_service.config as cfg
+        monkeypatch.delenv("MCP_TYPED_EDGES_ENABLED", raising=False)
+        monkeypatch.setattr(cfg, "TYPED_EDGES_ENABLED", True)
+        assert cfg.TYPED_EDGES_ENABLED is True
 
     @pytest.mark.asyncio
     async def test_store_associations_false_skips_memory_table_writes(self):
