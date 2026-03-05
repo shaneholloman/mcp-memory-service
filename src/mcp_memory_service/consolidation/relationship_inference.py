@@ -9,11 +9,18 @@ Analyzes memory pairs to determine appropriate relationship types based on:
 4. Semantic contradictions (opposing content → "contradicts")
 
 This enables rich knowledge graphs with meaningful relationship types beyond "related".
+
+Fixes for GitHub issue #541:
+- Raised similarity threshold for typed labels (min_typed_similarity=0.65)
+- Tightened contradiction detection: removed weak conjunctions ("but", "yet",
+  "although", "however", "nevertheless") — only strong opposition indicators kept
+- Added min_typed_confidence parameter (default 0.75) for non-"related" edges
+- Added cross-content domain-keyword verification before assigning typed labels
 """
 
 import re
 import logging
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Set
 
 from ..models.ontology import (
     get_parent_type,
@@ -21,6 +28,45 @@ from ..models.ontology import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Common English stopwords excluded from domain-keyword matching
+_STOPWORDS: Set[str] = {
+    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+    "of", "with", "by", "from", "is", "was", "are", "were", "be", "been",
+    "being", "have", "has", "had", "do", "does", "did", "will", "would",
+    "could", "should", "may", "might", "shall", "can", "not", "no", "nor",
+    "so", "yet", "both", "either", "neither", "just", "also", "as", "if",
+    "this", "that", "these", "those", "it", "its", "we", "our", "they",
+    "their", "he", "she", "his", "her", "i", "my", "me", "you", "your",
+    "up", "out", "about", "after", "before", "then", "than", "when",
+    "which", "who", "what", "where", "how", "all", "some", "any", "more",
+    "most", "such", "into", "through", "during", "however", "although",
+    "though", "because", "since", "while", "each", "few", "further",
+    "once", "only", "same", "other", "new", "own", "very", "too",
+}
+
+
+def _extract_domain_keywords(text: str) -> Set[str]:
+    """
+    Extract meaningful domain keywords from text, excluding stopwords.
+
+    Returns a set of lowercased words that are at least 4 characters long
+    and not in the stopword list.
+    """
+    # Split on non-alphanumeric characters (handles hyphens, underscores, etc.)
+    words = re.findall(r"[a-z][a-z0-9_-]{2,}", text.lower())
+    return {w for w in words if w not in _STOPWORDS}
+
+
+def _shares_domain_keywords(source_lower: str, target_lower: str) -> bool:
+    """
+    Return True if source and target share at least one meaningful domain keyword.
+
+    Used as a cross-content guard before assigning typed relationship labels.
+    """
+    source_kw = _extract_domain_keywords(source_lower)
+    target_kw = _extract_domain_keywords(target_lower)
+    return bool(source_kw & target_kw)
 
 
 class RelationshipInferenceEngine:
@@ -32,6 +78,22 @@ class RelationshipInferenceEngine:
     2. Content semantic analysis
     3. Temporal relationship detection
     4. Contradiction detection
+
+    Constructor parameters
+    ---------------------
+    min_confidence : float
+        Minimum confidence for ``related`` edges (default 0.6). Typed edges
+        additionally require ``min_typed_confidence``.
+    min_typed_confidence : float
+        Minimum confidence for non-``related`` relationship types such as
+        ``fixes``, ``causes``, ``supports``, ``contradicts`` (default 0.75).
+        Issue #541 fix: separates thresholds so "related" is easy to assign
+        but typed labels require stronger evidence.
+    min_typed_similarity : float
+        Minimum cosine similarity required before assigning any typed label
+        (default 0.65). When similarity is below this threshold the result
+        falls back to "related". Only applies when ``similarity`` is provided
+        to ``infer_relationship_type``. Issue #541 fix.
     """
 
     # Content patterns for relationship detection
@@ -58,24 +120,49 @@ class RelationshipInferenceEngine:
             r"\bhelps?\b",
             r"\baccompany\b",
         ],
+        # Issue #541 fix: removed weak conjunctions ("but", "yet", "although",
+        # "however", "nevertheless") — they fire on virtually any sentence that
+        # uses contrast connectors, producing near-100% false positive rate.
+        # Only strong, direct opposition / negation indicators are kept.
         "contradiction": [
             r"\bcontradict[ds]?\b",
             r"\bconflict[ds]?\b",
             r"\bdisagree[ds]?\b",
-            r"\bhowever\b",
-            r"\b(but|yet|although|nevertheless)\b",
             r"\boppose[sd]?\b",
+            r"\bincorrect\b",
+            r"\bwrong\b",
+            r"\bnot\s+true\b",
+            r"\buntrue\b",
+            r"\bfalsely?\b",
+            r"\bcontrary\b",
+            r"\bopposite\b",
+            r"\bnever\b",
         ],
     }
 
-    def __init__(self, min_confidence: float = 0.6):
+    def __init__(
+        self,
+        min_confidence: float = 0.6,
+        min_typed_confidence: float = 0.75,
+        min_typed_similarity: float = 0.65,
+    ):
         """
         Initialize the inference engine.
 
         Args:
-            min_confidence: Minimum confidence score (0.0-1.0) to assign relationship type
+            min_confidence: Minimum confidence score (0.0-1.0) to assign
+                any relationship type (including ``related``).
+            min_typed_confidence: Minimum confidence required specifically for
+                typed labels (``fixes``, ``causes``, ``supports``,
+                ``contradicts``, ``follows``). Must be >= min_confidence.
+                Defaults to 0.75 (issue #541).
+            min_typed_similarity: When a cosine similarity is supplied, typed
+                labels are only assigned when similarity >= this threshold.
+                Defaults to 0.65 (issue #541).
         """
         self.min_confidence = min_confidence
+        self.min_typed_confidence = max(min_typed_confidence, min_confidence)
+        self.min_typed_similarity = min_typed_similarity
 
     async def infer_relationship_type(
         self,
@@ -87,6 +174,7 @@ class RelationshipInferenceEngine:
         target_timestamp: Optional[float] = None,
         source_tags: Optional[List[str]] = None,
         target_tags: Optional[List[str]] = None,
+        similarity: Optional[float] = None,
     ) -> Tuple[str, float]:
         """
         Infer relationship type between two memories.
@@ -100,6 +188,9 @@ class RelationshipInferenceEngine:
             target_timestamp: Creation timestamp of target memory (epoch)
             source_tags: Tags on source memory
             target_tags: Tags on target memory
+            similarity: Optional cosine similarity score between memory
+                embeddings. When provided, typed labels are suppressed if
+                similarity < min_typed_similarity (issue #541).
 
         Returns:
             Tuple of (relationship_type, confidence_score)
@@ -121,6 +212,16 @@ class RelationshipInferenceEngine:
         target_tags = target_tags or []
         source_lower = source_content.lower()
         target_lower = target_content.lower()
+
+        # Issue #541 fix: check whether memories share domain vocabulary.
+        # Typed labels require topical relevance; "related" does not.
+        has_shared_keywords = _shares_domain_keywords(source_lower, target_lower)
+
+        # Issue #541 fix: if a similarity score is supplied, typed labels
+        # require similarity >= min_typed_similarity.
+        similarity_allows_typed = (
+            similarity is None or similarity >= self.min_typed_similarity
+        )
 
         # Collect relationship type candidates with confidence scores
         candidates = []
@@ -168,7 +269,34 @@ class RelationshipInferenceEngine:
         candidates.sort(key=lambda x: x[1], reverse=True)
         best_type, best_confidence = candidates[0]
 
-        # Apply minimum confidence threshold
+        # Issue #541 fix: apply the stricter typed-label threshold and guards
+        # before the generic min_confidence check.
+        if best_type != "related":
+            # Guard 1: similarity threshold
+            if not similarity_allows_typed:
+                logger.debug(
+                    f"Similarity {similarity:.3f} below typed threshold "
+                    f"{self.min_typed_similarity}, downgrading to 'related'"
+                )
+                return ("related", best_confidence)
+
+            # Guard 2: shared domain keywords (cross-content verification)
+            if not has_shared_keywords:
+                logger.debug(
+                    "No shared domain keywords between memories, "
+                    "downgrading typed label to 'related'"
+                )
+                return ("related", best_confidence)
+
+            # Guard 3: typed confidence threshold
+            if best_confidence < self.min_typed_confidence:
+                logger.debug(
+                    f"Typed confidence {best_confidence:.2f} below typed threshold "
+                    f"{self.min_typed_confidence}, downgrading to 'related'"
+                )
+                return ("related", best_confidence)
+
+        # Apply generic minimum confidence threshold
         if best_confidence < self.min_confidence:
             logger.debug(
                 f"Confidence {best_confidence:.2f} below threshold {self.min_confidence}, "
@@ -186,6 +314,35 @@ class RelationshipInferenceEngine:
         )
         return (best_type, best_confidence)
 
+    @staticmethod
+    def _resolve_parent_type(memory_type: str) -> Optional[str]:
+        """
+        Resolve the base/parent type from a memory type string.
+
+        Handles both plain subtype notation ("insight") and slash notation
+        ("learning/insight") used in practice.  For slash notation the first
+        segment is returned if it is a valid base type; otherwise the full
+        type string is looked up via the ontology helper.
+
+        Args:
+            memory_type: Memory type string (e.g. "learning/insight",
+                "error/bug", "observation", "insight")
+
+        Returns:
+            Base type string (e.g. "learning", "error") or None if unknown.
+        """
+        if not memory_type:
+            return None
+
+        # Handle slash-notation: "learning/insight" → first segment is parent
+        if "/" in memory_type:
+            first_segment = memory_type.split("/", 1)[0]
+            parent = get_parent_type(first_segment)
+            if parent is not None:
+                return parent
+            # Fall through to ontology lookup of the full string
+        return get_parent_type(memory_type)
+
     def _analyze_type_combination(
         self, source_type: Optional[str], target_type: Optional[str]
     ) -> List[Tuple[str, float]]:
@@ -198,6 +355,12 @@ class RelationshipInferenceEngine:
         - decision → decision → supports/contradicts
         - etc.
 
+        Issue #541 fix: confidence values here feed into the typed-label gate
+        (min_typed_confidence=0.75), so only combinations that were already
+        at or above 0.75 in the original code will pass through unchanged.
+        Lower-confidence combinations will be caught by the gate and fall
+        back to "related".
+
         Returns:
             List of (relationship_type, confidence_score) candidates
         """
@@ -205,8 +368,8 @@ class RelationshipInferenceEngine:
             return []
 
         candidates = []
-        source_parent = get_parent_type(source_type)
-        target_parent = get_parent_type(target_type)
+        source_parent = self._resolve_parent_type(source_type)
+        target_parent = self._resolve_parent_type(target_type)
 
         # High-confidence patterns from ontology
         type_patterns = {
@@ -241,6 +404,12 @@ class RelationshipInferenceEngine:
     ) -> List[Tuple[str, float]]:
         """
         Analyze content for semantic relationship patterns.
+
+        Issue #541 fix: cross-content domain-keyword verification is now
+        enforced upstream in ``infer_relationship_type``, so this method no
+        longer needs to gate on it. The per-type checks (e.g. "error" in
+        target_type) remain as an additional signal that combines with the
+        upstream guard.
 
         Returns:
             List of (relationship_type, confidence_score) candidates
@@ -302,8 +471,8 @@ class RelationshipInferenceEngine:
 
         # If created within 1 hour and same parent type
         if time_diff < 3600:
-            source_parent = get_parent_type(source_type) if source_type else None
-            target_parent = get_parent_type(target_type) if target_type else None
+            source_parent = self._resolve_parent_type(source_type) if source_type else None
+            target_parent = self._resolve_parent_type(target_type) if target_type else None
 
             if source_parent == target_parent:
                 confidence = 0.4
@@ -333,6 +502,13 @@ class RelationshipInferenceEngine:
         """
         Analyze potential contradictions between memories.
 
+        Issue #541 fix:
+        - Removed weak contrast conjunctions from PATTERNS["contradiction"]
+          (see class-level docstring).
+        - Minimum confidence for single-side detection raised from 0.4 to 0.5.
+        - Both-side detection raised from 0.7 to 0.75 to meet
+          min_typed_confidence gate.
+
         Returns:
             List of (relationship_type, confidence_score) candidates
         """
@@ -350,9 +526,11 @@ class RelationshipInferenceEngine:
         if source_contradictions > 0 or target_contradictions > 0:
             # High confidence if both have contradiction patterns
             if source_contradictions > 0 and target_contradictions > 0:
-                confidence = 0.7
+                # Issue #541: raised from 0.7 → 0.75 to satisfy min_typed_confidence
+                confidence = 0.75
             else:
-                confidence = 0.4
+                # Issue #541: raised from 0.4 → 0.5 (single-side is weaker evidence)
+                confidence = 0.5
 
             candidates.append(("contradicts", confidence))
 
