@@ -857,11 +857,10 @@ SOLUTIONS:
             if not row:
                 return None
             match = re.search(r'FLOAT\[(\d+)\]', row[0])
-            match = re.search(r'FLOAT\[(\d+)\]', row[0])
             if match:
                 return int(match.group(1))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Could not determine existing DB embedding dimension: {e}")
         return None
 
     async def _initialize_embedding_model(self):
