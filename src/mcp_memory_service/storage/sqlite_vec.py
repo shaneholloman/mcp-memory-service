@@ -930,18 +930,19 @@ SOLUTIONS:
                     # corrupts the database. Fail loudly instead.
                     existing_dim = self._get_existing_db_embedding_dimension()
                     if existing_dim is not None:
+                    if existing_dim is not None:
                         raise RuntimeError(
                             f"External embedding API at {external_api_url} is unreachable: {e}. "
                             f"The existing database uses dimension {existing_dim}. "
                             f"Falling back to a local model would cause a dimension mismatch and "
                             f"corrupt all store/search operations. "
                             f"Ensure your embedding service is running before starting mcp-memory-service."
-                        )
+                        ) from e
                     else:
                         raise RuntimeError(
                             f"External embedding API at {external_api_url} is unreachable: {e}. "
                             f"Ensure your embedding service is running before starting mcp-memory-service."
-                        )
+                        ) from e
 
             # Check if we should use ONNX
             use_onnx = os.environ.get('MCP_MEMORY_USE_ONNX', '').lower() in ('1', 'true', 'yes')
