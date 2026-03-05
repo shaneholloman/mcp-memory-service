@@ -80,31 +80,32 @@ async def handle_consolidation_status(server, arguments: dict) -> List[types.Tex
 
         # Format status report
         status_lines = [
-            f"Consolidation System Status: {health['status'].upper()}",
-            f"Last Updated: {health['timestamp']}",
+            f"Consolidation System Status: {health.get('status', 'unknown').upper()}",
+            f"Last Updated: {health.get('timestamp', 'N/A')}",
             "",
             "Component Health:"
         ]
 
-        for component, component_health in health['components'].items():
-            status = component_health['status']
+        for component, component_health in health.get('components', {}).items():
+            status = component_health.get('status', 'unknown')
             status_lines.append(f"  {component}: {status.upper()}")
             if status == 'unhealthy' and 'error' in component_health:
                 status_lines.append(f"    Error: {component_health['error']}")
 
+        stats = health.get('statistics', {})
         status_lines.extend([
             "",
             "Statistics:",
-            f"  Total consolidation runs: {health['statistics']['total_runs']}",
-            f"  Successful runs: {health['statistics']['successful_runs']}",
-            f"  Total memories processed: {health['statistics']['total_memories_processed']}",
-            f"  Total associations created: {health['statistics']['total_associations_created']}",
-            f"  Total clusters created: {health['statistics']['total_clusters_created']}",
-            f"  Total memories compressed: {health['statistics']['total_memories_compressed']}",
-            f"  Total memories archived: {health['statistics']['total_memories_archived']}"
+            f"  Total consolidation runs: {stats.get('total_runs', 0)}",
+            f"  Successful runs: {stats.get('successful_runs', 0)}",
+            f"  Total memories processed: {stats.get('total_memories_processed', 0)}",
+            f"  Total associations created: {stats.get('total_associations_created', 0)}",
+            f"  Total clusters created: {stats.get('total_clusters_created', 0)}",
+            f"  Total memories compressed: {stats.get('total_memories_compressed', 0)}",
+            f"  Total memories archived: {stats.get('total_memories_archived', 0)}"
         ])
 
-        if health['last_consolidation_times']:
+        if health.get('last_consolidation_times'):
             status_lines.extend([
                 "",
                 "Last Consolidation Times:"
