@@ -28,7 +28,8 @@ def test_http_server_starts():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-    assert "version" in data
+    # /api/health is intentionally minimal (GHSA-73hc-m4hx-79pj security hardening)
+    # version/timestamp are only in /api/health/detailed (requires auth)
 
 
 @pytest.mark.xfail(reason="Pre-existing bug: module 'mcp_memory_service' has no attribute 'web'")
@@ -89,15 +90,13 @@ def test_health_endpoint_responds():
     data = response.json()
 
     # Verify response structure
+    # /api/health is intentionally minimal (GHSA-73hc-m4hx-79pj security hardening)
+    # version/timestamp are only in /api/health/detailed (requires auth)
     assert isinstance(data, dict)
     assert "status" in data
-    assert "version" in data
-    assert "timestamp" in data
 
     # Verify values are sensible
     assert data["status"] in ["healthy", "degraded"]
-    assert isinstance(data["version"], str)
-    assert len(data["version"]) > 0
 
 
 def test_cors_middleware_configured():
