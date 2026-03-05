@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.24.0] - 2026-03-05
+
+### Fixed
+
+- **[#551] External embedding API silent fallback corrupts vector space**: When an external embedding provider (vLLM, Ollama, TEI, OpenAI-compatible) returned an error, `sqlite_vec.py` silently fell back to the local ONNX model. This produced embeddings in a different vector space than the rest of the database, causing all subsequent semantic searches to return incorrect or irrelevant results with no warning to the user. The fix replaces the silent `logger.warning + fallback` path with a hard `raise RuntimeError(...)` that clearly states the API failure reason and, when detectable, the existing database embedding dimension (read from `sqlite_master` via `_get_existing_db_embedding_dimension()` using `asyncio.to_thread()` for non-blocking execution). A stale integration test that asserted a `version` field on `/api/health` (removed in the GHSA-73hc-m4hx-79pj security hardening) was also corrected.
+
+### Tests
+
+- 10 regression tests in `tests/storage/test_issue_551_external_embedding_fallback.py` covering: hard failure on API error, dimension mismatch detection, DRY error message format, `asyncio.to_thread` integration, and interaction with the existing DB dimension helper
+- 1,397 total tests
+
 ## [10.23.0] - 2026-03-05
 
 ### Fixed
