@@ -845,6 +845,25 @@ SOLUTIONS:
             pass
         return False
 
+    def _get_existing_db_embedding_dimension(self) -> int | None:
+        """Read the embedding dimension from an existing vec0 table, or None if not present."""
+        try:
+            if not self.conn:
+                return None
+            cursor = self.conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='memory_embeddings'"
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            import re
+            match = re.search(r'FLOAT\[(\d+)\]', row[0])
+            if match:
+                return int(match.group(1))
+        except Exception:
+            pass
+        return None
+
     async def _initialize_embedding_model(self):
         """Initialize the embedding model (ONNX or SentenceTransformer based on configuration)."""
         global _MODEL_CACHE
@@ -906,7 +925,23 @@ SOLUTIONS:
                     logger.info(f"External embedding API connected. Dimension: {self.embedding_dimension}")
                     return
                 except (ConnectionError, RuntimeError, ImportError) as e:
-                    logger.warning(f"Failed to connect to external embedding API: {e}, falling back to local models")
+                    # Issue #551: when MCP_EXTERNAL_EMBEDDING_URL is explicitly configured,
+                    # silently falling back to a local model with a different dimension
+                    # corrupts the database. Fail loudly instead.
+                    existing_dim = self._get_existing_db_embedding_dimension()
+                    if existing_dim is not None:
+                        raise RuntimeError(
+                            f"External embedding API at {external_api_url} is unreachable: {e}. "
+                            f"The existing database uses dimension {existing_dim}. "
+                            f"Falling back to a local model would cause a dimension mismatch and "
+                            f"corrupt all store/search operations. "
+                            f"Ensure your embedding service is running before starting mcp-memory-service."
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"External embedding API at {external_api_url} is unreachable: {e}. "
+                            f"Ensure your embedding service is running before starting mcp-memory-service."
+                        )
 
             # Check if we should use ONNX
             use_onnx = os.environ.get('MCP_MEMORY_USE_ONNX', '').lower() in ('1', 'true', 'yes')
