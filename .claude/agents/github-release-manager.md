@@ -476,6 +476,43 @@ Alternatively, use the github-release-manager agent locally to complete the work
      - **Commit**: Include `docs/index.html` in the release documentation commit
      - **Note**: GitHub Pages auto-deploys from `docs/` on main branch push — no manual deploy needed for the GitHub Pages site
 
+## Security Dashboard Review (Run at Every Release)
+
+After each release, check the GitHub Security tab for new alerts:
+
+```bash
+# Dependabot alerts (open only)
+gh api repos/doobidoo/mcp-memory-service/dependabot/alerts \
+  --jq '.[] | select(.state=="open") | "#\(.number) [\(.security_advisory.severity)] \(.dependency.package.name) — \(.security_advisory.summary)"'
+
+# Code scanning alerts (open only)
+gh api repos/doobidoo/mcp-memory-service/code-scanning/alerts \
+  --jq '.[] | select(.state=="open") | "#\(.number) [\(.rule.severity)] \(.rule.id) \(.most_recent_instance.location.path):\(.most_recent_instance.location.start_line) — \(.rule.description)"'
+```
+
+**Triage rules:**
+
+| Severity | Action |
+|----------|--------|
+| Critical / High Dependabot | Fix immediately → patch release |
+| Medium Dependabot | Fix within 1 release cycle |
+| Low Dependabot | Fix opportunistically |
+| CodeQL `error` | Investigate; fix if real, dismiss with reason if false positive |
+| CodeQL `warning` | Review; fix if real |
+| CodeQL `note` | Low priority; dismiss with reason if false positive |
+
+**Dismissing false positives:**
+```bash
+gh api repos/doobidoo/mcp-memory-service/code-scanning/alerts/NUMBER \
+  -X PATCH -f state=dismissed \
+  -f dismissed_reason=false_positive \
+  -f dismissed_comment="Explanation of why this is not a real issue"
+```
+
+**Known dismissed alerts (do not re-open):**
+- **#365** (`note`, empty-except, `sqlite_vec.py:2095`) — dismissed 2026-03-06 as false positive: intentional empty except catches `sqlite3.OperationalError` from `rollback()` when no transaction is active; explained in adjacent comment
+- **#357** (`error`, stack-trace-exposure, `consolidation.py:248`) — dismissed 2026-03-06 as false positive: flagged line returns a sanitized dict; outer except at line 257 suppresses the full exception and raises a generic `HTTPException` with no stack trace exposed to external users
+
 ## CHANGELOG Validation Protocol (CRITICAL)
 
 Before ANY release or documentation commit, ALWAYS validate CHANGELOG.md structure:
