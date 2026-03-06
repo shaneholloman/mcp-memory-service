@@ -172,6 +172,34 @@ If you're seeing "Method not found" errors or JSON error popups in Claude Deskto
 
 ## Windows-Specific Issues
 
+### Problem: MCP client times out during handshake (Codex, strict stdio clients)
+
+**Symptoms:**
+- Client (e.g. Codex) times out after ~10 seconds during startup
+- `list_mcp_resources` returns none / server never responds
+- Works fine with Claude Desktop (which has a longer startup budget)
+
+**Cause:** The server performs **eager storage initialization** during the MCP handshake — it loads the ONNX embedding model before returning control to the client. On Windows, this takes 30s+ (60s+ on first run). Strict stdio clients enforce a small handshake budget (Codex: ~10s).
+
+**Solution:** Set `MCP_INIT_TIMEOUT` to a small value to force **lazy loading**. Storage initializes on the first actual tool call instead of during handshake:
+
+```toml
+[mcp_servers.memory.env]
+MCP_MEMORY_STORAGE_BACKEND = "sqlite_vec"
+MCP_INIT_TIMEOUT = "5"
+```
+
+Or as an environment variable:
+```bash
+MCP_INIT_TIMEOUT=5
+```
+
+The first memory operation (e.g. `memory_store`, `memory_search`) will take ~30s while the model loads. All subsequent calls will be fast.
+
+**Related:** Issue #561
+
+---
+
 [Content from WINDOWS_JSON_FIX.md and windows-specific sections]
 
 ## Performance Optimization

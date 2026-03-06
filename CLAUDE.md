@@ -471,6 +471,7 @@ memory.memory_type or ''
 | Database lock errors | Add `journal_mode=WAL` to `MCP_MEMORY_SQLITE_PRAGMAS` in `.env`, restart servers |
 | Tests failing after git pull | Run `./scripts/update_and_restart.sh` (installs deps, restarts server) |
 | MCP fails on every session (Windows) | Set `MCP_INIT_TIMEOUT=120` in your MCP server env config (issue #474) |
+| Strict stdio client times out during handshake (e.g. Codex, 10s budget) | Set `MCP_INIT_TIMEOUT=5` to force lazy loading — storage initializes on first tool call instead (issue #561) |
 
 **Comprehensive troubleshooting:** [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-quick-reference.md)
 
