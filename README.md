@@ -116,10 +116,10 @@ It automatically captures your project context, architecture decisions, and code
 **LangGraph** · **CrewAI** · **AutoGen** · **Any HTTP Client** · **OpenClaw/Nanobot** · **Custom Pipelines**
 
 #### 🖥️ CLI & Terminal AI (MCP)
-**Claude Code** · **Gemini Code Assist** · **OpenCode** · **Aider** · **GitHub Copilot CLI** · **Amp** · **Continue** · **Zed** · **Cody**
+**Claude Code** · **Gemini CLI** · **Gemini Code Assist** · **OpenCode** · **Codex CLI** · **Goose** · **Aider** · **GitHub Copilot CLI** · **Amp** · **Continue** · **Zed** · **Cody**
 
 #### 🎨 Desktop & IDE (MCP)
-**Claude Desktop** · **VS Code** · **Cursor** · **Windsurf** · **Raycast** · **JetBrains** · **Sourcegraph** · **Qodo**
+**Claude Desktop** · **VS Code** · **Cursor** · **Windsurf** · **Kilo Code** · **Raycast** · **JetBrains** · **Replit** · **Sourcegraph** · **Qodo**
 
 #### 💬 Chat Interfaces (MCP)
 **ChatGPT** (Developer Mode) · **Claude Web**
@@ -246,7 +246,7 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 🧠 **Persistent Memory** – Context survives across sessions with semantic search
 🔍 **Smart Retrieval** – Finds relevant context automatically using AI embeddings
 ⚡ **5ms Speed** – Instant context injection, no latency
-🔄 **Multi-Client** – Works across 13+ AI applications
+🔄 **Multi-Client** – Works across 20+ AI applications
 ☁️ **Cloud Sync** – Optional Cloudflare backend for team collaboration
 🔒 **Privacy-First** – Local-first, you control your data
 📊 **Web Dashboard** – Visualize and manage memories at `http://localhost:8000`
@@ -1118,7 +1118,7 @@ export MCP_EXTERNAL_EMBEDDING_API_KEY=sk-xxx
 │   (HTTP/OAuth)  │    │ • OAuth 2.1 Auth│    │    cloud sync)  │
 │ • VS Code       │    │ • Memory Store  │    │ • SQLite-vec    │
 │ • Cursor        │    │ • Semantic      │    │ • Cloudflare    │
-│ • 13+ AI Apps   │    │   Search        │    │                 │
+│ • 20+ AI Apps   │    │   Search        │    │                 │
 │ • Web Dashboard │    │ • Doc Ingestion │    │ Zero DB Locks ✅│
 │   (Port 8000)   │    │ • Zero DB Locks │    │ Auto-Config ✅  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
@@ -1174,7 +1174,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 - [![Smithery](https://smithery.ai/badge/@doobidoo/mcp-memory-service)](https://smithery.ai/server/@doobidoo/mcp-memory-service) **Verified MCP Server**
 - [![Glama AI](https://img.shields.io/badge/Featured-Glama%20AI-blue)](https://glama.ai/mcp/servers/bzvl3lz34o) **Featured AI Tool**
-- **Production-tested** across 13+ AI applications
+- **Production-tested** across 20+ AI applications
 - **Community-driven** with real-world feedback and improvements
 
 ## 📄 License
