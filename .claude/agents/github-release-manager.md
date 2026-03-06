@@ -128,12 +128,18 @@ Follow the project's Documentation Decision Matrix from CLAUDE.md:
 - Troubleshooting procedures are discovered
 
 **Landing Page — docs/index.html** (Update for MINOR/MAJOR only, NOT patches):
-- Update version badge text (`.hero-badge`)
-- Update "What's New" section title and feature cards if new headline features
-- Update test count `data-target` in stats section (run `pytest --collect-only -q 2>/dev/null | tail -1` to get current count)
+
+**⚠️ ALWAYS verify current badge version before deciding to skip:**
+```bash
+grep -o 'v[0-9]*\.[0-9]*' docs/index.html | head -1
+```
+If the badge is more than one MINOR version behind the current release, update it regardless of patch/minor classification — stale badges erode user trust.
+
+- Update version badge text (`.hero-badge`, `<title>`, `<meta og:title>`, "What's New" heading)
+- Update test count `data-target` in stats section: `pytest --collect-only -q 2>/dev/null | tail -1`
 - Update Release Notes link URL to latest release tag
-- Update `<title>` and `<meta>` tags with new version
 - Re-publish to here.now: `cd docs && ~/.agents/skills/here-now/scripts/publish.sh . --slug merry-realm-j835`
+- Commit `docs/index.html` and push to main (GitHub Pages auto-deploys)
 
 ### PR Creation and Review Workflow
 
