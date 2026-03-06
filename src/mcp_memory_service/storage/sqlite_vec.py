@@ -2051,6 +2051,12 @@ SOLUTIONS:
                 return False, f"Memory with hash {content_hash} not found"
 
         except Exception as e:
+            # Rollback the implicit transaction so the embedding DELETE
+            # is not left dangling if the soft-delete UPDATE failed.
+            try:
+                self.conn.rollback()
+            except sqlite3.OperationalError:
+                pass
             error_msg = f"Failed to delete memory: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
@@ -2438,11 +2444,14 @@ SOLUTIONS:
                 return False, "Database not initialized"
             
             # Get current memory
-            cursor = self.conn.execute('''
+            cursor = self.conn.execute(
+                """
                 SELECT content, tags, memory_type, metadata, created_at, created_at_iso
-                FROM memories WHERE content_hash = ?
-            ''', (content_hash,))
-            
+                FROM memories WHERE content_hash = ? AND deleted_at IS NULL
+            """,
+                (content_hash,),
+            )
+
             row = cursor.fetchone()
             if not row:
                 return False, f"Memory with hash {content_hash} not found"
@@ -2505,17 +2514,26 @@ SOLUTIONS:
                 updated_at_iso = now_iso
 
             # Update the memory
-            self.conn.execute('''
+            self.conn.execute(
+                """
                 UPDATE memories SET
                     tags = ?, memory_type = ?, metadata = ?,
                     updated_at = ?, updated_at_iso = ?,
                     created_at = ?, created_at_iso = ?
-                WHERE content_hash = ?
-            ''', (
-                new_tags, new_type, json.dumps(new_metadata),
-                updated_at, updated_at_iso, created_at, created_at_iso, content_hash
-            ))
-            
+                WHERE content_hash = ? AND deleted_at IS NULL
+            """,
+                (
+                    new_tags,
+                    new_type,
+                    json.dumps(new_metadata),
+                    updated_at,
+                    updated_at_iso,
+                    created_at,
+                    created_at_iso,
+                    content_hash,
+                ),
+            )
+
             self.conn.commit()
             
             # Create summary of updated fields
@@ -2574,10 +2592,13 @@ SOLUTIONS:
             for idx, memory in enumerate(memories):
                 try:
                     # Get current memory data
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         SELECT content, tags, memory_type, metadata, created_at, created_at_iso
-                        FROM memories WHERE content_hash = ?
-                    ''', (memory.content_hash,))
+                        FROM memories WHERE content_hash = ? AND deleted_at IS NULL
+                    """,
+                        (memory.content_hash,),
+                    )
 
                     row = cursor.fetchone()
                     if not row:
@@ -2601,15 +2622,22 @@ SOLUTIONS:
                     new_type = memory.memory_type if memory.memory_type else current_type
 
                     # Execute update
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         UPDATE memories SET
                             tags = ?, memory_type = ?, metadata = ?,
                             updated_at = ?, updated_at_iso = ?
-                        WHERE content_hash = ?
-                    ''', (
-                        new_tags, new_type, json.dumps(merged_metadata),
-                        now, now_iso, memory.content_hash
-                    ))
+                        WHERE content_hash = ? AND deleted_at IS NULL
+                    """,
+                        (
+                            new_tags,
+                            new_type,
+                            json.dumps(merged_metadata),
+                            now,
+                            now_iso,
+                            memory.content_hash,
+                        ),
+                    )
 
                     results[idx] = True
 
@@ -2922,13 +2950,13 @@ SOLUTIONS:
         try:
             await self.initialize()
             # For now, return basic statistics based on tags and content similarity
-            cursor = self.conn.execute('''
+            cursor = self.conn.execute("""
                 SELECT tags, COUNT(*) as count
                 FROM memories
-                WHERE tags IS NOT NULL AND tags != ''
+                WHERE tags IS NOT NULL AND tags != '' AND deleted_at IS NULL
                 GROUP BY tags
-            ''')
-            
+            """)
+
             connections = {}
             for row in cursor.fetchall():
                 tags_str, count = row
@@ -2948,14 +2976,14 @@ SOLUTIONS:
         try:
             await self.initialize()
             # Return recent access patterns based on updated_at timestamps
-            cursor = self.conn.execute('''
+            cursor = self.conn.execute("""
                 SELECT content_hash, updated_at_iso
                 FROM memories
-                WHERE updated_at_iso IS NOT NULL
+                WHERE updated_at_iso IS NOT NULL AND deleted_at IS NULL
                 ORDER BY updated_at DESC
                 LIMIT 100
-            ''')
-            
+            """)
+
             patterns = {}
             for row in cursor.fetchall():
                 content_hash, updated_at_iso = row
