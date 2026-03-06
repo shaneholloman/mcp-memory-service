@@ -385,6 +385,16 @@ Alternatively, use the github-release-manager agent locally to complete the work
 
    **Incident (v10.23.0)**: PR #553 was merged with `--admin` before Gemini's 3 valid test-quality comments were addressed (tautological `or True` assert, fragile `importlib.reload()` in tests). The fixes had to be applied as a post-release commit. This must not happen again.
 
+   **When merging multiple PRs that touch the same files:**
+   - Determine the correct merge order first (base fix → dependent fixes; independent PRs anytime)
+   - After each `gh pr merge`, **immediately verify** it actually merged before proceeding:
+     ```bash
+     gh pr view N --repo OWNER/REPO --json state,mergedAt
+     ```
+   - `gh pr merge --auto` only enables auto-merge — it does NOT merge immediately. If there is no CI to satisfy, the PR stays open silently.
+   - Only proceed to the next PR once `state: CLOSED` and `mergedAt` is non-null.
+   - **Incident (v10.25.0)**: PRs #557, #558, #560 all touched `sqlite_vec.py`. #557 was "merged" first with `--auto` but stayed open. Subsequent merges of #558 and #562 caused #557 to conflict, requiring manual rebase and substitute PRs (#563). Cost: significant extra complexity.
+
 6. **Release Creation** (CRITICAL - Follow this exact sequence):
    - **Step 1**: Merge PR to develop branch
    - **Step 2**: Merge develop into main branch

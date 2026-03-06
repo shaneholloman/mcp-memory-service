@@ -42,6 +42,23 @@ pytest tests/
 @agent code-quality-guard "Analyze complexity and security for staged files"
 ```
 
+## 🔀 Merging Multiple PRs That Touch the Same Files
+
+When batch-merging several PRs (e.g. community contributions), conflicts arise if they modify the same file.
+
+### Rules
+
+1. **Order first**: identify which PRs share files (`gh pr diff N --name-only`). Merge the base/largest change first, dependents after.
+2. **Verify each merge before proceeding**:
+   ```bash
+   gh pr view N --repo OWNER/REPO --json state,mergedAt
+   # state must be "CLOSED" and mergedAt non-null before moving on
+   ```
+3. **`gh pr merge --auto` does NOT merge immediately** — it only enables auto-merge. Without CI checks to satisfy, the PR stays open silently. Always verify.
+4. **If a PR conflicts after earlier merges**: fetch the branch via `git fetch origin 'refs/pull/N/head:local-branch'`, rebase onto current main, push to a new branch, open a substitute PR, merge it, then close the original with an explanation comment.
+
+**Incident (v10.25.0)**: PRs #557, #558, #560 all touched `sqlite_vec.py`. #557 was "merged" with `--auto` but stayed open. #558 and #562 merged next, causing #557 to conflict. Required manual rebase and two substitute PRs (#562, #563).
+
 ### Why This Matters
 
 - **PR #280 lesson**: 7 review iterations, 20 issues found across 7 cycles
