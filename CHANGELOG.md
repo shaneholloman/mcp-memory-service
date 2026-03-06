@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.25.1] - 2026-03-06
+
+### Security
+
+- **[GHSA-g9rg-8vq5-mpwm] Wildcard CORS default enables cross-origin memory theft**: `MCP_CORS_ORIGINS` defaulted to `'*'`, allowing any website to read API responses cross-origin when combined with anonymous access. Default changed to `'http://localhost:8000,http://127.0.0.1:8000'`. `allow_credentials` is now automatically set to `False` when wildcard origins are configured (the two cannot be combined securely). A startup warning is logged if wildcard is explicitly set via environment variable.
+- **[GHSA-x9r8-q2qj-cgvw] TLS certificate verification disabled in peer discovery**: Already fixed in v10.25.0 (config already contained `PEER_VERIFY_SSL=True` default). Advisory formally closed.
+
+### Fixed
+
+- **Soft-delete leak in `search_by_tag_chronological()`**: Missing `AND deleted_at IS NULL` filter caused soft-deleted memories to appear in chronological tag search results. All soft-delete filters are now consistently applied across all query paths.
+
 ## [10.25.0] - 2026-03-06
 
 ### Added

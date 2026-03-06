@@ -272,10 +272,15 @@ def create_app() -> FastAPI:
     )
     
     # CORS middleware
+    if '*' in CORS_ORIGINS:
+        logger.warning(
+            "Wildcard CORS origin ('*') detected. Any website can read API responses. "
+            "Set MCP_CORS_ORIGINS to restrict access (e.g. 'http://localhost:8000')."
+        )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
-        allow_credentials=True,
+        allow_credentials='*' not in CORS_ORIGINS,
         allow_methods=["*"],
         allow_headers=["*"],
     )

@@ -2002,7 +2002,8 @@ SOLUTIONS:
                 SELECT content_hash, content, tags, memory_type, metadata,
                        created_at, updated_at, created_at_iso, updated_at_iso
                 FROM memories
-                WHERE {tag_conditions}
+                WHERE ({tag_conditions})
+                AND deleted_at IS NULL
                 ORDER BY created_at DESC
             """
 
