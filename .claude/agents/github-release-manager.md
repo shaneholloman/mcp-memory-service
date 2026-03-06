@@ -406,6 +406,11 @@ Alternatively, use the github-release-manager agent locally to complete the work
      - Tag: v{version}
      - Title: "v{version} - {brief description}"
      - Body: CHANGELOG entry + highlights
+     - **Community contributor recognition** (MANDATORY when release includes external PRs):
+       - If the release includes PRs from contributors who are not project maintainers, add a prominent "🙏 Special Thanks" section at the **top** of the release notes — before the changelog content
+       - Format: `**[@username](https://github.com/username)** — brief description of what they contributed and why it's notable`
+       - For releases where an external contributor authored the majority of changes, make this the headline: "This release is entirely the work of [@username]..."
+       - Also leave a thank-you comment on their PR(s) referencing the release version
 
    **WARNING**: Do NOT create the tag before merging to main. Tags must point to main branch commits, not develop branch commits. Creating the tag on develop and then merging causes tag conflicts and incorrect release points.
 
