@@ -15,22 +15,27 @@
 """
 Configuration API endpoint for exposing .env parameters.
 
-Provides read-only access to environment configuration with sensitive value masking.
+Provides read-only access to environment configuration with sensitive value masking,
+plus write access for Cloudflare credentials with connection validation.
 """
 
 import os
+import re
 import logging
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-from ..oauth.middleware import require_read_access
+from ..oauth.middleware import require_read_access, require_admin_access
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/config", tags=["configuration"])
+
+
 
 
 class ConfigParameter(BaseModel):
@@ -486,4 +491,256 @@ async def get_env_configuration(user = Depends(require_read_access)):
         categories=categories,
         env_file_path=str(env_path) if env_path.exists() else None,
         last_modified=last_modified
+    )
+
+
+# ---------------------------------------------------------------------------
+# Credentials management
+# ---------------------------------------------------------------------------
+
+class CredentialsReadResponse(BaseModel):
+    """Current Cloudflare credential values (token partially masked)."""
+    api_token_partial: Optional[str]
+    api_token_full: Optional[str]
+    account_id: Optional[str]
+    d1_database_id: Optional[str]
+    vectorize_index: Optional[str]
+    sync_owner: Optional[str]
+    env_file_path: Optional[str]
+
+
+class TestCredentialsRequest(BaseModel):
+    api_token: str
+    account_id: str
+
+
+class TestCredentialsResponse(BaseModel):
+    valid: bool
+    status: Optional[str] = None
+    token_id: Optional[str] = None
+    expires_on: Optional[str] = None
+    error: Optional[str] = None
+
+
+class SaveCredentialsRequest(BaseModel):
+    api_token: str
+    account_id: str
+    d1_database_id: str
+    vectorize_index: str
+    sync_owner: str  # validated below against allowed values
+    tested_token: str
+
+
+class SaveCredentialsResponse(BaseModel):
+    success: bool
+    message: str
+    restart_scheduled: bool = False
+
+
+def _partial_reveal(value: Optional[str], head: int = 7, tail: int = 4) -> Optional[str]:
+    """Return a partial-reveal string like '0Ya1ct4...BSFL'."""
+    if not value:
+        return None
+    if len(value) <= head + tail + 3:
+        return value
+    return f"{value[:head]}...{value[-tail:]}"
+
+
+def _find_env_path() -> Path:
+    return Path.cwd() / ".env"
+
+
+def _read_env_file_dict(env_path: Path) -> dict:
+    result = {}
+    if not env_path.exists():
+        return result
+    try:
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    v = value.strip()
+                    if len(v) >= 2 and v[0] in ('"', "'") and v[0] == v[-1]:
+                        v = v[1:-1]
+                    result[key.strip()] = v
+    except Exception as e:
+        logger.error(f"Error reading .env file: {e}")
+    return result
+
+
+def _write_credential_to_env(env_path: Path, key: str, value: str) -> None:
+    """Update or insert a single key=value line in .env, preserving all other content."""
+    lines = []
+    found = False
+
+    if env_path.exists():
+        with open(env_path, encoding='utf-8') as f:
+            lines = f.readlines()
+
+    new_lines = []
+    for line in lines:
+        if re.match(rf"^{re.escape(key)}\s*=", line.strip()):
+            new_lines.append(f"{key}={value}\n")
+            found = True
+        else:
+            new_lines.append(line)
+
+    if not found:
+        new_lines.append(f"{key}={value}\n")
+
+    with open(env_path, 'w', encoding='utf-8') as f:
+        f.writelines(new_lines)
+
+
+@router.get("/credentials", response_model=CredentialsReadResponse)
+async def get_credentials(
+    reveal: bool = False,
+    user=Depends(require_admin_access)
+):
+    """
+    Return current Cloudflare credential values.
+    Token is partially masked by default; pass ?reveal=true for the full value.
+    Requires admin access.
+    """
+    env_path = _find_env_path()
+    env_vars = _read_env_file_dict(env_path)
+
+    def get(key: str) -> Optional[str]:
+        return os.getenv(key) or env_vars.get(key)
+
+    token = get("CLOUDFLARE_API_TOKEN")
+
+    return CredentialsReadResponse(
+        api_token_partial=_partial_reveal(token),
+        api_token_full=token if reveal else None,
+        account_id=get("CLOUDFLARE_ACCOUNT_ID"),
+        d1_database_id=get("CLOUDFLARE_D1_DATABASE_ID"),
+        vectorize_index=get("CLOUDFLARE_VECTORIZE_INDEX"),
+        sync_owner=get("MCP_HYBRID_SYNC_OWNER") or "http",
+        env_file_path=str(env_path) if env_path.exists() else None,
+    )
+
+
+@router.post("/credentials/test", response_model=TestCredentialsResponse)
+async def test_credentials(
+    request: TestCredentialsRequest,
+    user=Depends(require_admin_access)
+):
+    """
+    Validate a Cloudflare API token against the accounts/.../tokens/verify endpoint.
+    Does NOT persist anything. Requires admin access.
+    """
+    # Use module-level 're' import
+    if not re.fullmatch(r"[a-f0-9]{32}", request.account_id):
+        return TestCredentialsResponse(valid=False, error="account_id must be a 32-character hexadecimal string")
+
+    # account_id validated above to be exactly 32 hex chars — no SSRF risk
+    safe_account_id = re.sub(r"[^a-f0-9]", "", request.account_id)
+    url = f"https://api.cloudflare.com/client/v4/accounts/{safe_account_id}/tokens/verify"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {request.api_token}"}
+            )
+        data = resp.json()
+    except httpx.TimeoutException:
+        return TestCredentialsResponse(valid=False, error="Request timed out")
+    except Exception as e:
+        return TestCredentialsResponse(valid=False, error=str(e))
+
+    if not data.get("success"):
+        errors = data.get("errors", [])
+        msg = errors[0].get("message", "Invalid token") if errors else "Invalid token"
+        return TestCredentialsResponse(valid=False, error=msg)
+
+    result = data.get("result", {})
+    return TestCredentialsResponse(
+        valid=True,
+        status=result.get("status"),
+        token_id=result.get("id"),
+        expires_on=result.get("expires_on"),
+    )
+
+
+@router.post("/credentials", response_model=SaveCredentialsResponse)
+async def save_credentials(
+    request: SaveCredentialsRequest,
+    background_tasks: BackgroundTasks,
+    user=Depends(require_admin_access)
+):
+    """
+    Persist Cloudflare credentials to .env and schedule a server restart.
+    Server re-verifies the token before writing to guard against stale tested_token.
+    Requires admin access.
+    """
+    if request.tested_token != request.api_token:
+        raise HTTPException(
+            status_code=400,
+            detail="tested_token does not match api_token — run the connection test first."
+        )
+
+    # Validate sync_owner
+    allowed_sync_owners = {"http", "mcp", "both"}
+    if request.sync_owner not in allowed_sync_owners:
+        raise HTTPException(
+            status_code=400,
+            detail=f"sync_owner must be one of: {', '.join(sorted(allowed_sync_owners))}"
+        )
+
+    # Validate account_id to prevent SSRF — must be exactly 32 hex chars
+    if not re.fullmatch(r"[a-f0-9]{32}", request.account_id):
+        raise HTTPException(status_code=400, detail="account_id must be a 32-character hexadecimal string")
+
+    # Strip any residual non-hex chars so CodeQL sees a sanitized value
+    safe_account_id = re.sub(r"[^a-f0-9]", "", request.account_id)
+
+    # Re-verify token server-side before persisting
+    url = f"https://api.cloudflare.com/client/v4/accounts/{safe_account_id}/tokens/verify"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {request.api_token}"}
+            )
+        data = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Cloudflare verification failed: {e}")
+
+    if not data.get("success"):
+        errors = data.get("errors", [])
+        msg = errors[0].get("message", "Invalid token") if errors else "Invalid token"
+        raise HTTPException(status_code=400, detail=f"Token verification failed: {msg}")
+
+    # Sanitize all credential values — strip newlines to prevent .env injection
+    def _sanitize(v: str) -> str:
+        return v.replace("\n", "").replace("\r", "").replace("\x00", "")
+
+    # Write to .env
+    env_path = _find_env_path()
+    try:
+        for key, value in {
+            "CLOUDFLARE_API_TOKEN": _sanitize(request.api_token),
+            "CLOUDFLARE_ACCOUNT_ID": _sanitize(request.account_id),
+            "CLOUDFLARE_D1_DATABASE_ID": _sanitize(request.d1_database_id),
+            "CLOUDFLARE_VECTORIZE_INDEX": _sanitize(request.vectorize_index),
+            "MCP_HYBRID_SYNC_OWNER": request.sync_owner,
+        }.items():
+            _write_credential_to_env(env_path, key, value)
+    except Exception as e:
+        logger.error(f"Failed to write credentials to .env: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to write .env: {e}")
+
+    logger.warning(
+        f"AUDIT: Cloudflare credentials updated by {user.client_id} (auth: {user.auth_method})"
+    )
+
+    from .server import _restart_server_delayed
+    background_tasks.add_task(_restart_server_delayed)
+
+    return SaveCredentialsResponse(
+        success=True,
+        message="Credentials saved. Server restarting...",
+        restart_scheduled=True,
     )
