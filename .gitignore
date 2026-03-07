@@ -1,4 +1,8 @@
 
+# TLS certificates
+*.pem
+certs/
+
 # Windows device name artifacts (created when running Windows commands in Git Bash)
 nul
 NUL
