@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Add Persistent Memory to Claude.ai (5-Minute Setup) — MCP Memory Service</title>
+<meta name="description" content="Learn how to give Claude persistent memory using mcp-memory-service with Remote MCP. Works directly in claude.ai browser - no desktop app required. Self-hosted, open source, enterprise-ready.">
+<meta name="keywords" content="Claude AI, MCP, persistent memory, claude.ai, Remote MCP, OAuth 2.0, self-hosted AI, Anthropic">
+<meta property="og:title" content="How to Add Persistent Memory to Claude.ai (5-Minute Setup)">
+<meta property="og:description" content="Give Claude persistent memory that works in your browser. Self-hosted, open source, enterprise-ready. No desktop app required.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://doobidoo.github.io/mcp-memory-service/blog/remote-mcp-tutorial.html">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --cyan:#00e5ff;--purple:#b388ff;--dark:#0a0e17;--card:#111827;
+  --text:#e2e8f0;--muted:#94a3b8;--green:#34d399;--glow:0 0 20px rgba(0,229,255,.3);
+}
+html{scroll-behavior:smooth}
+body{background:var(--dark);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.7;overflow-x:hidden}
+a{color:var(--cyan);text-decoration:none;transition:opacity .2s}
+a:hover{opacity:.8}
+
+/* Canvas background */
+#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* Navigation */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,14,23,.9);backdrop-filter:blur(12px);border-bottom:1px solid #1e293b;padding:.8rem 2rem;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{font-weight:700;font-size:1rem;color:var(--text)}
+.nav-brand span{color:var(--cyan)}
+.nav-links{display:flex;gap:1.5rem;font-size:.9rem}
+.nav-links a{color:var(--muted)}
+.nav-links a:hover{color:var(--cyan)}
+
+/* Article */
+.article{position:relative;z-index:1;max-width:780px;margin:0 auto;padding:6rem 2rem 4rem}
+.article-meta{color:var(--muted);font-size:.9rem;margin-bottom:2rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center}
+.article-meta .tag{background:rgba(0,229,255,.1);color:var(--cyan);padding:.2rem .6rem;border-radius:4px;font-size:.8rem}
+.article h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem;line-height:1.2}
+.article .subtitle{font-size:1.2rem;color:var(--muted);margin-bottom:3rem;line-height:1.6}
+.article h2{font-size:1.6rem;font-weight:700;margin:3rem 0 1rem;color:var(--text);padding-top:1rem}
+.article h3{font-size:1.2rem;font-weight:600;margin:2rem 0 .8rem;color:var(--text)}
+.article p{margin-bottom:1.2rem;color:var(--text);font-size:1.05rem}
+.article ul,.article ol{margin:0 0 1.5rem 1.5rem;color:var(--text)}
+.article li{margin-bottom:.5rem;font-size:1.05rem}
+.article strong{color:#fff}
+.article em{color:var(--muted)}
+
+/* Code blocks */
+.article pre{background:var(--card);border:1px solid #1e293b;border-radius:10px;padding:1.2rem 1.5rem;overflow-x:auto;margin:1rem 0 1.5rem;font-family:'SF Mono',Consolas,'Liberation Mono',monospace;font-size:.9rem;line-height:1.6;color:var(--cyan)}
+.article code{background:rgba(0,229,255,.08);color:var(--cyan);padding:.15rem .4rem;border-radius:4px;font-family:'SF Mono',Consolas,'Liberation Mono',monospace;font-size:.9em}
+.article pre code{background:none;padding:0;border-radius:0}
+
+/* Callout boxes */
+.callout{background:var(--card);border-left:3px solid var(--cyan);border-radius:0 10px 10px 0;padding:1.2rem 1.5rem;margin:1.5rem 0;font-size:.95rem}
+.callout.success{border-left-color:var(--green)}
+.callout.warning{border-left-color:#f59e0b}
+.callout p{margin-bottom:0}
+
+/* Comparison table */
+.article table{width:100%;border-collapse:collapse;margin:1.5rem 0;font-size:.95rem}
+.article th{background:var(--card);color:var(--cyan);padding:.8rem 1rem;text-align:left;font-weight:600;border-bottom:2px solid #1e293b}
+.article td{padding:.7rem 1rem;border-bottom:1px solid #1e293b;color:var(--text)}
+.article tr:hover td{background:rgba(0,229,255,.03)}
+
+/* Step cards */
+.step{background:var(--card);border:1px solid #1e293b;border-radius:12px;padding:1.5rem 2rem;margin:1.5rem 0;transition:border-color .3s}
+.step:hover{border-color:rgba(0,229,255,.3)}
+.step-number{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--cyan),var(--purple));color:var(--dark);font-weight:800;font-size:.9rem;margin-bottom:.8rem}
+.step h3{margin-top:0}
+
+/* Flow diagram */
+.flow-diagram{display:flex;align-items:center;justify-content:center;gap:.5rem;flex-wrap:wrap;padding:2rem 0;margin:1rem 0}
+.flow-node{background:var(--card);border:1px solid #1e293b;border-radius:10px;padding:.8rem 1.2rem;text-align:center;font-size:.85rem;min-width:110px}
+.flow-node .label{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+.flow-node .name{font-weight:600;margin-top:.2rem}
+.flow-arrow{color:var(--cyan);font-size:1.3rem;animation:flow 1.5s ease-in-out infinite}
+@keyframes flow{0%,100%{opacity:.4}50%{opacity:1;text-shadow:0 0 8px var(--cyan)}}
+
+/* Cost comparison */
+.cost-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0}
+.cost-card{background:var(--card);border:1px solid #1e293b;border-radius:12px;padding:1.5rem}
+.cost-card.highlight{border-color:var(--cyan);box-shadow:0 0 20px rgba(0,229,255,.1)}
+.cost-card h4{font-size:1rem;margin-bottom:.8rem}
+.cost-card .price{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.cost-card .period{color:var(--muted);font-size:.85rem}
+.cost-card ul{list-style:none;margin:.8rem 0 0;padding:0}
+.cost-card li{color:var(--muted);font-size:.9rem;padding:.3rem 0}
+.cost-card li::before{content:'';margin-right:.5rem}
+
+/* CTA */
+.cta-section{text-align:center;background:var(--card);border:1px solid #1e293b;border-radius:16px;padding:3rem 2rem;margin:3rem 0}
+.cta-section h2{background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.8rem;border-radius:8px;font-size:1rem;font-weight:600;transition:all .3s;cursor:pointer;border:none;margin:.5rem}
+.btn-primary{background:linear-gradient(135deg,var(--cyan),var(--purple));color:var(--dark)}
+.btn-primary:hover{box-shadow:var(--glow);transform:translateY(-2px)}
+.btn-secondary{background:transparent;border:1px solid var(--muted);color:var(--text)}
+.btn-secondary:hover{border-color:var(--cyan);color:var(--cyan)}
+
+/* Use cases grid */
+.use-cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin:1.5rem 0}
+.use-case{background:var(--card);border:1px solid #1e293b;border-radius:10px;padding:1.2rem;transition:border-color .3s}
+.use-case:hover{border-color:rgba(179,136,255,.3)}
+.use-case h4{font-size:1rem;margin-bottom:.5rem}
+.use-case p{font-size:.9rem;color:var(--muted);margin:0}
+
+/* Footer */
+footer{position:relative;z-index:1;text-align:center;padding:3rem 2rem;color:var(--muted);font-size:.85rem;border-top:1px solid #1e293b}
+footer a{color:var(--cyan)}
+
+/* Mobile */
+@media(max-width:640px){
+  .nav-links{display:none}
+  .article{padding:5rem 1.2rem 3rem}
+  .cost-grid{grid-template-columns:1fr}
+  .flow-diagram{flex-direction:column}
+  .flow-arrow{transform:rotate(90deg)}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- Navigation -->
+<nav class="nav">
+  <a href="../index.html" class="nav-brand"><span>MCP</span> Memory Service</a>
+  <div class="nav-links">
+    <a href="https://github.com/doobidoo/mcp-memory-service">GitHub</a>
+    <a href="https://github.com/doobidoo/mcp-memory-service/wiki">Docs</a>
+    <a href="https://pypi.org/project/mcp-memory-service/">PyPI</a>
+    <a href="../index.html">Home</a>
+  </div>
+</nav>
+
+<!-- Article -->
+<article class="article">
+
+  <div class="article-meta">
+    <span>March 2026</span>
+    <span>8 min read</span>
+    <span class="tag">Tutorial</span>
+    <span class="tag">Remote MCP</span>
+    <span class="tag">claude.ai</span>
+  </div>
+
+  <h1>How to Add Persistent Memory to Claude.ai (5-Minute Setup)</h1>
+  <p class="subtitle">Give Claude a brain that persists across sessions. Self-hosted, open source, works directly in your browser &mdash; no desktop app required.</p>
+
+  <!-- The Problem -->
+  <h2>The Problem</h2>
+  <p>Claude is powerful, but it doesn't remember context between sessions. Every conversation starts from scratch.</p>
+  <p>Sure, ChatGPT has memory. Gemini has memory. Claude Desktop has extensions.</p>
+  <p>But what if you:</p>
+  <ul>
+    <li>Use <strong>claude.ai in the browser</strong> (no desktop app)</li>
+    <li>Want to <strong>own your data</strong> (no third-party cloud)</li>
+    <li>Need <strong>enterprise security</strong> (OAuth 2.0, HTTPS, CORS)</li>
+    <li>Require <strong>self-hosted infrastructure</strong> (compliance, privacy)</li>
+  </ul>
+  <p>That's where <strong>mcp-memory-service</strong> comes in.</p>
+
+  <!-- What is it -->
+  <h2>What is mcp-memory-service?</h2>
+  <p>An open-source persistent memory layer for Claude that implements the Model Context Protocol (MCP). Unlike other solutions, it supports <strong>Remote MCP</strong> &mdash; meaning it works directly in claude.ai browser without requiring Claude Desktop.</p>
+
+  <h3>What Makes It Different?</h3>
+  <table>
+    <thead>
+      <tr><th>Feature</th><th>mcp-memory-service</th><th>mem0</th><th>Others</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Works in claude.ai browser</td><td><strong>Yes</strong></td><td>No</td><td>No</td></tr>
+      <tr><td>Knowledge graph</td><td><strong>Typed edges</strong></td><td>No</td><td>No</td></tr>
+      <tr><td>Auto-consolidation</td><td><strong>Decay + compression</strong></td><td>No</td><td>No</td></tr>
+      <tr><td>Self-hosted</td><td><strong>Yes</strong></td><td>Yes</td><td>Varies</td></tr>
+      <tr><td>OAuth 2.0 + DCR</td><td><strong>Yes</strong></td><td>?</td><td>No</td></tr>
+      <tr><td>Hybrid search (BM25 + vector)</td><td><strong>Yes</strong></td><td>No</td><td>No</td></tr>
+      <tr><td>License</td><td><strong>Apache 2.0</strong></td><td>MIT</td><td>Varies</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 5-Minute Setup -->
+  <h2>5-Minute Setup Tutorial</h2>
+  <p>Let's get mcp-memory-service running with Remote MCP for claude.ai.</p>
+
+  <h3>Prerequisites</h3>
+  <ul>
+    <li>Python 3.10+</li>
+    <li>A machine that can run 24/7 (VPS, home server, or your laptop for testing)</li>
+    <li>5 minutes of your time</li>
+  </ul>
+  <p>No domain name required &mdash; we'll use Cloudflare Tunnel for free HTTPS.</p>
+
+  <div class="step">
+    <div class="step-number">1</div>
+    <h3>Install mcp-memory-service</h3>
+<pre><code># Clone the repository
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or: venv\Scripts\activate  # Windows
+
+# Install dependencies
+pip install -e .</code></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-number">2</div>
+    <h3>Configure for Remote MCP</h3>
+    <p>Create a <code>.env</code> file:</p>
+<pre><code># Remote MCP Configuration
+MCP_STREAMABLE_HTTP_MODE=1
+MCP_SSE_HOST=0.0.0.0
+MCP_SSE_PORT=8765
+
+# OAuth Configuration
+MCP_OAUTH_ENABLED=true
+MCP_OAUTH_STORAGE_BACKEND=sqlite
+MCP_OAUTH_SQLITE_PATH=./data/oauth.db
+
+# Memory Configuration (optional)
+MCP_MEMORY_CONSOLIDATION_ENABLED=true
+MCP_MEMORY_DECAY_ENABLED=true</code></pre>
+    <p><strong>What these settings do:</strong></p>
+    <ul>
+      <li><code>STREAMABLE_HTTP_MODE=1</code> &mdash; Enables Remote MCP (the future, SSE is deprecated)</li>
+      <li><code>SSE_HOST=0.0.0.0</code> &mdash; Allows external connections (not just localhost)</li>
+      <li><code>OAUTH_ENABLED=true</code> &mdash; Secure authentication for claude.ai</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <div class="step-number">3</div>
+    <h3>Start the Server</h3>
+<pre><code>python -m mcp_memory_service.server</code></pre>
+    <p>You should see:</p>
+<pre><code>[INFO] MCP Memory Service starting...
+[INFO] Streamable HTTP transport enabled
+[INFO] OAuth 2.0 server initialized
+[INFO] Server running on http://0.0.0.0:8765
+[INFO] MCP endpoint: http://0.0.0.0:8765/mcp</code></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-number">4</div>
+    <h3>Expose with Cloudflare Tunnel</h3>
+    <p>In a <strong>new terminal</strong>:</p>
+<pre><code># macOS
+brew install cloudflared
+
+# Linux
+wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i cloudflared-linux-amd64.deb
+
+# Start tunnel
+cloudflared tunnel --url http://localhost:8765</code></pre>
+    <p>You'll see:</p>
+<pre><code>Your quick Tunnel has been created! Visit it at:
+https://random-name-1234.trycloudflare.com</code></pre>
+    <p><strong>Copy that URL</strong> &mdash; you'll need it next.</p>
+    <div class="callout warning">
+      <p>This is a temporary tunnel. For production, use a <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/">permanent Cloudflare Tunnel</a> or your own domain with Let's Encrypt.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-number">5</div>
+    <h3>Connect to claude.ai</h3>
+    <ol>
+      <li>Go to <a href="https://claude.ai">claude.ai</a></li>
+      <li>Click your profile &rarr; <strong>Settings</strong></li>
+      <li>Navigate to <strong>Connectors</strong></li>
+      <li>Click <strong>Add Connector</strong></li>
+      <li>Paste your tunnel URL + <code>/mcp</code>: <code>https://random-name-1234.trycloudflare.com/mcp</code></li>
+      <li>Complete the OAuth flow &rarr; <strong>Done!</strong></li>
+    </ol>
+    <div class="callout success">
+      <p>Claude now has persistent memory. All 12 memory tools are available in your conversations.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-number">6</div>
+    <h3>Test It Out</h3>
+    <p>In a new Claude conversation:</p>
+<pre><code>You: "Store a memory: My favorite programming language is Rust"
+Claude: "I've stored that memory."
+
+--- close conversation, open new one ---
+
+You: "What's my favorite programming language?"
+Claude: "Your favorite programming language is Rust!"</code></pre>
+    <p>It remembers!</p>
+  </div>
+
+  <!-- How It Works -->
+  <h2>How It Works</h2>
+
+  <div class="flow-diagram">
+    <div class="flow-node"><div class="label">Browser</div><div class="name">claude.ai</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-node"><div class="label">Transport</div><div class="name">HTTPS</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-node"><div class="label">Auth</div><div class="name">OAuth 2.0</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-node"><div class="label">Server</div><div class="name">MCP Memory</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-node"><div class="label">Storage</div><div class="name">SQLite + Graph</div></div>
+  </div>
+
+  <ol>
+    <li>You interact with Claude in the browser</li>
+    <li>Claude detects memory tools from your connector</li>
+    <li>When relevant, Claude calls <code>memory_store()</code> or <code>memory_search()</code></li>
+    <li>Request goes to your server via HTTPS (OAuth token authenticates it)</li>
+    <li>Memory is stored/retrieved from your local database</li>
+    <li>Claude uses the context in its response</li>
+  </ol>
+
+  <p>All communication is encrypted (HTTPS), authenticated (OAuth 2.0), and private (data never leaves your infrastructure).</p>
+
+  <h3>The Knowledge Graph</h3>
+  <p>Unlike simple key-value storage, mcp-memory-service builds a <strong>knowledge graph</strong> with typed edges:</p>
+<pre><code>Memory: "Favorite language is Rust"
+  &darr; relates_to: programming
+  &darr; preference_for: language
+Memory: "Working on a web server"
+  &darr; uses_technology: backend
+  &darr; relates_to: architecture</code></pre>
+  <p>This allows Claude to find related memories contextually, understand relationships between facts, and provide better answers by connecting the dots.</p>
+
+  <h3>Auto-Consolidation</h3>
+  <p>Over time, memories accumulate. mcp-memory-service automatically:</p>
+  <ul>
+    <li><strong>Decays</strong> &mdash; Reduces importance of old, unused memories</li>
+    <li><strong>Compresses</strong> &mdash; Merges similar memories (e.g., 5 mentions of "likes Rust" &rarr; 1 consolidated memory)</li>
+    <li><strong>Prunes</strong> &mdash; Archives memories with zero relevance score</li>
+  </ul>
+
+  <!-- Production Deployment -->
+  <h2>Production Deployment</h2>
+
+  <h3>Option 1: Permanent Cloudflare Tunnel</h3>
+<pre><code># Authenticate
+cloudflared tunnel login
+
+# Create tunnel
+cloudflared tunnel create memory-service
+
+# Route traffic
+cloudflared tunnel route dns memory-service memory.yourdomain.com
+
+# Run (use systemd/supervisor in production)
+cloudflared tunnel run memory-service</code></pre>
+
+  <h3>Option 2: Your Own Domain + Let's Encrypt</h3>
+<pre><code># Get certificate
+certbot certonly --standalone -d memory.yourdomain.com
+
+# Update .env
+MCP_HTTPS_ENABLED=true
+MCP_SSL_CERT_FILE=/etc/letsencrypt/live/memory.yourdomain.com/fullchain.pem
+MCP_SSL_KEY_FILE=/etc/letsencrypt/live/memory.yourdomain.com/privkey.pem
+
+# Restart server
+python -m mcp_memory_service.server</code></pre>
+
+  <h3>Option 3: Reverse Proxy (Caddy)</h3>
+  <p>The simplest production setup &mdash; Caddy handles HTTPS automatically:</p>
+<pre><code>memory.yourdomain.com {
+    reverse_proxy localhost:8765
+}</code></pre>
+  <p>That's it. Caddy auto-provisions Let's Encrypt certificates.</p>
+
+  <!-- Cost Analysis -->
+  <h2>Cost Analysis</h2>
+
+  <div class="cost-grid">
+    <div class="cost-card highlight">
+      <h4>mcp-memory-service (Self-Hosted)</h4>
+      <div class="price">$6</div>
+      <div class="period">per month</div>
+      <ul>
+        <li>Unlimited memories</li>
+        <li>Unlimited users</li>
+        <li>Full data ownership</li>
+        <li>Knowledge graph included</li>
+        <li>No vendor lock-in</li>
+      </ul>
+    </div>
+    <div class="cost-card">
+      <h4>Typical SaaS Memory</h4>
+      <div class="price" style="background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">$50+</div>
+      <div class="period">per month</div>
+      <ul>
+        <li>10k-100k memory limit</li>
+        <li>Per-seat pricing</li>
+        <li>Data on vendor's cloud</li>
+        <li>Basic features only</li>
+        <li>Vendor lock-in</li>
+      </ul>
+    </div>
+  </div>
+  <p><em>Self-hosted on a Hetzner CX21 (2 vCPU, 4GB RAM) at ~$6/month. DigitalOcean ~$12, AWS t3.small ~$15.</em></p>
+
+  <!-- Use Cases -->
+  <h2>Real-World Use Cases</h2>
+
+  <div class="use-cases">
+    <div class="use-case">
+      <h4>Personal Assistant</h4>
+      <p>Preferences, habits, schedules. "I prefer morning meetings after 10 AM."</p>
+    </div>
+    <div class="use-case">
+      <h4>Project Context</h4>
+      <p>Architecture decisions, API endpoints, team roles. Never re-explain your stack.</p>
+    </div>
+    <div class="use-case">
+      <h4>Learning Tracker</h4>
+      <p>Concepts learned, areas for review, helpful resources. Build on prior knowledge.</p>
+    </div>
+    <div class="use-case">
+      <h4>Code Review Helper</h4>
+      <p>Coding styles, common gotchas, testing requirements. Institutional knowledge.</p>
+    </div>
+    <div class="use-case">
+      <h4>Multi-Device Workflow</h4>
+      <p>Start on laptop, continue on tablet, pick up on phone. Same memory everywhere.</p>
+    </div>
+    <div class="use-case">
+      <h4>Team Knowledge Base</h4>
+      <p>Shared decisions, onboarding context, best practices. OAuth-based team access.</p>
+    </div>
+  </div>
+
+  <!-- Monitoring -->
+  <h2>Monitoring &amp; Maintenance</h2>
+
+<pre><code># Health check
+curl https://your-domain.com/api/health
+
+# Database backup
+cp ./data/memories.db ./backups/memories-$(date +%Y%m%d).db
+
+# Server logs (systemd)
+journalctl -u mcp-memory-service -f</code></pre>
+
+  <!-- Troubleshooting -->
+  <h2>Troubleshooting</h2>
+
+  <table>
+    <thead>
+      <tr><th>Problem</th><th>Solution</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>"Connection refused"</td><td>Check firewall (<code>ufw allow 8765/tcp</code>), verify <code>MCP_SSE_HOST=0.0.0.0</code></td></tr>
+      <tr><td>"OAuth callback error"</td><td>Verify callback URLs include <code>claude.ai</code> and <code>claude.com</code></td></tr>
+      <tr><td>"SSL certificate error"</td><td>Use valid cert (not self-signed). Cloudflare Tunnel handles this automatically.</td></tr>
+      <tr><td>"Claude doesn't see connector"</td><td>Verify URL includes <code>/mcp</code> path. Check server logs.</td></tr>
+      <tr><td>"Max token limit exceeded"</td><td>Use search filters and pagination (25k token limit per tool result)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Conclusion -->
+  <h2>Conclusion</h2>
+  <p>Adding persistent memory to Claude doesn't have to be complicated or expensive.</p>
+  <p>With mcp-memory-service and Remote MCP, you get:</p>
+  <ul>
+    <li><strong>Browser-based workflow</strong> (no desktop app)</li>
+    <li><strong>Enterprise security</strong> (OAuth 2.0, HTTPS)</li>
+    <li><strong>Full data ownership</strong> (self-hosted)</li>
+    <li><strong>Advanced features</strong> (knowledge graph, auto-consolidation, hybrid search)</li>
+    <li><strong>Cost-effective</strong> ($6/month vs $50+/month SaaS)</li>
+  </ul>
+  <p>Setup takes 5 minutes. The value lasts forever.</p>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <h2>Ready to Give Claude a Memory?</h2>
+    <p style="color:var(--muted);margin:1rem 0 1.5rem">Open source. Self-hosted. 5 minutes to set up.</p>
+    <a href="https://github.com/doobidoo/mcp-memory-service" class="btn btn-primary" target="_blank">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      View on GitHub
+    </a>
+    <a href="https://github.com/doobidoo/mcp-memory-service/wiki/Claude-AI-Remote-MCP-Integration" class="btn btn-secondary" target="_blank">
+      Full Documentation
+    </a>
+  </div>
+
+  <!-- Resources -->
+  <h2>Resources</h2>
+  <ul>
+    <li><a href="https://github.com/doobidoo/mcp-memory-service">mcp-memory-service on GitHub</a></li>
+    <li><a href="https://modelcontextprotocol.io/">Official MCP Documentation</a></li>
+    <li><a href="https://support.claude.com/en/articles/11503834-building-custom-connectors-via-remote-mcp-servers">Anthropic: Building Custom Connectors</a></li>
+    <li><a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/">Cloudflare Tunnel Documentation</a></li>
+    <li><a href="https://support.claude.com/en/articles/12922490-remote-mcp-server-submission-guide">MCP Remote Server Submission Guide</a></li>
+  </ul>
+
+  <!-- Author -->
+  <hr style="border:none;border-top:1px solid #1e293b;margin:3rem 0 2rem">
+  <p style="color:var(--muted);font-size:.9rem"><strong style="color:var(--text)">About the Author</strong> &mdash; Henry (doobidoo) is a Senior Technical Consultant and DevOps Engineer specializing in cloud infrastructure and AI tooling. He built mcp-memory-service out of frustration with vendor lock-in and lack of browser-based memory solutions for Claude.</p>
+  <p style="font-size:.9rem">Connect on <a href="https://github.com/doobidoo">GitHub</a>.</p>
+
+</article>
+
+<footer>
+  <p>MCP Memory Service &mdash; Open Source under Apache 2.0 &mdash; <a href="https://github.com/doobidoo/mcp-memory-service">github.com/doobidoo/mcp-memory-service</a></p>
+</footer>
+
+<script>
+// Particle Network Background (reused from landing page)
+const canvas=document.getElementById('bg-canvas'),ctx=canvas.getContext('2d');let particles=[];const PC=50,CD=150;let mouse={x:-1e3,y:-1e3};
+function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight}
+window.addEventListener('resize',resize);resize();
+document.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+class P{constructor(){this.x=Math.random()*canvas.width;this.y=Math.random()*canvas.height;this.vx=(Math.random()-.5)*.4;this.vy=(Math.random()-.5)*.4;this.r=Math.random()*1.5+.5;this.c=Math.random()>.5}
+update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>canvas.width)this.vx*=-1;if(this.y<0||this.y>canvas.height)this.vy*=-1;const dx=this.x-mouse.x,dy=this.y-mouse.y,d=Math.sqrt(dx*dx+dy*dy);if(d<100){this.vx+=dx/d*.1;this.vy+=dy/d*.1}this.vx*=.99;this.vy*=.99}
+draw(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=this.c?'rgba(0,229,255,0.5)':'rgba(179,136,255,0.5)';ctx.fill()}}
+for(let i=0;i<PC;i++)particles.push(new P());
+function animate(){ctx.clearRect(0,0,canvas.width,canvas.height);for(let i=0;i<particles.length;i++){particles[i].update();particles[i].draw();for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<CD){const o=(1-d/CD)*.12;ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=particles[i].c?`rgba(0,229,255,${o})`:`rgba(179,136,255,${o})`;ctx.lineWidth=.5;ctx.stroke()}}}requestAnimationFrame(animate)}
+animate();
+</script>
+</body>
+</html>
