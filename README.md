@@ -56,6 +56,7 @@ cloudflared tunnel --url http://localhost:8765
 ```
 
 **Production Setup:** See [Remote MCP Setup Guide](docs/remote-mcp-setup.md) for Let's Encrypt, nginx, and firewall configuration.
+**Step-by-Step Tutorial:** [Blog: 5-Minute claude.ai Setup](https://doobidoo.github.io/mcp-memory-service/blog/remote-mcp-tutorial.html) | [Wiki Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Claude-AI-Remote-MCP-Integration)
 
 ---
 
