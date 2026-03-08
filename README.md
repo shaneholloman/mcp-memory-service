@@ -343,3 +343,136 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 - **v10.23.0** - Quality scorer fix, consolidator improvements, two new opt-out flags: fix asyncio NameError in ai_evaluator.py (#544), fix consolidator invalid memory_type and dedup bug (#545), MCP_TYPED_EDGES_ENABLED opt-out (#546), MCP_CONSOLIDATION_STORE_ASSOCIATIONS opt-out (#547) — 14 new tests
 
 **Full version history**: [CHANGELOG.md](CHANGELOG.md) | [Older versions (v10.22.0 and earlier)](docs/archive/CHANGELOG-HISTORIC.md) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
+
+---
+
+## Migration to v9.0.0
+
+**⚡ TL;DR**: No manual migration needed - upgrades happen automatically!
+
+**Breaking Changes:**
+- **Memory Type Ontology**: Legacy types auto-migrate to new taxonomy (task→observation, note→observation)
+- **Asymmetric Relationships**: Directed edges only (no longer bidirectional)
+
+**Migration Process:**
+1. Stop your MCP server
+2. Update to latest version (`git pull` or `pip install --upgrade mcp-memory-service`)
+3. Restart server - automatic migrations run on startup:
+   - Database schema migrations (009, 010)
+   - Memory type soft-validation (legacy types → observation)
+   - No tag migration needed (backward compatible)
+
+**Safety**: Migrations are idempotent and safe to re-run
+
+---
+
+### Breaking Changes
+
+#### 1. Memory Type Ontology
+
+**What Changed:**
+- Legacy memory types (task, note, standard) are deprecated
+- New formal taxonomy: 5 base types (observation, decision, learning, error, pattern) with 21 subtypes
+- Type validation now defaults to 'observation' for invalid types (soft validation)
+
+**Migration Process:**
+✅ **Automatic** - No manual action required!
+
+When you restart the server with v9.0.0:
+- Invalid memory types are automatically soft-validated to 'observation'
+- Database schema updates run automatically
+- Existing memories continue to work without modification
+
+**New Memory Types:**
+- observation: General observations, facts, and discoveries
+- decision: Decisions and planning
+- learning: Learnings and insights
+- error: Errors and failures
+- pattern: Patterns and trends
+
+**Backward Compatibility:**
+- Existing memories will be auto-migrated (task→observation, note→observation, standard→observation)
+- Invalid types default to 'observation' (no errors thrown)
+
+#### 2. Asymmetric Relationships
+
+**What Changed:**
+- Asymmetric relationships (causes, fixes, supports, follows) now store only directed edges
+- Symmetric relationships (related, contradicts) continue storing bidirectional edges
+- Database migration (010) removes incorrect reverse edges
+
+**Migration Required:**
+No action needed - database migration runs automatically on startup.
+
+**Code Changes Required:**
+If your code expects bidirectional storage for asymmetric relationships:
+
+```python
+# OLD (will no longer work):
+# Asymmetric relationships were stored bidirectionally
+result = storage.find_connected(memory_id, relationship_type="causes")
+
+# NEW (correct approach):
+# Use direction parameter for asymmetric relationships
+result = storage.find_connected(
+    memory_id,
+    relationship_type="causes",
+    direction="both"  # Explicit direction required for asymmetric types
+)
+```
+
+**Relationship Types:**
+- Asymmetric: causes, fixes, supports, follows (A→B ≠ B→A)
+- Symmetric: related, contradicts (A↔B)
+
+### Performance Improvements
+
+- ontology validation: 97.5x faster (module-level caching)
+- Type lookups: 35.9x faster (cached reverse maps)
+- Tag validation: 47.3% faster (eliminated double parsing)
+
+### Testing
+
+- 829/914 tests passing (90.7%)
+- 80 new ontology tests with 100% backward compatibility
+- All API/HTTP integration tests passing
+
+### Support
+
+If you encounter issues during migration:
+- Check [Troubleshooting Guide](docs/troubleshooting/)
+- Review [CHANGELOG.md](CHANGELOG.md) for detailed changes
+- Open an issue: https://github.com/doobidoo/mcp-memory-service/issues
+
+---
+
+## 📚 Documentation & Resources
+
+- **[Agent Integration Guides](docs/agents/)** 🆕 – LangGraph, CrewAI, AutoGen, HTTP generic
+- **[Remote MCP Setup (claude.ai)](docs/remote-mcp-setup.md)** 🆕 – Browser integration via HTTPS + OAuth
+- **[Installation Guide](docs/installation.md)** – Detailed setup instructions
+- **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
+- **[Architecture Overview](docs/architecture.md)** – How it works under the hood
+- **[Team Setup Guide](docs/teams.md)** – OAuth and cloud collaboration
+- **[Knowledge Graph Dashboard](docs/features/knowledge-graph-dashboard.md)** 🆕 – Interactive graph visualization guide
+- **[Troubleshooting](docs/troubleshooting/)** – Common issues and solutions
+- **[API Reference](docs/api.md)** – Programmatic usage
+- **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** – Complete documentation
+- [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/doobidoo/mcp-memory-service) – AI-powered documentation assistant
+- **[MCP Starter Kit](https://kruppster57.gumroad.com/l/glbhd)** – Build your own MCP server using the patterns from this project
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Quick Development Setup:**
+```bash
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service
+pip install -e .  # Editable install
+pytest tests/      # Run test suite
+```
+
+---
