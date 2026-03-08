@@ -19,7 +19,43 @@ context in 5ms — without cloud lock-in or API costs.
 [![Works with AutoGen](https://img.shields.io/badge/Works%20with-AutoGen-purple)](https://github.com/microsoft/autogen)
 [![Works with Claude](https://img.shields.io/badge/Works%20with-Claude-blue)](https://claude.ai)
 [![Works with Cursor](https://img.shields.io/badge/Works%20with-Cursor-orange)](https://cursor.sh)
+[![Remote MCP](https://img.shields.io/badge/MCP-Remote%20Support-blue?logo=anthropic)](docs/remote-mcp-setup.md)
+[![claude.ai](https://img.shields.io/badge/claude.ai-Browser%20Compatible-orange?logo=anthropic)](docs/remote-mcp-setup.md)
+[![OAuth 2.0](https://img.shields.io/badge/Auth-OAuth%202.0%20%2B%20DCR-green)](docs/oauth-setup.md)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/doobidoo)
+
+---
+
+## 🌐 Works with claude.ai (Browser)
+
+Unlike desktop-only MCP servers, **mcp-memory-service supports Remote MCP** for native claude.ai integration.
+
+**What this means:**
+- ✅ Use persistent memory directly in your browser (no Claude Desktop required)
+- ✅ Works on any device (laptop, tablet, phone)
+- ✅ Enterprise-ready (OAuth 2.0 + HTTPS + CORS)
+- ✅ Self-hosted OR cloud-hosted (your choice)
+
+**5-Minute Setup:**
+
+```bash
+# 1. Start server with Remote MCP enabled
+MCP_STREAMABLE_HTTP_MODE=1 \
+MCP_SSE_HOST=0.0.0.0 \
+MCP_SSE_PORT=8765 \
+MCP_OAUTH_ENABLED=true \
+python -m mcp_memory_service.server
+
+# 2. Expose via Cloudflare Tunnel (or your own HTTPS setup)
+cloudflared tunnel --url http://localhost:8765
+# → Outputs: https://random-name.trycloudflare.com
+
+# 3. In claude.ai: Settings → Connectors → Add Connector
+# Paste the URL: https://random-name.trycloudflare.com/mcp
+# OAuth flow will handle authentication automatically
+```
+
+**Production Setup:** See [Remote MCP Setup Guide](docs/remote-mcp-setup.md) for Let's Encrypt, nginx, and firewall configuration.
 
 ---
 
@@ -78,6 +114,9 @@ async with httpx.AsyncClient() as client:
 |---|---|---|---|---|
 | License | Proprietary | Enterprise | — | **Apache 2.0** |
 | Cost | Per-call API | Enterprise | Infra costs | **$0** |
+| **🌐 claude.ai Browser** | ❌ Desktop only | ❌ Desktop only | ❌ | **✅ Remote MCP** |
+| **OAuth 2.0 + DCR** | ❓ Unknown | ❓ Unknown | ❌ | **✅ Enterprise-ready** |
+| **Streamable HTTP** | ❌ | ❌ | ❌ | **✅ (SSE deprecated)** |
 | Framework integration | SDK | SDK | Manual | **REST API (any HTTP client)** |
 | Knowledge graph | No | Limited | No | **Yes (typed edges)** |
 | Auto consolidation | No | No | No | **Yes (decay + compression)** |
@@ -122,7 +161,7 @@ It automatically captures your project context, architecture decisions, and code
 **Claude Desktop** · **VS Code** · **Cursor** · **Windsurf** · **Kilo Code** · **Raycast** · **JetBrains** · **Replit** · **Sourcegraph** · **Qodo**
 
 #### 💬 Chat Interfaces (MCP)
-**ChatGPT** (Developer Mode) · **Claude Web**
+**ChatGPT** (Developer Mode) · **claude.ai** (Remote MCP via HTTPS)
 
 **Works seamlessly with any MCP-compatible client or HTTP client** - whether you're building agent pipelines, coding in the terminal, IDE, or browser.
 
@@ -171,6 +210,25 @@ claude mcp add memory -- memory server
 ```
 
 Restart Claude Code. Memory tools will appear automatically.
+
+</details>
+
+<details>
+<summary><strong>🌐 claude.ai (Browser — Remote MCP)</strong></summary>
+
+No local installation required on the client — works directly in your browser:
+
+```bash
+# 1. Start server with Remote MCP
+MCP_STREAMABLE_HTTP_MODE=1 python -m mcp_memory_service.server
+
+# 2. Expose publicly (Cloudflare Tunnel)
+cloudflared tunnel --url http://localhost:8765
+
+# 3. Add connector in claude.ai Settings → Connectors with the tunnel URL
+```
+
+See [Remote MCP Setup Guide](docs/remote-mcp-setup.md) for production deployment with Let's Encrypt, nginx, and Docker.
 
 </details>
 
@@ -570,6 +628,7 @@ If you encounter issues during migration:
 ## 📚 Documentation & Resources
 
 - **[Agent Integration Guides](docs/agents/)** 🆕 – LangGraph, CrewAI, AutoGen, HTTP generic
+- **[Remote MCP Setup (claude.ai)](docs/remote-mcp-setup.md)** 🆕 – Browser integration via HTTPS + OAuth
 - **[Installation Guide](docs/installation.md)** – Detailed setup instructions
 - **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
 - **[Architecture Overview](docs/architecture.md)** – How it works under the hood
