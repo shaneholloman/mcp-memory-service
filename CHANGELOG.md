@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.26.2] - 2026-03-08
+
+### Fixed
+
+- **[#576] OAuth token exchange fails with 500 for public PKCE clients** (`authorization.py`): claude.ai and other MCP clients that use OAuth 2.1 public-client flow (PKCE without `client_secret`) received a `500 Internal Server Error` during token exchange because the endpoint unconditionally called `authenticate_client()`, which requires a secret. The endpoint now detects public PKCE clients — requests that supply a `code_verifier` but no `client_secret` — and skips secret authentication, using the PKCE verifier as the sole identity proof instead, in accordance with OAuth 2.1 §2.1. Confidential clients (with `client_secret`) are unaffected. Closes #576.
+- **Missing `/.well-known/oauth-protected-resource` endpoint** (`discovery.py`): The endpoint required by RFC 9728 and the MCP OAuth spec was returning 404, breaking OAuth discovery for compliant clients. Added `OAuthProtectedResourceMetadata` Pydantic model and the corresponding route, which advertises the resource identifier and authorization server URLs with `token_endpoint_auth_methods_supported: ["none"]`.
+- **Opaque OAuth error logging**: Added `exc_info=True` to exception handlers in the token and authorization endpoints so that full tracebacks are recorded in logs instead of generic error messages, making future debugging significantly easier.
+
+### Added
+
+- **Automated CHANGELOG housekeeping workflow** (`.github/workflows/changelog-housekeeping.yml`): Monthly GitHub Actions workflow (runs on the 1st of each month, also triggerable via `workflow_dispatch`) that automatically archives CHANGELOG entries older than the 8 most recent versions into `docs/archive/CHANGELOG-HISTORIC.md`. Keeps the main CHANGELOG lean for faster reads while preserving full history. Validates that no version entries are lost during archival.
+- **Changelog housekeeping script** (`scripts/maintenance/changelog_housekeeping.py`): Python script backing the workflow. Keeps the 8 most recent versions in `CHANGELOG.md`, moves older entries to the historic archive, and trims the README "Previous Releases" section to a maximum of 7 entries. Supports `--dry-run` for safe preview before applying changes.
+
 ## [10.26.1] - 2026-03-08
 
 ### Fixed
