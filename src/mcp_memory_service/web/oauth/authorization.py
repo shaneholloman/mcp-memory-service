@@ -295,7 +295,7 @@ async def authorize_post(
     except HTTPException:
         raise
     except Exception:
-        logger.error("Authorization error occurred")
+        logger.error("Authorization error occurred", exc_info=True)
         error_params = {"error": "server_error", "error_description": "Internal server error"}
         if state:
             error_params["state"] = _sanitize_state(state)
@@ -306,7 +306,7 @@ async def authorize_post(
 
 async def _handle_authorization_code_grant(
     final_client_id: str,
-    final_client_secret: str,
+    final_client_secret: Optional[str],
     code: Optional[str],
     redirect_uri: Optional[str],
     code_verifier: Optional[str] = None
@@ -330,15 +330,38 @@ async def _handle_authorization_code_grant(
             }
         )
 
-    # Authenticate client
-    if not await get_oauth_storage().authenticate_client(final_client_id, final_client_secret or ""):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "invalid_client",
-                "error_description": "Client authentication failed"
-            }
-        )
+    # Authenticate client — but allow public clients using PKCE (OAuth 2.1 §2.1)
+    # Public clients (e.g. claude.ai) may not send a client_secret; they prove
+    # identity via PKCE code_verifier instead.
+    if final_client_secret:
+        if not await get_oauth_storage().authenticate_client(final_client_id, final_client_secret):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "error": "invalid_client",
+                    "error_description": "Client authentication failed"
+                }
+            )
+    else:
+        # Public client — verify it exists and is actually a public client
+        client = await get_oauth_storage().get_client(final_client_id)
+        if not client or client.token_endpoint_auth_method != "none":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "error": "invalid_client",
+                    "error_description": "Client authentication failed"
+                }
+            )
+        # PKCE is mandatory for public clients (OAuth 2.1 §7.5.2)
+        if not code_verifier:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "invalid_request",
+                    "error_description": "code_verifier required for public clients"
+                }
+            )
 
     # Get and consume authorization code
     code_data = await get_oauth_storage().get_authorization_code(code)
@@ -507,7 +530,7 @@ async def token(
         # Re-raise HTTP exceptions
         raise
     except Exception:
-        logger.error("Token endpoint error")
+        logger.error("Token endpoint error", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
