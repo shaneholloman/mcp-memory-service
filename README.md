@@ -324,17 +324,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.26.1** (March 8, 2026)
+## Latest Release: **v10.26.2** (March 8, 2026)
 
-**Patch release: Hybrid backend correctly reported in MCP health checks**
+**Patch release: OAuth public PKCE client fix + automated CHANGELOG housekeeping**
 
 **What's New:**
-- **[#570] Hybrid backend misidentified as sqlite-vec in `memory_health`**: `HealthCheckFactory` now uses structural detection (checks for `primary` + `secondary`/`sync_service` attributes) instead of class-name matching to identify hybrid storage. Wrapped or delegated hybrid backends are now reported correctly as `"hybrid"`, ensuring Cloudflare sync status is visible in health output.
-- Three focused unit tests added for strategy selection (sqlite class-name path, wrapped hybrid structural path, unknown fallback).
+- **[#576] OAuth 500 fixed for public PKCE clients**: claude.ai and other MCP clients using PKCE without `client_secret` now complete token exchange correctly. The endpoint detects public clients and uses the PKCE `code_verifier` as identity proof per OAuth 2.1 §2.1.
+- **`/.well-known/oauth-protected-resource` endpoint added** (RFC 9728): Previously returning 404, breaking OAuth discovery for compliant MCP clients.
+- **Improved OAuth error logging**: `exc_info=True` added to token/authorization exception handlers for full tracebacks in logs.
+- **Automated CHANGELOG housekeeping**: Monthly GitHub Actions workflow keeps `CHANGELOG.md` lean by archiving entries older than the 8 most recent versions. Supports `--dry-run` preview.
 
 ---
 
 **Previous Releases**:
+- **v10.26.1** - Hybrid backend correctly reported in MCP health checks (`HealthCheckFactory` structural detection fix for wrapped/delegated backends, issue #570)
 - **v10.26.0** - Credentials tab + Settings restructure + Sync Owner selector in dashboard; `MCP_HYBRID_SYNC_OWNER=http` recommended for hybrid mode
 - **v10.25.3** - Patch release: stdio handshake timeout cap, syntax fixes, hybrid sync fix, dashboard version badge fix
 - **v10.25.2** - Patch fix: `update_and_restart.sh` health check reads `status` field instead of removed `version` field
