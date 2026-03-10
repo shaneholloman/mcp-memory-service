@@ -2558,7 +2558,7 @@ class MemoryDashboard {
 
                 <div class="memory-detail-section">
                     <h4>Content</h4>
-                    <div class="content-text detail-content-text detail-content-collapsed">${this.escapeHtml(memory.content)}</div>
+                    <div class="content-text detail-content-text${memory.content && memory.content.length > 200 ? ' detail-content-collapsed' : ''}">${this.escapeHtml(memory.content)}</div>
                     ${memory.content && memory.content.length > 200 ? '<button class="content-toggle-btn" data-action="toggle-content">▼ Show full content</button>' : ''}
                 </div>
 
@@ -6003,12 +6003,16 @@ class MemoryDashboard {
     _attachMemoryClickHandlers(container, memories) {
         container.querySelectorAll('.memory-preview').forEach((el, index) => {
             el.addEventListener('click', async () => {
+                if (el.dataset.loading === 'true') return;
+                el.dataset.loading = 'true';
                 const mem = memories[index];
                 try {
                     const full = await this.apiCall('/memories/' + mem.content_hash);
                     this.showMemoryDetails(full);
                 } catch (e) {
                     this.showMemoryDetails(mem);
+                } finally {
+                    el.dataset.loading = 'false';
                 }
             });
         });
