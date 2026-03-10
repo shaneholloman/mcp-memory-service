@@ -293,9 +293,10 @@ class QualityEvaluator:
         """
         Score quality using Groq API with model fallback chain.
 
-        Tries models in order, falling back on 429 rate limit errors:
-        1. moonshotai/kimi-k2-instruct (faster, higher quota)
-        2. llama-3.1-8b-instant (fallback)
+        Tries models in order, falling back on 429 rate limit errors
+        or unparseable responses:
+        1. moonshotai/kimi-k2-instruct (richer comprehension, 1T MoE)
+        2. llama-3.1-8b-instant (faster, independent quota)
 
         Args:
             query: Search query
@@ -335,7 +336,8 @@ class QualityEvaluator:
                 return max(0.0, min(1.0, score))
             except ValueError:
                 logger.warning(f"Could not parse Groq score from {model}: {response_text}")
-                raise ValueError(f"Invalid score format: {response_text}")
+                last_error = f"Invalid score format from {model}: {response_text}"
+                continue
 
         raise RuntimeError(f"All Groq models rate-limited: {last_error}")
 
