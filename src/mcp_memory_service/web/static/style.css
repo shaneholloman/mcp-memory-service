@@ -6011,7 +6011,7 @@ body.dark-mode .env-param-description {
     display: inline-block;
     background: none;
     border: 1px solid var(--neutral-300);
-    color: var(--primary-500);
+    color: var(--primary);
     cursor: pointer;
     padding: 4px 12px;
     border-radius: 4px;
@@ -6020,16 +6020,16 @@ body.dark-mode .env-param-description {
     transition: all 0.2s;
 }
 .content-toggle-btn:hover {
-    background: var(--primary-50);
-    border-color: var(--primary-300);
+    background: var(--neutral-100);
+    border-color: var(--primary);
 }
 body.dark-mode .memory-detail-section .detail-content-text {
     color: var(--neutral-800);
 }
 body.dark-mode .content-toggle-btn {
     border-color: var(--neutral-600);
-    color: var(--primary-300);
+    color: var(--primary);
 }
 body.dark-mode .content-toggle-btn:hover {
-    background: var(--neutral-800);
+    background: var(--neutral-200);
 }
