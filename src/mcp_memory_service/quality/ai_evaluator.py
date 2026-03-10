@@ -339,6 +339,7 @@ class QualityEvaluator:
         """
         # Placeholder for Gemini integration
         # This would use Gemini CLI or API similar to Groq
+        # TODO: use _create_scoring_prompt(query, memory.content) to handle empty queries
         logger.warning("Gemini scoring not yet implemented")
         raise NotImplementedError("Gemini scoring tier not yet implemented")
 
@@ -446,18 +447,37 @@ class QualityEvaluator:
         """
         Create a prompt for AI-based quality scoring.
 
+        When query is empty (e.g. during store_memory), uses an absolute
+        quality prompt instead of a relevance-based one to avoid the model
+        returning 0.0 for missing query context.
+
         Args:
-            query: Search query
+            query: Search query (may be empty for store operations)
             memory_content: Memory content to score
 
         Returns:
             Formatted prompt for AI model
         """
+        content_preview = memory_content[:500]
+
+        if not query or not query.strip():
+            return f"""Rate the absolute quality of this memory content.
+Respond only with a number between 0.0 (very low quality) and 1.0 (very high quality).
+Consider: specificity, structure, actionability, completeness.
+
+<memory>
+{content_preview}
+</memory>
+
+Score:"""
+
         return f"""Rate the relevance and quality of this memory for the given query.
 Respond only with a number between 0.0 (completely irrelevant/low quality) and 1.0 (highly relevant/high quality).
 
-Query: {query}
+<query>{query}</query>
 
-Memory: {memory_content[:500]}
+<memory>
+{content_preview}
+</memory>
 
 Score:"""
