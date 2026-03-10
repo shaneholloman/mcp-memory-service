@@ -465,15 +465,19 @@ class QualityEvaluator:
 Respond only with a number between 0.0 (very low quality) and 1.0 (very high quality).
 Consider: specificity, structure, actionability, completeness.
 
-Memory: {content_preview}
+<memory>
+{content_preview}
+</memory>
 
 Score:"""
 
         return f"""Rate the relevance and quality of this memory for the given query.
 Respond only with a number between 0.0 (completely irrelevant/low quality) and 1.0 (highly relevant/high quality).
 
-Query: {query}
+<query>{query}</query>
 
-Memory: {content_preview}
+<memory>
+{content_preview}
+</memory>
 
 Score:"""
