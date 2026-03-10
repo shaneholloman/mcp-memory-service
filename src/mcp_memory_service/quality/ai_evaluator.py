@@ -291,7 +291,11 @@ class QualityEvaluator:
 
     async def _score_with_groq(self, query: str, memory: Memory) -> float:
         """
-        Score quality using Groq API.
+        Score quality using Groq API with model fallback chain.
+
+        Tries models in order, falling back on 429 rate limit errors:
+        1. moonshotai/kimi-k2-instruct (faster, higher quota)
+        2. llama-3.1-8b-instant (fallback)
 
         Args:
             query: Search query
@@ -304,27 +308,36 @@ class QualityEvaluator:
             raise RuntimeError("Groq bridge not initialized")
 
         prompt = self._create_scoring_prompt(query, memory.content)
+        models = ["moonshotai/kimi-k2-instruct", "llama-3.1-8b-instant"]
 
-        # Use fast model for quality scoring
-        result = self._groq_bridge.call_model(
-            prompt=prompt,
-            model="llama-3.3-70b-versatile",
-            max_tokens=50,
-            temperature=0.1,
-            system_message="You are a quality scorer. Respond only with a number between 0.0 and 1.0."
-        )
+        last_error = None
+        for model in models:
+            result = self._groq_bridge.call_model(
+                prompt=prompt,
+                model=model,
+                max_tokens=50,
+                temperature=0.1,
+                system_message="You are a quality scorer. Respond only with a number between 0.0 and 1.0."
+            )
 
-        if result["status"] != "success":
-            raise RuntimeError(f"Groq API error: {result.get('error', 'Unknown error')}")
+            if result["status"] != "success":
+                error_msg = result.get("error", "Unknown error")
+                if "429" in str(error_msg):
+                    logger.warning(f"Groq rate limit on {model}, trying next model")
+                    last_error = error_msg
+                    continue
+                raise RuntimeError(f"Groq API error: {error_msg}")
 
-        # Parse score from response
-        response_text = result["response"].strip()
-        try:
-            score = float(response_text)
-            return max(0.0, min(1.0, score))
-        except ValueError:
-            logger.warning(f"Could not parse Groq score: {response_text}")
-            raise ValueError(f"Invalid score format: {response_text}")
+            # Parse score from response
+            response_text = result["response"].strip()
+            try:
+                score = float(response_text)
+                return max(0.0, min(1.0, score))
+            except ValueError:
+                logger.warning(f"Could not parse Groq score from {model}: {response_text}")
+                raise ValueError(f"Invalid score format: {response_text}")
+
+        raise RuntimeError(f"All Groq models rate-limited: {last_error}")
 
     async def _score_with_gemini(self, query: str, memory: Memory) -> float:
         """
