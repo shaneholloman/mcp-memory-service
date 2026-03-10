@@ -2591,10 +2591,10 @@ class MemoryDashboard {
                 displayValue = `<span class="metadata-boolean">${value}</span>`;
             } else if (Array.isArray(value)) {
                 displayValue = `<span class="metadata-array">[${value.map(v =>
-                    typeof v === 'string' ? `"${this.escapeHtml(v)}"` : (typeof v === "object" ? JSON.stringify(v) : v)
+                    typeof v === 'string' ? `"${this.escapeHtml(v)}"` : (v !== null && typeof v === "object" ? this.escapeHtml(JSON.stringify(v)) : v)
                 ).join(', ')}]</span>`;
             } else {
-                displayValue = `<span class="metadata-object">${JSON.stringify(value)}</span>`;
+                displayValue = `<span class="metadata-object">${this.escapeHtml(JSON.stringify(value))}</span>`;
             }
 
             html += `
