@@ -434,6 +434,20 @@ class MemoryDashboard {
      */
     setupEventListeners() {
         console.log('⚡ setupEventListeners() called');
+
+        // Content expand/collapse delegation
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('[data-action="toggle-content"]')) {
+                const textDiv = e.target.previousElementSibling;
+                if (textDiv && textDiv.classList.contains('detail-content-text')) {
+                    textDiv.classList.toggle('detail-content-collapsed');
+                    e.target.textContent = textDiv.classList.contains('detail-content-collapsed')
+                        ? '▼ Show full content'
+                        : '▲ Collapse';
+                }
+            }
+        });
+
         // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', this.handleNavigation);
@@ -2542,9 +2556,10 @@ class MemoryDashboard {
                     <p><strong>ID:</strong> ${memory.content_hash}</p>
                 </div>
 
-                <div class="memory-content">
+                <div class="memory-detail-section">
                     <h4>Content</h4>
-                    <div class="content-text">${this.escapeHtml(memory.content)}</div>
+                    <div class="content-text detail-content-text${memory.content && memory.content.length > 200 ? ' detail-content-collapsed' : ''}">${this.escapeHtml(memory.content)}</div>
+                    ${memory.content && memory.content.length > 200 ? '<button class="content-toggle-btn" data-action="toggle-content">▼ Show full content</button>' : ''}
                 </div>
 
                 ${memory.tags && memory.tags.length > 0 ? `
@@ -5987,7 +6002,19 @@ class MemoryDashboard {
      */
     _attachMemoryClickHandlers(container, memories) {
         container.querySelectorAll('.memory-preview').forEach((el, index) => {
-            el.addEventListener('click', () => this.handleMemoryClick(memories[index]));
+            el.addEventListener('click', async () => {
+                if (el.dataset.loading === 'true') return;
+                el.dataset.loading = 'true';
+                const mem = memories[index];
+                try {
+                    const full = await this.apiCall('/memories/' + mem.content_hash);
+                    this.showMemoryDetails(full);
+                } catch (e) {
+                    this.showMemoryDetails(mem);
+                } finally {
+                    el.dataset.loading = 'false';
+                }
+            });
         });
     }
 
