@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.26.3] - 2026-03-10
+
+### Fixed
+
+- **Dashboard: metadata object values now rendered as JSON** (`app.js`, #582): Metadata values that are objects (or arrays of objects) were previously rendered as `[object Object]`. They are now serialised with `JSON.stringify` and HTML-escaped via `escapeHtml`, fixing both the display issue and a potential XSS vector introduced by the naive object-to-string coercion.
+- **Dashboard: long memory content collapsed by default in detail modal; quality tab fetches full object** (`app.js`, `style.css`, #583): Memory content longer than 500 characters is now collapsed with a "Show more / Show less" toggle in the detail modal. When opening a memory from the quality tab, the full memory object is fetched via `GET /api/memories/{hash}` before the modal opens, preventing incomplete data display.
+- **Quality scorer: empty query during `store_memory` no longer yields 0.0 score** (`ai_evaluator.py`, #584): The Groq scorer previously used a relevance-based prompt even when the query was empty (as is the case for `store_memory` calls). An empty query produced a semantically meaningless prompt and a near-zero score. The scorer now detects an empty query and switches to an absolute quality prompt that evaluates content quality independently of any query.
+- **Quality scorer: Groq 429 rate limit triggers model fallback chain** (`ai_evaluator.py`, #585): The Groq quality scorer now attempts a sequence of models (`llama-3.1-8b-instant`, `llama3-8b-8192`, `gemma2-9b-it`) in order when a `429 Too Many Requests` response is received, instead of failing hard. This prevents quality scoring from failing silently under rate pressure and improves resilience for high-throughput deployments.
+
 ## [10.26.2] - 2026-03-08
 
 ### Fixed

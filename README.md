@@ -324,27 +324,26 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.26.2** (March 8, 2026)
+## Latest Release: **v10.26.3** (March 10, 2026)
 
-**Patch release: OAuth public PKCE client fix + automated CHANGELOG housekeeping**
+**Patch release: Dashboard metadata display fixes + quality scorer resilience improvements**
 
 **What's New:**
-- **[#576] OAuth 500 fixed for public PKCE clients**: claude.ai and other MCP clients using PKCE without `client_secret` now complete token exchange correctly. The endpoint detects public clients and uses the PKCE `code_verifier` as identity proof per OAuth 2.1 §2.1.
-- **`/.well-known/oauth-protected-resource` endpoint added** (RFC 9728): Previously returning 404, breaking OAuth discovery for compliant MCP clients.
-- **Improved OAuth error logging**: `exc_info=True` added to token/authorization exception handlers for full tracebacks in logs.
-- **Automated CHANGELOG housekeeping**: Monthly GitHub Actions workflow keeps `CHANGELOG.md` lean by archiving entries older than the 8 most recent versions. Supports `--dry-run` preview.
+- **Dashboard: metadata objects now shown as JSON** (#582): Object-typed metadata values rendered as `[object Object]` are now serialised with `JSON.stringify` + HTML-escaped. XSS vector closed.
+- **Dashboard: long content collapsed in detail modal; quality tab fetches full object** (#583): Content >500 chars collapses with a Show more/less toggle. Quality-tab clicks now fetch the full memory object before opening the modal.
+- **Quality scorer: empty-query path uses absolute quality prompt** (#584): `store_memory` calls (query = "") no longer produce a 0.0 score — a dedicated absolute quality prompt is used instead of the relevance-based one.
+- **Quality scorer: Groq 429 triggers model fallback chain** (#585): Rate-limit responses now try `llama-3.1-8b-instant` → `llama3-8b-8192` → `gemma2-9b-it` in sequence instead of failing hard.
 
 ---
 
 **Previous Releases**:
+- **v10.26.2** - OAuth public PKCE client fix (token exchange 500 error, issue #576) + automated CHANGELOG housekeeping
 - **v10.26.1** - Hybrid backend correctly reported in MCP health checks (`HealthCheckFactory` structural detection fix for wrapped/delegated backends, issue #570)
 - **v10.26.0** - Credentials tab + Settings restructure + Sync Owner selector in dashboard; `MCP_HYBRID_SYNC_OWNER=http` recommended for hybrid mode
 - **v10.25.3** - Patch release: stdio handshake timeout cap, syntax fixes, hybrid sync fix, dashboard version badge fix
 - **v10.25.2** - Patch fix: `update_and_restart.sh` health check reads `status` field instead of removed `version` field
 - **v10.25.1** - Security: CORS wildcard default changed to localhost-only, soft-delete leak in `search_by_tag_chronological()` fixed (GHSA-g9rg-8vq5-mpwm)
 - **v10.25.0** - Embedding migration script, 5 soft-delete leak fixes, cosine distance formula fix, substring tag matching fix, O(n²) association sampling fix — 23 new tests, 1,420 total
-- **v10.24.0** - External embedding API silent fallback fixed: raises RuntimeError on API failure instead of mixing embedding spaces (#551) — 10 new tests, 1,397 total
-- **v10.23.0** - Quality scorer fix, consolidator improvements, two new opt-out flags: fix asyncio NameError in ai_evaluator.py (#544), fix consolidator invalid memory_type and dedup bug (#545), MCP_TYPED_EDGES_ENABLED opt-out (#546), MCP_CONSOLIDATION_STORE_ASSOCIATIONS opt-out (#547) — 14 new tests
 
 **Full version history**: [CHANGELOG.md](CHANGELOG.md) | [Older versions (v10.22.0 and earlier)](docs/archive/CHANGELOG-HISTORIC.md) | [All Releases](https://github.com/doobidoo/mcp-memory-service/releases)
 
