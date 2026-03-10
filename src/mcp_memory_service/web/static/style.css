@@ -5990,3 +5990,46 @@ body.dark-mode .env-param-description {
     color: var(--text-muted);
     margin-top: var(--space-3);
 }
+
+/* Memory detail expand/collapse */
+.memory-detail-section {
+    margin-bottom: var(--space-4);
+}
+.memory-detail-section .detail-content-text {
+    color: var(--neutral-700);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.memory-detail-section .detail-content-text.detail-content-collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.content-toggle-btn {
+    display: inline-block;
+    background: none;
+    border: 1px solid var(--neutral-300);
+    color: var(--primary-500);
+    cursor: pointer;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    margin-top: 8px;
+    transition: all 0.2s;
+}
+.content-toggle-btn:hover {
+    background: var(--primary-50);
+    border-color: var(--primary-300);
+}
+body.dark-mode .memory-detail-section .detail-content-text {
+    color: var(--neutral-800);
+}
+body.dark-mode .content-toggle-btn {
+    border-color: var(--neutral-600);
+    color: var(--primary-300);
+}
+body.dark-mode .content-toggle-btn:hover {
+    background: var(--neutral-800);
+}
