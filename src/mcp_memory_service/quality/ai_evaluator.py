@@ -339,6 +339,7 @@ class QualityEvaluator:
         """
         # Placeholder for Gemini integration
         # This would use Gemini CLI or API similar to Groq
+        # TODO: use _create_scoring_prompt(query, memory.content) to handle empty queries
         logger.warning("Gemini scoring not yet implemented")
         raise NotImplementedError("Gemini scoring tier not yet implemented")
 
