@@ -6002,7 +6002,15 @@ class MemoryDashboard {
      */
     _attachMemoryClickHandlers(container, memories) {
         container.querySelectorAll('.memory-preview').forEach((el, index) => {
-            el.addEventListener('click', () => this.handleMemoryClick(memories[index]));
+            el.addEventListener('click', async () => {
+                const mem = memories[index];
+                try {
+                    const full = await this.apiCall('/memories/' + mem.content_hash);
+                    this.showMemoryDetails(full);
+                } catch (e) {
+                    this.showMemoryDetails(mem);
+                }
+            });
         });
     }
 
