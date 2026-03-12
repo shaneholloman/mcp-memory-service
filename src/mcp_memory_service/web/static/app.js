@@ -86,8 +86,14 @@ class MemoryDashboard {
             authMethod: null, // 'api_key', 'oauth', 'anonymous', or null
             apiKey: localStorage.getItem('mcp_api_key') || null,
             oauthToken: localStorage.getItem('mcp_oauth_token') || null,
-            requiresAuth: false
+            requiresAuth: false,
+            initComplete: false  // Guard against credential clearing during startup
         };
+
+        // Internal state for reconnect/polling management
+        this._sseReconnectAttempts = 0;
+        this._syncMonitorInterval = null;
+        this._lastAuthFailureToast = null;
 
         // Settings with defaults
         this.settings = {
@@ -120,8 +126,6 @@ class MemoryDashboard {
         this.applyTheme();
         this.setupEventListeners();
         this.setupAuthListeners();
-        this.setupServerManagement();
-        this.setupSSE();
 
         // Check for secure context
         if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
@@ -129,12 +133,19 @@ class MemoryDashboard {
             this.showToast('Warning: Connection not secure. Please use HTTPS in production.', 'warning');
         }
 
-        // Detect authentication requirement before loading data
+        // Detect authentication requirement before loading data or starting
+        // background services. setupServerManagement and setupSSE are deferred
+        // until after auth to prevent early 401s from clearing stored credentials.
         const needsAuth = await this.detectAuthRequirement();
         if (needsAuth && !this.authState.apiKey && !this.authState.oauthToken) {
             this.showAuthModal();
             return; // Don't load data until authenticated
         }
+
+        // Auth established — safe to start background services and load data
+        this.authState.initComplete = true;
+        this.setupServerManagement();
+        this.setupSSE();
 
         await this.loadVersion();
         await this.loadDashboardData();
@@ -150,14 +161,28 @@ class MemoryDashboard {
      */
     async detectAuthRequirement() {
         try {
-            const response = await fetch(`${this.apiBase}/health`);
-            if (response.status === 401) {
+            // Probe an authenticated endpoint — /health never requires auth
+            // (GHSA-73hc-m4hx-79pj) so it cannot detect whether API key is needed.
+            // Send stored credentials if available to verify they still work.
+            const headers = {};
+            if (this.authState.apiKey) {
+                headers['X-API-Key'] = this.authState.apiKey;
+            } else if (this.authState.oauthToken) {
+                headers['Authorization'] = `Bearer ${this.authState.oauthToken}`;
+            }
+            const response = await fetch(`${this.apiBase}/health/detailed`, { headers });
+            if (response.status === 401 || response.status === 403) {
                 this.authState.requiresAuth = true;
+                // Stored credentials are invalid — clear them
+                if (this.authState.apiKey || this.authState.oauthToken) {
+                    this._clearCredentials();
+                }
                 return true;
             } else if (response.ok) {
                 this.authState.requiresAuth = false;
                 this.authState.isAuthenticated = true;
-                this.authState.authMethod = 'anonymous';
+                this.authState.authMethod = this.authState.apiKey ? 'api_key'
+                    : this.authState.oauthToken ? 'oauth' : 'anonymous';
                 return false;
             }
         } catch (error) {
@@ -648,6 +673,20 @@ class MemoryDashboard {
      * Set up Server-Sent Events for real-time updates
      */
     setupSSE() {
+        // Close any existing connection to prevent connection multiplication.
+        // Without this, each failed reconnect spawns a new EventSource while
+        // the old one may still be retrying, leading to exponential 401 spam.
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+        }
+
+        // Don't attempt SSE if we know auth is required but we're not authenticated.
+        // The auth flow (modal → authenticateWithApiKey) will call setupSSE after success.
+        if (this.authState.requiresAuth && !this.authState.isAuthenticated) {
+            return;
+        }
+
         try {
             // Build SSE URL with query parameter auth (EventSource API doesn't support custom headers)
             const sseUrl = new URL(`${this.apiBase}/events`, window.location.origin);
@@ -659,6 +698,8 @@ class MemoryDashboard {
             this.eventSource = new EventSource(sseUrl.toString());
 
             this.eventSource.onopen = () => {
+                // Reset backoff on successful connection
+                this._sseReconnectAttempts = 0;
                 this.updateConnectionStatus('connected');
             };
 
@@ -694,12 +735,23 @@ class MemoryDashboard {
                 console.error('SSE connection error:', error);
                 this.updateConnectionStatus('disconnected');
 
-                // Attempt to reconnect after 5 seconds
+                // Don't reconnect if we're not authenticated — avoids infinite
+                // 401 loop when EventSource can't send auth headers and the
+                // query-param fallback isn't accepted.
+                if (!this.authState.isAuthenticated) {
+                    return;
+                }
+
+                // Exponential backoff: 5s → 10s → 20s → 40s → 60s max
+                const attempts = this._sseReconnectAttempts || 0;
+                const delay = Math.min(5000 * Math.pow(2, attempts), 60000);
+                this._sseReconnectAttempts = attempts + 1;
+
                 setTimeout(() => {
-                    if (this.eventSource.readyState === EventSource.CLOSED) {
+                    if (this.eventSource && this.eventSource.readyState === EventSource.CLOSED) {
                         this.setupSSE();
                     }
-                }, 5000);
+                }, delay);
             };
 
         } catch (error) {
@@ -1809,8 +1861,12 @@ class MemoryDashboard {
      * Start periodic sync status monitoring
      */
     startSyncStatusMonitoring() {
+        // Clear any existing interval to prevent duplicate polling loops
+        if (this._syncMonitorInterval) {
+            clearInterval(this._syncMonitorInterval);
+        }
         // Check sync status every 10 seconds
-        setInterval(() => {
+        this._syncMonitorInterval = setInterval(() => {
             this.checkSyncStatus();
         }, 10000);
     }
@@ -3447,13 +3503,47 @@ class MemoryDashboard {
      * Handle authentication failure (401 response)
      */
     handleAuthFailure() {
-        // Clear invalid credentials
-        this.authState.isAuthenticated = false;
+        // During startup, various components (setupServerManagement, SSE) may
+        // fire API calls before auth is established. Don't clear stored
+        // credentials for those early 401s — they'll be validated properly
+        // by detectAuthRequirement.
+        if (!this.authState.initComplete) {
+            console.debug('Ignoring 401 during init — auth not yet established');
+            return;
+        }
+
+        // After init, a 401 on an already-authenticated session means
+        // credentials are no longer valid (e.g., server restarted with a new
+        // key, token expired). Notify the user so they can re-authenticate.
+        // Debounce: only show the toast once per 30 seconds to avoid spam from
+        // polling loops (sync status, SSE reconnect) all hitting 401 at once.
+        if (this.authState.isAuthenticated) {
+            const now = Date.now();
+            if (!this._lastAuthFailureToast || (now - this._lastAuthFailureToast) > 30000) {
+                this._lastAuthFailureToast = now;
+                console.warn('Got 401 despite being authenticated — credentials may have been invalidated');
+                this.showToast('Session expired or credentials changed. Please refresh the page.', 'warning');
+            }
+            // Mark as unauthenticated so the next 401 triggers the full
+            // re-auth flow (clear credentials + show modal) instead of
+            // toasting indefinitely with invalid credentials.
+            this.authState.isAuthenticated = false;
+            return;
+        }
+
+        // Genuinely unauthenticated after init — clear and re-prompt.
+        this._clearCredentials();
+        this.showAuthModal();
+    }
+
+    /**
+     * Clear stored credentials from both in-memory state and localStorage.
+     */
+    _clearCredentials() {
+        this.authState.apiKey = null;
+        this.authState.oauthToken = null;
         localStorage.removeItem('mcp_api_key');
         localStorage.removeItem('mcp_oauth_token');
-
-        // Show authentication modal
-        this.showAuthModal();
     }
 
     /**
@@ -3470,32 +3560,42 @@ class MemoryDashboard {
      * Authenticate with API key
      */
     async authenticateWithApiKey(apiKey) {
-        // Store API key
+        // Set API key in state temporarily for the validation call
         this.authState.apiKey = apiKey;
-        localStorage.setItem('mcp_api_key', apiKey);
 
-        // Test authentication
+        // Validate against an authenticated endpoint — /health never requires
+        // auth so it would accept any key (see issue #591)
         try {
-            await this.apiCall('/health');
+            await this.apiCall('/health/detailed');
+
+            // Key is valid — persist it and complete initialization
+            localStorage.setItem('mcp_api_key', apiKey);
             this.authState.isAuthenticated = true;
             this.authState.authMethod = 'api_key';
+            this.authState.initComplete = true;
 
-            // Close modal and refresh data
+            // Close modal
             const modal = document.getElementById('authModal');
             if (modal) {
                 this.closeModal(modal);
             }
 
-            // Reload dashboard data
-            this.loadDashboardData();
+            // Start deferred background services now that auth is ready
+            this.setupServerManagement();
+            this.setupSSE();
+
+            // Load dashboard data
+            await this.loadVersion();
+            await this.loadDashboardData();
+            this.checkSyncStatus();
+            this.startSyncStatusMonitoring();
             this.showToast('Authentication successful', 'success');
 
             return true;
         } catch (error) {
-            // Authentication failed
+            // Key is invalid — clean up
             this.showToast('Authentication failed. Please check your API key.', 'error');
-            this.authState.apiKey = null;
-            localStorage.removeItem('mcp_api_key');
+            this._clearCredentials();
             return false;
         }
     }
@@ -6139,6 +6239,11 @@ This action cannot be undone. Are you sure?`);
     destroy() {
         if (this.eventSource) {
             this.eventSource.close();
+            this.eventSource = null;
+        }
+        if (this._syncMonitorInterval) {
+            clearInterval(this._syncMonitorInterval);
+            this._syncMonitorInterval = null;
         }
     }
 }
