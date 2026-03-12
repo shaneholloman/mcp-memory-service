@@ -86,7 +86,8 @@ class MemoryDashboard {
             authMethod: null, // 'api_key', 'oauth', 'anonymous', or null
             apiKey: localStorage.getItem('mcp_api_key') || null,
             oauthToken: localStorage.getItem('mcp_oauth_token') || null,
-            requiresAuth: false
+            requiresAuth: false,
+            initComplete: false  // Guard against credential clearing during startup
         };
 
         // Settings with defaults
@@ -120,8 +121,6 @@ class MemoryDashboard {
         this.applyTheme();
         this.setupEventListeners();
         this.setupAuthListeners();
-        this.setupServerManagement();
-        this.setupSSE();
 
         // Check for secure context
         if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
@@ -129,12 +128,19 @@ class MemoryDashboard {
             this.showToast('Warning: Connection not secure. Please use HTTPS in production.', 'warning');
         }
 
-        // Detect authentication requirement before loading data
+        // Detect authentication requirement before loading data or starting
+        // background services. setupServerManagement and setupSSE are deferred
+        // until after auth to prevent early 401s from clearing stored credentials.
         const needsAuth = await this.detectAuthRequirement();
         if (needsAuth && !this.authState.apiKey && !this.authState.oauthToken) {
             this.showAuthModal();
             return; // Don't load data until authenticated
         }
+
+        // Auth established — safe to start background services and load data
+        this.authState.initComplete = true;
+        this.setupServerManagement();
+        this.setupSSE();
 
         await this.loadVersion();
         await this.loadDashboardData();
@@ -150,14 +156,31 @@ class MemoryDashboard {
      */
     async detectAuthRequirement() {
         try {
-            const response = await fetch(`${this.apiBase}/health`);
-            if (response.status === 401) {
+            // Probe an authenticated endpoint — /health never requires auth
+            // (GHSA-73hc-m4hx-79pj) so it cannot detect whether API key is needed.
+            // Send stored credentials if available to verify they still work.
+            const headers = {};
+            if (this.authState.apiKey) {
+                headers['X-API-Key'] = this.authState.apiKey;
+            } else if (this.authState.oauthToken) {
+                headers['Authorization'] = `Bearer ${this.authState.oauthToken}`;
+            }
+            const response = await fetch(`${this.apiBase}/health/detailed`, { headers });
+            if (response.status === 401 || response.status === 403) {
                 this.authState.requiresAuth = true;
+                // Stored credentials are invalid — clear them
+                if (this.authState.apiKey || this.authState.oauthToken) {
+                    this.authState.apiKey = null;
+                    this.authState.oauthToken = null;
+                    localStorage.removeItem('mcp_api_key');
+                    localStorage.removeItem('mcp_oauth_token');
+                }
                 return true;
             } else if (response.ok) {
                 this.authState.requiresAuth = false;
                 this.authState.isAuthenticated = true;
-                this.authState.authMethod = 'anonymous';
+                this.authState.authMethod = this.authState.apiKey ? 'api_key'
+                    : this.authState.oauthToken ? 'oauth' : 'anonymous';
                 return false;
             }
         } catch (error) {
@@ -3447,12 +3470,27 @@ class MemoryDashboard {
      * Handle authentication failure (401 response)
      */
     handleAuthFailure() {
-        // Clear invalid credentials
-        this.authState.isAuthenticated = false;
+        // During startup, various components (setupServerManagement, SSE) may
+        // fire API calls before auth is established. Don't clear stored
+        // credentials for those early 401s — they'll be validated properly
+        // by detectAuthRequirement.
+        if (!this.authState.initComplete) {
+            console.debug('Ignoring 401 during init — auth not yet established');
+            return;
+        }
+
+        // After init, a 401 on an already-authenticated session likely means
+        // a scope mismatch rather than invalid credentials — don't nuke them.
+        if (this.authState.isAuthenticated) {
+            console.warn('Got 401 despite being authenticated — endpoint may require higher scope');
+            return;
+        }
+
+        // Genuinely unauthenticated after init — clear and re-prompt.
+        this.authState.apiKey = null;
+        this.authState.oauthToken = null;
         localStorage.removeItem('mcp_api_key');
         localStorage.removeItem('mcp_oauth_token');
-
-        // Show authentication modal
         this.showAuthModal();
     }
 
@@ -3470,29 +3508,39 @@ class MemoryDashboard {
      * Authenticate with API key
      */
     async authenticateWithApiKey(apiKey) {
-        // Store API key
+        // Set API key in state temporarily for the validation call
         this.authState.apiKey = apiKey;
-        localStorage.setItem('mcp_api_key', apiKey);
 
-        // Test authentication
+        // Validate against an authenticated endpoint — /health never requires
+        // auth so it would accept any key (see issue #591)
         try {
-            await this.apiCall('/health');
+            await this.apiCall('/health/detailed');
+
+            // Key is valid — persist it and complete initialization
+            localStorage.setItem('mcp_api_key', apiKey);
             this.authState.isAuthenticated = true;
             this.authState.authMethod = 'api_key';
+            this.authState.initComplete = true;
 
-            // Close modal and refresh data
+            // Close modal
             const modal = document.getElementById('authModal');
             if (modal) {
                 this.closeModal(modal);
             }
 
-            // Reload dashboard data
+            // Start deferred background services now that auth is ready
+            this.setupServerManagement();
+            this.setupSSE();
+
+            // Load dashboard data
+            await this.loadVersion();
             this.loadDashboardData();
+            this.checkSyncStatus();
             this.showToast('Authentication successful', 'success');
 
             return true;
         } catch (error) {
-            // Authentication failed
+            // Key is invalid — clean up
             this.showToast('Authentication failed. Please check your API key.', 'error');
             this.authState.apiKey = null;
             localStorage.removeItem('mcp_api_key');
