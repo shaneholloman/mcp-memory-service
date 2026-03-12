@@ -324,19 +324,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.26.3** (March 10, 2026)
+## Latest Release: **v10.26.4** (March 12, 2026)
 
-**Patch release: Dashboard metadata display fixes + quality scorer resilience improvements**
+**Patch release: FTS5 hybrid search fix on upgrade + dashboard auth lifecycle fixes**
 
 **What's New:**
-- **Dashboard: metadata objects now shown as JSON** (#582): Object-typed metadata values rendered as `[object Object]` are now serialised with `JSON.stringify` + HTML-escaped. XSS vector closed.
-- **Dashboard: long content collapsed in detail modal; quality tab fetches full object** (#583): Content >500 chars collapses with a Show more/less toggle. Quality-tab clicks now fetch the full memory object before opening the modal.
-- **Quality scorer: empty-query path uses absolute quality prompt** (#584): `store_memory` calls (query = "") no longer produce a 0.0 score — a dedicated absolute quality prompt is used instead of the relevance-based one.
-- **Quality scorer: Groq 429 triggers model fallback chain** (#585): Rate-limit responses now try `llama-3.1-8b-instant` → `llama3-8b-8192` → `gemma2-9b-it` in sequence instead of failing hard.
+- **FTS5 table now created for existing databases on upgrade** (#589): Hybrid BM25+vector search silently fell back to vector-only on databases created before v10.8.0 because `_ensure_fts5_initialized()` was never called on the early-return path. Now idempotent and called on both new and existing database paths.
+- **Dashboard auth detection and credential persistence fixed** (#592, fixes #591): 9 bugs in the dashboard auth lifecycle resolved — API key not persisted across page reload, 401 spam in logs, SSE connection leak, sync polling not started on modal auth path, auth detection probing wrong endpoint, and more.
 
 ---
 
 **Previous Releases**:
+- **v10.26.3** - Dashboard metadata display fixes + quality scorer resilience (Groq 429 fallback chain, empty-query absolute prompt)
 - **v10.26.2** - OAuth public PKCE client fix (token exchange 500 error, issue #576) + automated CHANGELOG housekeeping
 - **v10.26.1** - Hybrid backend correctly reported in MCP health checks (`HealthCheckFactory` structural detection fix for wrapped/delegated backends, issue #570)
 - **v10.26.0** - Credentials tab + Settings restructure + Sync Owner selector in dashboard; `MCP_HYBRID_SYNC_OWNER=http` recommended for hybrid mode

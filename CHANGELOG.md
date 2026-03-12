@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.26.4] - 2026-03-12
+
+### Fixed
+
+- **[#589] FTS5 table not created for existing databases (hybrid search broken on upgrade)** (`sqlite_vec.py`, contributed by @xXGeminiXx): Databases created before v10.8.0 never had the `memory_content_fts` FTS5 virtual table initialised because `initialize()` returned early after running graph migrations for existing DBs, bypassing the FTS5 creation block entirely. This caused hybrid BM25+vector search to silently fall back to vector-only on any pre-v10.8.0 upgrade. Added `_ensure_fts5_initialized()` idempotent method that checks `sqlite_master` for the table's existence before creating it and running the `rebuild` backfill command. The method is now called on both the new-DB and existing-DB paths, eliminating 57 lines of duplicated inline DDL.
+- **[#592] Dashboard auth detection and credential persistence** (`web/static/app.js`, contributed by @jeremykoerber, fixes #591): Fixed 9 bugs in the dashboard authentication lifecycle: API key no longer lost on page refresh; `detectAuthRequirement()` and `authenticateWithApiKey()` now probe `/health/detailed` instead of `/health` (which is always public since v10.21.0); `setupServerManagement()` and `setupSSE()` deferred until after auth resolves (race condition); `handleAuthFailure()` respects `initComplete` guard — credentials no longer wiped during startup 401s; SSE reconnect closes existing connection before opening a new one (leak fix); `startSyncStatusMonitoring()` now called in modal auth path; sync monitor interval ID stored and cleaned up in `destroy()`; auth failure toasts debounced to 30 s.
+
 ## [10.26.3] - 2026-03-10
 
 ### Fixed
