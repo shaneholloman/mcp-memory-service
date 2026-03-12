@@ -671,6 +671,20 @@ class MemoryDashboard {
      * Set up Server-Sent Events for real-time updates
      */
     setupSSE() {
+        // Close any existing connection to prevent connection multiplication.
+        // Without this, each failed reconnect spawns a new EventSource while
+        // the old one may still be retrying, leading to exponential 401 spam.
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+        }
+
+        // Don't attempt SSE if we know auth is required but we're not authenticated.
+        // The auth flow (modal → authenticateWithApiKey) will call setupSSE after success.
+        if (this.authState.requiresAuth && !this.authState.isAuthenticated) {
+            return;
+        }
+
         try {
             // Build SSE URL with query parameter auth (EventSource API doesn't support custom headers)
             const sseUrl = new URL(`${this.apiBase}/events`, window.location.origin);
@@ -682,6 +696,8 @@ class MemoryDashboard {
             this.eventSource = new EventSource(sseUrl.toString());
 
             this.eventSource.onopen = () => {
+                // Reset backoff on successful connection
+                this._sseReconnectAttempts = 0;
                 this.updateConnectionStatus('connected');
             };
 
@@ -717,12 +733,23 @@ class MemoryDashboard {
                 console.error('SSE connection error:', error);
                 this.updateConnectionStatus('disconnected');
 
-                // Attempt to reconnect after 5 seconds
+                // Don't reconnect if we're not authenticated — avoids infinite
+                // 401 loop when EventSource can't send auth headers and the
+                // query-param fallback isn't accepted.
+                if (!this.authState.isAuthenticated) {
+                    return;
+                }
+
+                // Exponential backoff: 5s → 10s → 20s → 40s → 60s max
+                const attempts = this._sseReconnectAttempts || 0;
+                const delay = Math.min(5000 * Math.pow(2, attempts), 60000);
+                this._sseReconnectAttempts = attempts + 1;
+
                 setTimeout(() => {
-                    if (this.eventSource.readyState === EventSource.CLOSED) {
+                    if (this.eventSource && this.eventSource.readyState === EventSource.CLOSED) {
                         this.setupSSE();
                     }
-                }, 5000);
+                }, delay);
             };
 
         } catch (error) {
@@ -1832,8 +1859,12 @@ class MemoryDashboard {
      * Start periodic sync status monitoring
      */
     startSyncStatusMonitoring() {
+        // Clear any existing interval to prevent duplicate polling loops
+        if (this._syncMonitorInterval) {
+            clearInterval(this._syncMonitorInterval);
+        }
         // Check sync status every 10 seconds
-        setInterval(() => {
+        this._syncMonitorInterval = setInterval(() => {
             this.checkSyncStatus();
         }, 10000);
     }
@@ -3479,10 +3510,18 @@ class MemoryDashboard {
             return;
         }
 
-        // After init, a 401 on an already-authenticated session likely means
-        // a scope mismatch rather than invalid credentials — don't nuke them.
+        // After init, a 401 on an already-authenticated session means
+        // credentials are no longer valid (e.g., server restarted with a new
+        // key, token expired). Notify the user so they can re-authenticate.
+        // Debounce: only show the toast once per 30 seconds to avoid spam from
+        // polling loops (sync status, SSE reconnect) all hitting 401 at once.
         if (this.authState.isAuthenticated) {
-            console.warn('Got 401 despite being authenticated — endpoint may require higher scope');
+            const now = Date.now();
+            if (!this._lastAuthFailureToast || (now - this._lastAuthFailureToast) > 30000) {
+                this._lastAuthFailureToast = now;
+                console.warn('Got 401 despite being authenticated — credentials may have been invalidated');
+                this.showToast('Session expired or credentials changed. Please refresh the page.', 'warning');
+            }
             return;
         }
 
@@ -3536,6 +3575,7 @@ class MemoryDashboard {
             await this.loadVersion();
             this.loadDashboardData();
             this.checkSyncStatus();
+            this.startSyncStatusMonitoring();
             this.showToast('Authentication successful', 'success');
 
             return true;
@@ -6187,6 +6227,11 @@ This action cannot be undone. Are you sure?`);
     destroy() {
         if (this.eventSource) {
             this.eventSource.close();
+            this.eventSource = null;
+        }
+        if (this._syncMonitorInterval) {
+            clearInterval(this._syncMonitorInterval);
+            this._syncMonitorInterval = null;
         }
     }
 }
