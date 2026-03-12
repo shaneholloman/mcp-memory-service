@@ -399,6 +399,69 @@ class SqliteVecMemoryStorage(MemoryStorage):
         except Exception as e:
             logger.warning(f"Failed to run graph migrations (non-fatal): {e}")
 
+    def _ensure_fts5_initialized(self):
+        """Ensure FTS5 virtual table exists for BM25 keyword search (v10.8.0+).
+
+        Called during initialization for both new and existing databases.
+        Creates the FTS5 table, sync triggers, and rebuilds the index.
+        Failures are non-fatal.
+        """
+        try:
+            cursor = self.conn.execute(
+                "SELECT name FROM sqlite_master WHERE name='memory_content_fts'"
+            )
+            if cursor.fetchone() is not None:
+                return  # Already exists
+
+            logger.info("Creating FTS5 table for hybrid BM25 search...")
+            self.conn.execute('''
+                CREATE VIRTUAL TABLE IF NOT EXISTS memory_content_fts USING fts5(
+                    content,
+                    content='memories',
+                    content_rowid='id',
+                    tokenize='trigram'
+                )
+            ''')
+
+            self.conn.execute('''
+                CREATE TRIGGER IF NOT EXISTS memories_fts_ai AFTER INSERT ON memories
+                BEGIN
+                    INSERT INTO memory_content_fts(rowid, content)
+                    VALUES (new.id, new.content);
+                END;
+            ''')
+            self.conn.execute('''
+                CREATE TRIGGER IF NOT EXISTS memories_fts_au AFTER UPDATE ON memories
+                BEGIN
+                    DELETE FROM memory_content_fts WHERE rowid = old.id;
+                    INSERT INTO memory_content_fts(rowid, content)
+                    VALUES (new.id, new.content);
+                END;
+            ''')
+            self.conn.execute('''
+                CREATE TRIGGER IF NOT EXISTS memories_fts_ad AFTER DELETE ON memories
+                BEGIN
+                    DELETE FROM memory_content_fts WHERE rowid = old.id;
+                END;
+            ''')
+
+            # External content FTS5 tables require 'rebuild' to populate the
+            # trigram index from the source table. Plain INSERT populates the
+            # content mapping but not the actual search index.
+            logger.info("Rebuilding FTS5 trigram index from memories table...")
+            self.conn.execute(
+                "INSERT INTO memory_content_fts(memory_content_fts) VALUES('rebuild')"
+            )
+
+            self.conn.execute("""
+                INSERT OR REPLACE INTO metadata (key, value)
+                VALUES ('fts5_enabled', 'true')
+            """)
+            self.conn.commit()
+            logger.info("FTS5 initialization complete")
+        except Exception as e:
+            logger.warning(f"FTS5 initialization failed (non-fatal): {e}")
+
     def _check_extension_support(self):
         """Check if Python's sqlite3 supports loading extensions."""
         test_conn = None
@@ -626,6 +689,9 @@ SOLUTIONS:
                     # Execute graph table migrations (Knowledge Graph feature v9.0.0+)
                     self._run_graph_migrations()
 
+                    # Ensure FTS5 table exists (v10.8.0+ migration for existing databases)
+                    self._ensure_fts5_initialized()
+
                     await self._initialize_embedding_model()
                     self._initialized = True
                     logger.info(f"SQLite-vec storage initialized successfully (existing database) with embedding dimension: {self.embedding_dimension}")
@@ -770,65 +836,8 @@ SOLUTIONS:
                 INSERT OR REPLACE INTO metadata (key, value) VALUES ('distance_metric', 'cosine')
             """)
 
-            # Create FTS5 virtual table for BM25 keyword search (v10.8.0+)
-            # Uses external content table pattern for minimal storage overhead
-            # Trigram tokenizer provides optimal multilingual support and exact matching
-            self.conn.execute('''
-                CREATE VIRTUAL TABLE IF NOT EXISTS memory_content_fts USING fts5(
-                    content,
-                    content='memories',
-                    content_rowid='id',
-                    tokenize='trigram'
-                )
-            ''')
-
-            # Add triggers for automatic FTS5 synchronization
-            # INSERT trigger
-            self.conn.execute('''
-                CREATE TRIGGER IF NOT EXISTS memories_fts_ai AFTER INSERT ON memories
-                BEGIN
-                    INSERT INTO memory_content_fts(rowid, content)
-                    VALUES (new.id, new.content);
-                END;
-            ''')
-
-            # UPDATE trigger
-            self.conn.execute('''
-                CREATE TRIGGER IF NOT EXISTS memories_fts_au AFTER UPDATE ON memories
-                BEGIN
-                    DELETE FROM memory_content_fts WHERE rowid = old.id;
-                    INSERT INTO memory_content_fts(rowid, content)
-                    VALUES (new.id, new.content);
-                END;
-            ''')
-
-            # DELETE trigger (including soft deletes)
-            self.conn.execute('''
-                CREATE TRIGGER IF NOT EXISTS memories_fts_ad AFTER DELETE ON memories
-                BEGIN
-                    DELETE FROM memory_content_fts WHERE rowid = old.id;
-                END;
-            ''')
-
-            # Backfill FTS5 index with existing memories (one-time operation)
-            cursor = self.conn.execute('SELECT COUNT(*) FROM memory_content_fts')
-            fts_count = cursor.fetchone()[0]
-            cursor = self.conn.execute('SELECT COUNT(*) FROM memories WHERE deleted_at IS NULL')
-            mem_count = cursor.fetchone()[0]
-
-            if fts_count == 0 and mem_count > 0:
-                logger.info(f"Backfilling FTS5 index with {mem_count} existing memories...")
-                self.conn.execute('''
-                    INSERT INTO memory_content_fts(rowid, content)
-                    SELECT id, content FROM memories WHERE deleted_at IS NULL
-                ''')
-                logger.info("FTS5 backfill complete")
-
-            # Mark FTS5 as enabled in metadata
-            self.conn.execute("""
-                INSERT OR REPLACE INTO metadata (key, value)
-                VALUES ('fts5_enabled', 'true')
-            """)
+            # Ensure FTS5 table exists (v10.8.0+)
+            self._ensure_fts5_initialized()
 
             # Create indexes for better performance
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_content_hash ON memories(content_hash)')
