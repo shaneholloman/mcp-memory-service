@@ -90,6 +90,11 @@ class MemoryDashboard {
             initComplete: false  // Guard against credential clearing during startup
         };
 
+        // Internal state for reconnect/polling management
+        this._sseReconnectAttempts = 0;
+        this._syncMonitorInterval = null;
+        this._lastAuthFailureToast = null;
+
         // Settings with defaults
         this.settings = {
             theme: 'light',
@@ -170,10 +175,7 @@ class MemoryDashboard {
                 this.authState.requiresAuth = true;
                 // Stored credentials are invalid — clear them
                 if (this.authState.apiKey || this.authState.oauthToken) {
-                    this.authState.apiKey = null;
-                    this.authState.oauthToken = null;
-                    localStorage.removeItem('mcp_api_key');
-                    localStorage.removeItem('mcp_oauth_token');
+                    this._clearCredentials();
                 }
                 return true;
             } else if (response.ok) {
@@ -3526,11 +3528,18 @@ class MemoryDashboard {
         }
 
         // Genuinely unauthenticated after init — clear and re-prompt.
+        this._clearCredentials();
+        this.showAuthModal();
+    }
+
+    /**
+     * Clear stored credentials from both in-memory state and localStorage.
+     */
+    _clearCredentials() {
         this.authState.apiKey = null;
         this.authState.oauthToken = null;
         localStorage.removeItem('mcp_api_key');
         localStorage.removeItem('mcp_oauth_token');
-        this.showAuthModal();
     }
 
     /**
@@ -3582,8 +3591,7 @@ class MemoryDashboard {
         } catch (error) {
             // Key is invalid — clean up
             this.showToast('Authentication failed. Please check your API key.', 'error');
-            this.authState.apiKey = null;
-            localStorage.removeItem('mcp_api_key');
+            this._clearCredentials();
             return false;
         }
     }
