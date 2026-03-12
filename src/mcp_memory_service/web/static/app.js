@@ -3524,6 +3524,10 @@ class MemoryDashboard {
                 console.warn('Got 401 despite being authenticated — credentials may have been invalidated');
                 this.showToast('Session expired or credentials changed. Please refresh the page.', 'warning');
             }
+            // Mark as unauthenticated so the next 401 triggers the full
+            // re-auth flow (clear credentials + show modal) instead of
+            // toasting indefinitely with invalid credentials.
+            this.authState.isAuthenticated = false;
             return;
         }
 
@@ -3582,7 +3586,7 @@ class MemoryDashboard {
 
             // Load dashboard data
             await this.loadVersion();
-            this.loadDashboardData();
+            await this.loadDashboardData();
             this.checkSyncStatus();
             this.startSyncStatusMonitoring();
             this.showToast('Authentication successful', 'success');
