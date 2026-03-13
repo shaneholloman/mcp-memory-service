@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.26.5] - 2026-03-13
+
+### Security
+
+- **bump black dev dependency to >=26.3.1 (GHSA-3936-cmfr-pm3m, CVE-2026-32274, High)**: The `black` code formatter contained a path traversal vulnerability via the `--python-cell-magics` option that could allow an attacker to write files outside the intended directory. The minimum required version has been updated from `>=24.0.0` to `>=26.3.1`. This vulnerability affects development and CI environments only — `black` is not a runtime dependency and is never included in installed packages. `uv.lock` updated from black 26.1.0 to 26.3.1.
+
 ## [10.26.4] - 2026-03-12
 
 ### Fixed
