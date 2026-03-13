@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-memory-service"
-version = "10.26.4"
+version = "10.26.5"
 description = "Open-source persistent memory for AI agent pipelines and Claude. REST API + semantic search + knowledge graph + autonomous consolidation. Self-host, zero cloud cost."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -72,7 +72,7 @@ dev = [
     "pytest-benchmark>=4.0.0",
     "pytest-timeout>=2.0.0",
     "pytest-subtests>=0.10.0",
-    "black>=24.0.0",
+    "black>=26.3.1",
     "ruff>=0.1.0",
 ]
 # Machine learning dependencies for semantic search and embeddings

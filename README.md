@@ -324,17 +324,17 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.26.4** (March 12, 2026)
+## Latest Release: **v10.26.5** (March 13, 2026)
 
-**Patch release: FTS5 hybrid search fix on upgrade + dashboard auth lifecycle fixes**
+**Security patch: bump black dev dependency to >=26.3.1 (GHSA-3936-cmfr-pm3m, CVE-2026-32274)**
 
 **What's New:**
-- **FTS5 table now created for existing databases on upgrade** (#589): Hybrid BM25+vector search silently fell back to vector-only on databases created before v10.8.0 because `_ensure_fts5_initialized()` was never called on the early-return path. Now idempotent and called on both new and existing database paths.
-- **Dashboard auth detection and credential persistence fixed** (#592, fixes #591): 9 bugs in the dashboard auth lifecycle resolved — API key not persisted across page reload, 401 spam in logs, SSE connection leak, sync polling not started on modal auth path, auth detection probing wrong endpoint, and more.
+- **Security fix: black path traversal vulnerability** (GHSA-3936-cmfr-pm3m, CVE-2026-32274, High): `black` code formatter updated from `>=24.0.0` to `>=26.3.1` to address a path traversal vulnerability via the `--python-cell-magics` option. Dev/CI environments only — `black` is not a runtime dependency.
 
 ---
 
 **Previous Releases**:
+- **v10.26.4** - FTS5 hybrid search fix on upgrade + dashboard auth lifecycle fixes (9 bugs)
 - **v10.26.3** - Dashboard metadata display fixes + quality scorer resilience (Groq 429 fallback chain, empty-query absolute prompt)
 - **v10.26.2** - OAuth public PKCE client fix (token exchange 500 error, issue #576) + automated CHANGELOG housekeeping
 - **v10.26.1** - Hybrid backend correctly reported in MCP health checks (`HealthCheckFactory` structural detection fix for wrapped/delegated backends, issue #570)
