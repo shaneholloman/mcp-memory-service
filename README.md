@@ -109,6 +109,29 @@ async with httpx.AsyncClient() as client:
 
 **Framework-specific guides:** [docs/agents/](docs/agents/)
 
+### Real-World: Multi-Agent Cluster with Shared Memory
+
+> *"After I work with one of the cluster agents on something I want my local agent to know about, the cluster agent adds a special tag to the memory entry that my local agent recognizes as a message from a cluster agent. So they end up using it as a comms bridge — and it's pretty delightful."*
+> — [@jeremykoerber](https://github.com/jeremykoerber), [issue #591](https://github.com/doobidoo/mcp-memory-service/issues/591)
+
+A 5-agent openclaw cluster uses mcp-memory-service as shared state **and** as an inter-agent messaging bus — without any custom protocol. Cluster agents tag memories with a sentinel like `msg:cluster`, and the local agent filters on that tag to receive cross-cluster signals. The memory service becomes the coordination layer with zero additional infrastructure.
+
+```python
+# Cluster agent stores a learning and flags it for the local agent
+await client.post(f"{BASE_URL}/api/memories", json={
+    "content": "Rate limit on provider X is 50 RPM — switch to provider Y after 40",
+    "tags": ["api", "limits", "msg:cluster"],       # sentinel tag
+}, headers={"X-Agent-ID": "cluster-agent-3"})
+
+# Local agent polls for cluster messages
+results = await client.post(f"{BASE_URL}/api/memories/search", json={
+    "query": "messages from cluster",
+    "tags": ["msg:cluster"],
+})
+```
+
+This pattern — **tags as inter-agent signals** — emerges naturally from the tagging system and requires no additional infrastructure.
+
 ## Comparison with Alternatives
 
 | | Mem0 | Zep | DIY Redis+Pinecone | **mcp-memory-service** |
