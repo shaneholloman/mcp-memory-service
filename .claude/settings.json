@@ -1,5 +1,20 @@
 {
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; case \"$f\" in *.py) [ -d tests ] && python -m pytest --tb=short -q 2>&1 | tail -5 ;; esac; } 2>/dev/null || true",
+            "timeout": 120,
+            "statusMessage": "Running pytest..."
+          }
+        ]
+      }
+    ]
   }
 }

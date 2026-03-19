@@ -4,6 +4,14 @@ Custom slash commands for mcp-memory-service development.
 
 ## Available Commands
 
+### `/release`
+
+Full release cycle automation: list open PRs, merge approved, verify CI, check landing page, bump version, create tag + GitHub release, clean branches, save summary to MCP Memory.
+
+### `/triage`
+
+Security alert triage & remediation: scan Dependabot/CodeQL/secret scanning alerts, classify severity + complexity, create fix branches, implement fixes, open PRs, save patterns to MCP Memory.
+
 ### `/refactor-function` (PoC)
 
 Automated function complexity reduction using multi-agent workflow.
