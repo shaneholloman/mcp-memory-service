@@ -347,19 +347,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.26.6** (March 20, 2026)
+## Latest Release: **v10.26.7** (March 23, 2026)
 
-**Security patch: authlib>=1.6.9, PyJWT>=2.12.0, pypdf>=6.9.1 — 5 Dependabot alerts resolved (1 critical, 3 high, 1 medium)**
+**Cloudflare D1 fresh-database schema initialization fix (issue #600)**
 
 **What's New:**
-- **Security fix: authlib JWS/JWE vulnerabilities** (Critical + 2 High): `authlib` bumped from `>=1.6.5` to `>=1.6.9` to address JWS JWK header injection (signature verification bypass), JWE RSA1_5 Bleichenbacher padding oracle, and fail-open OIDC hash binding vulnerabilities.
-- **Security fix: PyJWT unknown `crit` header extensions** (High): `PyJWT[crypto]` bumped from `>=2.8.0` to `>=2.12.0` to prevent acceptance of unknown `crit` header extensions in JWT verification.
-- **Security fix: pypdf inefficient array-stream decoding** (Medium): `pypdf` bumped from `>=3.0.0` to `>=6.9.1` to address a DoS vector via inefficient array-based content stream processing.
-- `uv.lock` updated: pypdf 6.8.0 -> 6.9.1, authlib 1.6.8 -> 1.6.9.
+- **Bug fix: Cloudflare D1 schema init on fresh database** (issue #600): `PRAGMA table_list` on a brand-new D1 database returns `success: true` with empty results — previously misread as failure, leaving the database unusable. Now correctly detected and handled with full schema creation.
+- Fix contributed by community contributor [@Lyt060814](https://github.com/Lyt060814).
 
 ---
 
 **Previous Releases**:
+- **v10.26.6** - Security patch: authlib>=1.6.9, PyJWT>=2.12.0, pypdf>=6.9.1 (5 Dependabot alerts: 1 critical, 3 high, 1 medium)
 - **v10.26.5** - Security patch: black dev dependency bumped to >=26.3.1 (GHSA-3936-cmfr-pm3m, CVE-2026-32274, path traversal)
 - **v10.26.4** - FTS5 hybrid search fix on upgrade + dashboard auth lifecycle fixes (9 bugs)
 - **v10.26.3** - Dashboard metadata display fixes + quality scorer resilience (Groq 429 fallback chain, empty-query absolute prompt)

@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.26.7] - 2026-03-23
+
+### Fixed
+
+- **[#601] Cloudflare D1 schema initialization fails on fresh database (issue #600)**: On a brand-new Cloudflare D1 database, `PRAGMA table_list` returns a success response (`success: true`) with an empty `results` array rather than an error. The schema migration logic incorrectly treated this as a failure and aborted initialization, leaving the database in an unusable state. The fix explicitly checks for an empty-results success response and proceeds with full schema creation. Contributed by [@Lyt060814](https://github.com/Lyt060814).
+
 ## [10.26.6] - 2026-03-20
 
 ### Security
