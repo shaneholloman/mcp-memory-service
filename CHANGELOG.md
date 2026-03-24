@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.26.9] - 2026-03-24
+
+### Refactored
+
+- **[#610] Fix N+1 query in update_memories_batch**: The batch update method issued a separate SELECT per memory to fetch `updated_at`; it now includes `updated_at` in the initial bulk SELECT, eliminating the N+1 query pattern and reducing database round-trips proportionally to batch size.
+- **[#610] Simplify _get_memory_age_days with max(filter(None, ...))**: Replaced explicit conditional logic with a concise `max(filter(None, ...))` expression, improving readability while preserving correct behaviour when either timestamp is absent.
+- **[#610] Extract _initialize_hash_embedding_fallback() helper**: Duplicated hash-embedding fallback initialization logic has been consolidated into a single private helper method, eliminating code duplication and making the fallback path easier to maintain.
+
 ## [10.26.8] - 2026-03-24
 
 ### Fixed
