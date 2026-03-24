@@ -20,7 +20,8 @@ context in 5ms — without cloud lock-in or API costs.
 [![Works with Claude](https://img.shields.io/badge/Works%20with-Claude-blue)](https://claude.ai)
 [![Works with Cursor](https://img.shields.io/badge/Works%20with-Cursor-orange)](https://cursor.sh)
 [![Remote MCP](https://img.shields.io/badge/MCP-Remote%20Support-blue?logo=anthropic)](docs/remote-mcp-setup.md)
-[![claude.ai](https://img.shields.io/badge/claude.ai-Browser%20Compatible-orange?logo=anthropic)](docs/remote-mcp-setup.md)
+[![claude.ai](https://img.shields.io/badge/claude.ai-Browser%20Compatible-orange?logo=anthropic)](docs/remote-mcp-setu
+p.md)
 [![OAuth 2.0](https://img.shields.io/badge/Auth-OAuth%202.0%20%2B%20DCR-green)](docs/oauth-setup.md)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/doobidoo)
 
@@ -347,17 +348,22 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.26.7** (March 23, 2026)
+## Latest Release: **v10.26.8** (March 24, 2026)
 
-**Cloudflare D1 fresh-database schema initialization fix (issue #600)**
+**6 bug fixes in consolidation, embeddings, and memory types (#603-#608)**
 
 **What's New:**
-- **Bug fix: Cloudflare D1 schema init on fresh database** (issue #600): `PRAGMA table_list` on a brand-new D1 database returns `success: true` with empty results — previously misread as failure, leaving the database unusable. Now correctly detected and handled with full schema creation.
-- Fix contributed by community contributor [@Lyt060814](https://github.com/Lyt060814).
+- **Bug fix: invalid memory_type "learning_note"** (#603): learning session prompt now emits `"learning"` instead of the non-existent `"learning_note"` type.
+- **Bug fix: update_memory_relevance_metadata no longer corrupts updated_at** (#604): removed the spurious `memory.touch()` side-effect.
+- **Bug fix: consolidation preserves original timestamps** (#605): `update_memories_batch` gains `preserve_timestamps` flag; consolidation callers opt in.
+- **Bug fix: memory age uses max(created_at, updated_at)** (#606): updated memories are no longer prematurely forgotten.
+- **Bug fix: embedding dimension fallback on partial cache hit** (#607): re-derives dimension from cached model instead of raising `KeyError`.
+- **Bug fix: _HashEmbeddingModel fallback reads DB schema dimension** (#608): prevents vector dimension mismatch when reopening an existing database with the fallback encoder.
 
 ---
 
 **Previous Releases**:
+- **v10.26.7** - Cloudflare D1 fresh-database schema initialization fix (issue #600), community contribution by @Lyt060814
 - **v10.26.6** - Security patch: authlib>=1.6.9, PyJWT>=2.12.0, pypdf>=6.9.1 (5 Dependabot alerts: 1 critical, 3 high, 1 medium)
 - **v10.26.5** - Security patch: black dev dependency bumped to >=26.3.1 (GHSA-3936-cmfr-pm3m, CVE-2026-32274, path traversal)
 - **v10.26.4** - FTS5 hybrid search fix on upgrade + dashboard auth lifecycle fixes (9 bugs)

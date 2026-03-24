@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.26.8] - 2026-03-24
+
+### Fixed
+
+- **[#603] Fix invalid memory_type "learning_note" in learning_session prompt**: The `create_learning_session` prompt handler was emitting `memory_type: "learning_note"`, which is not a valid type in the memory schema. Changed to `"learning"` so sessions are correctly classified and retrievable by type filter.
+- **[#604] Remove memory.touch() call from update_memory_relevance_metadata**: `update_memory_relevance_metadata` was calling `memory.touch()` as a side-effect, which silently overwrote `updated_at` on every relevance update. Relevance metadata updates (access count, quality score) no longer corrupt the `updated_at` timestamp.
+- **[#605] Add preserve_timestamps option to update_memories_batch; consolidation callers opt in**: `update_memories_batch` now accepts a `preserve_timestamps` flag (default `False` for backward compatibility). The consolidation pipeline passes `preserve_timestamps=True` so that merging and compressing memories does not reset their original creation/update times.
+- **[#606] Use max(created_at, updated_at) for memory age in _get_memory_age_days**: The age calculation previously used only `created_at`, so a memory that was meaningfully updated still decayed as if it had never been touched. The fix uses `max(created_at, updated_at)` so that a substantive update resets the effective age and prevents premature forgetting.
+- **[#607] Add dimension fallback when _DIMENSION_CACHE misses on _MODEL_CACHE hit**: If the embedding model was already cached but the dimension entry was absent (e.g. after a cache-partial warm-up), the encoder would raise a KeyError. The fix re-derives and caches the dimension from the loaded model so subsequent calls succeed without re-loading the model.
+- **[#608] Detect existing DB schema dimension for _HashEmbeddingModel fallback**: When the real embedding model cannot be loaded and the `_HashEmbeddingModel` fallback is used, the code now inspects the existing database schema to determine the vector dimension already in use rather than defaulting to a hard-coded value. This prevents dimension mismatch errors when re-opening an existing database with the fallback encoder.
+
 ## [10.26.7] - 2026-03-23
 
 ### Fixed
