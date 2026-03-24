@@ -220,13 +220,17 @@ class TestIssue608HashModelDimensionFromDB:
     """Hash embedding fallback must check existing DB schema for dimension."""
 
     def test_source_checks_existing_dimension_before_hash_model(self):
-        """Both hash fallback paths should call _get_existing_db_embedding_dimension."""
+        """Both hash fallback paths should use _initialize_hash_embedding_fallback."""
         import inspect
         from mcp_memory_service.storage.sqlite_vec import SqliteVecMemoryStorage
 
         source = inspect.getsource(SqliteVecMemoryStorage._initialize_embedding_model)
-        count = source.count("_get_existing_db_embedding_dimension")
-        assert count >= 2, f"Expected >=2 calls to _get_existing_db_embedding_dimension, found {count}"
+        count = source.count("_initialize_hash_embedding_fallback")
+        assert count >= 2, f"Expected >=2 calls to _initialize_hash_embedding_fallback, found {count}"
+
+        # Verify the helper checks DB dimension
+        helper_source = inspect.getsource(SqliteVecMemoryStorage._initialize_hash_embedding_fallback)
+        assert "_get_existing_db_embedding_dimension" in helper_source
 
     def test_hash_model_respects_custom_dimension(self):
         """_HashEmbeddingModel should work with any dimension."""

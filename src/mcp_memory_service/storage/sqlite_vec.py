@@ -1017,15 +1017,7 @@ SOLUTIONS:
                 logger.warning(
                     "Neither ONNX nor sentence-transformers available; using pure-Python hash embeddings (quality reduced)."
                 )
-                # Detect existing DB dimension to avoid mismatch (#608)
-                existing_dim = self._get_existing_db_embedding_dimension()
-                if existing_dim and existing_dim != self.embedding_dimension:
-                    logger.warning(
-                        f"Adjusting hash embedding dimension from {self.embedding_dimension} to "
-                        f"{existing_dim} to match existing database schema."
-                    )
-                    self.embedding_dimension = existing_dim
-                self.embedding_model = _HashEmbeddingModel(self.embedding_dimension)
+                self._initialize_hash_embedding_fallback()
                 return
 
             # Check cache first
@@ -1145,15 +1137,18 @@ SOLUTIONS:
             logger.warning(
                 "Falling back to pure-Python hash embeddings due to embedding init failure (quality reduced)."
             )
-            # Detect existing DB dimension to avoid mismatch (#608)
-            existing_dim = self._get_existing_db_embedding_dimension()
-            if existing_dim and existing_dim != self.embedding_dimension:
-                logger.warning(
-                    f"Adjusting hash embedding dimension from {self.embedding_dimension} to "
-                    f"{existing_dim} to match existing database schema."
-                )
-                self.embedding_dimension = existing_dim
-            self.embedding_model = _HashEmbeddingModel(self.embedding_dimension)
+            self._initialize_hash_embedding_fallback()
+
+    def _initialize_hash_embedding_fallback(self):
+        """Initialize hash embedding model, matching existing DB dimension if possible (#608)."""
+        existing_dim = self._get_existing_db_embedding_dimension()
+        if existing_dim and existing_dim != self.embedding_dimension:
+            logger.warning(
+                f"Adjusting hash embedding dimension from {self.embedding_dimension} to "
+                f"{existing_dim} to match existing database schema."
+            )
+            self.embedding_dimension = existing_dim
+        self.embedding_model = _HashEmbeddingModel(self.embedding_dimension)
 
     def _get_docker_network_help(self) -> str:
         """Get Docker-specific network troubleshooting help."""
@@ -2681,10 +2676,11 @@ SOLUTIONS:
 
             for idx, memory in enumerate(memories):
                 try:
-                    # Get current memory data
+                    # Get current memory data (includes updated_at to avoid N+1 query #610)
                     cursor.execute(
                         """
-                        SELECT content, tags, memory_type, metadata, created_at, created_at_iso
+                        SELECT content, tags, memory_type, metadata, created_at, created_at_iso,
+                               updated_at, updated_at_iso
                         FROM memories WHERE content_hash = ? AND deleted_at IS NULL
                     """,
                         (memory.content_hash,),
@@ -2695,7 +2691,8 @@ SOLUTIONS:
                         logger.warning(f"Memory {memory.content_hash} not found during batch update")
                         continue
 
-                    content, current_tags, current_type, current_metadata_str, created_at, created_at_iso = row
+                    (content, current_tags, current_type, current_metadata_str,
+                     created_at, created_at_iso, current_updated_at, current_updated_at_iso) = row
 
                     # Parse current metadata
                     current_metadata = self._safe_json_loads(current_metadata_str, "update_memories_batch")
@@ -2717,14 +2714,9 @@ SOLUTIONS:
                         new_type != current_type
                     )
                     if preserve_timestamps and not structural_change:
-                        # Pure metadata update — read and keep existing timestamps
-                        cursor.execute(
-                            "SELECT updated_at, updated_at_iso FROM memories WHERE content_hash = ? AND deleted_at IS NULL",
-                            (memory.content_hash,),
-                        )
-                        ts_row = cursor.fetchone()
-                        mem_updated_at = ts_row[0] if ts_row else now
-                        mem_updated_at_iso = ts_row[1] if ts_row else now_iso
+                        # Pure metadata update — reuse timestamps from initial SELECT
+                        mem_updated_at = current_updated_at if current_updated_at else now
+                        mem_updated_at_iso = current_updated_at_iso if current_updated_at_iso else now_iso
                     else:
                         mem_updated_at = now
                         mem_updated_at_iso = now_iso

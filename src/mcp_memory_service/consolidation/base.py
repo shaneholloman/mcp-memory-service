@@ -142,14 +142,7 @@ class ConsolidationBase(ABC):
             ref_time = ref_time.replace(tzinfo=timezone.utc)
 
         # Determine the best reference timestamp: max(created_at, updated_at)
-        reference_ts = None
-        if memory.created_at:
-            reference_ts = memory.created_at
-        if memory.updated_at:
-            if reference_ts is None:
-                reference_ts = memory.updated_at
-            else:
-                reference_ts = max(reference_ts, memory.updated_at)
+        reference_ts = max(filter(None, (memory.created_at, memory.updated_at)), default=None)
 
         if reference_ts:
             ref_dt = datetime.fromtimestamp(reference_ts, tz=timezone.utc)
