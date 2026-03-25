@@ -133,6 +133,26 @@ results = await client.post(f"{BASE_URL}/api/memories/search", json={
 
 This pattern — **tags as inter-agent signals** — emerges naturally from the tagging system and requires no additional infrastructure.
 
+### Real-World: Self-Hosted Docker Stack with Cloudflare Tunnel
+
+> *"The quality of life that session-independent memory adds to AI workflows is immense. File-based memory demands constant discipline. Semantic recall from a live database doesn't. Storing data on my own hardware while making it remotely accessible across platforms turned out to be a feature I didn't know I needed."*
+> — [@PL-Peter](https://github.com/PL-Peter), [discussion #602](https://github.com/doobidoo/mcp-memory-service/discussions/602)
+
+A production-tested self-hosted deployment using Docker containers behind a Cloudflare tunnel, with [AuthMCP Gateway](https://github.com/loglux/authmcp-gateway) handling authentication:
+
+| Layer | Role |
+|-------|------|
+| **Cloudflare Tunnel** | Name-based routing, subnet-based access control, authentication before hitting self-hosted resources |
+| **AuthMCP Gateway** | Auth/aggregation with locally managed users, admin UI, per-user MCP server access control, bearer token auth |
+| **mcp-memory-service** | Two Docker containers sharing one SQLite backend — one for MCP, one for the web UI (document ingestion) |
+
+**Security best practices for this setup:**
+- Use Cloudflare ZeroTrust with subnet-based access control (e.g., allow Anthropic subnets + your own IPs)
+- Add **Client IP Address Filtering** to all Cloudflare API tokens (Dashboard → My Profile → API Tokens → Edit → Client IP Address Filtering) to limit abuse if a token leaks
+- If using IPv6, include your IPv6 /64 network in the allowlist (Python prefers IPv6 by default)
+- Set `MCP_OAUTH_ACCESS_TOKEN_EXPIRE_MINUTES=1440` to extend OAuth tokens to 24 hours (refresh tokens not yet supported)
+- Consider an auth proxy like [AuthMCP](https://github.com/loglux/authmcp-gateway) or [mcp-auth-proxy](https://github.com/sigbit/mcp-auth-proxy) for robust session management
+
 ## Comparison with Alternatives
 
 | | Mem0 | Zep | DIY Redis+Pinecone | **mcp-memory-service** |
