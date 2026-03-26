@@ -263,7 +263,7 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
         }
     
     elif tool_name == "retrieve_memory":
-        query = arguments.get("query")
+        query = arguments.get("query") or arguments.get("content")
         limit = arguments.get("limit", 10)
         similarity_threshold = arguments.get("similarity_threshold", 0.0)
         
@@ -292,7 +292,7 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
         }
 
     elif tool_name == "recall_memory":
-        query = arguments.get("query")
+        query = arguments.get("query") or arguments.get("content")
         n_results = arguments.get("n_results", 5)
 
         # Use storage recall_memory method which handles time expressions
