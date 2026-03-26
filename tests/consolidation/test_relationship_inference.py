@@ -28,7 +28,7 @@ class TestRelationshipInferenceEngineInit:
     def test_default_initialization(self):
         """Engine should initialize with default confidence threshold."""
         engine = RelationshipInferenceEngine()
-        assert engine.min_confidence == 0.6
+        assert engine.min_confidence == 0.5
 
     def test_custom_confidence_threshold(self):
         """Engine should accept custom confidence threshold."""
@@ -74,10 +74,9 @@ class TestTypeCombinaticAnalysis:
             target_timestamp=time.time() - 100
         )
         # error→error type combination gives "causes" at 0.6; resolution
-        # keyword gives "fixes" at 0.6; both are below min_typed_confidence=0.75
-        # so the result falls back to "related".  Shared keywords are present
-        # ("database", "deadlock") so the domain guard passes.
-        assert rel_type in ["fixes", "related"]
+        # keyword gives "fixes" at 0.6; both above min_typed_confidence=0.50.
+        # Shared keywords ("database", "deadlock") pass the domain guard.
+        assert rel_type in ["fixes", "causes", "related"]
         assert confidence >= 0.0
 
     @pytest.mark.asyncio
@@ -112,8 +111,8 @@ class TestContentSemanticAnalysis:
             source_timestamp=time.time(),
             target_timestamp=time.time() - 100
         )
-        # Should detect fix signal or default to related
-        assert rel_type in ["fixes", "related"]
+        # Should detect fix signal, temporal follows, or default to related
+        assert rel_type in ["fixes", "follows", "related"]
         assert confidence >= 0.0
 
     @pytest.mark.asyncio
@@ -127,8 +126,8 @@ class TestContentSemanticAnalysis:
             source_timestamp=time.time(),
             target_timestamp=time.time() - 50
         )
-        # Should detect contradiction or default to related
-        assert rel_type in ["contradicts", "related"]
+        # Should detect contradiction, temporal follows, or default to related
+        assert rel_type in ["contradicts", "follows", "related"]
         assert confidence >= 0.0
 
     @pytest.mark.asyncio
@@ -208,8 +207,8 @@ class TestContradictionDetection:
             source_timestamp=time.time(),
             target_timestamp=time.time() - 100
         )
-        # May detect contradiction or default to related
-        assert rel_type in ["contradicts", "related"]
+        # May detect contradiction, temporal follows, or default to related
+        assert rel_type in ["contradicts", "follows", "related"]
         assert confidence >= 0.0
 
     @pytest.mark.asyncio
@@ -223,8 +222,8 @@ class TestContradictionDetection:
             source_timestamp=time.time(),
             target_timestamp=time.time() - 50
         )
-        # May detect contradiction or default to related
-        assert rel_type in ["contradicts", "related"]
+        # May detect contradiction, temporal follows, or default to related
+        assert rel_type in ["contradicts", "follows", "related"]
         assert confidence >= 0.0
 
 
@@ -319,8 +318,8 @@ class TestEdgeCases:
             source_timestamp=time.time(),
             target_timestamp=time.time() - 100
         )
-        # May detect "fixed" keyword or default to related
-        assert rel_type in ["fixes", "related"]
+        # May detect "fixed" keyword, temporal follows, or default to related
+        assert rel_type in ["fixes", "follows", "related"]
         assert confidence >= 0.0
 
     @pytest.mark.asyncio
@@ -334,8 +333,8 @@ class TestEdgeCases:
             source_timestamp=time.time(),
             target_timestamp=time.time() - 50
         )
-        # May detect fix signal or default to related
-        assert rel_type in ["fixes", "related"]
+        # May detect fix signal, temporal follows, or default to related
+        assert rel_type in ["fixes", "follows", "related"]
         assert confidence >= 0.0
 
 
@@ -446,8 +445,8 @@ class TestIntegrationScenarios:
             target_tags=["performance", "caching"]
         )
 
-        # May detect contradiction or default to related
-        assert rel_type in ["contradicts", "related"]
+        # May detect contradiction, temporal follows, or default to related
+        assert rel_type in ["contradicts", "follows", "related"]
         assert confidence >= 0.0
 
     @pytest.mark.asyncio
@@ -611,10 +610,11 @@ class TestIssue541ContradictionFalsePositives:
             target_timestamp=time.time() - 50,
         )
         # "contradicts" keyword + shared domain words ("caching", "performance"/"throughput")
-        # → should produce contradicts label
-        assert rel_type in ["contradicts", "related"], (
+        # → should produce contradicts label; with lower thresholds, temporal
+        # "follows" may also pass through
+        assert rel_type in ["contradicts", "follows", "related"], (
             "Issue #541: strong contradiction keyword with shared domain context "
-            "should produce 'contradicts' or 'related', not another typed label"
+            "should produce 'contradicts', 'follows', or 'related', not another typed label"
         )
 
     @pytest.mark.asyncio
@@ -628,7 +628,8 @@ class TestIssue541ContradictionFalsePositives:
             source_timestamp=time.time(),
             target_timestamp=time.time() - 100,
         )
-        assert rel_type in ["contradicts", "related"]
+        # With lower thresholds, temporal "follows" may also pass through
+        assert rel_type in ["contradicts", "follows", "related"]
 
     @pytest.mark.asyncio
     async def test_contradiction_requires_shared_keywords(self, engine):
@@ -780,6 +781,6 @@ class TestIssue541TypedLabelThresholds:
     async def test_default_initialization_typed_params(self):
         """Issue #541: new parameters have correct defaults."""
         engine = RelationshipInferenceEngine()
-        assert engine.min_confidence == 0.6
-        assert engine.min_typed_confidence == 0.65
-        assert engine.min_typed_similarity == 0.55
+        assert engine.min_confidence == 0.5
+        assert engine.min_typed_confidence == 0.50
+        assert engine.min_typed_similarity == 0.45

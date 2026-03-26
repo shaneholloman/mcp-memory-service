@@ -172,9 +172,9 @@ class RelationshipInferenceEngine:
 
     def __init__(
         self,
-        min_confidence: float = 0.6,
-        min_typed_confidence: float = 0.65,
-        min_typed_similarity: float = 0.55,
+        min_confidence: float = 0.5,
+        min_typed_confidence: float = 0.50,
+        min_typed_similarity: float = 0.45,
         typed_edges_enabled: bool = True,
     ):
         """
@@ -415,17 +415,41 @@ class RelationshipInferenceEngine:
         target_parent = self._resolve_parent_type(target_type)
 
         # High-confidence patterns from ontology
+        # Extended to cover all common memory types in production:
+        # observation (64%), note (18%), reference (5%), document (3%),
+        # configuration (1.4%), decision (1.2%), pattern/learning (<1%)
         type_patterns = {
+            # Original high-confidence patterns
             ("decision", "error"): ("uses", 0.7),
             ("learning", "error"): ("fixes", 0.8),
             ("pattern", "error"): ("fixes", 0.75),
             ("learning", "decision"): ("supports", 0.6),
-            ("observation", "learning"): ("supports", 0.5),
             ("pattern", "learning"): ("supports", 0.6),
-            ("decision", "decision"): ("supports", 0.4),
-            ("learning", "learning"): ("supports", 0.3),
             ("error", "error"): ("causes", 0.6),
-            ("observation", "observation"): ("follows", 0.3),
+            # Cross-type relationships for common types
+            ("observation", "learning"): ("supports", 0.6),
+            ("observation", "decision"): ("supports", 0.55),
+            ("observation", "error"): ("causes", 0.55),
+            ("observation", "observation"): ("follows", 0.5),
+            ("note", "note"): ("follows", 0.5),
+            ("note", "decision"): ("supports", 0.55),
+            ("note", "learning"): ("supports", 0.55),
+            ("note", "error"): ("causes", 0.5),
+            ("note", "observation"): ("supports", 0.5),
+            ("reference", "reference"): ("supports", 0.5),
+            ("reference", "decision"): ("supports", 0.55),
+            ("reference", "learning"): ("supports", 0.55),
+            ("reference", "observation"): ("supports", 0.5),
+            ("document", "document"): ("supports", 0.5),
+            ("document", "reference"): ("supports", 0.55),
+            ("document", "observation"): ("supports", 0.5),
+            ("document", "learning"): ("supports", 0.55),
+            ("configuration", "error"): ("causes", 0.65),
+            ("configuration", "decision"): ("supports", 0.6),
+            ("configuration", "configuration"): ("supports", 0.5),
+            ("configuration", "observation"): ("supports", 0.5),
+            ("decision", "decision"): ("supports", 0.5),
+            ("learning", "learning"): ("supports", 0.5),
         }
 
         # Check both (source, target) and (target, source) directions
