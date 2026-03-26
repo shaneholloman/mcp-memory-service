@@ -368,17 +368,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.28.1** (March 26, 2026)
+## Latest Release: **v10.28.2** (March 26, 2026)
 
-**Harvest false-positive fix: skip system prompts, skill outputs, and long injected content**
+**Relationship inference tuning: 93.5% typed labels vs 0.5% before + German language support**
 
 **What's New:**
-- **Filter system-injected content in harvest**: JSONL parser now skips `system-reminder`, `command-name`, and `ide_opened_file` tagged blocks, and drops text blocks >2000 chars — eliminates false positives from injected context.
-- **3 new tests** covering the filter logic.
+- **Tuned inference thresholds**: Lowered confidence and similarity thresholds so relationships are inferred across the full range of real-world memory types, not just the 4 types previously mapped.
+- **Expanded type coverage**: `note`, `reference`, `document`, and `configuration` types now participate in typed relationship inference (previously only `decision`, `learning`, `error`, `pattern`).
+- **German language support**: Added German patterns for causation, resolution, support, and contradiction, plus German stopwords.
+- **Shared-tag domain overlap**: Shared tags now count as domain affinity when keyword overlap is absent, improving inference on short memories.
 
 ---
 
 **Previous Releases**:
+- **v10.28.1** - Harvest false-positive fix: skip system prompts, skill outputs, and long injected content (3 new tests)
 - **v10.28.0** - Session harvest tool (`memory_harvest`): extract learnings from Claude Code transcripts + security dependency updates (#614-#616)
 - **v10.27.0** - External embedding compatibility fix (missing `index` field, community PR #612) + Docker/Cloudflare deployment docs
 - **v10.26.8** - 6 bug fixes in consolidation, embeddings, and memory types (#603-#608)

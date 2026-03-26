@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.28.2] - 2026-03-26
+
+### Fixed
+
+- **Tune relationship inference thresholds for real-world memory distribution**: Lowered `min_typed_confidence` from 0.75 to 0.50, `min_typed_similarity` from 0.65 to 0.45, and `min_confidence` from 0.6 to 0.5 so that relationships are inferred for a much broader range of real-world memories. Expanded `type_patterns` to cover `note`, `reference`, `document`, and `configuration` memory types (previously only `decision`, `learning`, `error`, and `pattern` were mapped, missing 85%+ of memories). Result: 93.5% typed relationship labels vs 0.5% before tuning.
+- **Add German language patterns for relationship inference**: Added German patterns for causation, resolution, support, and contradiction relationships, along with German stopwords. Shared tags are now accepted as an alternative to keyword overlap for domain affinity, improving inference on short or terse memories.
+
 ## [10.28.1] - 2026-03-26
 
 ### Fixed
