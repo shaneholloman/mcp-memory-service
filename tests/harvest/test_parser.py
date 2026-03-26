@@ -76,3 +76,60 @@ class TestTranscriptParser:
         parser = TranscriptParser()
         messages = parser.parse_file(filepath)
         assert messages == []  # progress is skipped, corrupt is skipped
+
+    def test_system_reminders_filtered(self, tmp_path):
+        """System reminder injections should be filtered out."""
+        import json
+        lines = [
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "text", "text": "<system-reminder>You have tools available</system-reminder>"},
+                {"type": "text", "text": "Fix the bug in the parser"}
+            ]}, "timestamp": "2026-03-25T10:00:00Z", "sessionId": "s1", "uuid": "u1"},
+        ]
+        filepath = tmp_path / "sys.jsonl"
+        with open(filepath, 'w') as f:
+            for line in lines:
+                f.write(json.dumps(line) + '\n')
+        parser = TranscriptParser()
+        messages = parser.parse_file(filepath)
+        assert len(messages) == 1
+        assert "Fix the bug" in messages[0].text
+
+    def test_skill_outputs_filtered(self, tmp_path):
+        """Skill/command outputs should be filtered out."""
+        import json
+        lines = [
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "text", "text": "<command-name>/release</command-name>"},
+            ]}, "timestamp": "2026-03-25T10:00:00Z", "sessionId": "s1", "uuid": "u1"},
+            {"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "text", "text": "I decided to use WAL mode for the database because of concurrent access needs."},
+            ]}, "timestamp": "2026-03-25T10:01:00Z", "sessionId": "s1", "uuid": "a1"},
+        ]
+        filepath = tmp_path / "skill.jsonl"
+        with open(filepath, 'w') as f:
+            for line in lines:
+                f.write(json.dumps(line) + '\n')
+        parser = TranscriptParser()
+        messages = parser.parse_file(filepath)
+        assert len(messages) == 1
+        assert "WAL mode" in messages[0].text
+
+    def test_very_long_text_filtered(self, tmp_path):
+        """Very long text blocks (>2000 chars) should be filtered as likely skill definitions."""
+        import json
+        long_text = "x" * 2001
+        lines = [
+            {"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "text", "text": long_text},
+                {"type": "text", "text": "Short real message about a bug fix"},
+            ]}, "timestamp": "2026-03-25T10:00:00Z", "sessionId": "s1", "uuid": "a1"},
+        ]
+        filepath = tmp_path / "long.jsonl"
+        with open(filepath, 'w') as f:
+            for line in lines:
+                f.write(json.dumps(line) + '\n')
+        parser = TranscriptParser()
+        messages = parser.parse_file(filepath)
+        assert len(messages) == 1
+        assert "bug fix" in messages[0].text

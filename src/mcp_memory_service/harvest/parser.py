@@ -65,7 +65,7 @@ class TranscriptParser:
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "text":
                         text = block.get("text", "").strip()
-                        if text:
+                        if text and not self._is_system_content(text):
                             messages.append(ParsedMessage(
                                 role=msg_type,
                                 text=text,
@@ -74,3 +74,20 @@ class TranscriptParser:
                             ))
 
         return messages
+
+    @staticmethod
+    def _is_system_content(text: str) -> bool:
+        """Filter out system prompts, skill outputs, and injected content."""
+        # System reminder tags injected by Claude Code
+        if "<system-reminder>" in text or "</system-reminder>" in text:
+            return True
+        # Skill/command outputs (e.g. /release, /commit)
+        if "<command-name>" in text or "<command-message>" in text:
+            return True
+        # IDE context injections
+        if text.startswith("<ide_opened_file>"):
+            return True
+        # Very long blocks (>2000 chars) are typically skill definitions, not conversation
+        if len(text) > 2000:
+            return True
+        return False
