@@ -368,19 +368,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.28.2** (March 26, 2026)
+## Latest Release: **v10.28.3** (March 26, 2026)
 
-**Relationship inference tuning: 93.5% typed labels vs 0.5% before + German language support**
+**HTTP MCP endpoint fix: accept 'content' as alias for 'query' so Claude Code HTTP transport returns results**
 
 **What's New:**
-- **Tuned inference thresholds**: Lowered confidence and similarity thresholds so relationships are inferred across the full range of real-world memory types, not just the 4 types previously mapped.
-- **Expanded type coverage**: `note`, `reference`, `document`, and `configuration` types now participate in typed relationship inference (previously only `decision`, `learning`, `error`, `pattern`).
-- **German language support**: Added German patterns for causation, resolution, support, and contradiction, plus German stopwords.
-- **Shared-tag domain overlap**: Shared tags now count as domain affinity when keyword overlap is absent, improving inference on short memories.
+- **Parameter alias fix**: `retrieve_memory` and `recall_memory` now accept `content` in addition to `query` as the search parameter name.
+- **Claude Code HTTP transport**: Resolves always-empty results when Claude Code invokes memory tools via HTTP (it sends `content`, not `query`).
+- **Backward compatible**: Existing callers using `query` are unaffected; `query` takes precedence when both are present.
 
 ---
 
 **Previous Releases**:
+- **v10.28.2** - Relationship inference tuning: 93.5% typed labels vs 0.5% before + German language support
 - **v10.28.1** - Harvest false-positive fix: skip system prompts, skill outputs, and long injected content (3 new tests)
 - **v10.28.0** - Session harvest tool (`memory_harvest`): extract learnings from Claude Code transcripts + security dependency updates (#614-#616)
 - **v10.27.0** - External embedding compatibility fix (missing `index` field, community PR #612) + Docker/Cloudflare deployment docs

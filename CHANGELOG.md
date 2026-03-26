@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.28.3] - 2026-03-26
+
+### Fixed
+
+- **[#619] Accept 'content' as alias for 'query' in HTTP MCP endpoint**: Claude Code sends `{content: "search terms"}` via HTTP transport, but the handler only read `arguments.get("query")`, causing `retrieve_memory` and `recall_memory` to always return empty results when invoked over HTTP. The endpoint now accepts both `content` and `query` as parameter names, with `query` taking precedence.
+
 ## [10.28.2] - 2026-03-26
 
 ### Fixed
