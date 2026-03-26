@@ -781,5 +781,5 @@ class TestIssue541TypedLabelThresholds:
         """Issue #541: new parameters have correct defaults."""
         engine = RelationshipInferenceEngine()
         assert engine.min_confidence == 0.6
-        assert engine.min_typed_confidence == 0.75
-        assert engine.min_typed_similarity == 0.65
+        assert engine.min_typed_confidence == 0.65
+        assert engine.min_typed_similarity == 0.55

@@ -5,9 +5,9 @@ Regression tests verifying that:
 1. Common contrast conjunctions ("however", "but", "yet", "although") do NOT
    produce a "contradicts" relationship label.
 2. Strong contradiction keywords (e.g. "contradicts", "incorrect") still work.
-3. min_typed_confidence=0.75 gate blocks low-confidence typed labels.
+3. min_typed_confidence=0.65 gate blocks low-confidence typed labels.
 4. Memories with no shared domain keywords fall back to "related".
-5. Low similarity score (< min_typed_similarity=0.65) forces "related".
+5. Low similarity score (< min_typed_similarity=0.55) forces "related".
 """
 
 import time
@@ -29,8 +29,8 @@ def engine():
     """Default engine — matches production defaults after issue #541 fixes."""
     return RelationshipInferenceEngine(
         min_confidence=0.6,
-        min_typed_confidence=0.75,
-        min_typed_similarity=0.65,
+        min_typed_confidence=0.65,
+        min_typed_similarity=0.55,
     )
 
 
@@ -39,8 +39,8 @@ def permissive_engine():
     """Permissive engine for testing positive cases."""
     return RelationshipInferenceEngine(
         min_confidence=0.3,
-        min_typed_confidence=0.75,
-        min_typed_similarity=0.65,
+        min_typed_confidence=0.65,
+        min_typed_similarity=0.55,
     )
 
 
@@ -234,10 +234,10 @@ class TestMinTypedConfidenceGate:
             source_content="We decided to use PostgreSQL for persistent storage of user data",
             target_content="The team decided to use Redis for caching session tokens and data",
         )
-        # decision+decision → supports at 0.4, below min_typed_confidence=0.75
+        # decision+decision → supports at 0.4, below min_typed_confidence=0.65
         assert result_type in ("related", "supports")
         if result_type == "supports":
-            assert confidence >= 0.75
+            assert confidence >= 0.65
 
     @pytest.mark.asyncio
     async def test_custom_high_typed_confidence_blocks_weak_candidates(self):
@@ -268,7 +268,7 @@ class TestMinTypedConfidenceGate:
     async def test_single_side_contradiction_below_threshold(self, engine):
         """
         Single-side contradiction detection gives confidence 0.5, which is
-        below min_typed_confidence=0.75.  Must fall back to 'related'.
+        below min_typed_confidence=0.65.  Must fall back to 'related'.
         """
         result_type, _ = await engine.infer_relationship_type(
             source_type="observation",
@@ -361,7 +361,7 @@ class TestMinTypedSimilarityGate:
 
     @pytest.mark.asyncio
     async def test_low_similarity_forces_related(self, engine):
-        """Similarity 0.3 is below 0.65 threshold — typed label suppressed."""
+        """Similarity 0.3 is below 0.55 threshold — typed label suppressed."""
         result_type, _ = await engine.infer_relationship_type(
             source_type="learning",
             target_type="error",
@@ -369,7 +369,7 @@ class TestMinTypedSimilarityGate:
             target_content="Authentication timeout error connection pool exhausted",
             source_timestamp=time.time(),
             target_timestamp=time.time() - 60,
-            similarity=0.30,  # well below min_typed_similarity=0.65
+            similarity=0.30,  # well below min_typed_similarity=0.55
         )
         assert result_type == "related", (
             "Low similarity (0.3) should suppress typed labels and return 'related'"
@@ -377,7 +377,7 @@ class TestMinTypedSimilarityGate:
 
     @pytest.mark.asyncio
     async def test_borderline_similarity_just_below_threshold(self, engine):
-        """Similarity 0.64 is just below 0.65 threshold — typed label suppressed."""
+        """Similarity 0.54 is just below 0.55 threshold — typed label suppressed."""
         result_type, _ = await engine.infer_relationship_type(
             source_type="learning",
             target_type="error",
@@ -385,13 +385,13 @@ class TestMinTypedSimilarityGate:
             target_content="Database connection pool exhausted causing timeout errors",
             source_timestamp=time.time(),
             target_timestamp=time.time() - 60,
-            similarity=0.64,  # just below threshold
+            similarity=0.54,  # just below threshold
         )
         assert result_type == "related"
 
     @pytest.mark.asyncio
     async def test_similarity_at_threshold_allows_typed(self, engine):
-        """Similarity exactly at threshold (0.65) should allow typed labels."""
+        """Similarity exactly at threshold (0.55) should allow typed labels."""
         result_type, confidence = await engine.infer_relationship_type(
             source_type="learning",
             target_type="error",
@@ -399,7 +399,7 @@ class TestMinTypedSimilarityGate:
             target_content="Database connection pool exhausted causing timeout errors",
             source_timestamp=time.time(),
             target_timestamp=time.time() - 60,
-            similarity=0.65,  # exactly at threshold
+            similarity=0.55,  # exactly at threshold
         )
         # At threshold, typed labels are allowed IF confidence >= min_typed_confidence
         # Result may be "fixes" or "related" depending on confidence
@@ -422,7 +422,7 @@ class TestMinTypedSimilarityGate:
 
     @pytest.mark.asyncio
     async def test_high_similarity_above_threshold_allows_typed(self, engine):
-        """Similarity 0.9 is well above 0.65 — typed label should be allowed."""
+        """Similarity 0.9 is well above 0.55 — typed label should be allowed."""
         result_type, confidence = await engine.infer_relationship_type(
             source_type="learning",
             target_type="error",
@@ -435,7 +435,7 @@ class TestMinTypedSimilarityGate:
         # With high similarity, good confidence, and shared keywords, typed label expected
         assert result_type in ("fixes", "causes", "related")
         if result_type in ("fixes", "causes"):
-            assert confidence >= 0.75
+            assert confidence >= 0.65
 
 
 # ---------------------------------------------------------------------------
@@ -448,7 +448,7 @@ class TestEngineInitParameters:
 
     def test_default_min_typed_confidence(self):
         engine = RelationshipInferenceEngine()
-        assert engine.min_typed_confidence == 0.75
+        assert engine.min_typed_confidence == 0.65
 
     def test_custom_min_typed_confidence(self):
         engine = RelationshipInferenceEngine(min_typed_confidence=0.85)
@@ -464,7 +464,7 @@ class TestEngineInitParameters:
 
     def test_default_min_typed_similarity(self):
         engine = RelationshipInferenceEngine()
-        assert engine.min_typed_similarity == 0.65
+        assert engine.min_typed_similarity == 0.55
 
     def test_custom_min_typed_similarity(self):
         engine = RelationshipInferenceEngine(min_typed_similarity=0.80)
