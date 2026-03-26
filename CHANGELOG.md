@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.28.1] - 2026-03-26
+
+### Fixed
+
+- **[harvest] Filter system prompts, skill outputs, and long injected content**: The JSONL parser now skips blocks tagged `system-reminder`, `command-name`, and `ide_opened_file`, and drops text blocks exceeding 2000 characters. This eliminates false-positive learnings extracted from injected system context rather than genuine session content. 3 new tests added.
+
 ## [10.28.0] - 2026-03-26
 
 ### Added

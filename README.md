@@ -368,19 +368,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.28.0** (March 26, 2026)
+## Latest Release: **v10.28.1** (March 26, 2026)
 
-**Session harvest: extract learnings from Claude Code transcripts + security dependency updates (#614-#616)**
+**Harvest false-positive fix: skip system prompts, skill outputs, and long injected content**
 
 **What's New:**
-- **New `memory_harvest` MCP tool** (#615, closes #596): parse Claude Code JSONL transcript files and extract structured learnings with confidence scoring — dry-run mode on by default for safe preview before writing any memories.
-- **Pattern-based extractor with 27 new tests**: JSONL parser, confidence-scored extraction patterns, and dry-run mode all covered.
-- **Security: bump requests to 2.33.0** (#614): fixes CVE-2026-25645; recommended for all deployments using Cloudflare sync or external embedding APIs.
-- **Dependency: bump pypdf to 6.9.2** (#616): routine patch update.
+- **Filter system-injected content in harvest**: JSONL parser now skips `system-reminder`, `command-name`, and `ide_opened_file` tagged blocks, and drops text blocks >2000 chars — eliminates false positives from injected context.
+- **3 new tests** covering the filter logic.
 
 ---
 
 **Previous Releases**:
+- **v10.28.0** - Session harvest tool (`memory_harvest`): extract learnings from Claude Code transcripts + security dependency updates (#614-#616)
 - **v10.27.0** - External embedding compatibility fix (missing `index` field, community PR #612) + Docker/Cloudflare deployment docs
 - **v10.26.8** - 6 bug fixes in consolidation, embeddings, and memory types (#603-#608)
 - **v10.26.7** - Cloudflare D1 fresh-database schema initialization fix (issue #600), community contribution by @Lyt060814
