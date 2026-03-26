@@ -368,18 +368,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.27.0** (March 25, 2026)
+## Latest Release: **v10.28.0** (March 26, 2026)
 
-**External embedding compatibility fix + real-world Docker/Cloudflare deployment docs (#612)**
+**Session harvest: extract learnings from Claude Code transcripts + security dependency updates (#614-#616)**
 
 **What's New:**
-- **Bug fix: tolerate missing index in external embedding responses** (#612, community contribution by @qq540491950): the external embedding client no longer raises `KeyError` when upstream APIs omit the `index` field, improving compatibility with a broader range of self-hosted providers.
-- **Docs: real-world self-hosted Docker + Cloudflare deployment example**: added a complete end-to-end walkthrough covering Docker Compose, Cloudflare D1 + Vectorize, and hybrid storage mode for production deployments.
-- **Refactor: eliminate N+1 query in update_memories_batch, simplify age calc, extract hash-embedding helper** (#610): three targeted refactors reducing DB round-trips and improving code clarity (v10.26.9).
+- **New `memory_harvest` MCP tool** (#615, closes #596): parse Claude Code JSONL transcript files and extract structured learnings with confidence scoring — dry-run mode on by default for safe preview before writing any memories.
+- **Pattern-based extractor with 27 new tests**: JSONL parser, confidence-scored extraction patterns, and dry-run mode all covered.
+- **Security: bump requests to 2.33.0** (#614): fixes CVE-2026-25645; recommended for all deployments using Cloudflare sync or external embedding APIs.
+- **Dependency: bump pypdf to 6.9.2** (#616): routine patch update.
 
 ---
 
 **Previous Releases**:
+- **v10.27.0** - External embedding compatibility fix (missing `index` field, community PR #612) + Docker/Cloudflare deployment docs
 - **v10.26.8** - 6 bug fixes in consolidation, embeddings, and memory types (#603-#608)
 - **v10.26.7** - Cloudflare D1 fresh-database schema initialization fix (issue #600), community contribution by @Lyt060814
 - **v10.26.6** - Security patch: authlib>=1.6.9, PyJWT>=2.12.0, pypdf>=6.9.1 (5 Dependabot alerts: 1 critical, 3 high, 1 medium)

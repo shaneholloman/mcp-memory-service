@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.28.0] - 2026-03-26
+
+### Added
+
+- **[#615] Session harvest — extract learnings from Claude Code transcripts (closes #596)**: New `memory_harvest` MCP tool that parses Claude Code JSONL transcript files and extracts structured learnings using pattern-based extraction with confidence scoring. Dry-run mode is enabled by default for safe preview before committing any memories. 27 new tests cover the JSONL parser, extractor patterns, and dry-run behaviour.
+
+### Dependencies
+
+- **[#614] bump requests from 2.32.5 to 2.33.0 (security fix CVE-2026-25645)**: Addresses a security vulnerability in the `requests` library; upgrade is recommended for all deployments that use outbound HTTP (e.g. Cloudflare sync, external embedding APIs).
+- **[#616] bump pypdf from 6.9.1 to 6.9.2**: Routine patch update to `pypdf`; no functional changes affecting this project.
+
 ## [10.27.0] - 2026-03-25
 
 ### Fixed
