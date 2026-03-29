@@ -368,18 +368,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.28.5** (March 29, 2026)
+## Latest Release: **v10.29.0** (March 29, 2026)
 
-**Bug fix: MCP_ALLOW_ANONYMOUS_ACCESS=true now respected in the dashboard (#621)**
+**feat(harvest): LLM-based classification via Groq (Phase 2) (#628)**
 
 **What's New:**
-- **Anonymous access fix**: `MCP_ALLOW_ANONYMOUS_ACCESS=true` now correctly grants full access in the dashboard — no more login prompt when the flag is set.
-- **Scope clarified**: Anonymous users receive `read write` scope (not read-only) when the flag is enabled, matching the server's intended behavior.
-- **Documentation updated**: `.env.example` and dashboard auth modal now explicitly warn that this flag grants full read+write access.
+- **LLM-powered harvest classification**: `memory_harvest` now supports an optional `use_llm=true` parameter that routes extracted memories through a Groq-backed classifier for higher-precision category labels.
+- **_GroqClassifierBridge**: New `harvest/classifier.py` module provides a lightweight bridge to Groq's LLM API, with graceful fallback to the existing rule-based classifier when the API is unavailable.
+- **14 new tests**: Full coverage for the classifier bridge, fallback behaviour, and end-to-end `use_llm` harvest flow.
+- **Closes #618**: Completes the two-phase harvest roadmap (Phase 1: rule-based extraction; Phase 2: LLM re-classification).
 
 ---
 
 **Previous Releases**:
+- **v10.28.5** - Bug fix: MCP_ALLOW_ANONYMOUS_ACCESS=true now respected in the dashboard (anonymous users granted read+write scope)
 - **v10.28.4** - Security patch: cryptography>=46.0.6 (CVE-2026-34073), serialize-javascript>=7.0.5 (CVE-2026-34043), CodeQL cleanup
 - **v10.28.3** - HTTP MCP endpoint fix: accept 'content' as alias for 'query' so Claude Code HTTP transport returns results
 - **v10.28.2** - Relationship inference tuning: 93.5% typed labels vs 0.5% before + German language support

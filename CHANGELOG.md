@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.29.0] - 2026-03-29
+
+### Added
+
+- **[#628] LLM-based classification layer for session harvest (Phase 2)**: `memory_harvest` now accepts an optional `use_llm` boolean parameter. When `true`, extracted memories are routed through a new `_GroqClassifierBridge` (in `harvest/classifier.py`) that calls the Groq API to produce higher-precision category labels. Falls back transparently to the existing rule-based classifier when `use_llm=false` (the default) or when the Groq API is unavailable. Closes #618.
+- **[#628] `harvest/classifier.py`**: New module implementing `_GroqClassifierBridge` — a lightweight, async-compatible adapter that wraps Groq's chat-completion API for memory classification. Includes rate-limit handling, structured output parsing, and a `classify_batch()` method for efficient bulk classification.
+- **[#628] 14 new tests**: Full unit and integration coverage for `_GroqClassifierBridge` (mock API responses, fallback on 429/503, batch classification), the `use_llm` path in the harvest MCP handler, and end-to-end harvest flows with and without LLM classification enabled.
+
 ## [10.28.5] - 2026-03-29
 
 ### Fixed
