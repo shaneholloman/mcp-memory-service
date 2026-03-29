@@ -368,19 +368,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.28.4** (March 29, 2026)
+## Latest Release: **v10.28.5** (March 29, 2026)
 
-**Security patch: cryptography>=46.0.6 (CVE-2026-34073), serialize-javascript>=7.0.5 (CVE-2026-34043), CodeQL unused import cleanup**
+**Bug fix: MCP_ALLOW_ANONYMOUS_ACCESS=true now respected in the dashboard (#621)**
 
 **What's New:**
-- **cryptography>=46.0.6**: Fixes CVE-2026-34073 (incomplete DNS name constraint enforcement, Dependabot #68).
-- **serialize-javascript>=7.0.5**: Fixes CVE-2026-34043 (CPU exhaustion DoS via crafted array-like objects, Dependabot #66, #67).
-- **CodeQL cleanup**: Removed unused `Optional` import in `harvester.py` (CodeQL #379).
-- **Dependency hygiene**: Alphabetical sorting of dependencies in `pyproject.toml`.
+- **Anonymous access fix**: `MCP_ALLOW_ANONYMOUS_ACCESS=true` now correctly grants full access in the dashboard — no more login prompt when the flag is set.
+- **Scope clarified**: Anonymous users receive `read write` scope (not read-only) when the flag is enabled, matching the server's intended behavior.
+- **Documentation updated**: `.env.example` and dashboard auth modal now explicitly warn that this flag grants full read+write access.
 
 ---
 
 **Previous Releases**:
+- **v10.28.4** - Security patch: cryptography>=46.0.6 (CVE-2026-34073), serialize-javascript>=7.0.5 (CVE-2026-34043), CodeQL cleanup
 - **v10.28.3** - HTTP MCP endpoint fix: accept 'content' as alias for 'query' so Claude Code HTTP transport returns results
 - **v10.28.2** - Relationship inference tuning: 93.5% typed labels vs 0.5% before + German language support
 - **v10.28.1** - Harvest false-positive fix: skip system prompts, skill outputs, and long injected content (3 new tests)

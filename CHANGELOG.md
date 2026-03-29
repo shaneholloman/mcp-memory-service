@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.28.5] - 2026-03-29
+
+### Fixed
+
+- **[#621] Anonymous access flag ignored in dashboard**: `MCP_ALLOW_ANONYMOUS_ACCESS=true` had no effect on the dashboard — unauthenticated users were still redirected to a login prompt regardless of the flag value. The OAuth middleware now grants anonymous users full `read write` scope when `MCP_ALLOW_ANONYMOUS_ACCESS=true`, matching the server's intended behavior. Users behind a firewall or using external auth (e.g. Nginx Basic Auth) who rely on this flag no longer need to provide credentials in the dashboard.
+
+### Documentation
+
+- **Anonymous access scope clarification**: Updated `.env.example`, dashboard auth modal, and test docstrings to explicitly state that `MCP_ALLOW_ANONYMOUS_ACCESS=true` grants read+write access (not read-only). Addresses Gemini review feedback on PR #626.
+
 ## [10.28.4] - 2026-03-29
 
 ### Security
