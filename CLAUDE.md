@@ -399,6 +399,8 @@ export MCP_EXTERNAL_EMBEDDING_API_KEY=sk-xxx  # Optional
 - Ensures consistency across `pyproject.toml`, `_version.py`, CHANGELOG, and GitHub releases
 - Example: After merging feature PR, invoke github-release-manager agent to create release
 
+**Dashboard changes (`web/static/`):** Verify in browser before merging. Dashboard JS lacks automated test coverage — PRs touching this area should include manual testing evidence or screenshots.
+
 **Memory Tagging:** Always tag memories with `mcp-memory-service` as first tag (see `.claude/directives/memory-tagging.md`)
 
 ### Common Development Tasks
@@ -505,6 +507,7 @@ memory.memory_type or ''
 | Cloudflare 401 on MCP server startup (hybrid mode) | Set `MCP_HYBRID_SYNC_OWNER=http` in `.env` — MCP server then uses SQLite-Vec only, no Cloudflare token needed in Claude Desktop config |
 | Cloudflare 403 / sync not running (IPv6) | Python prefers IPv6 but token IP allowlist may only have IPv4. Add your IPv6 /64 network to token's Client IP Address Filtering, or remove IP filtering entirely |
 | Strict stdio client times out during handshake (e.g. Codex, 10s budget) | Set `MCP_INIT_TIMEOUT=5` to force lazy loading — storage initializes on first tool call instead (issue #561) |
+| uv.lock revision downgraded (revision=2 vs revision=3) | Local uv 0.7.16 silently downgrades lockfile. Restore with `git checkout uv.lock` or upgrade uv. Don't include revision-only changes in PRs |
 
 **Comprehensive troubleshooting:** [docs/troubleshooting/hooks-quick-reference.md](docs/troubleshooting/hooks-quick-reference.md)
 
