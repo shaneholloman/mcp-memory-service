@@ -360,6 +360,11 @@ class DreamInspiredConsolidator:
                     # Apply forgetting results to storage
                     await self._apply_forgetting_results(forgetting_results)
 
+                # 6b. Prune orphaned graph edges (#632)
+                orphaned = await self._prune_orphaned_graph_edges()
+                if orphaned > 0:
+                    self.logger.info(f"🧹 Pruned {orphaned} orphaned graph edges")
+
                 # 7. Update consolidation statistics
                 self._update_consolidation_stats(report)
 
@@ -741,6 +746,37 @@ class DreamInspiredConsolidator:
                         f"Failed to store compressed version for {result.memory_hash}"
                     )
             # 'archived' memories are handled by the forgetting engine
+
+    async def _prune_orphaned_graph_edges(self) -> int:
+        """Remove graph edges referencing deleted or non-existent memories (#632)."""
+        try:
+            conn = getattr(self.storage, 'conn', None)
+            # For hybrid backend, access the primary (sqlite) storage
+            if conn is None:
+                primary = getattr(self.storage, 'primary_storage', None)
+                if primary:
+                    conn = getattr(primary, 'conn', None)
+            if conn is None:
+                return 0
+
+            cursor = conn.execute("""
+                DELETE FROM memory_graph
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM memories m
+                    WHERE m.content_hash = memory_graph.source_hash
+                    AND m.deleted_at IS NULL
+                )
+                OR NOT EXISTS (
+                    SELECT 1 FROM memories m
+                    WHERE m.content_hash = memory_graph.target_hash
+                    AND m.deleted_at IS NULL
+                )
+            """)
+            conn.commit()
+            return cursor.rowcount
+        except Exception as e:
+            self.logger.warning(f"Failed to prune orphaned graph edges: {e}")
+            return 0
 
     async def _update_consolidation_timestamps(self, memories: List[Memory]) -> None:
         """Mark memories with last_consolidated_at timestamp for incremental mode using batch updates."""

@@ -2107,6 +2107,11 @@ SOLUTIONS:
                 memory_id = row[0]
                 # Delete embedding (won't be needed for search)
                 self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
+                # Remove associated graph edges to prevent orphans (#632)
+                self.conn.execute(
+                    'DELETE FROM memory_graph WHERE source_hash = ? OR target_hash = ?',
+                    (content_hash, content_hash)
+                )
                 # Soft-delete: set deleted_at timestamp instead of DELETE
                 cursor = self.conn.execute(
                     'UPDATE memories SET deleted_at = ? WHERE content_hash = ? AND deleted_at IS NULL',
@@ -2260,16 +2265,25 @@ SOLUTIONS:
             stripped_tag = tag.strip()
             exact_match_pattern = f"*,{_escape_glob(stripped_tag)},*"
 
-            # Get the ids first to delete corresponding embeddings (only non-deleted)
+            # Get the ids and hashes first to delete corresponding embeddings and graph edges (only non-deleted)
             cursor = self.conn.execute(
-                "SELECT id FROM memories WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ? AND deleted_at IS NULL",
+                "SELECT id, content_hash FROM memories WHERE (',' || REPLACE(tags, ' ', '') || ',') GLOB ? AND deleted_at IS NULL",
                 (exact_match_pattern,)
             )
-            memory_ids = [row[0] for row in cursor.fetchall()]
+            rows = cursor.fetchall()
+            memory_ids = [row[0] for row in rows]
+            content_hashes = [row[1] for row in rows]
 
             # Delete embeddings (won't be needed for search)
             for memory_id in memory_ids:
                 self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
+
+            # Remove associated graph edges to prevent orphans (#632)
+            for ch in content_hashes:
+                self.conn.execute(
+                    'DELETE FROM memory_graph WHERE source_hash = ? OR target_hash = ?',
+                    (ch, ch)
+                )
 
             # Soft-delete: set deleted_at timestamp instead of DELETE
             cursor = self.conn.execute(
@@ -2325,6 +2339,13 @@ SOLUTIONS:
             if memory_ids:
                 placeholders = ','.join('?' for _ in memory_ids)
                 self.conn.execute(f'DELETE FROM memory_embeddings WHERE rowid IN ({placeholders})', memory_ids)
+
+            # Remove associated graph edges to prevent orphans (#632)
+            for ch in deleted_hashes:
+                self.conn.execute(
+                    'DELETE FROM memory_graph WHERE source_hash = ? OR target_hash = ?',
+                    (ch, ch)
+                )
 
             # Soft-delete: set deleted_at timestamp instead of DELETE
             update_query = f'UPDATE memories SET deleted_at = ? WHERE ({conditions}) AND deleted_at IS NULL'
