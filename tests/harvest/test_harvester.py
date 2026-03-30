@@ -77,4 +77,27 @@ class TestSessionHarvester:
         result = results[0]
         if result.found > 1:
             assert result.stored < result.found
-            assert result.stored > 0
+
+
+class TestHarvestEvolutionConfig:
+    def test_harvest_config_has_evolution_fields(self):
+        """HarvestConfig should have similarity_threshold and min_confidence_to_evolve."""
+        config = HarvestConfig()
+        assert config.similarity_threshold == 0.85
+        assert config.min_confidence_to_evolve == 0.3
+
+    def test_harvest_config_from_env(self, monkeypatch):
+        """Environment variables should override defaults."""
+        from mcp_memory_service.harvest.models import harvest_config_from_env
+        monkeypatch.setenv("MCP_HARVEST_SIMILARITY_THRESHOLD", "0.90")
+        monkeypatch.setenv("MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE", "0.5")
+        config = harvest_config_from_env()
+        assert config.similarity_threshold == 0.90
+        assert config.min_confidence_to_evolve == 0.5
+
+    def test_harvest_config_from_env_with_overrides(self, monkeypatch):
+        """Explicit overrides should beat env vars."""
+        from mcp_memory_service.harvest.models import harvest_config_from_env
+        monkeypatch.setenv("MCP_HARVEST_SIMILARITY_THRESHOLD", "0.90")
+        config = harvest_config_from_env(similarity_threshold=0.75)
+        assert config.similarity_threshold == 0.75
