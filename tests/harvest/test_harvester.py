@@ -44,6 +44,8 @@ class TestSessionHarvester:
     async def test_harvest_store(self, sample_project_dir):
         """Non-dry-run should call memory_service.store_memory."""
         mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[])  # No similar → store new
         mock_result = MagicMock()
         mock_result.success = True
         mock_service.store_memory.return_value = mock_result
@@ -70,6 +72,8 @@ class TestSessionHarvester:
             return result
 
         mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[])  # No similar → store new
         mock_service.store_memory = flaky_store
         config = HarvestConfig(sessions=1, dry_run=False)
         harvester = SessionHarvester(project_dir=sample_project_dir, memory_service=mock_service)
@@ -101,3 +105,34 @@ class TestHarvestEvolutionConfig:
         monkeypatch.setenv("MCP_HARVEST_SIMILARITY_THRESHOLD", "0.90")
         config = harvest_config_from_env(similarity_threshold=0.75)
         assert config.similarity_threshold == 0.75
+
+
+class TestHarvestEvolution:
+    """Tests for P4 evolve-instead-of-duplicate behavior."""
+
+    @pytest.mark.asyncio
+    async def test_evolve_similar_memory(self, sample_project_dir):
+        """When a similar active memory exists (score > threshold), evolve it."""
+        mock_service = AsyncMock()
+        mock_query_result = MagicMock()
+        mock_query_result.relevance_score = 0.92  # Above 0.85 threshold
+        mock_query_result.memory = MagicMock()
+        mock_query_result.memory.content_hash = "existing-hash-123"
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[mock_query_result])
+        mock_service.storage.update_memory_versioned = AsyncMock(
+            return_value=(True, "Updated", "new-hash-456")
+        )
+
+        config = HarvestConfig(sessions=1, dry_run=False, similarity_threshold=0.85)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+
+        if result.found > 0:
+            mock_service.storage.retrieve.assert_called()
+            mock_service.storage.update_memory_versioned.assert_called()
+            mock_service.store_memory.assert_not_called()
+            assert result.stored == result.found
