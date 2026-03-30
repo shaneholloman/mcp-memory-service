@@ -1,5 +1,6 @@
 """Data models for session harvest."""
 
+import os
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
@@ -40,3 +41,19 @@ class HarvestConfig:
     dry_run: bool = True
     project_path: Optional[str] = None  # Override project dir
     use_llm: bool = False  # Phase 2: LLM-based classification
+    # P4: Harvest evolution — evolve existing memories instead of duplicating
+    similarity_threshold: float = 0.85  # Cosine similarity to trigger evolution
+    min_confidence_to_evolve: float = 0.3  # Skip evolution for very stale memories
+
+
+def harvest_config_from_env(**overrides) -> HarvestConfig:
+    """Create HarvestConfig with environment variable overrides."""
+    defaults = {}
+    threshold = os.environ.get("MCP_HARVEST_SIMILARITY_THRESHOLD")
+    if threshold is not None:
+        defaults["similarity_threshold"] = float(threshold)
+    min_conf = os.environ.get("MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE")
+    if min_conf is not None:
+        defaults["min_confidence_to_evolve"] = float(min_conf)
+    defaults.update(overrides)
+    return HarvestConfig(**defaults)
