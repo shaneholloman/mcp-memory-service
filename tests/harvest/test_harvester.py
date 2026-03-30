@@ -136,3 +136,125 @@ class TestHarvestEvolution:
             mock_service.storage.update_memory_versioned.assert_called()
             mock_service.store_memory.assert_not_called()
             assert result.stored == result.found
+
+    @pytest.mark.asyncio
+    async def test_store_novel_content(self, sample_project_dir):
+        """When no similar memory exists, fall back to normal store_memory."""
+        mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[])  # No matches
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+
+        if result.found > 0:
+            mock_service.store_memory.assert_called()
+            mock_service.storage.update_memory_versioned.assert_not_called()
+            assert result.stored == result.found
+
+    @pytest.mark.asyncio
+    async def test_skip_evolve_stale_memory(self, sample_project_dir):
+        """Stale memory below min_confidence_to_evolve should not be evolved."""
+        mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        # Simulate: retrieve with high min_confidence returns nothing
+        mock_service.storage.retrieve = AsyncMock(return_value=[])
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(
+            sessions=1, dry_run=False, min_confidence_to_evolve=0.8
+        )
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+
+        if result.found > 0:
+            # retrieve was called with high min_confidence, returned nothing
+            call_args = mock_service.storage.retrieve.call_args
+            assert call_args.kwargs.get("min_confidence") == 0.8
+            # Fell through to store_memory
+            mock_service.store_memory.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_below_threshold_similarity_stores_new(self, sample_project_dir):
+        """Match below similarity_threshold should create new memory, not evolve."""
+        mock_service = AsyncMock()
+        mock_query_result = MagicMock()
+        mock_query_result.relevance_score = 0.60  # Below 0.85 threshold
+        mock_query_result.memory = MagicMock()
+        mock_query_result.memory.content_hash = "low-sim-hash"
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[mock_query_result])
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False, similarity_threshold=0.85)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+
+        if result.found > 0:
+            mock_service.store_memory.assert_called()
+            mock_service.storage.update_memory_versioned.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_superseded_memory_not_evolved(self, sample_project_dir):
+        """Superseded memories should not be evolved — retrieve filters them out.
+
+        The storage layer's retrieve() excludes superseded versions
+        (WHERE superseded_by IS NULL). If the only similar memory is
+        superseded, retrieve returns empty and we create a new memory.
+        """
+        mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        # retrieve returns empty because the only match is superseded (filtered by storage)
+        mock_service.storage.retrieve = AsyncMock(return_value=[])
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+
+        if result.found > 0:
+            mock_service.store_memory.assert_called()
+            mock_service.storage.update_memory_versioned.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_fallback_when_no_storage(self, sample_project_dir):
+        """If memory_service has no storage attr, fall back to store_memory."""
+        mock_service = AsyncMock()
+        # No .storage attribute — simulates pre-P4 MemoryService
+        del mock_service.storage
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+
+        if result.found > 0:
+            mock_service.store_memory.assert_called()
+            assert result.stored == result.found
