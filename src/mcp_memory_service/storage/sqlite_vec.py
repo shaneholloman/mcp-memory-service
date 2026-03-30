@@ -232,6 +232,11 @@ class SqliteVecMemoryStorage(MemoryStorage):
     while maintaining the same interface as other storage backends.
     """
 
+    # TODO(#637): ~119 direct self.conn.execute() calls bypass _execute_with_retry
+    # and still block the event loop. A follow-up PR should either:
+    # (a) route all DB calls through _execute_with_retry, or
+    # (b) migrate to aiosqlite for native async sqlite access.
+
     @property
     def max_content_length(self) -> Optional[int]:
         """SQLite-vec content length limit from configuration (default: unlimited)."""
