@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.30.0] - 2026-03-30
+
+### Added
+
+- **[#635, #636] Memory Evolution — P1: Non-destructive versioned updates**: New `update_memory_versioned()` operation creates a child node from an existing memory via a SAVEPOINT-atomic operation, marking the parent as `superseded_by` the new version. Enables full lineage tracking while preserving historical context. Schema migration `011_memory_evolution_p1.sql` adds `parent_id`, `version`, `confidence`, `last_accessed`, and `superseded_by` columns to the memories table. Active memories are filtered with `WHERE superseded_by IS NULL` in all search queries so superseded versions are transparent to normal retrieval.
+- **[#635, #636] Memory Evolution — P2: Staleness scoring with time-decayed confidence**: `_effective_confidence()` computes time-decayed confidence as `confidence × max(0, 1 − staleness × decay_rate)`. New `retrieve_with_staleness()` uses an overfetch strategy (n_results × 3) combined with confidence filtering to return the most relevant non-stale memories. `min_confidence` parameter added to the base `retrieve()` interface (propagated to all backends: SQLite-Vec, Cloudflare, Hybrid). Decay window configurable via `MEMORY_DECAY_WINDOW_DAYS` env var (default: 30 days).
+- **[#635, #636] Memory Evolution — P3: Automatic conflict detection and resolution**: Conflict detection runs automatically on `memory_store()` — memories with cosine similarity > 0.95 and Levenshtein divergence > 20% are flagged as contradictions and linked via `contradicts` graph edges. Two new MCP tools: `memory_conflicts` (list unresolved contradictions) and `memory_resolve` (supersede the loser, boost winner confidence to 1.0). New REST endpoints: `GET /api/conflicts` and `POST /api/conflicts/resolve`. No new dependencies — uses stdlib `difflib.SequenceMatcher` for divergence scoring.
+- **30 new tests**: 21 tests covering P1/P2 (versioned updates, lineage tracking, staleness decay, min_confidence filtering) and 9 tests covering P3 (conflict detection on store, `get_conflicts()`, `resolve_conflict()`, MCP tool handlers, REST endpoints).
+
+### Fixed
+
+- **Storage interface consistency**: `min_confidence` parameter added to `base.py`, `cloudflare.py`, and `hybrid.py` `retrieve()` signatures, ensuring all backends accept the new filtering parameter without raising `TypeError`.
+
 ## [10.29.1] - 2026-03-29
 
 ### Fixed

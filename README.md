@@ -368,19 +368,22 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.29.1** (March 29, 2026)
+## Latest Release: **v10.30.0** (March 30, 2026)
 
-**fix: clean up orphaned graph edges on memory deletion (#632)**
+**feat: Memory Evolution — Non-destructive updates, lineage tracking, staleness scoring, conflict detection (P1+P2+P3)**
 
 **What's New:**
-- **Orphaned edge cleanup**: Deleting a memory now removes its associated edges from the `memory_graph` table immediately, preventing dead references from accumulating.
-- **Cascade deletion**: `delete()`, `delete_by_tag()`, and `delete_by_tags()` in the SQLite-Vec backend all perform graph edge removal as part of the same operation.
-- **Periodic orphan pruning**: The consolidation forgetting phase sweeps up any remaining orphaned edges after archival, providing a safety net for edges left by other deletion paths.
-- **Fixes #632**: Graph queries no longer return or traverse stale edges referencing deleted memories.
+- **Non-destructive versioned updates (P1)**: `update_memory_versioned()` creates child nodes, marks parents as superseded, and tracks full lineage — history is never lost.
+- **Staleness scoring with decay (P2)**: `_effective_confidence()` time-decays memory confidence; `retrieve_with_staleness()` filters out stale memories automatically. Configurable via `MEMORY_DECAY_WINDOW_DAYS`.
+- **Automatic conflict detection (P3)**: `memory_store()` detects contradictions (cosine > 0.95 + Levenshtein divergence > 20%) and links them as `contradicts` graph edges.
+- **New MCP tools**: `memory_conflicts` and `memory_resolve` for managing contradictions.
+- **New REST endpoints**: `GET /api/conflicts` and `POST /api/conflicts/resolve`.
+- **30 new tests** covering all three phases (1,514 total).
 
 ---
 
 **Previous Releases**:
+- **v10.29.1** - fix: clean up orphaned graph edges on memory deletion — cascade edge removal in delete/delete_by_tag/delete_by_tags + periodic orphan pruning in consolidation
 - **v10.29.0** - feat(harvest): LLM-based classification via Groq (Phase 2, #628) — `memory_harvest` supports `use_llm=true` for higher-precision category labels via _GroqClassifierBridge
 - **v10.28.5** - Bug fix: MCP_ALLOW_ANONYMOUS_ACCESS=true now respected in the dashboard (anonymous users granted read+write scope)
 - **v10.28.4** - Security patch: cryptography>=46.0.6 (CVE-2026-34073), serialize-javascript>=7.0.5 (CVE-2026-34043), CodeQL cleanup
