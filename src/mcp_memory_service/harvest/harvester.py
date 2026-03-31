@@ -2,7 +2,7 @@
 
 import logging
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -115,7 +115,7 @@ class SessionHarvester:
                 candidate.content,
                 new_tags=["session-harvest"] + candidate.tags,
                 new_memory_type=candidate.memory_type,
-                reason=f"Session harvest: {datetime.now().isoformat()}",
+                reason=f"Session harvest: {datetime.now(timezone.utc).isoformat()}",
             )
             if ok:
                 logger.info(f"Evolved memory {existing_hash[:8]}→{new_hash[:8] if new_hash else '?'}")
