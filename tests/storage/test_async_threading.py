@@ -4,7 +4,6 @@ import asyncio
 import time
 import pytest
 import sqlite3
-from unittest.mock import MagicMock
 
 
 class TestExecuteWithRetryThreading:

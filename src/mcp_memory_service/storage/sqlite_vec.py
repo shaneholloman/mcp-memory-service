@@ -296,9 +296,13 @@ class SqliteVecMemoryStorage(MemoryStorage):
     async def _execute_with_retry(self, operation: Callable, max_retries: int = 5, initial_delay: float = 0.2):
         """
         Execute a database operation with exponential backoff retry logic.
-        
+
+        The operation is offloaded to a thread via asyncio.to_thread() to
+        avoid blocking the event loop. Requires self.conn to be created
+        with check_same_thread=False (set in initialize()).
+
         Args:
-            operation: The database operation to execute
+            operation: The database operation to execute (synchronous callable)
             max_retries: Maximum number of retry attempts
             initial_delay: Initial delay in seconds before first retry
             
