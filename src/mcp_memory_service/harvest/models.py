@@ -1,5 +1,7 @@
 """Data models for session harvest."""
 
+import logging
+import os
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
@@ -40,3 +42,34 @@ class HarvestConfig:
     dry_run: bool = True
     project_path: Optional[str] = None  # Override project dir
     use_llm: bool = False  # Phase 2: LLM-based classification
+    # P4: Harvest evolution — evolve existing memories instead of duplicating
+    similarity_threshold: float = 0.85  # Cosine similarity to trigger evolution
+    min_confidence_to_evolve: float = 0.3  # Skip evolution for very stale memories
+
+
+def harvest_config_from_env(**overrides) -> HarvestConfig:
+    """Create HarvestConfig with environment variable overrides.
+
+    Environment variables (invalid values are logged and ignored):
+        MCP_HARVEST_SIMILARITY_THRESHOLD: float (0.0-1.0) — cosine similarity
+            above which harvest evolves an existing memory instead of creating
+            a new one. Higher = fewer evolutions, more duplicates.
+        MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE: float (0.0-1.0) — minimum
+            staleness-adjusted confidence to consider a memory for evolution.
+            Very stale memories below this threshold get a fresh copy instead.
+    """
+    defaults = {}
+    for env_var, field_name in [
+        ("MCP_HARVEST_SIMILARITY_THRESHOLD", "similarity_threshold"),
+        ("MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE", "min_confidence_to_evolve"),
+    ]:
+        raw = os.environ.get(env_var)
+        if raw is not None:
+            try:
+                defaults[field_name] = float(raw)
+            except ValueError:
+                logging.getLogger(__name__).warning(
+                    f"Invalid {env_var}={raw!r}, using default"
+                )
+    defaults.update(overrides)
+    return HarvestConfig(**defaults)

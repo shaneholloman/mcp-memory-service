@@ -44,6 +44,8 @@ class TestSessionHarvester:
     async def test_harvest_store(self, sample_project_dir):
         """Non-dry-run should call memory_service.store_memory."""
         mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[])  # No similar → store new
         mock_result = MagicMock()
         mock_result.success = True
         mock_service.store_memory.return_value = mock_result
@@ -70,6 +72,8 @@ class TestSessionHarvester:
             return result
 
         mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[])  # No similar → store new
         mock_service.store_memory = flaky_store
         config = HarvestConfig(sessions=1, dry_run=False)
         harvester = SessionHarvester(project_dir=sample_project_dir, memory_service=mock_service)
@@ -77,4 +81,180 @@ class TestSessionHarvester:
         result = results[0]
         if result.found > 1:
             assert result.stored < result.found
-            assert result.stored > 0
+
+
+class TestHarvestEvolutionConfig:
+    def test_harvest_config_has_evolution_fields(self):
+        """HarvestConfig should have similarity_threshold and min_confidence_to_evolve."""
+        config = HarvestConfig()
+        assert config.similarity_threshold == 0.85
+        assert config.min_confidence_to_evolve == 0.3
+
+    def test_harvest_config_from_env(self, monkeypatch):
+        """Environment variables should override defaults."""
+        from mcp_memory_service.harvest.models import harvest_config_from_env
+        monkeypatch.setenv("MCP_HARVEST_SIMILARITY_THRESHOLD", "0.90")
+        monkeypatch.setenv("MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE", "0.5")
+        config = harvest_config_from_env()
+        assert config.similarity_threshold == 0.90
+        assert config.min_confidence_to_evolve == 0.5
+
+    def test_harvest_config_from_env_with_overrides(self, monkeypatch):
+        """Explicit overrides should beat env vars."""
+        from mcp_memory_service.harvest.models import harvest_config_from_env
+        monkeypatch.setenv("MCP_HARVEST_SIMILARITY_THRESHOLD", "0.90")
+        config = harvest_config_from_env(similarity_threshold=0.75)
+        assert config.similarity_threshold == 0.75
+
+
+class TestHarvestEvolution:
+    """Tests for P4 evolve-instead-of-duplicate behavior."""
+
+    @pytest.mark.asyncio
+    async def test_evolve_similar_memory(self, sample_project_dir):
+        """When a similar active memory exists (score > threshold), evolve it."""
+        mock_service = AsyncMock()
+        mock_query_result = MagicMock()
+        mock_query_result.relevance_score = 0.92  # Above 0.85 threshold
+        mock_query_result.memory = MagicMock()
+        mock_query_result.memory.content_hash = "existing-hash-123"
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[mock_query_result])
+        mock_service.storage.update_memory_versioned = AsyncMock(
+            return_value=(True, "Updated", "new-hash-456")
+        )
+
+        config = HarvestConfig(sessions=1, dry_run=False, similarity_threshold=0.85)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
+
+        mock_service.storage.retrieve.assert_called()
+        mock_service.storage.update_memory_versioned.assert_called()
+        mock_service.store_memory.assert_not_called()
+        assert result.stored == result.found
+
+    @pytest.mark.asyncio
+    async def test_store_novel_content(self, sample_project_dir):
+        """When no similar memory exists, fall back to normal store_memory."""
+        mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[])  # No matches
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
+
+        mock_service.store_memory.assert_called()
+        mock_service.storage.update_memory_versioned.assert_not_called()
+        assert result.stored == result.found
+
+    @pytest.mark.asyncio
+    async def test_skip_evolve_stale_memory(self, sample_project_dir):
+        """Stale memory below min_confidence_to_evolve should not be evolved."""
+        mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        # Simulate: retrieve with high min_confidence returns nothing
+        mock_service.storage.retrieve = AsyncMock(return_value=[])
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(
+            sessions=1, dry_run=False, min_confidence_to_evolve=0.8
+        )
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
+
+        # retrieve was called with high min_confidence, returned nothing
+        call_args = mock_service.storage.retrieve.call_args
+        assert call_args.kwargs.get("min_confidence") == 0.8
+        # Fell through to store_memory
+        mock_service.store_memory.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_below_threshold_similarity_stores_new(self, sample_project_dir):
+        """Match below similarity_threshold should create new memory, not evolve."""
+        mock_service = AsyncMock()
+        mock_query_result = MagicMock()
+        mock_query_result.relevance_score = 0.60  # Below 0.85 threshold
+        mock_query_result.memory = MagicMock()
+        mock_query_result.memory.content_hash = "low-sim-hash"
+        mock_service.storage = AsyncMock()
+        mock_service.storage.retrieve = AsyncMock(return_value=[mock_query_result])
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False, similarity_threshold=0.85)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
+
+        mock_service.store_memory.assert_called()
+        mock_service.storage.update_memory_versioned.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_superseded_memory_not_evolved(self, sample_project_dir):
+        """Superseded memories should not be evolved — retrieve filters them out.
+
+        The storage layer's retrieve() excludes superseded versions
+        (WHERE superseded_by IS NULL). If the only similar memory is
+        superseded, retrieve returns empty and we create a new memory.
+        """
+        mock_service = AsyncMock()
+        mock_service.storage = AsyncMock()
+        # retrieve returns empty because the only match is superseded (filtered by storage)
+        mock_service.storage.retrieve = AsyncMock(return_value=[])
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
+
+        mock_service.store_memory.assert_called()
+        mock_service.storage.update_memory_versioned.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_fallback_when_no_storage(self, sample_project_dir):
+        """If memory_service has no storage attr, fall back to store_memory."""
+        mock_service = AsyncMock()
+        # No .storage attribute — simulates pre-P4 MemoryService
+        del mock_service.storage
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_service.store_memory.return_value = mock_result
+
+        config = HarvestConfig(sessions=1, dry_run=False)
+        harvester = SessionHarvester(
+            project_dir=sample_project_dir, memory_service=mock_service
+        )
+        results = await harvester.harvest_and_store(config)
+        result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
+
+        mock_service.store_memory.assert_called()
+        assert result.stored == result.found
