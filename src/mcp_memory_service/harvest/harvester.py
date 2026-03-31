@@ -61,11 +61,11 @@ class SessionHarvester:
                 stored = 0
                 for candidate in result.candidates:
                     try:
-                        tags = ["session-harvest"] + candidate.tags
                         evolved = await self._try_evolve(candidate, config)
                         if evolved:
                             stored += 1
                         else:
+                            tags = ["session-harvest"] + candidate.tags
                             resp = await self.memory_service.store_memory(
                                 content=candidate.content,
                                 tags=tags,

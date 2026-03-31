@@ -130,12 +130,12 @@ class TestHarvestEvolution:
         )
         results = await harvester.harvest_and_store(config)
         result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
 
-        if result.found > 0:
-            mock_service.storage.retrieve.assert_called()
-            mock_service.storage.update_memory_versioned.assert_called()
-            mock_service.store_memory.assert_not_called()
-            assert result.stored == result.found
+        mock_service.storage.retrieve.assert_called()
+        mock_service.storage.update_memory_versioned.assert_called()
+        mock_service.store_memory.assert_not_called()
+        assert result.stored == result.found
 
     @pytest.mark.asyncio
     async def test_store_novel_content(self, sample_project_dir):
@@ -153,11 +153,11 @@ class TestHarvestEvolution:
         )
         results = await harvester.harvest_and_store(config)
         result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
 
-        if result.found > 0:
-            mock_service.store_memory.assert_called()
-            mock_service.storage.update_memory_versioned.assert_not_called()
-            assert result.stored == result.found
+        mock_service.store_memory.assert_called()
+        mock_service.storage.update_memory_versioned.assert_not_called()
+        assert result.stored == result.found
 
     @pytest.mark.asyncio
     async def test_skip_evolve_stale_memory(self, sample_project_dir):
@@ -178,13 +178,13 @@ class TestHarvestEvolution:
         )
         results = await harvester.harvest_and_store(config)
         result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
 
-        if result.found > 0:
-            # retrieve was called with high min_confidence, returned nothing
-            call_args = mock_service.storage.retrieve.call_args
-            assert call_args.kwargs.get("min_confidence") == 0.8
-            # Fell through to store_memory
-            mock_service.store_memory.assert_called()
+        # retrieve was called with high min_confidence, returned nothing
+        call_args = mock_service.storage.retrieve.call_args
+        assert call_args.kwargs.get("min_confidence") == 0.8
+        # Fell through to store_memory
+        mock_service.store_memory.assert_called()
 
     @pytest.mark.asyncio
     async def test_below_threshold_similarity_stores_new(self, sample_project_dir):
@@ -206,10 +206,10 @@ class TestHarvestEvolution:
         )
         results = await harvester.harvest_and_store(config)
         result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
 
-        if result.found > 0:
-            mock_service.store_memory.assert_called()
-            mock_service.storage.update_memory_versioned.assert_not_called()
+        mock_service.store_memory.assert_called()
+        mock_service.storage.update_memory_versioned.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_superseded_memory_not_evolved(self, sample_project_dir):
@@ -233,10 +233,10 @@ class TestHarvestEvolution:
         )
         results = await harvester.harvest_and_store(config)
         result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
 
-        if result.found > 0:
-            mock_service.store_memory.assert_called()
-            mock_service.storage.update_memory_versioned.assert_not_called()
+        mock_service.store_memory.assert_called()
+        mock_service.storage.update_memory_versioned.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_fallback_when_no_storage(self, sample_project_dir):
@@ -254,7 +254,7 @@ class TestHarvestEvolution:
         )
         results = await harvester.harvest_and_store(config)
         result = results[0]
+        assert result.found > 0, "Fixture must produce candidates"
 
-        if result.found > 0:
-            mock_service.store_memory.assert_called()
-            assert result.stored == result.found
+        mock_service.store_memory.assert_called()
+        assert result.stored == result.found
