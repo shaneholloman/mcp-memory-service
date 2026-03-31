@@ -10,6 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.31.0] - 2026-03-30
+
+### Added
+
+- **[#641] Harvest evolution (P4): evolve similar memories instead of duplicating**: Before storing a harvested memory, `memory_harvest` now checks semantic similarity against all active memories. If the best match exceeds the configurable threshold (default 0.85), the harvested content is routed through `update_memory_versioned()` to evolve the existing memory rather than creating a duplicate. This keeps the memory store clean and preserves lineage history automatically.
+- **[#641] `HarvestConfig` evolution fields**: Two new configuration fields added to `HarvestConfig`: `similarity_threshold` (float, default 0.85) and `min_confidence_to_evolve` (float, default 0.3). Both are overridable via environment variables `MCP_HARVEST_SIMILARITY_THRESHOLD` and `MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE`.
+- **[#641] `harvest_config_from_env()` factory function**: New factory that reads `HarvestConfig` from environment variables, providing a clean interface for deployment-time configuration without code changes.
+- **[#641] 9 new harvest evolution tests**: 3 config tests (env-var overrides, defaults, factory function) and 6 evolution scenario tests (novel memory stored as new, stale memory evolved, threshold boundary, superseded memory skipped, fallback on evolve error, no candidates).
+- **[#637] `asyncio.to_thread()` wrapping in `_execute_with_retry`**: All SQLite-Vec DB operations routed through `_execute_with_retry` now run in a thread pool via `asyncio.to_thread()`, preventing event-loop blocking under concurrent async load. A TODO comment documents the ~122 remaining direct `self.conn.execute()` calls that are candidates for the same treatment in a follow-up.
+- **[#637] 3 new async threading tests**: Verify that `_execute_with_retry` does not block the event loop, that concurrent calls complete without serialization deadlocks, and that the `check_same_thread=False` connection flag is set correctly.
+
+### Fixed
+
+- **[#641] Tag computation moved inside `else` branch**: Avoided redundant tag work on the evolve path — tags are now computed only when a new memory is actually being stored.
+- **[#641] Strengthened test assertions**: Replaced permissive `if result.found > 0` guards with hard `assert result.found > 0` so evolution test failures surface immediately rather than passing silently.
+- **[#637] Removed unused import** in `sqlite_vec.py` introduced during the async refactor.
+- **[#637] `check_same_thread` docstring note** added to the connection initialisation comment, explaining why `False` is required for the thread-pool pattern.
+
 ## [10.30.0] - 2026-03-30
 
 ### Added

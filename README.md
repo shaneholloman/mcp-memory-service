@@ -368,21 +368,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.30.0** (March 30, 2026)
+## Latest Release: **v10.31.0** (March 30, 2026)
 
-**feat: Memory Evolution — Non-destructive updates, lineage tracking, staleness scoring, conflict detection (P1+P2+P3)**
+**feat: Harvest Evolution (P4) + Sync-in-Async Refactoring**
 
 **What's New:**
-- **Non-destructive versioned updates (P1)**: `update_memory_versioned()` creates child nodes, marks parents as superseded, and tracks full lineage — history is never lost.
-- **Staleness scoring with decay (P2)**: `_effective_confidence()` time-decays memory confidence; `retrieve_with_staleness()` filters out stale memories automatically. Configurable via `MEMORY_DECAY_WINDOW_DAYS`.
-- **Automatic conflict detection (P3)**: `memory_store()` detects contradictions (cosine > 0.95 + Levenshtein divergence > 20%) and links them as `contradicts` graph edges.
-- **New MCP tools**: `memory_conflicts` and `memory_resolve` for managing contradictions.
-- **New REST endpoints**: `GET /api/conflicts` and `POST /api/conflicts/resolve`.
-- **30 new tests** covering all three phases (1,514 total).
+- **Harvest deduplication via evolution (P4, #641)**: Harvested memories that match an existing active memory (cosine > 0.85) are now evolved via `update_memory_versioned()` instead of stored as duplicates — keeping the store clean and lineage intact.
+- **New env-var config**: `MCP_HARVEST_SIMILARITY_THRESHOLD` (default 0.85) and `MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE` (default 0.3) for deployment-time tuning.
+- **`harvest_config_from_env()` factory**: Clean environment-variable-driven configuration for harvest behaviour.
+- **Async event-loop safety (#637)**: `_execute_with_retry` in SQLite-Vec now wraps DB operations in `asyncio.to_thread()`, preventing event-loop blocking under concurrent async load.
+- **12 new tests** (9 harvest evolution + 3 async threading, 1,520 total).
 
 ---
 
 **Previous Releases**:
+- **v10.30.0** - feat: Memory Evolution (P1+P2+P3) — non-destructive versioned updates, staleness scoring, conflict detection + resolution (1,514 tests)
 - **v10.29.1** - fix: clean up orphaned graph edges on memory deletion — cascade edge removal in delete/delete_by_tag/delete_by_tags + periodic orphan pruning in consolidation
 - **v10.29.0** - feat(harvest): LLM-based classification via Groq (Phase 2, #628) — `memory_harvest` supports `use_llm=true` for higher-precision category labels via _GroqClassifierBridge
 - **v10.28.5** - Bug fix: MCP_ALLOW_ANONYMOUS_ACCESS=true now respected in the dashboard (anonymous users granted read+write scope)
