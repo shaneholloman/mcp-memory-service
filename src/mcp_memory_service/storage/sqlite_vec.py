@@ -1242,6 +1242,13 @@ SOLUTIONS:
             logger.error(f"Failed to generate embedding: {str(e)}")
             raise RuntimeError(f"Failed to generate embedding: {str(e)}") from e
 
+    def _purge_tombstone(self, content_hash: str) -> None:
+        """Remove a soft-deleted tombstone so the UNIQUE constraint allows re-insert (#644)."""
+        self.conn.execute(
+            'DELETE FROM memories WHERE content_hash = ? AND deleted_at IS NOT NULL',
+            (content_hash,)
+        )
+
     async def _check_semantic_duplicate(
         self,
         content: str,
@@ -1338,6 +1345,7 @@ SOLUTIONS:
             def insert_memory_and_embedding():
                 self.conn.execute('SAVEPOINT store_memory')
                 try:
+                    self._purge_tombstone(memory.content_hash)
                     cursor = self.conn.execute('''
                         INSERT INTO memories (
                             content_hash, content, tags, memory_type,
@@ -1458,6 +1466,8 @@ SOLUTIONS:
                 # orphaned rows that would be unsearchable.
                 try:
                     self.conn.execute('SAVEPOINT batch_item')
+
+                    self._purge_tombstone(memory.content_hash)
 
                     cur = self.conn.execute('''
                         INSERT INTO memories (
@@ -4003,6 +4013,7 @@ SOLUTIONS:
             def versioned_insert():
                 self.conn.execute('SAVEPOINT evolve_memory')
                 try:
+                    self._purge_tombstone(new_hash)
                     cursor = self.conn.execute('''
                         INSERT INTO memories (
                             content_hash, content, tags, memory_type, metadata,
