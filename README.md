@@ -368,20 +368,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.31.0** (March 30, 2026)
+## Latest Release: **v10.31.1** (March 31, 2026)
 
-**feat: Harvest Evolution (P4) + Sync-in-Async Refactoring**
+**fix: tombstone blocks re-insertion after delete of same content (#644)**
 
 **What's New:**
-- **Harvest deduplication via evolution (P4, #641)**: Harvested memories that match an existing active memory (cosine > 0.85) are now evolved via `update_memory_versioned()` instead of stored as duplicates — keeping the store clean and lineage intact.
-- **New env-var config**: `MCP_HARVEST_SIMILARITY_THRESHOLD` (default 0.85) and `MCP_HARVEST_MIN_CONFIDENCE_TO_EVOLVE` (default 0.3) for deployment-time tuning.
-- **`harvest_config_from_env()` factory**: Clean environment-variable-driven configuration for harvest behaviour.
-- **Async event-loop safety (#637)**: `_execute_with_retry` in SQLite-Vec now wraps DB operations in `asyncio.to_thread()`, preventing event-loop blocking under concurrent async load.
-- **12 new tests** (9 harvest evolution + 3 async threading, 1,520 total).
+- **Tombstone purge before re-insert (#644)**: `store()`, `store_batch()`, and `update_memory_versioned()` now call `_purge_tombstone()` to remove soft-delete rows before INSERT, fixing UNIQUE constraint errors when the same content is stored after deletion.
+- **Re-store roundtrip test**: New `test_store_after_delete_same_content` covers the full delete → re-store scenario.
+- **1,521 tests** (1 new test added).
 
 ---
 
 **Previous Releases**:
+- **v10.31.0** - feat: Harvest Evolution (P4) + Sync-in-Async Refactoring — harvest dedup via `update_memory_versioned()`, `asyncio.to_thread()` in `_execute_with_retry` (1,520 tests)
 - **v10.30.0** - feat: Memory Evolution (P1+P2+P3) — non-destructive versioned updates, staleness scoring, conflict detection + resolution (1,514 tests)
 - **v10.29.1** - fix: clean up orphaned graph edges on memory deletion — cascade edge removal in delete/delete_by_tag/delete_by_tags + periodic orphan pruning in consolidation
 - **v10.29.0** - feat(harvest): LLM-based classification via Groq (Phase 2, #628) — `memory_harvest` supports `use_llm=true` for higher-precision category labels via _GroqClassifierBridge

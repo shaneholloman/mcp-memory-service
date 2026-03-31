@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.31.1] - 2026-03-31
+
+### Fixed
+
+- **[#644] `store()` fails with UNIQUE constraint after `delete()` of same content (tombstone blocks re-insertion)**: Soft-deleted memories leave a tombstone row (with `deleted_at` set) that caused `INSERT OR IGNORE` to silently drop re-insertions of the same content hash, and `INSERT` to raise a `UNIQUE constraint failed` error. Fixed by adding `_purge_tombstone(content_hash)` helper to `SqliteVecMemoryStorage` that removes the tombstone row before any INSERT. Applied to `store()`, `store_batch()`, and `update_memory_versioned()`. Added test `test_store_after_delete_same_content` covering the full delete → re-store roundtrip.
+
 ## [10.31.0] - 2026-03-30
 
 ### Added
