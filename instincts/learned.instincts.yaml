@@ -66,3 +66,54 @@ instincts:
     active: true
     created_at: "2026-03-29T16:25:00Z"
     outcome_log: []
+
+  gemini-review-retrigger:
+    id: gemini-review-retrigger
+    rule: "To retrigger Gemini Code Assist review on a PR, post a comment with '/gemini review' via 'gh pr comment <PR> --body \"/gemini review\"'. Then reply to inline comments with fix details."
+    domain: github
+    tags: [github, code-review, gemini, pr, workflow]
+    trigger_patterns:
+      - "gemini.*re.?review"
+      - "retrigger.*review"
+      - "code.?review.*again"
+    confidence: 0.8
+    min_confidence: 0.5
+    usage_count: 0
+    approved_by: human
+    active: true
+    created_at: "2026-03-31T15:30:00Z"
+    outcome_log: []
+
+  sqlite-tombstone-unique-conflict:
+    id: sqlite-tombstone-unique-conflict
+    rule: "Soft-delete (SET deleted_at) leaves tombstone rows that block UNIQUE constraints. Any INSERT path with a dedup check filtering 'deleted_at IS NULL' must also purge tombstones before INSERT to avoid IntegrityError."
+    domain: sqlite
+    tags: [sqlite, soft-delete, unique-constraint, storage, bugfix-pattern]
+    trigger_patterns:
+      - "UNIQUE constraint.*content_hash"
+      - "soft.?delete.*unique"
+      - "tombstone.*insert"
+    confidence: 0.7
+    min_confidence: 0.5
+    usage_count: 0
+    approved_by: human
+    active: true
+    created_at: "2026-03-31T15:30:00Z"
+    outcome_log: []
+
+  gemini-review-iterate-then-release:
+    id: gemini-review-iterate-then-release
+    rule: "After PR creation: address all Gemini review comments in separate commits, reply to each inline comment with fix reference, retrigger with '/gemini review', and only merge+release when Gemini says 'no feedback to provide'."
+    domain: workflow
+    tags: [workflow, code-review, gemini, pr, iteration]
+    trigger_patterns:
+      - "review.*feedback"
+      - "gemini.*happy"
+      - "merge.*after.*review"
+    confidence: 0.7
+    min_confidence: 0.5
+    usage_count: 0
+    approved_by: human
+    active: true
+    created_at: "2026-03-31T15:30:00Z"
+    outcome_log: []

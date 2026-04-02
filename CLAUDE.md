@@ -378,6 +378,9 @@ export MCP_EXTERNAL_EMBEDDING_API_KEY=sk-xxx  # Optional
 
 **Target:** All complexity A-B grade (complexity ≤8)
 
+### External Data Parsers
+- **Always inspect real data first**: Download and inspect a sample of the real data BEFORE writing parsers or tests. Never trust API docs or project pages alone — real JSON structures often differ from descriptions (e.g., LoCoMo observations are nested dicts, not newline-separated strings).
+
 ### Development Workflow
 
 **Read first:**
