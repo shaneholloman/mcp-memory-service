@@ -10,6 +10,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **Repo root cleanup**: Moved 8 legacy documentation files (`FIXES_COMPLETE.md`, `IMPLEMENTATION_SUMMARY.md`, `TEST_ADDITIONS_SUMMARY.md`, `TEST_VALIDATION_REPORT.md`, `AUTH_FLOW_DIAGRAM.md`, `test_auth_implementation.md`, `test_fixes.py`, `.commit-message`) to `archive/docs-root-cleanup-2026-04-02/`. Removed redundant `venv/` directory (keeping `.venv/` as the active Python 3.11 environment).
+- **Docs**: Added pending v10.31.0 blog post, LoCoMo benchmark analysis, DevBench/LoCoMo plans and specs, new learned instincts, and external data parser guideline to `CLAUDE.md`.
+
 ## [10.31.1] - 2026-03-31
 
 ### Fixed
