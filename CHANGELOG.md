@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - **Repo root cleanup**: Moved 8 legacy documentation files (`FIXES_COMPLETE.md`, `IMPLEMENTATION_SUMMARY.md`, `TEST_ADDITIONS_SUMMARY.md`, `TEST_VALIDATION_REPORT.md`, `AUTH_FLOW_DIAGRAM.md`, `test_auth_implementation.md`, `test_fixes.py`, `.commit-message`) to `archive/docs-root-cleanup-2026-04-02/`. Removed redundant `venv/` directory (keeping `.venv/` as the active Python 3.11 environment).
+- **`.claude/` cleanup**: Archived obsolete consolidation handoff docs (v8.47.1, Dec 2025), completed tool-optimization task plans (PR #373), and removed tracked config backup duplicates (`settings.local.json.backup`, `.local`).
+- **Agent consolidation (84% reduction)**: Merged `amp-bridge` + `amp-pr-automator` into single `amp-automation` agent (889 → 120 lines). Trimmed `github-release-manager` (640 → 144 lines) and `gemini-pr-automator` (881 → 122 lines) by removing duplicate sections and referencing existing scripts instead of embedding them. Slimmed `/release` command to thin wrapper (97 → 26 lines). Total: 2,507 → 412 lines.
 - **Docs**: Added pending v10.31.0 blog post, LoCoMo benchmark analysis, DevBench/LoCoMo plans and specs, new learned instincts, and external data parser guideline to `CLAUDE.md`.
 
 ## [10.31.1] - 2026-03-31
