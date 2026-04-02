@@ -528,7 +528,7 @@ python scripts/validation/diagnose_backend_config.py          # Backend-specific
 **Workflow automation:**
 - **changelog-archival** - Maintains lean CHANGELOG by archiving older versions
 - **github-release-manager** - Complete release workflow (version bump, CHANGELOG, PR creation)
-- **amp-bridge** - Fast refactoring with Amp CLI
+- **amp-automation** - Coding tasks + PR quality analysis with Amp CLI
 - **code-quality-guard** - Quality analysis before commits
 - **gemini-pr-automator** - Automated PR reviews and fixes
 

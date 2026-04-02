@@ -7,7 +7,7 @@ Workflow automation agents using Gemini CLI, Groq API, and Amp CLI.
 | Agent | Tool | Purpose | Priority | Usage |
 |-------|------|---------|----------|-------|
 | **github-release-manager** | GitHub CLI | Complete release workflow | Production | Proactive on feature completion |
-| **amp-bridge** | Amp CLI | Research without Claude credits | Production | File-based prompts |
+| **amp-automation** | Amp CLI | Coding tasks + PR quality analysis | Production | File-based prompts |
 | **code-quality-guard** | Gemini CLI / Groq API | Fast code quality analysis | Active | Pre-commit, pre-PR |
 | **gemini-pr-automator** | Gemini CLI | Automated PR review loops | Active | Post-PR creation |
 
@@ -98,19 +98,17 @@ bash scripts/pr/detect_breaking_changes.sh main <BRANCH>
 
 See [`.claude/agents/gemini-pr-automator.md`](../.claude/agents/gemini-pr-automator.md) for workflows.
 
-## amp-bridge
+## amp-automation
 
-**Purpose**: File-based workflow for external research without consuming Claude Code credits.
+**Purpose**: Amp CLI automation for coding tasks (refactoring, bug fixes) and PR quality analysis (quality gates, test generation, breaking change detection).
 
-**Usage:**
-```bash
-# Claude creates prompt → You run command → Amp writes response
-amp @.claude/amp/prompts/pending/{uuid}.json
-```
+**Two modes:**
+- **Coding**: `echo "Refactor X" | amp --execute --dangerously-allow-all`
+- **PR Analysis**: `bash scripts/pr/amp_pr_review.sh <PR_NUMBER>`
 
-**Use cases**: Web research, codebase analysis, documentation generation.
+**Use cases**: Focused refactorings, pre-PR quality checks, parallel analysis (no OAuth needed).
 
-See [docs/amp-cli-bridge.md](../../docs/amp-cli-bridge.md) for architecture.
+See [`.claude/agents/amp-automation.md`](../.claude/agents/amp-automation.md) for details.
 
 ## Claude Branch Automation 🆕
 
