@@ -377,7 +377,9 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 - **Non-JSON error response handling (#649)**: HTTP client and embedding API now gracefully handle non-JSON error responses (e.g. HTML from reverse proxies) instead of crashing.
 - **Upload progress tracking (#650)**: Fixed broken single-file progress formula and added per-file batch progress updates for smooth 0→100% tracking.
 - **Repo & agent cleanup**: Moved 8 legacy docs to archive, cleaned up `.claude/` config, consolidated agents (84% size reduction: 2,507 → 412 lines).
-- **1,503 tests** — bug fixes contributed by @lawrence3699.
+- **1,503 tests** passing.
+
+Thanks to @lawrence3699 for contributing PRs #648, #649, and #650!
 
 ---
 
