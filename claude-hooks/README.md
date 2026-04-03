@@ -267,7 +267,7 @@ node ~/.claude/hooks/core/session-start.js  # Test individual hooks
 
 For comprehensive documentation including detailed troubleshooting, advanced configuration, and development guides, see:
 
-**[📖 Memory Awareness Hooks - Detailed Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Awareness-Hooks-Detailed-Guide)**
+**[📖 Memory Hooks - Complete Guide](https://github.com/doobidoo/mcp-memory-service/wiki/Memory-Hooks-Complete-Guide)**
 
 This guide covers:
 - Advanced installation methods and configuration options

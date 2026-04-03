@@ -108,7 +108,7 @@ Relates to #
 ---
 
 **For Reviewers**:
-- Review checklist: See [PR Review Guide](https://github.com/doobidoo/mcp-memory-service/wiki/PR-Review-Guide)
+- Review checklist: See [Development Reference](https://github.com/doobidoo/mcp-memory-service/wiki/06-Development-Reference)
 - Consider testing with Gemini Code Assist for comprehensive review
 - Verify CHANGELOG.md entry is present and correctly formatted
 - Check documentation accuracy and completeness
