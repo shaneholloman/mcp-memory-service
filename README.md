@@ -368,18 +368,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.31.1** (March 31, 2026)
+## Latest Release: **v10.31.2** (April 3, 2026)
 
-**fix: tombstone blocks re-insertion after delete of same content (#644)**
+**fix: storage consistency, error handling, and upload progress (community PRs #648, #649, #650)**
 
 **What's New:**
-- **Tombstone purge before re-insert (#644)**: `store()`, `store_batch()`, and `update_memory_versioned()` now call `_purge_tombstone()` to remove soft-delete rows before INSERT, fixing UNIQUE constraint errors when the same content is stored after deletion.
-- **Re-store roundtrip test**: New `test_store_after_delete_same_content` covers the full delete → re-store scenario.
-- **1,521 tests** (1 new test added).
+- **Consistent `_safe_json_loads` usage (#648)**: Replaced remaining bare `json.loads` calls in `get_largest_memories()` and `get_graph_visualization_data()` with the `_safe_json_loads` helper for consistent error handling.
+- **Non-JSON error response handling (#649)**: HTTP client and embedding API now gracefully handle non-JSON error responses (e.g. HTML from reverse proxies) instead of crashing.
+- **Upload progress tracking (#650)**: Fixed broken single-file progress formula and added per-file batch progress updates for smooth 0→100% tracking.
+- **1,503 tests** — community contributions by @lawrence3699.
 
 ---
 
 **Previous Releases**:
+- **v10.31.1** - fix: tombstone blocks re-insertion after delete of same content (#644) — `_purge_tombstone()` before INSERT (1,521 tests)
 - **v10.31.0** - feat: Harvest Evolution (P4) + Sync-in-Async Refactoring — harvest dedup via `update_memory_versioned()`, `asyncio.to_thread()` in `_execute_with_retry` (1,520 tests)
 - **v10.30.0** - feat: Memory Evolution (P1+P2+P3) — non-destructive versioned updates, staleness scoring, conflict detection + resolution (1,514 tests)
 - **v10.29.1** - fix: clean up orphaned graph edges on memory deletion — cascade edge removal in delete/delete_by_tag/delete_by_tags + periodic orphan pruning in consolidation
