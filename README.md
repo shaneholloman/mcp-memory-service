@@ -27,6 +27,14 @@ p.md)
 
 ---
 
+## 🎬 See It in Action
+
+[![Watch the Dashboard Walkthrough](https://img.youtube.com/vi/fSmUpFsZW7U/maxresdefault.jpg)](https://youtu.be/fSmUpFsZW7U)
+
+**[Watch the Web Dashboard Walkthrough on YouTube](https://youtu.be/fSmUpFsZW7U)** — Semantic search, tag browser, document ingestion, analytics, quality scoring, and API docs in under 2 minutes.
+
+---
+
 ## 🌐 Works with claude.ai (Browser)
 
 Unlike desktop-only MCP servers, **mcp-memory-service supports Remote MCP** for native claude.ai integration.
