@@ -455,14 +455,17 @@ async def process_single_file_upload(
             except Exception:
                 session.errors.append(f"Chunk {chunk.chunk_index}: processing error")
 
-            # Update progress
+            # Update progress — total_chunks is unknown until the generator
+            # is exhausted, so we report chunk counts for the UI to display
+            # and leave progress at 0 until completion.
             session.chunks_processed = chunks_processed
             session.chunks_stored = chunks_stored
-            session.progress = (chunks_processed / max(chunks_processed, 1)) * 100
+            session.total_chunks = chunks_processed  # best estimate so far
 
         # Mark as completed
         session.status = "completed"
         session.completed_at = datetime.now()
+        session.total_chunks = chunks_processed
         session.progress = 100.0
 
         logger.info("Document processing completed: %s, %d/%d chunks", upload_id, chunks_stored, chunks_processed)
@@ -552,11 +555,18 @@ async def process_batch_upload(
                      else:
                          all_errors.append(error)
 
+                     # Update session so the status endpoint reflects live progress
+                     session.chunks_processed = total_chunks_processed
+                     session.chunks_stored = total_chunks_stored
+                     session.total_chunks = total_chunks_processed
+
                 processed_files += 1
+                session.progress = (processed_files / len(file_info)) * 100
 
             except Exception:
                 all_errors.append(f"{filename}: processing error")
                 processed_files += 1
+                session.progress = (processed_files / len(file_info)) * 100
 
             finally:
                 # Clean up temp file (always executed)
