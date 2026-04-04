@@ -29,9 +29,9 @@ p.md)
 
 ## 🎬 See It in Action
 
-[![Watch the Dashboard Walkthrough](https://img.youtube.com/vi/fSmUpFsZW7U/maxresdefault.jpg)](https://youtu.be/fSmUpFsZW7U)
+[![Watch the Dashboard Walkthrough](https://img.youtube.com/vi/W34r8VFoSdQ/maxresdefault.jpg)](https://youtu.be/W34r8VFoSdQ)
 
-**[Watch the Web Dashboard Walkthrough on YouTube](https://youtu.be/fSmUpFsZW7U)** — Semantic search, tag browser, document ingestion, analytics, quality scoring, and API docs in under 2 minutes.
+**[Watch the Web Dashboard Walkthrough on YouTube](https://youtu.be/W34r8VFoSdQ)** — Semantic search, tag browser, document ingestion, analytics, quality scoring, and API docs in under 2 minutes.
 
 ---
 
