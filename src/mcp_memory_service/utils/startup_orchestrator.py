@@ -31,7 +31,7 @@ from typing import Any
 
 # Import necessary functions and constants
 from ..server.client_detection import MCP_CLIENT
-from ..config import SERVER_NAME, SERVER_VERSION, MCP_SSE_HOST, MCP_SSE_PORT
+from ..config import SERVER_NAME, SERVER_VERSION, MCP_SSE_HOST, MCP_SSE_PORT, MCP_HTTP_TIMEOUT_KEEP_ALIVE, MCP_HTTP_TIMEOUT_GRACEFUL_SHUTDOWN
 from ..lm_studio_compat import patch_mcp_for_lm_studio, add_windows_timeout_handling
 from ..dependency_check import run_dependency_check
 from ..server.environment import check_uv_environment, check_version_consistency
@@ -260,6 +260,9 @@ class ServerRunManager:
                     )
             elif path.startswith("/messages/"):
                 await sse.handle_post_message(scope, receive, send)
+            elif path == "/health":
+                response = Response('{"status":"ok"}', media_type="application/json")
+                await response(scope, receive, send)
             else:
                 response = Response("Not Found", status_code=404)
                 await response(scope, receive, send)
@@ -270,6 +273,8 @@ class ServerRunManager:
             host=MCP_SSE_HOST,
             port=MCP_SSE_PORT,
             log_level="info",
+            timeout_keep_alive=MCP_HTTP_TIMEOUT_KEEP_ALIVE,
+            timeout_graceful_shutdown=MCP_HTTP_TIMEOUT_GRACEFUL_SHUTDOWN,
         )
         uvi_server = uvicorn.Server(config)
         await uvi_server.serve()
@@ -353,6 +358,9 @@ class ServerRunManager:
                 path.startswith("/oauth/")
             ):
                 await oauth_app(scope, receive, send)
+            elif path == "/health":
+                response = StarletteResponse('{"status":"ok"}', media_type="application/json")
+                await response(scope, receive, send)
             else:
                 response = StarletteResponse("Not Found", status_code=404)
                 await response(scope, receive, send)
@@ -409,6 +417,8 @@ class ServerRunManager:
             host=MCP_SSE_HOST,
             port=MCP_SSE_PORT,
             log_level="info",
+            timeout_keep_alive=MCP_HTTP_TIMEOUT_KEEP_ALIVE,
+            timeout_graceful_shutdown=MCP_HTTP_TIMEOUT_GRACEFUL_SHUTDOWN,
         )
         uvi_server = uvicorn.Server(config)
         await uvi_server.serve()
