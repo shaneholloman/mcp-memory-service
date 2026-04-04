@@ -7,6 +7,7 @@
     "dev": "remotion studio",
     "build": "remotion render MCPMemoryShowcase out/showcase.mp4",
     "build:short": "remotion render MCPMemoryShowcase-Short out/showcase-short.mp4",
+    "build:walkthrough": "remotion render MCPMemoryWalkthrough out/walkthrough.mp4",
     "build:gif": "remotion render MCPMemoryShowcase out/preview.gif --codec=gif --scale=0.5",
     "preview": "remotion preview out/showcase.mp4",
     "upgrade": "remotion upgrade"

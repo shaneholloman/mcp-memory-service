@@ -1,0 +1,57 @@
+[
+  {
+    "scene": "intro",
+    "text": "Welcome to the MCP Memory Service dashboard. Let's take a quick tour of the web interface.",
+    "duration_sec": 3
+  },
+  {
+    "scene": "00-what-is-it",
+    "text": "MCP Memory Service is an open-source semantic memory backend for AI agents. Without it, every agent run starts from zero, memory is locked to one session, and you're stitching together Redis, Pinecone, and glue code. With MCP Memory Service, agents retrieve prior decisions in five milliseconds, memory is shared across all agents and runs, and it's one self-hosted service with zero cloud cost. Instead of isolated facts, you get a knowledge graph with typed edges like causes, fixes, and contradicts. The dashboard you're about to see makes all of this visible and manageable.",
+    "duration_sec": 20
+  },
+  {
+    "scene": "01-dashboard",
+    "text": "The dashboard gives you an instant overview of your memory store. Over eight thousand memories, organized with nearly six thousand tags, all searchable in real time. Quick actions on the right let you jump to any feature.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "02-search",
+    "text": "Semantic search finds relevant memories using natural language. Results show match percentages, content types, and tags. Toggle between grid and list view, and filter by date range or content type.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "03-browse",
+    "text": "The browse view displays your entire tag taxonomy as an interactive cloud. Tags are sized by frequency, making it easy to spot your most active knowledge areas at a glance.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "04-documents",
+    "text": "Document ingestion supports PDF, text, markdown, and JSON files. Drag and drop your files, set chunk size and overlap parameters, and the system splits and embeds them automatically.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "05-manage",
+    "text": "The management view provides bulk operations for cleanup. Delete by tag, remove duplicates, or purge old entries. Below that, full tag governance with rename and delete capabilities.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "06-analytics",
+    "text": "Analytics tracks your memory growth over time. Weekly trends show ingestion patterns, while the tag distribution chart reveals the shape of your knowledge base. Database size stays under seventy megabytes for eight thousand entries.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "07-quality",
+    "text": "Quality analytics uses AI-powered scoring to assess every memory. The distribution chart shows quality tiers, and the scoring provider breakdown shows which evaluation methods are in use.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "08-api-docs",
+    "text": "Finally, the API documentation page provides a complete REST reference, grouped by function. Memory management, search operations, real-time events, and health endpoints, all with interactive Swagger UI access.",
+    "duration_sec": 8
+  },
+  {
+    "scene": "outro",
+    "text": "That's the MCP Memory Service web dashboard. Get started on GitHub or install with pip.",
+    "duration_sec": 4
+  }
+]
