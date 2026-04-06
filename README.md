@@ -224,6 +224,8 @@ It automatically captures your project context, architecture decisions, and code
 
 ## 🚀 Get Started in 60 Seconds
 
+> Not sure which setup fits your needs? See the **[Setup Guide](docs/setup-guide.md)** — a decision tree walks you to the right path in under a minute.
+
 **1. Install:**
 
 ```bash
@@ -549,13 +551,13 @@ If you encounter issues during migration:
 
 - **[Agent Integration Guides](docs/agents/)** 🆕 – LangGraph, CrewAI, AutoGen, HTTP generic
 - **[Remote MCP Setup (claude.ai)](docs/remote-mcp-setup.md)** 🆕 – Browser integration via HTTPS + OAuth
-- **[Installation Guide](docs/installation.md)** – Detailed setup instructions
+- **[Setup Guide](docs/setup-guide.md)** – Decision tree + step-by-step paths for all use cases
 - **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
 - **[Architecture Overview](docs/architecture.md)** – How it works under the hood
-- **[Team Setup Guide](docs/teams.md)** – OAuth and cloud collaboration
+- **[Team Setup Guide](docs/setup-guide.md#path-4-full-stack)** – OAuth and cloud collaboration
 - **[Knowledge Graph Dashboard](docs/features/knowledge-graph-dashboard.md)** 🆕 – Interactive graph visualization guide
 - **[Troubleshooting](docs/troubleshooting/)** – Common issues and solutions
-- **[API Reference](docs/api.md)** – Programmatic usage
+- **[API Reference](https://github.com/doobidoo/mcp-memory-service/wiki)** – Programmatic usage
 - **[Wiki](https://github.com/doobidoo/mcp-memory-service/wiki)** – Complete documentation
 - [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/doobidoo/mcp-memory-service) – AI-powered documentation assistant
 - **[MCP Starter Kit](https://kruppster57.gumroad.com/l/glbhd)** – Build your own MCP server using the patterns from this project
