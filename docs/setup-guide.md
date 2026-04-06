@@ -90,6 +90,13 @@ memory server --help
 
 ### 1. Start the HTTP server
 
+> **Note:** The HTTP dashboard requires the repository source code. If you installed via PyPI only, clone it first:
+> ```bash
+> git clone https://github.com/doobidoo/mcp-memory-service.git
+> cd mcp-memory-service
+> pip install -e .
+> ```
+
 ```bash
 python scripts/server/run_http_server.py
 ```
@@ -121,6 +128,8 @@ Expected response:
 ```json
 {"status": "healthy", "storage_backend": "sqlite_vec"}
 ```
+
+> The response may include additional fields such as `version`, `uptime`, and backend details.
 
 ### 5. Next Steps
 
