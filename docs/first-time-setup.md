@@ -50,7 +50,7 @@ After successful first-time setup, you should see:
 
 ```
 INFO: SQLite-vec storage initialized successfully with embedding dimension: 384
-INFO: Memory service started on port 8443
+INFO: Memory service started on port 8000
 INFO: Ready to accept connections
 ```
 
@@ -82,7 +82,6 @@ Python 3.13 users may encounter installation issues with **sqlite-vec** due to m
 1. **Automatic Retry Logic**: Tries multiple installation strategies
 2. **Source Building**: Attempts to build from source if wheels unavailable
 3. **GitHub Installation**: Falls back to installing directly from repository
-4. **Backend Switching**: Option to switch to ChromaDB if sqlite-vec fails
 
 ### Recommended Solutions
 If you encounter sqlite-vec installation failures on Python 3.13:
@@ -102,12 +101,7 @@ source .venv/bin/activate
 python install.py
 ```
 
-**Option 2: Use ChromaDB Backend**
-```bash
-python install.py --storage-backend chromadb
-```
-
-**Option 3: Manual sqlite-vec Installation**
+**Option 2: Manual sqlite-vec Installation**
 ```bash
 # Try building from source
 pip install --no-binary :all: sqlite-vec
@@ -151,12 +145,6 @@ pyenv local 3.12.0
 
 # Verify extension support
 python3 -c "import sqlite3; conn=sqlite3.connect(':memory:'); conn.enable_load_extension(True); print('Extensions supported!')"
-```
-
-**Option 3: Use ChromaDB Backend**
-```bash
-# ChromaDB doesn't require SQLite extensions
-python3 install.py --storage-backend chromadb
 ```
 
 ### Verification
@@ -219,11 +207,11 @@ sudo chown -R $USER:$USER ~/.mcp_memory_service/
 ### Issue: Service Doesn't Start After Download
 **Solution:**
 1. Check logs: `uv run memory server --debug`
-2. Verify installation: `python scripts/verify_environment.py`
-3. Restart with clean state: 
+2. Verify installation: `memory server --help`
+3. Restart with clean state:
    ```bash
    rm -rf ~/.mcp_memory_service
-   uv run memory server
+   memory server
    ```
 
 ## ✅ Verification
@@ -231,11 +219,11 @@ sudo chown -R $USER:$USER ~/.mcp_memory_service/
 To verify successful setup:
 
 ```bash
-# Check service health
-curl -k https://localhost:8443/api/health
+# Check service health (requires HTTP server running separately)
+curl http://localhost:8000/api/health
 
-# Or using the CLI
-uv run memory health
+# Or verify the MCP server starts
+memory server --help
 ```
 
 Expected response:
@@ -252,9 +240,8 @@ Expected response:
 Once you see the success indicators and the warnings have disappeared on subsequent runs, your MCP Memory Service is fully operational and ready to use!
 
 ### Next Steps:
-- [Configure Claude Desktop](../README.md#claude-desktop-integration)
-- [Store your first memory](../README.md#basic-usage)
-- [Explore the API](https://github.com/doobidoo/mcp-memory-service/wiki)
+- [Setup Guide](setup-guide.md) — choose your installation path
+- [Wiki](https://github.com/doobidoo/mcp-memory-service/wiki) — full documentation
 
 ## 📝 Notes
 
