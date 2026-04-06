@@ -1,0 +1,17 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://localhost"
+    },
+    {
+      "pattern": "^http://localhost"
+    },
+    {
+      "pattern": "^http://127\\.0\\.0\\.1"
+    },
+    {
+      "pattern": "^https://github\\.com/doobidoo/mcp-memory-service/wiki"
+    }
+  ],
+  "aliveStatusCodes": [200, 206]
+}

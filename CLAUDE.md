@@ -406,6 +406,8 @@ export MCP_EXTERNAL_EMBEDDING_API_KEY=sk-xxx  # Optional
 
 **Memory Tagging:** Always tag memories with `mcp-memory-service` as first tag (see `.claude/directives/memory-tagging.md`)
 
+**Removing a feature:** When removing a feature or changing a port/command, run `grep -r "<term>" docs/ README.md` and clean up references in the same PR. CI catches new dead refs via `scripts/ci/check_dead_refs.sh` (also run as GitHub Action on docs changes).
+
 ### Common Development Tasks
 
 **Add a new MCP tool:**
