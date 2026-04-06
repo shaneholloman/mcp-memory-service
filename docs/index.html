@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MCP Memory Service v10.32 — Persistent Memory for AI Agents</title>
-<meta name="description" content="Self-hosted persistent memory for AI agents. Semantic search, knowledge graph, automatic consolidation. Now with transport health monitoring, configurable timeouts, and optional DCR registration key protection.">
-<meta property="og:title" content="MCP Memory Service v10.32">
-<meta property="og:description" content="Your self-hosted memory server now connects to Claude.ai. Streamable HTTP + OAuth 2.1 + PKCE. Transport health endpoint, configurable timeouts, DCR registration key protection.">
+<title>MCP Memory Service v10.33 — Persistent Memory for AI Agents</title>
+<meta name="description" content="Self-hosted persistent memory for AI agents. Semantic search, knowledge graph, automatic consolidation. Now with non-blocking async SQLite, silent conflict data-loss fix, and SAVEPOINT concurrency safety.">
+<meta property="og:title" content="MCP Memory Service v10.33">
+<meta property="og:description" content="Your self-hosted memory server now connects to Claude.ai. Streamable HTTP + OAuth 2.1 + PKCE. Eliminates 15-second event-loop freezes and fixes silent conflict data loss under concurrent load.">
 <meta property="og:type" content="website">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -116,7 +116,7 @@ footer a{color:var(--cyan)}
 <!-- Hero -->
 <header class="hero">
   <img src="brain-icon.png" alt="MCP Memory Service" class="hero-logo">
-  <span class="hero-badge">v10.32 &mdash; Now Available</span>
+  <span class="hero-badge">v10.33 &mdash; Now Available</span>
   <h1>MCP Memory Service</h1>
   <p>Persistent memory for AI agents. Semantic search, knowledge graph, automatic consolidation &mdash; now accessible from Claude.ai via Streamable HTTP.</p>
   <div class="hero-buttons">
@@ -136,23 +136,23 @@ footer a{color:var(--cyan)}
 <!-- Features -->
 <section id="features">
   <div class="container">
-    <h2 class="section-title">What's New in v10.32</h2>
-    <p class="section-subtitle">Transport health monitoring, configurable timeouts, and optional OAuth DCR endpoint protection — all community-contributed.</p>
+    <h2 class="section-title">What's New in v10.33</h2>
+    <p class="section-subtitle">Non-blocking async SQLite, silent conflict data-loss fix, and SAVEPOINT concurrency safety under concurrent load.</p>
     <div class="features-grid">
       <div class="feature-card" data-delay="0">
-        <div class="feature-icon http">&#10084;</div>
-        <h3>Transport Health Endpoint</h3>
-        <p>SSE and Streamable HTTP transports now expose a <code>/health</code> endpoint on <code>MCP_SSE_PORT</code> (default 8765). Load balancers, Docker healthchecks, and Kubernetes liveness/readiness probes can now monitor transport health independently.</p>
+        <div class="feature-icon http">&#9889;</div>
+        <h3>Non-Blocking Async SQLite</h3>
+        <p>Eliminated ~119 direct <code>self.conn.execute()</code> calls in async methods. All DB operations now run via <code>asyncio.to_thread()</code>, preventing up to 15-second event-loop freezes under concurrent load with WAL mode.</p>
       </div>
       <div class="feature-card" data-delay="150">
-        <div class="feature-icon oauth">&#9201;</div>
-        <h3>Configurable Transport Timeouts</h3>
-        <p>Fine-tune uvicorn timeouts for your deployment: <code>MCP_TRANSPORT_TIMEOUT_KEEP_ALIVE</code> (default 5s) and <code>MCP_TRANSPORT_TIMEOUT_GRACEFUL_SHUTDOWN</code> (default 30s). Essential for high-throughput and cloud environments.</p>
+        <div class="feature-icon oauth">&#128274;</div>
+        <h3>Conflict Data-Loss Fix</h3>
+        <p><code>_record_conflicts</code> was writing conflict tags and graph edges but never committing — all conflict data was silently discarded on every store. Fixed with <code>self.conn.commit()</code> inside the thread closure.</p>
       </div>
       <div class="feature-card" data-delay="300">
         <div class="feature-icon privacy">&#128274;</div>
-        <h3>Optional DCR Registration Key</h3>
-        <p>Set <code>MCP_DCR_REGISTRATION_KEY</code> to protect the OAuth <code>/register</code> endpoint with Bearer token auth (timing-safe via <code>secrets.compare_digest</code>). Backward-compatible &mdash; unset means open DCR per RFC 7591.</p>
+        <h3>SAVEPOINT Concurrency Safety</h3>
+        <p>Added <code>_savepoint_lock</code> (asyncio.Lock) to serialize <code>store</code>/<code>store_batch</code>/<code>evolve_memory</code> SAVEPOINT sections, preventing interleaved stacks and "no such savepoint" errors under concurrent writes.</p>
       </div>
     </div>
   </div>
@@ -242,7 +242,7 @@ footer a{color:var(--cyan)}
       <a href="blog/remote-mcp-tutorial.html" class="btn btn-secondary">
         Blog: 5-Min claude.ai Setup
       </a>
-      <a href="https://github.com/doobidoo/mcp-memory-service/releases/tag/v10.32.0" class="btn btn-secondary" target="_blank">
+      <a href="https://github.com/doobidoo/mcp-memory-service/releases/tag/v10.33.0" class="btn btn-secondary" target="_blank">
         Release Notes
       </a>
     </div>

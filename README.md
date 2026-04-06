@@ -377,21 +377,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.32.0** (April 6, 2026)
+## Latest Release: **v10.33.0** (April 6, 2026)
 
-**feat: transport health endpoint + configurable timeouts + optional DCR registration key protection (community PRs #656, #657)**
+**refactor: eliminate event-loop blocking + fix silent conflict data loss in SQLite storage**
 
 **What's New:**
-- **Transport `/health` endpoint (#656)**: SSE and Streamable HTTP transports now expose a `/health` endpoint (on `MCP_SSE_PORT`, default 8765) for load balancers, Docker healthchecks, and Kubernetes liveness/readiness probes.
-- **Configurable transport timeouts (#656)**: New `MCP_TRANSPORT_TIMEOUT_KEEP_ALIVE` (default 5s) and `MCP_TRANSPORT_TIMEOUT_GRACEFUL_SHUTDOWN` (default 30s) env vars for fine-tuning uvicorn transport instances.
-- **Optional DCR registration key protection (#657)**: Set `MCP_DCR_REGISTRATION_KEY` to protect the `/oauth/register` endpoint with Bearer token auth (timing-safe via `secrets.compare_digest`). Backward-compatible — unset means open DCR per RFC 7591.
+- **Event-loop blocking eliminated (#663)**: All ~119 remaining direct `self.conn.execute()` calls in async methods of `SqliteVecMemoryStorage` are now routed through `asyncio.to_thread()` via `_execute_with_retry`, preventing up to 15-second event-loop freezes under concurrent load.
+- **Silent data loss in conflict detection fixed (#663)**: `_record_conflicts` was writing conflict tags and graph edges but never committing — all conflict data was silently discarded. Fixed with `self.conn.commit()` inside the closure.
+- **SAVEPOINT concurrency safety (#663)**: Added `_savepoint_lock` (asyncio.Lock) to serialize `store`/`store_batch`/`evolve_memory` SAVEPOINT sections, preventing interleaved SAVEPOINT stacks and "no such savepoint" errors under concurrent load.
 - **1,520 tests** passing.
-
-Thanks to @Lobster-Armlock (PR #656) and @irizzant (PR #657) for these community contributions!
 
 ---
 
 **Previous Releases**:
+- **v10.32.0** - feat: transport health endpoint + configurable timeouts + optional DCR registration key protection (community PRs #656, #657, 1,520 tests)
 - **v10.31.2** - fix: storage consistency, error handling, and upload progress — `_safe_json_loads` consistency, non-JSON error handling, upload progress tracking (community PRs #648, #649, #650, 1,503 tests)
 - **v10.31.1** - fix: tombstone blocks re-insertion after delete of same content (#644) — `_purge_tombstone()` before INSERT (1,521 tests)
 - **v10.31.0** - feat: Harvest Evolution (P4) + Sync-in-Async Refactoring — harvest dedup via `update_memory_versioned()`, `asyncio.to_thread()` in `_execute_with_retry` (1,520 tests)
