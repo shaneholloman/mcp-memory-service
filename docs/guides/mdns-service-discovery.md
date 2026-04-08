@@ -409,5 +409,4 @@ spec:
 mDNS service discovery significantly simplifies MCP Memory Service deployment by eliminating manual endpoint configuration. Combined with automatic HTTPS support, it provides a secure, zero-configuration solution for local network deployments.
 
 For more information, see:
-- [Multi-Client Server Deployment Guide](../deployment/multi-client-server.md)
 - [General Troubleshooting](../troubleshooting/general.md)

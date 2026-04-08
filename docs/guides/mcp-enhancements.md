@@ -285,5 +285,3 @@ These enhancements maintain full backward compatibility with existing MCP client
 ## Further Reading
 
 - [MCP Specification](https://modelcontextprotocol.info/specification/2024-11-05/)
-- [Memory Service API Documentation](../api/README.md)
-- [Claude Code Integration Guide](./claude-code-integration.md)

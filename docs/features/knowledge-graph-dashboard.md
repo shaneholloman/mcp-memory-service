@@ -427,7 +427,6 @@ curl -H "X-API-Key: your-api-key" \
 
 ## Related Documentation
 
-- [API Reference](../api.md) - Complete API documentation
 - [Troubleshooting Guide](../troubleshooting/) - General troubleshooting
 
 ## Support

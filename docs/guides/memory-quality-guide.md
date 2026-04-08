@@ -848,7 +848,6 @@ From Issue #260 and #261 roadmap:
 - [Issue #260](https://github.com/doobidoo/mcp-memory-service/issues/260) - Quality System Specification
 - [Issue #261](https://github.com/doobidoo/mcp-memory-service/issues/261) - Roadmap (Quality → Agentic RAG)
 - [Consolidation Guide](./memory-consolidation-guide.md) - Detailed consolidation documentation
-- [API Reference](../api/quality-endpoints.md) - HTTP API documentation
 
 ## Changelog
 
