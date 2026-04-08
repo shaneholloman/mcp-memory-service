@@ -377,19 +377,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.33.0** (April 6, 2026)
+## Latest Release: **v10.34.0** (April 8, 2026)
 
-**refactor: eliminate event-loop blocking + fix silent conflict data loss in SQLite storage**
+**feat: LongMemEval benchmark — R@5 80.4%, R@10 90.4%, NDCG@10 82.2%, MRR 89.1% (zero LLM)**
 
 **What's New:**
-- **Event-loop blocking eliminated (#663)**: All ~119 remaining direct `self.conn.execute()` calls in async methods of `SqliteVecMemoryStorage` are now routed through `asyncio.to_thread()` via `_execute_with_retry`, preventing up to 15-second event-loop freezes under concurrent load.
-- **Silent data loss in conflict detection fixed (#663)**: `_record_conflicts` was writing conflict tags and graph edges but never committing — all conflict data was silently discarded. Fixed with `self.conn.commit()` inside the closure.
-- **SAVEPOINT concurrency safety (#663)**: Added `_savepoint_lock` (asyncio.Lock) to serialize `store`/`store_batch`/`evolve_memory` SAVEPOINT sections, preventing interleaved SAVEPOINT stacks and "no such savepoint" errors under concurrent load.
+- **LongMemEval benchmark (#665)**: End-to-end retrieval benchmark against 500 single-session questions with zero LLM API calls. Measures R@5, R@10, NDCG@10, and MRR using the HuggingFace `xiaowu0162/longmemeval` dataset.
+- **`ndcg_at_k` metric**: Added normalized discounted cumulative gain metric to `locomo_evaluator.py` for more nuanced ranking evaluation.
+- **`docs/BENCHMARKS.md`**: New consolidated benchmark results doc covering LongMemEval methodology and results.
 - **1,520 tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.33.0** - refactor: eliminate event-loop blocking + fix silent conflict data loss in SQLite storage (PR #663, 1,520 tests)
 - **v10.32.0** - feat: transport health endpoint + configurable timeouts + optional DCR registration key protection (community PRs #656, #657, 1,520 tests)
 - **v10.31.2** - fix: storage consistency, error handling, and upload progress — `_safe_json_loads` consistency, non-JSON error handling, upload progress tracking (community PRs #648, #649, #650, 1,503 tests)
 - **v10.31.1** - fix: tombstone blocks re-insertion after delete of same content (#644) — `_purge_tombstone()` before INSERT (1,521 tests)
