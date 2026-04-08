@@ -1503,8 +1503,10 @@ SOLUTIONS:
                 # SAVEPOINT gives per-item atomicity: if the embedding INSERT
                 # fails, ROLLBACK TO undoes the memories INSERT too, preventing
                 # orphaned rows that would be unsearchable.
-                # Unique name prevents collision when concurrent batch_store calls share the connection.
-                sp = f"batch_{os.urandom(4).hex()}"
+                # Fixed name is safe because _savepoint_lock serialises all
+                # batch_insert calls, so only one savepoint with this name
+                # is ever active at a time.
+                sp = "batch_item"
                 try:
                     self.conn.execute(f'SAVEPOINT {sp}')
 
@@ -1539,6 +1541,10 @@ SOLUTIONS:
                     self.conn.execute(f'RELEASE SAVEPOINT {sp}')
                     local_results[j] = (False, f"Insert failed: {db_err}")
             return local_results
+
+        # Lazily create lock in case __init__ was bypassed (e.g. __new__ in tests)
+        if not hasattr(self, '_savepoint_lock'):
+            self._savepoint_lock = asyncio.Lock()
 
         results: List[Tuple[bool, str]] = [None] * len(memories)
         try:
