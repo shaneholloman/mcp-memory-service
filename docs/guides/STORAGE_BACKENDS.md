@@ -399,5 +399,4 @@ Start: Choose Storage Backend
 ### Documentation Links
 - [SQLite-vec Backend Guide](../sqlite-vec-backend.md)
 - [Migration Guide](migration.md)
-- [Legacy Hardware Guide](../platforms/macos-intel.md)
-- [Installation Master Guide](../installation/master-guide.md)
+- [Setup Guide](../setup-guide.md)

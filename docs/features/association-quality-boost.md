@@ -333,8 +333,6 @@ pytest tests/consolidation/test_decay.py -k "association" -v
 
 - [Memory Quality System Guide](../guides/memory-quality-guide.md)
 - [Memory Consolidation Guide](../guides/memory-consolidation-guide.md)
-- [Quality-Based Retention Policy](../quality-retention.md)
-- [Association Discovery](../consolidation/associations.md)
 
 ## Version History
 

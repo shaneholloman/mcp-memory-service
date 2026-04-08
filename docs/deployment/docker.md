@@ -710,7 +710,7 @@ docker push mcp-memory-service:latest
 
 ## Related Documentation
 
-- [Installation Guide](../installation/master-guide.md) - General installation instructions
+- [Setup Guide](../setup-guide.md) - General installation instructions
 - [Multi-Client Setup](../integration/multi-client.md) - Multi-client configuration
 - [Ubuntu Setup](../platforms/ubuntu.md) - Ubuntu Docker deployment
 - [Windows Setup](../platforms/windows.md) - Windows Docker deployment

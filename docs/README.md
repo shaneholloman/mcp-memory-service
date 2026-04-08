@@ -4,7 +4,7 @@ Welcome to the comprehensive documentation for MCP Memory Service - a Model Cont
 
 ## Quick Start
 
-- **New Users**: Start with the [Installation Guide](installation/master-guide.md)
+- **New Users**: Start with the [Setup Guide](setup-guide.md)
 - **Multi-Client Setup**: See [Multi-Client Integration](integration/multi-client.md)
 - **Docker Users**: Check out [Docker Deployment](deployment/docker.md)
 - **Troubleshooting**: Visit [General Troubleshooting](troubleshooting/general.md)
@@ -13,9 +13,8 @@ Welcome to the comprehensive documentation for MCP Memory Service - a Model Cont
 
 ### 📦 Installation & Setup
 
-- **[Master Installation Guide](installation/master-guide.md)** - Comprehensive installation instructions for all platforms
+- **[Setup Guide](setup-guide.md)** - Comprehensive installation instructions for all platforms
 - **[Platform-Specific Guides](platforms/)** - Detailed setup for specific operating systems
-  - [macOS Intel](platforms/macos-intel.md) - Intel Mac setup (including legacy 2013-2017 models)
   - [Windows](platforms/windows.md) - Windows installation with CUDA/DirectML support
   - [Ubuntu](platforms/ubuntu.md) - Ubuntu setup for desktop and server
 
@@ -106,7 +105,7 @@ MCP Memory Service enables persistent, semantic memory for AI applications throu
 
 ### Quick Links
 
-- **Installation Issues**: Check the [Installation Guide](installation/master-guide.md) and platform-specific guides
+- **Installation Issues**: Check the [Setup Guide](setup-guide.md) and platform-specific guides
 - **Configuration Problems**: See [Troubleshooting](troubleshooting/general.md)
 - **Multi-Client Setup**: Follow the [Multi-Client Guide](integration/multi-client.md)
 - **Performance Issues**: Review [Performance Tuning](implementation/performance.md)

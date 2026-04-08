@@ -376,7 +376,6 @@ When extending the Homebrew integration:
 
 ## Related Documentation
 
-- [Installation Guide](../installation/master-guide.md) - General installation instructions
+- [Setup Guide](../setup-guide.md) - General installation instructions
 - [Storage Backends](../guides/STORAGE_BACKENDS.md) - SQLite-vec configuration
 - [Troubleshooting](../troubleshooting/general.md) - General troubleshooting guide
-- [macOS Intel Setup](../platforms/macos-intel.md) - Platform-specific considerations

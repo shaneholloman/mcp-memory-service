@@ -427,8 +427,6 @@ curl -H "X-API-Key: your-api-key" \
 
 ## Related Documentation
 
-- [Knowledge Graph Guide](../guides/knowledge-graph-guide.md) - Core knowledge graph concepts
-- [Memory Type Ontology Guide](../guides/memory-ontology-guide.md) - Memory type taxonomy
 - [API Reference](../api.md) - Complete API documentation
 - [Troubleshooting Guide](../troubleshooting/) - General troubleshooting
 

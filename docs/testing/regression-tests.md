@@ -645,4 +645,4 @@ curl -X POST http://127.0.0.1:8000/api/memories/delete-by-tag \
 
 **Last Updated:** 2025-11-05
 **Version:** 1.0
-**Related:** [Release Checklist](release-checklist.md), [PR Review Guide](pr-review-guide.md)
+**Related:** [Release Checklist](../development/release-checklist.md), [PR Review Guide](../development/pr-review-guide.md)

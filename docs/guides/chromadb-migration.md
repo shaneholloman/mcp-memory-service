@@ -217,7 +217,6 @@ If you need to rollback to ChromaDB (not recommended):
 ## Support
 
 - **Migration issues**: See [Issue #148](https://github.com/doobidoo/mcp-memory-service/issues/148)
-- **Legacy branch**: [chromadb-legacy](https://github.com/doobidoo/mcp-memory-service/tree/chromadb-legacy)
 - **Backend setup**: See [STORAGE_BACKENDS.md](./STORAGE_BACKENDS.md)
 
 ## Why Was ChromaDB Removed?

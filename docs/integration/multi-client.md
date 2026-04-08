@@ -439,7 +439,7 @@ python scripts/migrate_to_multi_client.py \
 
 ## Related Documentation
 
-- [Installation Guide](../installation/master-guide.md) - General installation instructions
+- [Setup Guide](../setup-guide.md) - General installation instructions
 - [Deployment Guide](../deployment/docker.md) - Docker and cloud deployment
 - [Troubleshooting](../troubleshooting/general.md) - Multi-client specific issues
 - [API Reference](../IMPLEMENTATION_PLAN_HTTP_SSE.md) - HTTP/SSE API documentation

@@ -1414,7 +1414,7 @@ Special thanks to the community for feedback on API design and testing the depre
   - Performance: <10ms token operations
   - Backward compatible (defaults to memory backend)
   - Comprehensive test suite (30 tests, parametrized across backends)
-  - Documentation: [docs/oauth-storage-backends.md](docs/oauth-storage-backends.md)
+  - Documentation: [docs/oauth-storage-backends.md](../oauth-storage-backends.md)
 
 ### Fixed
 - **uvx HTTP Test Failures** (#361): Lazy initialization of asyncio.Lock in api/client.py
@@ -1995,7 +1995,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Prevents Common Errors**: Forgotten `pip install -e .`, wrong server mode, stale imports
   - **Documentation**: Added prominent "Quick Update & Restart" sections to CLAUDE.md and README.md
 
-  ![Update & Restart Script Demo](docs/images/update-restart-demo.png)
+  ![Update & Restart Script Demo](../images/update-restart-demo.png)
   *One-command update workflow: git pull → dependency install → version verification in 16 seconds*
 
 ### Changed
