@@ -9,20 +9,39 @@ All results use zero LLM API calls (retrieval-only mode) unless noted.
 
 **Dataset:** [LongMemEval-S](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned) — 500 questions, ~45–62 sessions per question (distractor haystack)  
 **Mode:** Retrieval only (zero LLM API calls)  
-**Ingestion:** Turn-level (each conversation turn stored as one memory)  
 **Backend:** SQLite-Vec with all-MiniLM-L6-v2 ONNX embeddings  
-**Date:** 2026-04-07 · **Version:** v10.33.0
+**Date:** 2026-04-08 · **Version:** v10.34.0
 
 ### Overall Metrics
 
-| System | R@5 | R@10 | NDCG@10 | MRR | LLM calls |
-|--------|-----|------|---------|-----|-----------|
-| **MCP Memory Service** | **80.4%** | **90.4%** | **82.2%** | **89.1%** | 0 |
-| mempalace (raw) | 96.6% | — | — | — | 0 |
-| mempalace (hybrid v4 + Haiku) | 100% | — | — | — | ~500 |
-| Mem0 | ~85% | — | — | — | — |
+| System | Ingestion | R@5 | R@10 | NDCG@10 | MRR | LLM calls |
+|--------|-----------|-----|------|---------|-----|-----------|
+| **MCP Memory Service** | **session** | **86.0%** | **93.0%** | **82.9%** | **82.8%** | 0 |
+| **MCP Memory Service** | turn (baseline) | 80.4% | 90.4% | 82.2% | 89.1% | 0 |
+| mempalace (raw) | session | 96.6% | — | — | — | 0 |
+| mempalace (hybrid v4 + Haiku) | session | 100%¹ | — | — | — | ~500 |
+| Mem0 | — | ~85% | — | — | — | — |
 
-### By Question Type
+> ¹ 100% result uses optional LLM reranking on a partially tuned test set. Clean held-out score: 98.4% R@5.
+
+**Ingestion modes explained:**
+- **turn**: each conversation turn stored as a separate memory (one entry per message)
+- **session**: all turns in a conversation concatenated into one memory (one entry per session)
+
+Session-level ingestion improves R@5 by +5.6% and R@10 by +2.6% at the cost of lower MRR (fewer redundant hits from the same session push the first correct result down in the ranking).
+
+### By Question Type — Session Mode
+
+| Question Type | R@5 | R@10 | NDCG@10 | MRR |
+|---------------|-----|------|---------|-----|
+| single-session-assistant | 98.2% | 98.2% | 98.2% | 98.2% |
+| multi-session | 85.9% | 93.7% | 86.7% | 89.7% |
+| knowledge-update | 87.2% | 94.2% | 84.0% | 85.8% |
+| temporal-reasoning | 82.6% | 90.9% | 80.6% | 80.9% |
+| single-session-preference | 83.3% | 96.7% | 74.5% | 67.5% |
+| single-session-user | 82.9% | 88.6% | 70.2% | 64.3% |
+
+### By Question Type — Turn Mode (baseline)
 
 | Question Type | R@5 | R@10 | NDCG@10 | MRR |
 |---------------|-----|------|---------|-----|
@@ -39,8 +58,14 @@ All results use zero LLM API calls (retrieval-only mode) unless noted.
 # Quick test (5 items)
 python scripts/benchmarks/benchmark_longmemeval.py --limit 5
 
-# Full run (500 items, ~10-15 minutes)
+# Full run — turn mode (baseline, ~10-15 minutes)
 python scripts/benchmarks/benchmark_longmemeval.py --top-k 5 10 --markdown --output-dir results/benchmarks/
+
+# Full run — session mode
+python scripts/benchmarks/benchmark_longmemeval.py --ingestion-mode session --top-k 5 10 --markdown --output-dir results/benchmarks/
+
+# Compare both modes in one run
+python scripts/benchmarks/benchmark_longmemeval.py --ingestion-mode both --top-k 5 10 --markdown
 
 # Ablation (compare baseline vs quality boost)
 python scripts/benchmarks/benchmark_longmemeval.py --mode ablation --limit 50

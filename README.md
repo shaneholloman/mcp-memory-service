@@ -186,7 +186,7 @@ A production-tested self-hosted deployment using Docker containers behind a Clou
 
 | | **MemPalace** | **mcp-memory-service** |
 |---|---|---|
-| LongMemEval R@5 (zero LLM) | **96.6%** | 80.4% |
+| LongMemEval R@5 (zero LLM) | **96.6%** | 86.0% (session) / 80.4% (turn) |
 | LongMemEval R@5 (with reranking) | **100%**¹ | — |
 | Storage granularity | Session-level | **Turn-level** |
 | Team / multi-device sync | ❌ Local only | **✅ Cloudflare sync** |
@@ -197,7 +197,7 @@ A production-tested self-hosted deployment using Docker containers behind a Clou
 | Compatible AI tools | Claude-focused | **13+ tools** |
 | License | MIT | **Apache 2.0** |
 
-**Why the benchmark gap?** MemPalace stores each conversation as a single unit (session-level). LongMemEval asks "which session contains the answer?" — a question that session-level storage answers structurally. mcp-memory-service stores individual turns, which enables fine-grained retrieval ("what exactly did the user say about X?") but spreads a session's signal across many entries, making session-level recall harder. Session-level ingestion is [planned for a future release](https://github.com/doobidoo/mcp-memory-service/issues/667).
+**Why the benchmark gap?** MemPalace stores each conversation as a single unit (session-level). LongMemEval asks "which session contains the answer?" — a question that session-level storage answers structurally. mcp-memory-service defaults to turn-level storage (one entry per message), which enables fine-grained retrieval ("what exactly did the user say about X?") but spreads a session's signal across many entries. Using `memory_store_session` (session-level ingestion, added in v10.35.0) brings our score to **86.0% R@5** — closing the gap significantly. The remaining difference is primarily due to MemPalace's larger embedding model.
 
 > ¹ 100% result uses optional LLM reranking (~500 API calls) and includes a partially tuned test set. Clean held-out score: **98.4% R@5**.
 
