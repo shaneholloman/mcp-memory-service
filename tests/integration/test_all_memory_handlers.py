@@ -1,12 +1,13 @@
 """
-Integration tests for ALL 17 memory handlers.
+Integration tests for ALL 18 memory handlers.
 
 Regression prevention for Issue #299 (import errors) and #300 (response format).
 Ensures 100% handler coverage to catch bugs before production.
 
 Coverage:
 - 3 existing handlers (store, retrieve, search_by_tag) - ✓ Already tested
-- 14 untested handlers - NEW comprehensive coverage
+- 14 handlers - comprehensive coverage in this file
+- 1 handler (handle_store_session) - tested in test_store_session_handler.py
 
 Response Format Validation:
 - All handlers return List[types.TextContent]
@@ -886,9 +887,9 @@ class TestHandlerCoverageComplete:
     a checklist when new handlers are added.
     """
 
-    def test_all_17_handlers_covered(self):
+    def test_all_18_handlers_covered(self):
         """
-        Verify all 17 memory handlers have corresponding test classes.
+        Verify all 18 memory handlers have corresponding test classes.
 
         If this test fails, update it when new handlers are added.
         """
@@ -910,10 +911,11 @@ class TestHandlerCoverageComplete:
             "handle_debug_retrieve",         # ✓ NEW - TestHandleDebugRetrieve
             "handle_exact_match_retrieve",   # ✓ NEW - TestHandleExactMatchRetrieve
             "handle_get_raw_embedding",      # ✓ NEW - TestHandleGetRawEmbedding
+            "handle_store_session",          # ✓ NEW - Tested in test_store_session_handler.py
         ]
 
         # Verify count
-        assert len(expected_handlers) == 17, f"Expected 17 handlers, found {len(expected_handlers)}"
+        assert len(expected_handlers) == 18, f"Expected 18 handlers, found {len(expected_handlers)}"
 
         # Verify each handler exists in memory.py
         from mcp_memory_service.server.handlers import memory as memory_handlers
@@ -921,6 +923,7 @@ class TestHandlerCoverageComplete:
             assert hasattr(memory_handlers, handler_name), \
                 f"Handler {handler_name} not found in memory.py"
 
-        print("\n✅ All 17 memory handlers have test coverage!")
+        print("\n✅ All 18 memory handlers have test coverage!")
         print("   - 3 handlers in test_server_handlers.py (existing)")
         print("   - 14 handlers in test_all_memory_handlers.py (new)")
+        print("   - 1 handler in test_store_session_handler.py (handle_store_session)")
