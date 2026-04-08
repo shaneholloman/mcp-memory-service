@@ -97,7 +97,7 @@ memory server --help
 ### 4. Next Steps
 
 - [Store your first memory](https://github.com/doobidoo/mcp-memory-service/wiki)
-- [See what else it works with](README.md#works-with-your-favorite-ai-tools)
+- [See what else it works with](../../README.md#-works-with-your-favorite-ai-tools)
 - Want the dashboard? → [Path 2](#path-2-mcp--http-dashboard)
 
 ---
@@ -161,7 +161,7 @@ Expected response:
 
 ### 1. Create Cloudflare resources
 
-Follow [docs/cloudflare-setup.md](cloudflare-setup.md) to create:
+Follow [docs/cloudflare-setup.md](../cloudflare-setup.md) to create:
 - D1 database
 - Vectorize index
 
@@ -220,7 +220,7 @@ MCP_OAUTH_STORAGE_BACKEND=sqlite
 MCP_OAUTH_SQLITE_PATH=./data/oauth.db
 ```
 
-See [docs/oauth-setup.md](oauth-setup.md) for full OAuth configuration including Dynamic Client Registration.
+See [docs/oauth-setup.md](../oauth-setup.md) for full OAuth configuration including Dynamic Client Registration.
 
 ### 2. (Optional) Protect the DCR endpoint
 
@@ -232,7 +232,7 @@ MCP_DCR_REGISTRATION_KEY=your-secret-registration-key
 
 ### 3. (Optional) Docker deployment
 
-See [docs/docker-optimized-build.md](docker-optimized-build.md) for a production Docker Compose setup.
+See [docs/docker-optimized-build.md](../docker-optimized-build.md) for a production Docker Compose setup.
 
 ### 4. Verify
 
@@ -242,9 +242,9 @@ python scripts/validation/validate_configuration_complete.py
 
 ### 5. Next Steps
 
-- [Remote MCP setup (claude.ai browser)](remote-mcp-setup.md)
-- [Architecture overview](architecture.md)
-- [Troubleshooting](troubleshooting/)
+- [Remote MCP setup (claude.ai browser)](../remote-mcp-setup.md)
+- [Architecture overview](../architecture.md)
+- [Troubleshooting](../troubleshooting/)
 
 ---
 
@@ -259,7 +259,7 @@ python scripts/validation/validate_configuration_complete.py
 | Cloudflare 401 on startup | Set `MCP_HYBRID_SYNC_OWNER=http` — MCP server then skips Cloudflare entirely |
 | Slow first start (30–60s) | Normal — ONNX model loads on first run, cached afterwards |
 
-For more: [docs/troubleshooting/](troubleshooting/)
+For more: [docs/troubleshooting/](../troubleshooting/)
 ```
 
 **Step 2: Commit**

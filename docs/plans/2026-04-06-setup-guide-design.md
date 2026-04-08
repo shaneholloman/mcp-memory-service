@@ -84,7 +84,7 @@ Each path follows the same structure:
 
 ## Changes to `README.md`
 
-- Add one sentence + link in "Get Started in 60 Seconds": *"Not sure which setup fits you? See the [Setup Guide](docs/setup-guide.md)."*
+- Add one sentence + link in "Get Started in 60 Seconds": *"Not sure which setup fits you? See the [Setup Guide](../setup-guide.md)."*
 - Fix Documentation section links:
   - `docs/installation.md` → `docs/setup-guide.md`
   - `docs/teams.md` → `docs/setup-guide.md#path-4-full-stack`

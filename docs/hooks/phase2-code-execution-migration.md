@@ -366,8 +366,6 @@ Phase 2 successfully achieves:
 
 ## Related Documentation
 
-- [Phase 1 Implementation Summary](/docs/api/PHASE1_IMPLEMENTATION_SUMMARY.md)
-- [Code Execution Interface Spec](/docs/api/code-execution-interface.md)
+- [Phase 1 Implementation Summary](../api/PHASE1_IMPLEMENTATION_SUMMARY.md)
+- [Code Execution Interface Spec](../api/code-execution-interface.md)
 - [Issue #206](https://github.com/doobidoo/mcp-memory-service/issues/206)
-- [Test Suite](/claude-hooks/tests/test-code-execution.js)
-- [Hook Configuration](/claude-hooks/config.json)

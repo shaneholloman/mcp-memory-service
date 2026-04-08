@@ -29,6 +29,12 @@
     },
     {
       "pattern": "^https://www\\.freedesktop\\.org"
+    },
+    {
+      "pattern": "^https://www\\.npmjs\\.com"
+    },
+    {
+      "pattern": "^https://www\\.remotion\\.dev"
     }
   ],
   "aliveStatusCodes": [200, 206]

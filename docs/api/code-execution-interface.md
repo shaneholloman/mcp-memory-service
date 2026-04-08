@@ -403,10 +403,10 @@ if duration_ms > 100:
 
 ## Related Documentation
 
-- [Research Document](/docs/research/code-execution-interface-implementation.md)
-- [Implementation Summary](/docs/research/code-execution-interface-summary.md)
+- [Research Document](../research/code-execution-interface-implementation.md)
+- [Implementation Summary](../research/code-execution-interface-summary.md)
 - [Issue #206](https://github.com/doobidoo/mcp-memory-service/issues/206)
-- [CLAUDE.md](/CLAUDE.md) - Project instructions
+- [CLAUDE.md](../../CLAUDE.md) - Project instructions
 
 ## Support
 

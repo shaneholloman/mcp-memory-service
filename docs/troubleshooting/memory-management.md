@@ -208,6 +208,4 @@ If you experience memory issues:
 
 ## Related Documentation
 
-- [Troubleshooting Guide](../troubleshooting/)
-- [Configuration Reference](../configuration/)
 - [Memory Consolidation Guide](../guides/memory-consolidation-guide.md)

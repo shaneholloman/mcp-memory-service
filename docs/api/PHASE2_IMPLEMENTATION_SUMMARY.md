@@ -285,18 +285,18 @@ const escapeForPython = (str) => str
 
 ### Comprehensive Documentation Created
 
-1. **Phase 2 Migration Guide** - `/docs/hooks/phase2-code-execution-migration.md`
+1. **Phase 2 Migration Guide** - `docs/hooks/phase2-code-execution-migration.md`
    - Token efficiency analysis
    - Performance metrics
    - Deployment checklist
    - Recommendations for Phase 3
 
-2. **Test Suite** - `/claude-hooks/tests/test-code-execution.js`
+2. **Test Suite** - `claude-hooks/tests/test-code-execution.js`
    - 10 comprehensive tests
    - 100% pass rate
    - Example usage patterns
 
-3. **Configuration Schema** - `/claude-hooks/config.json`
+3. **Configuration Schema** - `claude-hooks/config.json`
    - `codeExecution` section added
    - Inline comments
    - Default values documented
@@ -390,10 +390,9 @@ Phase 2 **successfully achieves all objectives**:
 ## Related Documentation
 
 - [Issue #206 - Code Execution Interface](https://github.com/doobidoo/mcp-memory-service/issues/206)
-- [Phase 1 Implementation Summary](/docs/api/PHASE1_IMPLEMENTATION_SUMMARY.md)
-- [Phase 2 Migration Guide](/docs/hooks/phase2-code-execution-migration.md)
-- [Code Execution Interface Spec](/docs/api/code-execution-interface.md)
-- [Test Suite](/claude-hooks/tests/test-code-execution.js)
+- [Phase 1 Implementation Summary](./PHASE1_IMPLEMENTATION_SUMMARY.md)
+- [Phase 2 Migration Guide](../hooks/phase2-code-execution-migration.md)
+- [Code Execution Interface Spec](./code-execution-interface.md)
 
 ---
 

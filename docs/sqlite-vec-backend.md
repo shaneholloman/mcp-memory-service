@@ -662,4 +662,4 @@ For sqlite-vec backend issues:
 
 1. Check [sqlite-vec documentation](https://github.com/asg017/sqlite-vec)
 2. Review this guide's troubleshooting section
-3. Open an issue on the [MCP Memory Service repository](https://github.com/user/mcp-memory-service/issues)
+3. Open an issue on the [MCP Memory Service repository](https://github.com/doobidoo/mcp-memory-service/issues)

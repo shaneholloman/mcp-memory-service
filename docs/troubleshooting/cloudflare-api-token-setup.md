@@ -189,4 +189,4 @@ If authentication continues to fail:
    - Verify network connectivity to Cloudflare APIs
    - Check if corporate firewall blocks API access
 
-For additional help, see the [Cloudflare Setup Guide](../cloudflare-setup.md) or the main [troubleshooting documentation](./README.md).
+For additional help, see the [Cloudflare Setup Guide](../cloudflare-setup.md) or the main [troubleshooting documentation](./general.md).

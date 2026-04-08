@@ -293,7 +293,7 @@ When moving database between different systems:
 ## Related Documentation
 
 - [Hooks Quick Reference](./hooks-quick-reference.md) - Hook configuration troubleshooting
-- [Database Restoration Guide](../guides/database-restoration.md) - Complete restoration procedures
+- [Database Restoration Guide](../guides/memory-consolidation-guide.md) - Memory maintenance and restoration procedures
 - [CLAUDE.md](../../CLAUDE.md) - Essential commands and configuration
 
 ## Getting Help
