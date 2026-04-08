@@ -1313,6 +1313,62 @@ class MemoryServer:
                         ),
                     ),
                     types.Tool(
+                        name="memory_store_session",
+                        description="""Store a full conversation session as a single memory unit.
+
+Use this instead of memory_store when you want to preserve the full context
+of a multi-turn conversation. All turns are stored together, making session-level
+retrieval more reliable than storing individual turns separately.
+
+Example:
+{
+    "turns": [
+        {"role": "user", "content": "How do I configure Redis?"},
+        {"role": "assistant", "content": "Set REDIS_URL in your .env file..."}
+    ],
+    "session_id": "optional-stable-id",
+    "tags": "redis,configuration"
+}""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "turns": {
+                                    "type": "array",
+                                    "description": "Ordered list of conversation turns.",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "role": {"type": "string", "description": "Speaker role, e.g. 'user' or 'assistant'"},
+                                            "content": {"type": "string", "description": "Turn content"}
+                                        },
+                                        "required": ["role", "content"]
+                                    },
+                                    "minItems": 1
+                                },
+                                "session_id": {
+                                    "type": "string",
+                                    "description": "Optional stable identifier for this session. Auto-generated UUID if omitted."
+                                },
+                                "tags": {
+                                    "oneOf": [
+                                        {"type": "array", "items": {"type": "string"}},
+                                        {"type": "string"}
+                                    ],
+                                    "description": "Additional tags (comma-separated string or array). 'session:<id>' is always added automatically."
+                                },
+                                "metadata": {
+                                    "type": "object",
+                                    "description": "Optional extra metadata."
+                                }
+                            },
+                            "required": ["turns"]
+                        },
+                        annotations=types.ToolAnnotations(
+                            title="Store Session",
+                            destructiveHint=False,
+                        ),
+                    ),
+                    types.Tool(
                         name="memory_search",
                         description="""Search memories with flexible modes and filters. Primary tool for finding stored information.
 
@@ -2126,6 +2182,8 @@ Examples:
                 # Route to handler (using NEW tool names only)
                 if name == "memory_store":
                     return await self.handle_store_memory(arguments)
+                elif name == "memory_store_session":
+                    return await self.handle_store_session(arguments)
                 elif name == "memory_search":
                     return await self.handle_memory_search(arguments)
                 elif name == "memory_list":
@@ -2253,6 +2311,11 @@ Examples:
         """Store new memory (delegates to handler)."""
         from .server.handlers import memory as memory_handlers
         return await memory_handlers.handle_store_memory(self, arguments)
+
+    async def handle_store_session(self, arguments: dict) -> List[types.TextContent]:
+        """Store a conversation session as one memory unit (delegates to handler)."""
+        from .server.handlers import memory as memory_handlers
+        return await memory_handlers.handle_store_session(self, arguments)
 
     async def handle_retrieve_memory(self, arguments: dict) -> List[types.TextContent]:
         """Retrieve memories (delegates to handler)."""
