@@ -222,6 +222,55 @@ async def handle_store_memory(server, arguments: dict) -> List[types.TextContent
         return [types.TextContent(type="text", text=f"Error storing memory: {str(e)}")]
 
 
+async def handle_store_session(server, arguments: dict) -> List[types.TextContent]:
+    """Store a conversation session as a single memory unit.
+
+    Concatenates all turns into '[role] content\\n' format and stores as
+    memory_type='session' with a session:<id> tag.
+    """
+    turns = arguments.get("turns")
+    if not turns:
+        return [types.TextContent(type="text", text="Error: turns is required and must be non-empty")]
+
+    session_id = arguments.get("session_id") or str(uuid.uuid4())
+    extra_tags = arguments.get("tags", [])
+    if isinstance(extra_tags, str):
+        extra_tags = [t.strip() for t in extra_tags.split(",") if t.strip()]
+
+    lines = []
+    for turn in turns:
+        role = turn.get("role", "unknown")
+        content = (turn.get("content") or "").strip()
+        if content:
+            lines.append(f"[{role}] {content}")
+    if not lines:
+        return [types.TextContent(type="text", text="Error: all turns have empty content")]
+
+    content = "\n".join(lines)
+    tags = [f"session:{session_id}"] + extra_tags
+
+    try:
+        await server._ensure_storage_initialized()
+        result = await server.memory_service.store_memory(
+            content=content,
+            tags=tags,
+            memory_type="session",
+            metadata=arguments.get("metadata", {}),
+        )
+
+        if not result.get("success"):
+            return [types.TextContent(type="text", text=f"Error storing session: {result.get('error', 'Unknown error')}")]
+
+        memory_hash = result["memory"]["content_hash"]
+        return [types.TextContent(
+            type="text",
+            text=f"Session stored successfully (session_id: {session_id}, hash: {memory_hash}, turns: {len(lines)})"
+        )]
+    except Exception as e:
+        logger.error(f"Error storing session: {str(e)}\n{traceback.format_exc()}")
+        return [types.TextContent(type="text", text=f"Error storing session: {str(e)}")]
+
+
 async def handle_retrieve_memory(server, arguments: dict) -> List[types.TextContent]:
     query = arguments.get("query")
     n_results = arguments.get("n_results", 5)
