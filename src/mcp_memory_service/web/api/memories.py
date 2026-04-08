@@ -416,3 +416,69 @@ async def get_tags(
         raise HTTPException(status_code=501, detail=f"Tags endpoint not supported by current storage backend: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get tags: {str(e)}")
+
+
+# ── Session ingestion ──────────────────────────────────────────────────────────
+
+class SessionTurn(BaseModel):
+    role: str = Field(..., description="Speaker role, e.g. 'user' or 'assistant'")
+    content: str = Field(..., description="Turn content")
+
+
+class SessionCreateRequest(BaseModel):
+    turns: List[SessionTurn] = Field(..., min_length=1, description="Ordered conversation turns (at least one required)")
+    session_id: Optional[str] = Field(None, description="Stable session identifier; auto-generated UUID if omitted")
+    tags: List[str] = Field(default=[], description="Additional tags. 'session:<id>' is always added automatically.")
+    metadata: Dict[str, Any] = Field(default={}, description="Optional extra metadata")
+
+
+class SessionCreateResponse(BaseModel):
+    success: bool
+    message: str
+    session_id: str
+    content_hash: Optional[str] = None
+    turn_count: int
+
+
+@router.post("/sessions", response_model=SessionCreateResponse, tags=["memories"])
+async def store_session(
+    request: SessionCreateRequest,
+    memory_service: MemoryService = Depends(get_memory_service),
+    user: AuthenticationResult = Depends(require_write_access),
+):
+    """Store a conversation session as a single memory unit.
+
+    All turns are concatenated into '[role] content' lines and stored as
+    memory_type='session' with a 'session:<id>' tag for reliable session-level retrieval.
+    """
+    import uuid as _uuid
+
+    session_id = request.session_id or str(_uuid.uuid4())
+    lines = [f"[{t.role}] {t.content.strip()}" for t in request.turns if t.content.strip()]
+    if not lines:
+        raise HTTPException(status_code=422, detail="All turns have empty content")
+
+    content = "\n".join(lines)
+    tags = [f"session:{session_id}"] + request.tags
+
+    try:
+        result = await memory_service.store_memory(
+            content=content,
+            tags=tags,
+            memory_type="session",
+            metadata=request.metadata,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage error: {str(e)}")
+
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Storage error"))
+
+    raw_memory = result.get("memory") or {}
+    return SessionCreateResponse(
+        success=True,
+        message="Session stored successfully",
+        session_id=session_id,
+        content_hash=raw_memory.get("content_hash"),
+        turn_count=len(lines),
+    )
