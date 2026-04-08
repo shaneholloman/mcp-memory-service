@@ -62,6 +62,34 @@ async def ingest_item(storage: SqliteVecMemoryStorage, item: LongMemEvalItem) ->
     return stored
 
 
+async def ingest_item_session(storage: SqliteVecMemoryStorage, item: LongMemEvalItem) -> int:
+    """Store each conversation session as one memory unit. Returns count of stored sessions."""
+    stored = 0
+    for session in item.sessions:
+        lines = []
+        for turn in session.turns:
+            content = (turn.content or "").strip()
+            if content:
+                lines.append(f"[{turn.role}] {content}")
+        if not lines:
+            continue
+        content = "\n".join(lines)
+        content_hash = hashlib.sha256(
+            f"{item.question_id}:{session.session_id}:session".encode()
+        ).hexdigest()
+        tags = ["longmemeval", item.question_id, session.session_id, "session"]
+        memory = Memory(
+            content=content,
+            content_hash=content_hash,
+            tags=tags,
+            memory_type="session",
+        )
+        success, _ = await storage.store(memory, skip_semantic_dedup=True)
+        if success:
+            stored += 1
+    return stored
+
+
 def _match_evidence(
     retrieved_results,
     answer_session_ids: List[str],
@@ -258,10 +286,23 @@ async def run_benchmark(args: argparse.Namespace):
     top_k = args.top_k if args.top_k else [5, 10]
     data_path = getattr(args, "data_path", None)
     limit = getattr(args, "limit", None)
+    ingestion_mode = getattr(args, "ingestion_mode", "turn")
 
-    logger.info("Loading LongMemEval dataset...")
+    # "both" mode: run turn-level then session-level and compare
+    if ingestion_mode == "both":
+        results = []
+        for mode in ("turn", "session"):
+            args_copy = argparse.Namespace(**vars(args))
+            args_copy.ingestion_mode = mode
+            logger.info("--- Running ingestion_mode=%s ---", mode)
+            results.append(await run_benchmark(args_copy))
+        return results
+
+    logger.info("Loading LongMemEval dataset (ingestion_mode=%s)...", ingestion_mode)
     items = load_dataset(data_path=data_path, limit=limit)
     logger.info("Loaded %d items", len(items))
+
+    _ingest_fn = ingest_item_session if ingestion_mode == "session" else ingest_item
 
     all_per_item: List[Dict] = []
 
@@ -272,8 +313,8 @@ async def run_benchmark(args: argparse.Namespace):
         storage, tmp_dir = create_isolated_storage()
         try:
             await storage.initialize()
-            count = await ingest_item(storage, item)
-            logger.debug("Ingested %d turns for item %s", count, item.question_id)
+            count = await _ingest_fn(storage, item)
+            logger.debug("Ingested %d units for item %s", count, item.question_id)
 
             if args.mode == "retrieval":
                 metrics = await evaluate_retrieval(storage, item, top_k=top_k)
@@ -292,6 +333,7 @@ async def run_benchmark(args: argparse.Namespace):
 
     config = {
         "mode": args.mode,
+        "ingestion_mode": ingestion_mode,
         "top_k": top_k,
         "num_items": len(items),
     }
@@ -352,10 +394,12 @@ def parse_args(argv=None) -> argparse.Namespace:
         help="Limit number of items to evaluate (default: all)",
     )
     parser.add_argument(
-        "--granularity",
-        choices=["turn", "session"],
+        "--ingestion-mode",
+        choices=["turn", "session", "both"],
         default="turn",
-        help="Storage granularity: turn (default) or session (reserved for future use)",
+        help="Ingestion granularity: 'turn' stores each message separately (default), "
+             "'session' stores a full conversation as one memory, "
+             "'both' runs both and prints a comparison table.",
     )
     parser.add_argument(
         "--markdown",
