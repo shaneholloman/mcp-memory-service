@@ -400,19 +400,22 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.34.0** (April 8, 2026)
+## Latest Release: **v10.35.0** (April 8, 2026)
 
-**feat: LongMemEval benchmark — R@5 80.4%, R@10 90.4%, NDCG@10 82.2%, MRR 89.1% (zero LLM)**
+**feat: session-level memory ingestion — LongMemEval R@5 86.0% (+5.6% vs turn-level)**
 
 **What's New:**
-- **LongMemEval benchmark (#665)**: End-to-end retrieval benchmark against 500 single-session questions with zero LLM API calls. Measures R@5, R@10, NDCG@10, and MRR using the HuggingFace `xiaowu0162/longmemeval` dataset.
-- **`ndcg_at_k` metric**: Added normalized discounted cumulative gain metric to `locomo_evaluator.py` for more nuanced ranking evaluation.
-- **`docs/BENCHMARKS.md`**: New consolidated benchmark results doc covering LongMemEval methodology and results.
-- **1,520 tests** passing.
+- **`memory_store_session` MCP tool**: Stores a full conversation as a single memory unit — all turns concatenated as `[role] content`, stored with `memory_type=session` and auto-tagged `session:<id>`.
+- **`POST /api/sessions` HTTP endpoint**: REST endpoint for session-level ingestion mirroring the MCP tool.
+- **LongMemEval session-mode results**: R@5 86.0% (+5.6% vs turn-level), with biggest gains in multi-session (+15.2%) and temporal-reasoning (+10.6%) categories.
+- **`--ingestion-mode session|turn|both`** flag for LongMemEval benchmark for direct strategy comparison.
+- **`session` and `conversation_turn` memory types** added to the ontology.
+- **1,537 tests** passing (+17 new: 10 handler + 7 HTTP endpoint tests).
 
 ---
 
 **Previous Releases**:
+- **v10.34.0** - feat: LongMemEval benchmark — R@5 80.4%, R@10 90.4%, NDCG@10 82.2%, MRR 89.1% (PR #665, 1,520 tests)
 - **v10.33.0** - refactor: eliminate event-loop blocking + fix silent conflict data loss in SQLite storage (PR #663, 1,520 tests)
 - **v10.32.0** - feat: transport health endpoint + configurable timeouts + optional DCR registration key protection (community PRs #656, #657, 1,520 tests)
 - **v10.31.2** - fix: storage consistency, error handling, and upload progress — `_safe_json_loads` consistency, non-JSON error handling, upload progress tracking (community PRs #648, #649, #650, 1,503 tests)
