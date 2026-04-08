@@ -71,6 +71,8 @@ TAXONOMY: Final[Dict[str, List[str]]] = {
         "search",
         "command",
         "conversation",
+        "conversation_turn",
+        "session",
         "document",
         "note",
         "reference"
