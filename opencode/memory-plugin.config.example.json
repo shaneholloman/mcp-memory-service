@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "memoryService": {
+    "endpoint": "https://memory.example.com",
+    "apiKey": "",
+    "timeoutMs": 5000,
+    "loadTimeoutMs": 2500,
+    "maxMemoriesPerSession": 8,
+    "searchTags": [],
+    "includeProjectTag": false,
+    "projectQueries": [
+      "{project} architecture decisions",
+      "{project} recent work",
+      "{project} open issues"
+    ]
+  },
+  "output": {
+    "verbose": true,
+    "includeTimestamps": true,
+    "maxContentLength": 280
+  }
+}

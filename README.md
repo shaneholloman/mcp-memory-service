@@ -6,7 +6,7 @@ Open-source memory backend for multi-agent systems.
 Agents store decisions, share causal knowledge graphs, and retrieve
 context in 5ms — without cloud lock-in or API costs.
 
-**Works with LangGraph · CrewAI · AutoGen · any HTTP client · Claude Desktop**
+**Works with LangGraph · CrewAI · AutoGen · any HTTP client · Claude Desktop · OpenCode**
 
 ---
 
@@ -287,6 +287,35 @@ claude mcp add memory -- memory server
 ```
 
 Restart Claude Code. Memory tools will appear automatically.
+
+</details>
+
+<details>
+<summary><strong>OpenCode</strong></summary>
+
+Start the HTTP API:
+
+```bash
+MCP_ALLOW_ANONYMOUS_ACCESS=true memory server --http
+```
+
+Install the local plugin:
+
+```bash
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service
+mkdir -p ~/.config/opencode/plugins
+cp opencode/memory-plugin.js ~/.config/opencode/plugins/
+cp opencode/memory-plugin.config.example.json ~/.config/opencode/memory-plugin.json
+```
+
+OpenCode automatically loads local plugins from `~/.config/opencode/plugins/` and `.opencode/plugins/`.
+
+See [OpenCode integration guide](opencode/README.md) for configuration, project-local installs, and current limitations.
+
+> The current OpenCode integration ships as repository files for the local plugin directory. If you installed only the PyPI package, clone the repository once to copy the plugin files.
+>
+> The plugin defaults to `http://127.0.0.1:8000`, but `memoryService.endpoint` and `OPENCODE_MEMORY_ENDPOINT` let you target any reachable HTTP deployment.
 
 </details>
 
@@ -586,6 +615,7 @@ If you encounter issues during migration:
 ## 📚 Documentation & Resources
 
 - **[Agent Integration Guides](docs/agents/)** 🆕 – LangGraph, CrewAI, AutoGen, HTTP generic
+- **[OpenCode Integration](opencode/README.md)** 🆕 – Local plugin for memory retrieval and context injection
 - **[Remote MCP Setup (claude.ai)](docs/remote-mcp-setup.md)** 🆕 – Browser integration via HTTPS + OAuth
 - **[Setup Guide](docs/setup-guide.md)** – Decision tree + step-by-step paths for all use cases
 - **[Configuration Guide](docs/mastery/configuration-guide.md)** – Backend options and customization
