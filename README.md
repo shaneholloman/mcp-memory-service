@@ -314,6 +314,8 @@ OpenCode automatically loads local plugins from `~/.config/opencode/plugins/` an
 See [OpenCode integration guide](opencode/README.md) for configuration, project-local installs, and current limitations.
 
 > The current OpenCode integration ships as repository files for the local plugin directory. If you installed only the PyPI package, clone the repository once to copy the plugin files.
+>
+> The plugin defaults to `http://127.0.0.1:8000`, but `memoryService.endpoint` and `OPENCODE_MEMORY_ENDPOINT` let you target any reachable HTTP deployment.
 
 </details>
 

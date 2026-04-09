@@ -32,6 +32,8 @@ MCP_ALLOW_ANONYMOUS_ACCESS=true memory server --http
 
 If you secure the API with `MCP_API_KEY`, set the same key in the plugin config.
 
+`http://127.0.0.1:8000` is only the default fallback. The plugin can target any reachable HTTP deployment of `mcp-memory-service`.
+
 ## Install
 
 OpenCode loads local plugins automatically from:
@@ -64,12 +66,20 @@ The plugin looks for config in this order:
 - `.opencode/memory-plugin.json`
 - `.opencode/memory-awareness.json`
 
+Then it applies environment overrides:
+- `OPENCODE_MEMORY_ENDPOINT` or `OPENCODE_MEMORY_URL`
+- `OPENCODE_MEMORY_API_KEY` or `MCP_API_KEY`
+- `OPENCODE_MEMORY_TIMEOUT_MS`
+- `OPENCODE_MEMORY_LOAD_TIMEOUT_MS`
+
+If you load the plugin with explicit plugin options, those win last.
+
 Example:
 
 ```json
 {
   "memoryService": {
-    "endpoint": "http://127.0.0.1:8000",
+    "endpoint": "https://memory.example.com",
     "apiKey": "",
     "maxMemoriesPerSession": 8,
     "searchTags": ["decision"],
@@ -86,6 +96,15 @@ Example:
     "maxContentLength": 280
   }
 }
+```
+
+For a purely local setup, change `endpoint` back to `http://127.0.0.1:8000`.
+
+Environment-only example:
+
+```bash
+export OPENCODE_MEMORY_ENDPOINT="https://memory.example.com"
+export OPENCODE_MEMORY_API_KEY="your-api-key"
 ```
 
 ## How It Works

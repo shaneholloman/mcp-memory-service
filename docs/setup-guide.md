@@ -105,6 +105,7 @@ MCP_ALLOW_ANONYMOUS_ACCESS=true memory server --http
 ```
 
 > The current OpenCode integration uses the documented HTTP API, not direct MCP transport.
+> `http://127.0.0.1:8000` is only the default. Set `memoryService.endpoint` or `OPENCODE_MEMORY_ENDPOINT` to use a remote/shared deployment.
 
 ### 3. Install the local plugin
 

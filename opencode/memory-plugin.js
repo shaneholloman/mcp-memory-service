@@ -24,6 +24,45 @@ const DEFAULT_CONFIG = {
   },
 }
 
+function pluginOptionOverrides(options = {}) {
+  const { configPath: _configPath, ...rest } = options
+  return rest
+}
+
+function parseInteger(value) {
+  if (typeof value !== "string" || !value.trim()) return undefined
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function environmentOverrides() {
+  const overrides = {
+    memoryService: {},
+  }
+
+  const endpoint = process.env.OPENCODE_MEMORY_ENDPOINT || process.env.OPENCODE_MEMORY_URL
+  if (endpoint) {
+    overrides.memoryService.endpoint = endpoint
+  }
+
+  const apiKey = process.env.OPENCODE_MEMORY_API_KEY || process.env.MCP_API_KEY
+  if (apiKey) {
+    overrides.memoryService.apiKey = apiKey
+  }
+
+  const timeoutMs = parseInteger(process.env.OPENCODE_MEMORY_TIMEOUT_MS)
+  if (timeoutMs !== undefined) {
+    overrides.memoryService.timeoutMs = timeoutMs
+  }
+
+  const loadTimeoutMs = parseInteger(process.env.OPENCODE_MEMORY_LOAD_TIMEOUT_MS)
+  if (loadTimeoutMs !== undefined) {
+    overrides.memoryService.loadTimeoutMs = loadTimeoutMs
+  }
+
+  return overrides
+}
+
 function mergeConfig(base, overrides = {}) {
   return {
     ...base,
@@ -52,7 +91,7 @@ function pluginConfigPaths(directory, options = {}) {
 }
 
 async function loadConfig(directory, options) {
-  let config = mergeConfig(DEFAULT_CONFIG, options)
+  let config = DEFAULT_CONFIG
 
   for (const configPath of pluginConfigPaths(directory, options)) {
     try {
@@ -64,6 +103,9 @@ async function loadConfig(directory, options) {
       // Keep searching for a readable config file.
     }
   }
+
+  config = mergeConfig(config, environmentOverrides())
+  config = mergeConfig(config, pluginOptionOverrides(options))
 
   return config
 }
