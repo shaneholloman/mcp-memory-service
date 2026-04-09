@@ -1,0 +1,85 @@
+name: Deploy Landing Page to here.now
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/index.html'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Publish to here.now
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Compute file metadata
+      id: meta
+      run: |
+        SIZE=$(stat -c%s docs/index.html)
+        HASH=$(sha256sum docs/index.html | cut -d' ' -f1)
+        echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+        echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+    - name: Update site on here.now
+      env:
+        HERENOW_API_KEY: ${{ secrets.HERENOW_API_KEY }}
+        FILE_SIZE: ${{ steps.meta.outputs.size }}
+        FILE_HASH: ${{ steps.meta.outputs.hash }}
+      run: |
+        set -e
+
+        SLUG="merry-realm-j835"
+
+        echo "Publishing docs/index.html (${FILE_SIZE} bytes, hash: ${FILE_HASH:0:12}...)"
+
+        # Update existing site
+        RESPONSE=$(curl -sS -X PUT "https://here.now/api/v1/publish/${SLUG}" \
+          -H "Authorization: Bearer ${HERENOW_API_KEY}" \
+          -H "X-HereNow-Client: github-actions/deploy-herenow" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"files\": [{
+              \"path\": \"index.html\",
+              \"size\": ${FILE_SIZE},
+              \"contentType\": \"text/html; charset=utf-8\",
+              \"hash\": \"${FILE_HASH}\"
+            }]
+          }")
+
+        echo "Publish response received"
+
+        # Check if file was skipped (unchanged)
+        SKIPPED=$(echo "$RESPONSE" | jq -r '.upload.skipped // [] | length')
+        if [ "$SKIPPED" = "1" ]; then
+          echo "File unchanged — nothing to upload"
+          VERSION_ID=$(echo "$RESPONSE" | jq -r '.upload.versionId')
+          FINALIZE_URL=$(echo "$RESPONSE" | jq -r '.upload.finalizeUrl')
+        else
+          # Upload file
+          UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload.uploads[0].url')
+          VERSION_ID=$(echo "$RESPONSE" | jq -r '.upload.versionId')
+          FINALIZE_URL=$(echo "$RESPONSE" | jq -r '.upload.finalizeUrl')
+
+          echo "Uploading index.html..."
+          curl -sS -X PUT "${UPLOAD_URL}" \
+            -H "Content-Type: text/html; charset=utf-8" \
+            --data-binary @docs/index.html
+        fi
+
+        # Finalize
+        echo "Finalizing version ${VERSION_ID}..."
+        FINALIZE=$(curl -sS -X POST "${FINALIZE_URL}" \
+          -H "Authorization: Bearer ${HERENOW_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d "{\"versionId\": \"${VERSION_ID}\"}")
+
+        SITE_URL=$(echo "$FINALIZE" | jq -r '.siteUrl // empty')
+        if [ -n "$SITE_URL" ]; then
+          echo "Deployed to ${SITE_URL}"
+        else
+          echo "Finalize failed:"
+          echo "$FINALIZE"
+          exit 1
+        fi
