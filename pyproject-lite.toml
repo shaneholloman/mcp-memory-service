@@ -5,15 +5,15 @@ build-backend = "hatchling.build"
 [project]
 name = "mcp-memory-service-lite"
 version = "10.36.0"
-description = "Lightweight MCP memory service with ONNX embeddings - no PyTorch required. 80% smaller install size."
+description = "Lightweight semantic memory service with ONNX embeddings - no PyTorch required. 80% smaller install size. REST API + MCP transport."
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = [
-    "mcp", "model-context-protocol", "claude-desktop", "semantic-memory",
-    "vector-database", "ai-assistant", "sqlite-vec", "multi-client",
-    "semantic-search", "memory-consolidation", "ai-productivity", "vs-code",
-    "cursor", "continue", "fastapi", "developer-tools", "cross-platform",
-    "lightweight", "onnx"
+    "semantic-memory", "ai-memory", "agent-memory", "long-term-memory",
+    "vector-database", "semantic-search", "memory-consolidation",
+    "rest-api", "fastapi", "mcp", "model-context-protocol",
+    "sqlite-vec", "lightweight", "onnx", "ai-assistant",
+    "multi-client", "developer-tools", "cross-platform"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

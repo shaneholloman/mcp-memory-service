@@ -43,7 +43,7 @@ Before merging or releasing:
 
 ## Overview
 
-MCP Memory Service is a Model Context Protocol server providing semantic memory and persistent storage for Claude Desktop and 13+ AI applications. It uses vector embeddings for semantic search, supports multiple storage backends (SQLite-vec, Cloudflare, Hybrid), and includes advanced features like memory consolidation, quality scoring, and OAuth 2.1 team collaboration.
+MCP Memory Service is a semantic memory layer for AI applications, accessible via REST API and MCP transport. It provides persistent storage for 14+ AI clients including Claude Desktop, OpenCode, LangGraph, CrewAI, and any HTTP client. It uses vector embeddings for semantic search, supports multiple storage backends (SQLite-vec, Cloudflare, Hybrid), and includes advanced features like memory consolidation, quality scoring, and OAuth 2.1 team collaboration.
 
 **Current Version:** v10.36.0 - feat: OpenCode memory awareness integration (@irizzant, PR #673) + lite package version sync fix (PR #675) — 1,537 tests — see [CHANGELOG.md](CHANGELOG.md) for details
 

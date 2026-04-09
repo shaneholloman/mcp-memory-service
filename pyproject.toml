@@ -5,16 +5,16 @@ build-backend = "hatchling.build"
 [project]
 name = "mcp-memory-service"
 version = "10.36.0"
-description = "Open-source persistent memory for AI agent pipelines and Claude. REST API + semantic search + knowledge graph + autonomous consolidation. Self-host, zero cloud cost."
+description = "Semantic memory layer for AI applications. REST API + MCP transport + knowledge graph + autonomous consolidation. Works with 14+ AI clients. Self-host, zero cloud cost."
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = [
-    "mcp", "model-context-protocol", "semantic-memory", "agent-memory",
+    "semantic-memory", "agent-memory", "ai-memory", "long-term-memory",
     "multi-agent", "langgraph", "crewai", "autogen", "agentic-ai",
     "knowledge-graph", "vector-database", "ai-agents", "rag",
-    "long-term-memory", "semantic-search", "memory-consolidation",
-    "fastapi", "rest-api", "sqlite-vec", "cloudflare", "open-source",
-    "privacy-first", "self-hosted", "claude-desktop", "ai-assistant"
+    "semantic-search", "memory-consolidation", "rest-api", "fastapi",
+    "mcp", "model-context-protocol", "sqlite-vec", "cloudflare",
+    "open-source", "privacy-first", "self-hosted", "ai-assistant"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
