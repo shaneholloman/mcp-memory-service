@@ -98,6 +98,14 @@ jobs:
             echo "tag=v$AFTER_VERSION"
           } >> $GITHUB_OUTPUT
           
+          # Sync lite package version
+          if [ -f pyproject-lite.toml ]; then
+            sed -i "s/^version = \".*\"/version = \"$AFTER_VERSION\"/" pyproject-lite.toml
+            git add pyproject-lite.toml
+            git commit --amend --no-edit
+            echo "✅ Synced pyproject-lite.toml to $AFTER_VERSION"
+          fi
+
           # Create tag manually
           git tag "v$AFTER_VERSION"
           echo "✅ Tag v$AFTER_VERSION created locally"
