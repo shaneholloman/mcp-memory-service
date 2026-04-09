@@ -109,7 +109,8 @@ path = "src/mcp_memory_service/__init__.py"
 [tool.semantic_release]
 version_variable = [
     "src/mcp_memory_service/_version.py:__version__",
-    "pyproject.toml:version"
+    "pyproject.toml:version",
+    "pyproject-lite.toml:version"
 ]
 branch = "main"
 changelog_file = "CHANGELOG.md"

@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - **OpenCode memory awareness integration**: Added an official `opencode/` integration with a minimal read-only plugin for session-start retrieval, system-context injection, and compaction-context injection via the documented HTTP API. Includes setup docs and example config for local OpenCode plugin installation.
 
+### Fixed
+
+- **[#672] Lite package version sync**: `mcp-memory-service-lite` was stuck at 8.76.0 on PyPI because `pyproject-lite.toml` was never updated by the release automation. Synced to 10.35.0, added `pyproject-lite.toml` to semantic-release `version_variable` list, and added fallback sync step in CI workflow. (Issue #672)
+
 ## [10.35.0] - 2026-04-08
 
 ### Added
