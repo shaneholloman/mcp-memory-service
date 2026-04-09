@@ -45,7 +45,7 @@ function environmentOverrides() {
     overrides.memoryService.endpoint = endpoint
   }
 
-  const apiKey = process.env.OPENCODE_MEMORY_API_KEY || process.env.MCP_API_KEY
+  const apiKey = process.env.OPENCODE_MEMORY_API_KEY
   if (apiKey) {
     overrides.memoryService.apiKey = apiKey
   }
@@ -403,7 +403,18 @@ export const OpenCodeMemoryPlugin = async ({ client, directory }, options = {}) 
     }
 
     if (state?.promise) {
-      await Promise.race([state.promise, sleep(config.memoryService.loadTimeoutMs)])
+      const loadTimedOut = Symbol("load-timed-out")
+      const result = await Promise.race([
+        state.promise.then(() => null),
+        sleep(config.memoryService.loadTimeoutMs).then(() => loadTimedOut),
+      ])
+
+      if (result === loadTimedOut) {
+        const latestState = sessionState.get(sessionID)
+        if (latestState?.promise) {
+          return null
+        }
+      }
     }
 
     return sessionState.get(sessionID)
@@ -433,6 +444,8 @@ export const OpenCodeMemoryPlugin = async ({ client, directory }, options = {}) 
     },
 
     "experimental.session.compacting": async (input, output) => {
+      if (!input.sessionID) return
+
       const state = await waitForSession(input.sessionID, directory)
       if (!state?.memories?.length) return
 

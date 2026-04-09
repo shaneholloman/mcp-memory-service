@@ -30,7 +30,7 @@ pip install mcp-memory-service
 MCP_ALLOW_ANONYMOUS_ACCESS=true memory server --http
 ```
 
-If you secure the API with `MCP_API_KEY`, set the same key in the plugin config.
+If you secure the API with `MCP_API_KEY`, set the client-side plugin key explicitly with `memoryService.apiKey` or `OPENCODE_MEMORY_API_KEY`.
 
 `http://127.0.0.1:8000` is only the default fallback. The plugin can target any reachable HTTP deployment of `mcp-memory-service`.
 
@@ -60,6 +60,7 @@ No `plugin` entry is required in `opencode.json` when loading from the local plu
 ## Configuration
 
 The plugin looks for config in this order:
+- `options.configPath` when the plugin is loaded programmatically
 - `OPENCODE_MEMORY_PLUGIN_CONFIG`
 - `~/.config/opencode/memory-plugin.json`
 - `~/.config/opencode/memory-awareness.json`
@@ -68,11 +69,13 @@ The plugin looks for config in this order:
 
 Then it applies environment overrides:
 - `OPENCODE_MEMORY_ENDPOINT` or `OPENCODE_MEMORY_URL`
-- `OPENCODE_MEMORY_API_KEY` or `MCP_API_KEY`
+- `OPENCODE_MEMORY_API_KEY`
 - `OPENCODE_MEMORY_TIMEOUT_MS`
 - `OPENCODE_MEMORY_LOAD_TIMEOUT_MS`
 
 If you load the plugin with explicit plugin options, those win last.
+
+`MCP_API_KEY` is intentionally not consumed by the plugin. That avoids accidentally reusing the server-side secret from a shared shell environment.
 
 Example:
 
