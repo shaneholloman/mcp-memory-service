@@ -10,6 +10,9 @@ What do you need?
 ├─ Connect Claude Desktop or Claude Code via MCP only?
 │   └─ → Path 1: MCP Only (5 min)
 │
+├─ Use OpenCode with memory-aware local plugin?
+│   └─ → Path 1A: OpenCode Plugin (5 min)
+│
 ├─ Also want the web dashboard + REST API?
 │   └─ → Path 2: MCP + HTTP Dashboard (10 min)
 │
@@ -20,7 +23,7 @@ What do you need?
     └─ → Path 4: Full Stack — Hybrid + Dashboard + OAuth (30 min)
 ```
 
-Each path builds on the previous one. If you want Path 3, follow 1 → 2 → 3 in order.
+Each path builds on the previous one where noted. OpenCode users can start with Path 1A directly. If you want Path 3, follow 1 or 1A → 2 → 3 in order.
 
 ---
 
@@ -76,9 +79,55 @@ memory server --help
 
 - [Store your first memory](https://github.com/doobidoo/mcp-memory-service/wiki)
 - [See what else it works with](README.md#works-with-your-favorite-ai-tools)
+- Want OpenCode integration? → [Path 1A](#path-1a-opencode-plugin)
 - Want the dashboard? → [Path 2](#path-2-mcp--http-dashboard)
 
 ---
+
+## Path 1A: OpenCode Plugin
+
+**For whom:** OpenCode users who want memory-aware sessions via a local plugin.
+
+**Prerequisites:** Python 3.10–3.13, pip
+
+**Duration:** ~5 min
+
+### 1. Install
+
+```bash
+pip install mcp-memory-service
+```
+
+### 2. Start the HTTP API
+
+```bash
+MCP_ALLOW_ANONYMOUS_ACCESS=true memory server --http
+```
+
+> The current OpenCode integration uses the documented HTTP API, not direct MCP transport.
+
+### 3. Install the local plugin
+
+```bash
+git clone https://github.com/doobidoo/mcp-memory-service.git
+cd mcp-memory-service
+mkdir -p ~/.config/opencode/plugins
+cp opencode/memory-plugin.js ~/.config/opencode/plugins/
+cp opencode/memory-plugin.config.example.json ~/.config/opencode/memory-plugin.json
+```
+
+OpenCode loads local plugins automatically from `~/.config/opencode/plugins/` and `.opencode/plugins/`.
+See [opencode/README.md](../opencode/README.md) for configuration and current limitations.
+
+> If you installed only the PyPI package, clone the repository once to copy the plugin files into your OpenCode config directory.
+
+### 4. Verify
+
+Start OpenCode inside a project that already has stored memories, then ask a project-specific question and confirm prior context is available.
+
+### 5. Next Steps
+
+- Want the dashboard too? → [Path 2](#path-2-mcp--http-dashboard)
 
 ## Path 2: MCP + HTTP Dashboard
 

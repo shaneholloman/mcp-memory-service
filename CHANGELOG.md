@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **OpenCode memory awareness integration**: Added an official `opencode/` integration with a minimal read-only plugin for session-start retrieval, system-context injection, and compaction-context injection via the documented HTTP API. Includes setup docs and example config for local OpenCode plugin installation.
+
 ## [10.35.0] - 2026-04-08
 
 ### Added
@@ -338,4 +342,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - 23 new regression tests covering all fixed methods
 - Total: 1,420 tests
-
