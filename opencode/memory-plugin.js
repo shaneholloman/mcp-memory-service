@@ -318,14 +318,18 @@ async function loadSessionMemories({ config, directory, logInfo, logWarn, health
     }
   }
 
+  const searchResults = await Promise.allSettled(
+    queries.map((query) => searchMemories(config, query, tags, perQueryLimit)),
+  )
+
   const found = []
-  for (const query of queries) {
-    try {
-      const memories = await searchMemories(config, query, tags, perQueryLimit)
-      found.push(...memories)
-    } catch (error) {
-      await logWarn(`Memory search failed for "${query}": ${error.message}`)
+  for (const [index, result] of searchResults.entries()) {
+    if (result.status === "fulfilled") {
+      found.push(...result.value)
+      continue
     }
+
+    await logWarn(`Memory search failed for "${queries[index]}": ${result.reason?.message || result.reason}`)
   }
 
   const deduped = sortMemories(dedupeMemories(found)).slice(0, config.memoryService.maxMemoriesPerSession)
@@ -356,6 +360,9 @@ export const OpenCodeMemoryPlugin = async ({ client, directory }, options = {}) 
   }
 
   const refreshSession = (sessionID, sessionDirectory) => {
+    const existingState = sessionState.get(sessionID)
+    if (existingState?.promise) return existingState.promise
+
     const loadPromise = loadSessionMemories({
       config,
       directory: sessionDirectory,
@@ -383,6 +390,8 @@ export const OpenCodeMemoryPlugin = async ({ client, directory }, options = {}) 
       memories: [],
       promise: loadPromise,
     })
+
+    return loadPromise
   }
 
   const waitForSession = async (sessionID, fallbackDirectory) => {
