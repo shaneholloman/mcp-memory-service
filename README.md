@@ -434,17 +434,18 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.36.6** (April 14, 2026)
+## Latest Release: **v10.36.7** (April 14, 2026)
 
-**security: Bump cryptography to 46.0.7 (CVE-2026-39892)**
+**security: Bump pygments to 2.20.0 (CVE-2026-4539)**
 
 **What's Fixed:**
-- **CVE-2026-39892**: Bumped `cryptography` to 46.0.7 to fix a buffer overflow in non-contiguous buffer handling. (PR #690)
+- **CVE-2026-4539** (GHSA-5239-wwwm-4pmq): Bumped `pygments` to 2.20.0 to fix a ReDoS vulnerability via inefficient regex for GUID matching. Transitive dependency via rich. (PR #698)
 - **1,537 tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.36.6** - security: bump cryptography to 46.0.7 (CVE-2026-39892) — buffer overflow fix in non-contiguous buffer handling (PR #690, 1,537 tests)
 - **v10.36.5** - fix: Cloudflare Vectorize API v1 to v2 + test script fixes — fixed error 1010 "incorrect_api_version", content_hash arg, sys.path correction (PR #689, @mychaelgo, 1,537 tests)
 - **v10.36.4** - fix(windows): hotfix for Get-McpApiKey returning first char instead of full API key — PowerShell array-enumeration trap fixed (PR #687, 1,537 tests)
 - **v10.36.3** - fix(dashboard): restore version badge after v10.21.0 security hardening — Settings modal version row fixed, `manage_service.ps1 status` shows real Version/Backend (PR #685, 1,537 tests)
