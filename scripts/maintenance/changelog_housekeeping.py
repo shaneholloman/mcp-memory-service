@@ -125,6 +125,58 @@ def update_header_range(header: str, oldest_kept: str, newest_archived: str) -> 
     return new_header
 
 
+def update_archive_header_boundary(archive_header: str, newest_archived: str) -> str:
+    """Patch the plain-prose boundary in docs/archive/CHANGELOG-HISTORIC.md.
+
+    Matches lines like:
+        Older changelog entries for MCP Memory Service (v10.24.0 and earlier).
+
+    The `update_header_range()` family matches bolded CHANGELOG headers;
+    this helper covers the prose variant in the archive file (#717).
+    """
+    # Boundary suffix is optional so the helper can also insert it when missing
+    # (e.g. a recreated fallback header without the version range). The trailing
+    # period acts as a required anchor — without it, matching the prefix without
+    # the optional version group would sit *before* an existing boundary and
+    # produce a duplicate "(vX and earlier) (vY and earlier)." chain.
+    # [\w.-]+ in the version group accepts pre-release/metadata identifiers
+    # like 1.0.0-beta, 1.0.0-rc.1, or 1.0.0+build.5.
+    pattern = re.compile(
+        r"(Older changelog entries for MCP Memory Service)"
+        r"(?:\s*\(v[\w.+-]+ and earlier\))?(\.)"
+    )
+    return pattern.sub(
+        rf"\1 (v{newest_archived} and earlier)\2",
+        archive_header,
+    )
+
+
+def update_readme_footer_boundary(text: str, newest_archived: str) -> str:
+    """Patch the \"Older versions\" link text in README.md.
+
+    Matches the markdown-link text in:
+        **Full version history**: [CHANGELOG.md](...) | [Older versions (v10.22.0 and earlier)](docs/archive/CHANGELOG-HISTORIC.md) | [All Releases](...)
+
+    The boundary is the oldest version NOT kept in CHANGELOG.md (i.e. the
+    newest version that just got archived), so readers following the link
+    land at a file whose first entry matches what the footer promises (#717).
+    """
+    # Boundary suffix is optional so the helper can also insert it into the
+    # fallback footer that trim_readme_previous_releases recreates when the
+    # "Previous Releases" section ends up bare. The trailing `\]\([^)]+\)`
+    # anchor (the markdown link URL part) prevents the prefix from matching
+    # *before* an existing boundary and producing a duplicate.
+    # [\w.-]+ in the version group accepts pre-release/metadata identifiers
+    # like 1.0.0-beta, 1.0.0-rc.1, or 1.0.0+build.5.
+    pattern = re.compile(
+        r"(\[Older versions)(?:\s*\(v[\w.+-]+ and earlier\))?(\]\([^)]+\))"
+    )
+    return pattern.sub(
+        rf"\1 (v{newest_archived} and earlier)\2",
+        text,
+    )
+
+
 def _is_previous_releases_start(line: str) -> bool:
     """Detect 'Previous Releases' section start in various formats.
 
@@ -327,6 +379,10 @@ def run(dry_run: bool = False) -> int:
             f"For current versions (v{oldest_kept}+)",
             archive_header_text,
         )
+        # Update "Older changelog entries ... (vX.Y.Z and earlier)" prose boundary (#717)
+        archive_header_text = update_archive_header_boundary(
+            archive_header_text, newest_archived
+        )
 
         new_blocks_text = "\n\n".join(
             block_text.rstrip() for _, block_text in new_archive_blocks
@@ -349,6 +405,9 @@ def run(dry_run: bool = False) -> int:
     new_readme, readme_removed = trim_readme_previous_releases(
         readme_text, MAX_README_ENTRIES
     )
+    # Also patch the "Older versions (vX.Y.Z and earlier)" link text so the
+    # boundary tracks the newest-archived version (#717).
+    new_readme = update_readme_footer_boundary(new_readme, newest_archived)
 
     # --- Validate ---
     _, _, new_version_blocks = parse_changelog_blocks(new_changelog)
