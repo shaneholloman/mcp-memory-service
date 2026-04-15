@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MCP Memory Service v10.37 — Semantic Memory Layer for AI Applications</title>
+<title>MCP Memory Service v10.38 — Semantic Memory Layer for AI Applications</title>
 <meta name="description" content="Semantic memory layer for AI applications. REST API + MCP transport. 14+ client integrations, knowledge graph, automatic consolidation. LongMemEval R@5 86%, session ingestion, self-hosted, zero cloud cost.">
-<meta property="og:title" content="MCP Memory Service v10.37">
+<meta property="og:title" content="MCP Memory Service v10.38">
 <meta property="og:description" content="Your self-hosted memory server now connects to Claude.ai. Streamable HTTP + OAuth 2.1 + PKCE. Verified with LongMemEval benchmark: R@5 80.4%, R@10 90.4% on 500 questions, zero LLM API calls.">
 <meta property="og:type" content="website">
 <style>
@@ -116,7 +116,7 @@ footer a{color:var(--cyan)}
 <!-- Hero -->
 <header class="hero">
   <img src="brain-icon.png" alt="MCP Memory Service" class="hero-logo">
-  <span class="hero-badge">v10.37 &mdash; Now Available</span>
+  <span class="hero-badge">v10.38 &mdash; Now Available</span>
   <h1>MCP Memory Service</h1>
   <p>Persistent memory for AI agents. Semantic search, knowledge graph, automatic consolidation &mdash; now accessible from Claude.ai via Streamable HTTP.</p>
   <div class="hero-buttons">
@@ -136,23 +136,23 @@ footer a{color:var(--cyan)}
 <!-- Features -->
 <section id="features">
   <div class="container">
-    <h2 class="section-title">What's New in v10.37</h2>
-    <p class="section-subtitle">Session Harvest over HTTP: new <code>POST /api/harvest</code> endpoint exposes the <code>memory_harvest</code> MCP tool for scripts, cron jobs, and dashboard triggers — with CodeQL-hardened path security.</p>
+    <h2 class="section-title">What's New in v10.38</h2>
+    <p class="section-subtitle">Opt-in Claude Code SessionEnd auto-harvest hook: automatically captures session memories at close, safe-by-default with dry-run first-run, minimum session threshold, and a 5-second non-blocking timeout.</p>
     <div class="features-grid">
       <div class="feature-card" data-delay="0">
         <div class="feature-icon http">&#128218;</div>
-        <h3>Session-Level Ingestion</h3>
-        <p>New <code>memory_store_session</code> MCP tool stores a full conversation as one memory unit — all turns concatenated as <code>[role] content</code> lines, stored with <code>memory_type=session</code> and auto-tagged <code>session:&lt;id&gt;</code>.</p>
+        <h3>SessionEnd Auto-Harvest Hook</h3>
+        <p>New <code>claude-hooks/core/session-end-harvest.js</code> calls <code>POST /api/harvest</code> automatically at Claude Code session end. Pure CommonJS, zero npm dependencies, works as a direct <code>command:</code> entry in <code>.claude/settings.json</code>.</p>
       </div>
       <div class="feature-card" data-delay="150">
         <div class="feature-icon oauth">&#128200;</div>
-        <h3>+5.6% Recall Improvement</h3>
-        <p>LongMemEval R@5 improves from 80.4% to 86.0% with session-mode ingestion. Largest gains in multi-session (+15.2%) and temporal-reasoning (+10.6%) categories — zero LLM API calls.</p>
+        <h3>Safe by Default</h3>
+        <p>Disabled by default (<code>sessionHarvest.enabled: false</code>). First run forces <code>dry_run: true</code> via sentinel file. Short sessions skipped via <code>minSessionMessages</code> threshold (default 10). All failures silently caught — never blocks session end.</p>
       </div>
       <div class="feature-card" data-delay="300">
         <div class="feature-icon privacy">&#9881;</div>
-        <h3>REST + Benchmark Support</h3>
-        <p>New <code>POST /api/sessions</code> HTTP endpoint mirrors the MCP tool for HTTP API consumers. <code>--ingestion-mode session|turn|both</code> flag added to LongMemEval benchmark for direct strategy comparison.</p>
+        <h3>TLS Security + 9 Tests</h3>
+        <p>Self-signed certificate acceptance opt-in only (<code>allowSelfSignedCerts: false</code> by default). Includes 9 Node.js tests, user documentation, and a config template covering all new settings.</p>
       </div>
     </div>
   </div>
@@ -242,7 +242,7 @@ footer a{color:var(--cyan)}
       <a href="blog/remote-mcp-tutorial.html" class="btn btn-secondary">
         Blog: 5-Min claude.ai Setup
       </a>
-      <a href="https://github.com/doobidoo/mcp-memory-service/releases/tag/v10.37.0" class="btn btn-secondary" target="_blank">
+      <a href="https://github.com/doobidoo/mcp-memory-service/releases/tag/v10.38.0" class="btn btn-secondary" target="_blank">
         Release Notes
       </a>
     </div>

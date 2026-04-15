@@ -434,19 +434,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.37.0** (April 14, 2026)
+## Latest Release: **v10.38.0** (April 14, 2026)
 
-**feat: `POST /api/harvest` — HTTP endpoint for Session Harvest**
+**feat: opt-in Claude Code SessionEnd auto-harvest hook**
 
 **What's New:**
-- **New `POST /api/harvest` endpoint**: Trigger Session Harvest from scripts, cron jobs, CI pipelines, or the dashboard without an active MCP session. Mirrors the `memory_harvest` MCP tool byte-for-byte. (PR #710)
-- **Security hardened**: `project_path` accepts only relative names under `~/.claude/projects/` — absolute paths, `..` traversal, and symlink escapes all rejected with HTTP 400. Addresses CodeQL findings #383 and #384. (PR #710)
-- **Async hygiene**: `harvest_and_store` in `harvester.py` now offloads sync file reads via `asyncio.to_thread`, keeping the event loop unblocked. (PR #710)
-- **1,547 tests** passing.
+- **SessionEnd auto-harvest hook**: New `claude-hooks/core/session-end-harvest.js` hook automatically calls `POST /api/harvest` at session end. Pure CommonJS, zero npm dependencies. (PR #711)
+- **Safe by default**: Disabled by default, forces `dry_run: true` on first run, skips sessions under `minSessionMessages` (default 10), and never blocks session end (5s timeout, all errors silently caught). (PR #711)
+- **TLS security**: Self-signed cert acceptance opt-in only (`allowSelfSignedCerts: false` by default) to prevent silent MITM exposure. (PR #711)
+- **1,547 Python tests** + 9 new Node.js hook tests passing.
 
 ---
 
 **Previous Releases**:
+- **v10.37.0** - feat: `POST /api/harvest` HTTP endpoint for Session Harvest + CodeQL path-injection hardening (PR #710, 1,547 tests)
 - **v10.36.8** - fix: event-loop blocking paths in `SqliteVecMemoryStorage.initialize()` — pragma application and hash-embedding fallback now run in worker thread under `_conn_lock` (PR #700, 1,537 tests)
 - **v10.36.7** - security: bump pygments to 2.20.0 (CVE-2026-4539/GHSA-5239-wwwm-4pmq) — ReDoS fix via rich transitive dep (PR #698, 1,537 tests)
 - **v10.36.6** - security: bump cryptography to 46.0.7 (CVE-2026-39892) — buffer overflow fix in non-contiguous buffer handling (PR #690, 1,537 tests)
