@@ -434,17 +434,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.36.7** (April 14, 2026)
+## Latest Release: **v10.37.0** (April 14, 2026)
 
-**security: Bump pygments to 2.20.0 (CVE-2026-4539)**
+**feat: `POST /api/harvest` — HTTP endpoint for Session Harvest**
 
-**What's Fixed:**
-- **CVE-2026-4539** (GHSA-5239-wwwm-4pmq): Bumped `pygments` to 2.20.0 to fix a ReDoS vulnerability via inefficient regex for GUID matching. Transitive dependency via rich. (PR #698)
-- **1,537 tests** passing.
+**What's New:**
+- **New `POST /api/harvest` endpoint**: Trigger Session Harvest from scripts, cron jobs, CI pipelines, or the dashboard without an active MCP session. Mirrors the `memory_harvest` MCP tool byte-for-byte. (PR #710)
+- **Security hardened**: `project_path` accepts only relative names under `~/.claude/projects/` — absolute paths, `..` traversal, and symlink escapes all rejected with HTTP 400. Addresses CodeQL findings #383 and #384. (PR #710)
+- **Async hygiene**: `harvest_and_store` in `harvester.py` now offloads sync file reads via `asyncio.to_thread`, keeping the event loop unblocked. (PR #710)
+- **1,547 tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.36.8** - fix: event-loop blocking paths in `SqliteVecMemoryStorage.initialize()` — pragma application and hash-embedding fallback now run in worker thread under `_conn_lock` (PR #700, 1,537 tests)
+- **v10.36.7** - security: bump pygments to 2.20.0 (CVE-2026-4539/GHSA-5239-wwwm-4pmq) — ReDoS fix via rich transitive dep (PR #698, 1,537 tests)
 - **v10.36.6** - security: bump cryptography to 46.0.7 (CVE-2026-39892) — buffer overflow fix in non-contiguous buffer handling (PR #690, 1,537 tests)
 - **v10.36.5** - fix: Cloudflare Vectorize API v1 to v2 + test script fixes — fixed error 1010 "incorrect_api_version", content_hash arg, sys.path correction (PR #689, @mychaelgo, 1,537 tests)
 - **v10.36.4** - fix(windows): hotfix for Get-McpApiKey returning first char instead of full API key — PowerShell array-enumeration trap fixed (PR #687, 1,537 tests)
