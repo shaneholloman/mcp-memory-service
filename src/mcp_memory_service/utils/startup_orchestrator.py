@@ -267,11 +267,17 @@ class ServerRunManager:
                 response = Response("Not Found", status_code=404)
                 await response(scope, receive, send)
 
-        self.logger.info(f"Starting SSE transport on {MCP_SSE_HOST}:{MCP_SSE_PORT}")
+        # Re-read env at runtime so late-set values (e.g. from CLI flags in
+        # cli/main.py after package __init__ has already frozen config.py
+        # module constants) still take effect.
+        from ..config import safe_get_int_env
+        sse_host = os.environ.get('MCP_SSE_HOST', MCP_SSE_HOST)
+        sse_port = safe_get_int_env('MCP_SSE_PORT', MCP_SSE_PORT, min_value=1024, max_value=65535)
+        self.logger.info(f"Starting SSE transport on {sse_host}:{sse_port}")
         config = uvicorn.Config(
             app,
-            host=MCP_SSE_HOST,
-            port=MCP_SSE_PORT,
+            host=sse_host,
+            port=sse_port,
             log_level="info",
             timeout_keep_alive=MCP_TRANSPORT_TIMEOUT_KEEP_ALIVE,
             timeout_graceful_shutdown=MCP_TRANSPORT_TIMEOUT_GRACEFUL_SHUTDOWN,
@@ -411,11 +417,15 @@ class ServerRunManager:
             await response(scope, receive, send)
             return False
 
-        self.logger.info(f"Starting Streamable HTTP transport on {MCP_SSE_HOST}:{MCP_SSE_PORT}")
+        # Re-read env at runtime; see run_sse() for rationale.
+        from ..config import safe_get_int_env
+        sse_host = os.environ.get('MCP_SSE_HOST', MCP_SSE_HOST)
+        sse_port = safe_get_int_env('MCP_SSE_PORT', MCP_SSE_PORT, min_value=1024, max_value=65535)
+        self.logger.info(f"Starting Streamable HTTP transport on {sse_host}:{sse_port}")
         config = uvicorn.Config(
             app,
-            host=MCP_SSE_HOST,
-            port=MCP_SSE_PORT,
+            host=sse_host,
+            port=sse_port,
             log_level="info",
             timeout_keep_alive=MCP_TRANSPORT_TIMEOUT_KEEP_ALIVE,
             timeout_graceful_shutdown=MCP_TRANSPORT_TIMEOUT_GRACEFUL_SHUTDOWN,
