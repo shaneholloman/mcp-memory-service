@@ -434,19 +434,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.38.0** (April 14, 2026)
+## Latest Release: **v10.38.1** (April 15, 2026)
 
-**feat: opt-in Claude Code SessionEnd auto-harvest hook**
+**fix: OAuth loopback ports (RFC 8252), CLI ingestion NameError, SSE CLI flags, Docker CI bumps**
 
 **What's New:**
-- **SessionEnd auto-harvest hook**: New `claude-hooks/core/session-end-harvest.js` hook automatically calls `POST /api/harvest` at session end. Pure CommonJS, zero npm dependencies. (PR #711)
-- **Safe by default**: Disabled by default, forces `dry_run: true` on first run, skips sessions under `minSessionMessages` (default 10), and never blocks session end (5s timeout, all errors silently caught). (PR #711)
-- **TLS security**: Self-signed cert acceptance opt-in only (`allowSelfSignedCerts: false` by default) to prevent silent MITM exposure. (PR #711)
-- **1,547 Python tests** + 9 new Node.js hook tests passing.
+- **OAuth RFC 8252 compliance**: Native app clients (e.g. OpenCode) can now complete authorization — loopback redirect URIs are matched by host only, ignoring the ephemeral port. (PR #697)
+- **CLI ingestion fix**: `memory ingest-document` was silently storing 0 chunks due to a missing `generate_content_hash` import; now imports correctly. (PR #704)
+- **SSE host/port CLI flags**: `--sse-host` and `--sse-port` now actually take effect — config constants were frozen at import time. (PR #705)
+- **Docker CI**: bumped `docker/metadata-action` 5→6, `docker/build-push-action` 5→7, `docker/setup-buildx-action` 3→4. (PR #707, #708, #709)
+- **1,547 Python tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.38.0** - feat: opt-in Claude Code SessionEnd auto-harvest hook — safe-by-default, zero npm deps, 5s timeout, TLS opt-in (PR #711, 1,547 tests)
 - **v10.37.0** - feat: `POST /api/harvest` HTTP endpoint for Session Harvest + CodeQL path-injection hardening (PR #710, 1,547 tests)
 - **v10.36.8** - fix: event-loop blocking paths in `SqliteVecMemoryStorage.initialize()` — pragma application and hash-embedding fallback now run in worker thread under `_conn_lock` (PR #700, 1,537 tests)
 - **v10.36.7** - security: bump pygments to 2.20.0 (CVE-2026-4539/GHSA-5239-wwwm-4pmq) — ReDoS fix via rich transitive dep (PR #698, 1,537 tests)
