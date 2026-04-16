@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.38.2] - 2026-04-16
+
+### Fixed
+
+- **[#723] Windows PS7+: replace removed `ICertificatePolicy` with `ServerCertificateValidationCallback`**: `lib/server-config.ps1` used `Add-Type` to implement the `System.Net.ICertificatePolicy` interface, which was removed in .NET Core / .NET 5+. On PowerShell 7+ this caused "Cannot add type. Compilation errors occurred" at script load time, breaking all Windows update/service scripts. Replaced with a `[System.Net.ServicePointManager]::ServerCertificateValidationCallback` assignment, scoped to PS 5.1 only (`$PSVersionTable.PSVersion.Major -lt 6`) to avoid a global process-wide callback leak on PS 7+. (PR #723)
+- **[#723] Windows PS7+: add `Get-McpWebRequestExtraParams` helper for HTTPS cert bypass**: PS 7+ `Invoke-WebRequest` / `Invoke-RestMethod` use `HttpClient` internally and ignore `ServicePointManager` entirely. Added `Get-McpWebRequestExtraParams` to `lib/server-config.ps1` that returns `@{ SkipCertificateCheck = $true }` on PS 7+ HTTPS targets. All 7 web-request call sites across `update_and_restart.ps1`, `manage_service.ps1`, and `run_http_server_background.ps1` now splat these extra params. (PR #723)
+- **[#723] Windows: defer `lib/server-config.ps1` sourcing in `update_and_restart.ps1` until after `git pull` + `pip install`**: Previously the lib was sourced at script load time, so a buggy checked-out version of the lib would fail immediately, preventing the pull from delivering the fix. The script now sources the lib after the update steps complete, enabling self-healing on the next run. (PR #723)
+
 ### Changed
 
 - **`scripts/service/mcp-memory.service` portability cleanup**: Replaced hardcoded `/home/hkr/` paths with the `%h` systemd specifier across `WorkingDirectory`, `PATH`, `PYTHONPATH`, and `ExecStart`, and removed the `User=hkr` / `Group=hkr` directives (user services run as the invoking user by default). Matches the convention already used in `scripts/service/mcp-memory-http.service`. Closes the follow-up flagged in PR #706 / #719.
@@ -21,14 +29,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **[#713] Eliminated all current-tense ChromaDB references from active docs**: Swept 31 files to remove ChromaDB as a current backend option — config examples (`MCP_MEMORY_STORAGE_BACKEND=chromadb`), docker compose/run templates (`chromadb` → `sqlite_vec`, `chroma_db` → `sqlite_data`), `.[chromadb]` pip extras, `--with-chromadb` installer flag, comparison tables, architecture diagrams, and visible SVG text. Historical references preserved where they link users to `docs/guides/chromadb-migration.md`. (PR #714, net −159 lines)
 - **[#713] CI hardening against ChromaDB regressions**: `scripts/ci/check_dead_refs.sh` now also blocks `MCP_MEMORY_CHROMA_PATH` and `MCP_MEMORY_CHROMADB_{HOST,PORT,SSL,API_KEY}` env vars as hard dead refs, plus `chromadb` as a soft dead ref with an explicit `SOFT_REF_ALLOWLIST` for the 13 files that legitimately carry historical/migration pointers or external-project (MemPalace) benchmark context. Script refactored to support per-ref exclusions. (PR #714)
 - **[#706] Hardened `docs/deployment/systemd-service.md` for LAN/network exposure**: Added a "Network exposure hardening" subsection with five concrete recommendations — bind to a specific LAN interface instead of `0.0.0.0`, apply per-source-IP firewall rules (`ufw allow from <IP>`), restrict the database parent directory with `chmod 700` to cover SQLite sidecar files (`*-wal`, `*-shm`), guidance on TLS termination (reverse proxy) or WireGuard/Tailscale overlays for untrusted networks, and a warning about shared client config files (e.g. `~/.claude.json` symlinked across hosts) that cause every reader to hit the same service URL. Also swapped the hardcoded `/home/hkr/` path in the in-guide "Service File Structure" and LAN examples for the portable `%h` systemd specifier (matches the shipped `scripts/service/mcp-memory-http.service` template). The corresponding `scripts/service/mcp-memory.service` template cleanup is tracked separately — see the `### Changed` entry above. (PR #706)
-
-## [10.38.2] - 2026-04-16
-
-### Fixed
-
-- **[#723] Windows PS7+: replace removed `ICertificatePolicy` with `ServerCertificateValidationCallback`**: `lib/server-config.ps1` used `Add-Type` to implement the `System.Net.ICertificatePolicy` interface, which was removed in .NET Core / .NET 5+. On PowerShell 7+ this caused "Cannot add type. Compilation errors occurred" at script load time, breaking all Windows update/service scripts. Replaced with a `[System.Net.ServicePointManager]::ServerCertificateValidationCallback` assignment, scoped to PS 5.1 only (`$PSVersionTable.PSVersion.Major -lt 6`) to avoid a global process-wide callback leak on PS 7+. (PR #723)
-- **[#723] Windows PS7+: add `Get-McpWebRequestExtraParams` helper for HTTPS cert bypass**: PS 7+ `Invoke-WebRequest` / `Invoke-RestMethod` use `HttpClient` internally and ignore `ServicePointManager` entirely. Added `Get-McpWebRequestExtraParams` to `lib/server-config.ps1` that returns `@{ SkipCertificateCheck = $true }` on PS 7+ HTTPS targets. All 7 web-request call sites across `update_and_restart.ps1`, `manage_service.ps1`, and `run_http_server_background.ps1` now splat these extra params. (PR #723)
-- **[#723] Windows: defer `lib/server-config.ps1` sourcing in `update_and_restart.ps1` until after `git pull` + `pip install`**: Previously the lib was sourced at script load time, so a buggy checked-out version of the lib would fail immediately, preventing the pull from delivering the fix. The script now sources the lib after the update steps complete, enabling self-healing on the next run. (PR #723)
 
 ## [10.38.1] - 2026-04-15
 

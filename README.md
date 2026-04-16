@@ -436,12 +436,15 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 
 ## Latest Release: **v10.38.2** (April 16, 2026)
 
-**fix(windows): PS 7+ cert bypass + chicken-egg lib sourcing**
+**fix(windows): PS 7+ cert bypass + chicken-egg lib sourcing, docs cleanup, service portability**
 
 **What's New:**
 - **PowerShell 7+ compatibility**: `Enable-McpSelfSignedCertBypass` used `ICertificatePolicy` (removed in .NET Core/5+), causing `Add-Type` compilation errors on pwsh. Replaced with `ServerCertificateValidationCallback` (scoped to PS 5.1 only). (PR #723)
 - **Per-call `-SkipCertificateCheck`**: PS 7+ `Invoke-WebRequest` uses HttpClient which ignores `ServicePointManager`. Added `Get-McpWebRequestExtraParams` helper; all 7 web-request call sites now splat the bypass. (PR #723)
 - **Self-update chicken-egg fix**: `update_and_restart.ps1` now defers lib sourcing until after `git pull` + install, so a buggy checked-out lib can no longer block its own fix. (PR #723)
+- **Systemd service portability**: `mcp-memory.service` template replaced hardcoded paths with `%h` specifier, removed `User`/`Group` directives. (PR #720)
+- **Docs: ChromaDB reference sweep**: Eliminated all current-tense ChromaDB references from 31 active docs files; CI hardened with dead-ref blocking. (PRs #702, #712, #714)
+- **Docs: LAN exposure hardening**: Added network security recommendations to systemd deployment guide. (PR #706)
 - **1,547 Python tests** passing.
 
 ---
