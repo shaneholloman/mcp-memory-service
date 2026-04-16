@@ -434,20 +434,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.38.1** (April 15, 2026)
+## Latest Release: **v10.38.2** (April 16, 2026)
 
-**fix: OAuth loopback ports (RFC 8252), CLI ingestion NameError, SSE CLI flags, Docker CI bumps**
+**fix(windows): PS 7+ cert bypass + chicken-egg lib sourcing**
 
 **What's New:**
-- **OAuth RFC 8252 compliance**: Native app clients (e.g. OpenCode) can now complete authorization — loopback redirect URIs are matched by host only, ignoring the ephemeral port. (PR #697)
-- **CLI ingestion fix**: `memory ingest-document` was silently storing 0 chunks due to a missing `generate_content_hash` import; now imports correctly. (PR #704)
-- **SSE host/port CLI flags**: `--sse-host` and `--sse-port` now actually take effect — config constants were frozen at import time. (PR #705)
-- **Docker CI**: bumped `docker/metadata-action` 5→6, `docker/build-push-action` 5→7, `docker/setup-buildx-action` 3→4. (PR #707, #708, #709)
+- **PowerShell 7+ compatibility**: `Enable-McpSelfSignedCertBypass` used `ICertificatePolicy` (removed in .NET Core/5+), causing `Add-Type` compilation errors on pwsh. Replaced with `ServerCertificateValidationCallback` (scoped to PS 5.1 only). (PR #723)
+- **Per-call `-SkipCertificateCheck`**: PS 7+ `Invoke-WebRequest` uses HttpClient which ignores `ServicePointManager`. Added `Get-McpWebRequestExtraParams` helper; all 7 web-request call sites now splat the bypass. (PR #723)
+- **Self-update chicken-egg fix**: `update_and_restart.ps1` now defers lib sourcing until after `git pull` + install, so a buggy checked-out lib can no longer block its own fix. (PR #723)
 - **1,547 Python tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.38.1** - fix: OAuth loopback ports (RFC 8252), CLI ingestion NameError, SSE CLI flags, Docker CI bumps (PRs #697, #704, #705, #707-709)
 - **v10.38.0** - feat: opt-in Claude Code SessionEnd auto-harvest hook — safe-by-default, zero npm deps, 5s timeout, TLS opt-in (PR #711, 1,547 tests)
 - **v10.37.0** - feat: `POST /api/harvest` HTTP endpoint for Session Harvest + CodeQL path-injection hardening (PR #710, 1,547 tests)
 - **v10.36.8** - fix: event-loop blocking paths in `SqliteVecMemoryStorage.initialize()` — pragma application and hash-embedding fallback now run in worker thread under `_conn_lock` (PR #700, 1,537 tests)
