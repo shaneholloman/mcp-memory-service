@@ -136,19 +136,73 @@ function Get-McpApiKey {
 function Enable-McpSelfSignedCertBypass {
     <#
     .SYNOPSIS
-        Bypasses self-signed certificate validation for the current PowerShell
-        session, so Invoke-WebRequest can talk to the HTTPS health endpoint.
-        No-op on HTTP-only setups. Safe to call multiple times.
+        Configures self-signed certificate bypass for Windows PowerShell 5.1
+        callers. On PS 7+, prefer splatting `Get-McpWebRequestExtraParams`
+        into Invoke-WebRequest/Invoke-RestMethod calls.
+
+    .DESCRIPTION
+        Historical behaviour: PS 5.1's Invoke-WebRequest uses the legacy
+        WebClient / HttpWebRequest stack which honours
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback.
+
+        PS 7+ uses HttpClient for Invoke-WebRequest / Invoke-RestMethod,
+        which IGNORES ServicePointManager entirely. On PS 7+ the bypass
+        must be done per-call via `-SkipCertificateCheck`. That is what
+        `Get-McpWebRequestExtraParams` provides.
+
+        This function still sets the callback because:
+          - Harmless no-op on PS 7+ (property exists, value unused by HttpClient)
+          - Required for PS 5.1 call sites that do NOT splat extras
+
+        The old Add-Type / ICertificatePolicy approach was removed because
+        ICertificatePolicy does not exist in .NET Core/5+, so Add-Type
+        failed with "Cannot add type. Compilation errors occurred".
+
+        Safety: on PS 7+ we skip the global callback assignment entirely.
+        The callback is process-wide and would affect other .NET components
+        (e.g. System.Net.WebClient, third-party libs) in the same session.
+        PS 7+ callers use per-request `-SkipCertificateCheck` via
+        `Get-McpWebRequestExtraParams`, so the global is pure liability there.
     #>
-    if (-not ('TrustAllCertsPolicy' -as [type])) {
-        Add-Type -TypeDefinition @"
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
-public class TrustAllCertsPolicy : ICertificatePolicy {
-    public bool CheckValidationResult(ServicePoint sp, X509Certificate cert, WebRequest req, int problem) { return true; }
-}
-"@ -ErrorAction SilentlyContinue
+    if ($PSVersionTable.PSVersion.Major -lt 6) {
+        # PS 5.1 only: HttpWebRequest / WebClient honour these globals.
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
     }
-    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+}
+
+function Get-McpWebRequestExtraParams {
+    <#
+    .SYNOPSIS
+        Returns a splat-ready hashtable of extra parameters for
+        Invoke-WebRequest / Invoke-RestMethod to bypass self-signed cert
+        validation on the current PowerShell version.
+
+    .DESCRIPTION
+        Per PS version:
+          - PS 7+ on HTTPS: returns @{ SkipCertificateCheck = $true }
+            Needed because HttpClient ignores ServicePointManager.
+          - PS 5.1 or HTTP: returns @{}
+            (5.1 uses Enable-McpSelfSignedCertBypass' ServicePointManager
+             callback; HTTP needs no bypass at all.)
+
+    .PARAMETER HttpsEnabled
+        Whether the server URL uses HTTPS. Read from Get-McpServerConfig.
+
+    .EXAMPLE
+        $extras = Get-McpWebRequestExtraParams -HttpsEnabled $ServerConfig.HttpsEnabled
+        $params = @{ Uri = $HealthUrl; TimeoutSec = 3 } + $extras
+        Invoke-RestMethod @params
+    #>
+    param(
+        [bool]$HttpsEnabled = $false
+    )
+
+    if (-not $HttpsEnabled) {
+        return @{}
+    }
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        return @{ SkipCertificateCheck = $true }
+    }
+    return @{}
 }
