@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- **Knowledge graph dashboard**: Fixed invisible edges for non-canonical relationship types by providing a fallback color for undefined CSS variables.
 - **Flaky concurrent test**: Relaxed strict write-count assertions in `test_concurrent_clients.py` from `== 10` to `>= 9` (and `== 5` to `>= 4`). SQLite WAL lock contention under CI runner load can legitimately drop 1 of N concurrent writes.
 
 ## [10.38.2] - 2026-04-16
