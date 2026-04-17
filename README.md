@@ -434,22 +434,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.38.2** (April 16, 2026)
+## Latest Release: **v10.38.3** (April 17, 2026)
 
-**fix(windows): PS 7+ cert bypass + chicken-egg lib sourcing, docs cleanup, service portability**
+**fix: Server tab auto-check, list_memories total_pages, knowledge graph edge rendering**
 
 **What's New:**
-- **PowerShell 7+ compatibility**: `Enable-McpSelfSignedCertBypass` used `ICertificatePolicy` (removed in .NET Core/5+), causing `Add-Type` compilation errors on pwsh. Replaced with `ServerCertificateValidationCallback` (scoped to PS 5.1 only). (PR #723)
-- **Per-call `-SkipCertificateCheck`**: PS 7+ `Invoke-WebRequest` uses HttpClient which ignores `ServicePointManager`. Added `Get-McpWebRequestExtraParams` helper; all 7 web-request call sites now splat the bypass. (PR #723)
-- **Self-update chicken-egg fix**: `update_and_restart.ps1` now defers lib sourcing until after `git pull` + install, so a buggy checked-out lib can no longer block its own fix. (PR #723)
-- **Systemd service portability**: `mcp-memory.service` template replaced hardcoded paths with `%h` specifier, removed `User`/`Group` directives. (PR #720)
-- **Docs: ChromaDB reference sweep**: Eliminated all current-tense ChromaDB references from 31 active docs files; CI hardened with dead-ref blocking. (PRs #702, #712, #714)
-- **Docs: LAN exposure hardening**: Added network security recommendations to systemd deployment guide. (PR #706)
+- **Server tab auto-check**: Dashboard now auto-checks for updates on Server tab open and shows an accurate initial label before the first check completes. (PR #728)
+- **`list_memories` total_pages**: REST API `list_memories` response now includes `total_pages` field for correct pagination. (PR #731)
+- **Knowledge graph edge rendering**: Fixed invisible edges for non-canonical relationship types by providing fallback colors for undefined CSS variables. (PR #730)
 - **1,547 Python tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.38.2** - fix(windows): PS 7+ cert bypass, per-call SkipCertificateCheck, chicken-egg lib sourcing (PR #723)
 - **v10.38.1** - fix: OAuth loopback ports (RFC 8252), CLI ingestion NameError, SSE CLI flags, Docker CI bumps (PRs #697, #704, #705, #707-709)
 - **v10.38.0** - feat: opt-in Claude Code SessionEnd auto-harvest hook — safe-by-default, zero npm deps, 5s timeout, TLS opt-in (PR #711, 1,547 tests)
 - **v10.37.0** - feat: `POST /api/harvest` HTTP endpoint for Session Harvest + CodeQL path-injection hardening (PR #710, 1,547 tests)

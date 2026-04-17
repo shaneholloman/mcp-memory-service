@@ -10,16 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.38.3] - 2026-04-17
+
+### Fixed
+
+- **[#728] Dashboard: auto-check updates on Server tab open + accurate initial label**: The Server tab now automatically triggers an update check when opened, and displays an accurate initial label before the first check completes, eliminating stale/misleading status on first render. (PR #728)
+- **[#731] API: add `total_pages` to `list_memories` return**: The `list_memories` REST API response now includes a `total_pages` field alongside `total_count` and `page`, enabling correct client-side pagination without extra requests. (PR #731)
+- **[#730] Dashboard: render knowledge-graph edges for non-canonical relationship types**: Edges whose `type` had no matching CSS custom property were rendered invisible. Added fallback color resolution so all relationship types display correctly in the graph view. (PR #730)
+
 ### Changed
 
 - **[#725] Dependency bump**: `pypdf` 6.10.1 → 6.10.2 (Dependabot)
 - **[#726] Dependency bump**: `authlib` 1.6.10 → 1.6.11 (Dependabot)
 - **[#727] CI: skip full test suite on docs-only changes**: Added `paths-ignore` for `docs/**`, `*.md`, `.claude/**`, `LICENSE`, `.gitignore` to `main.yml`. Docs-only PRs no longer trigger the 1587-test pytest suite, Docker build, or CodeQL scan.
-
-### Fixed
-
-- **Knowledge graph dashboard**: Fixed invisible edges for non-canonical relationship types by providing a fallback color for undefined CSS variables.
-- **Flaky concurrent test**: Relaxed strict write-count assertions in `test_concurrent_clients.py` from `== 10` to `>= 9` (and `== 5` to `>= 4`). SQLite WAL lock contention under CI runner load can legitimately drop 1 of N concurrent writes.
 
 ## [10.38.2] - 2026-04-16
 
