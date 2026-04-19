@@ -434,18 +434,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.38.4** (April 19, 2026)
+## Latest Release: **v10.39.0** (April 19, 2026)
 
-**fix(mcp): return HTTP 202 for JSON-RPC notifications — fixes Codex / strict-client handshake**
+**feat: Claude Code plugin install + MemoryClient.storeMemory() protocol-native writes**
 
 **What's New:**
-- **Strict-client compatibility**: The `/mcp` endpoint now returns HTTP 202 Accepted with an empty body for JSON-RPC notifications (messages without `id`), per JSON-RPC 2.0 §4.1 and MCP Streamable HTTP spec. Previously returned `-32601 Method not found` for `notifications/initialized`. (PR #733)
-- **Codex / rmcp fix**: Strict MCP clients like Codex's `rmcp` library treated the old error response as a handshake failure and refused to start. This release fixes that.
+- **New: Install as a Claude Code plugin** — two commands replace the bash wrapper, API-key generation, and manual MCP-config-editing ceremony. `/plugin marketplace add doobidoo/mcp-memory-service` + `/plugin install mcp-memory-service`. v1.0.0 plugin is experimental. See `claude-hooks/PLUGIN.md` for install, config, and migration from the legacy `install_hooks.py` installer. Closes #530. (PR #736)
+- **MemoryClient.storeMemory()**: Routes memory writes through HTTP-primary + MCP-fallback, closing the silent write-failure path for all hook users (not just plugin adopters). (PR #735)
 - **1,547 Python tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.38.4** - fix(mcp): return HTTP 202 for JSON-RPC notifications — fixes Codex/strict-client handshake (PR #733)
 - **v10.38.3** - fix: Server tab auto-check, list_memories total_pages, knowledge graph edge rendering (PRs #728, #731, #730)
 - **v10.38.2** - fix(windows): PS 7+ cert bypass, per-call SkipCertificateCheck, chicken-egg lib sourcing (PR #723)
 - **v10.38.1** - fix: OAuth loopback ports (RFC 8252), CLI ingestion NameError, SSE CLI flags, Docker CI bumps (PRs #697, #704, #705, #707-709)
