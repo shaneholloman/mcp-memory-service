@@ -278,6 +278,48 @@ class MCPClient extends EventEmitter {
     }
 
     /**
+     * Store a memory via MCP protocol
+     * @param {string} content - Memory content
+     * @param {object} opts - { tags, memoryType, metadata }
+     * @returns {Promise<{success: boolean, content_hash?: string}>}
+     */
+    async storeMemory(content, opts = {}) {
+        const { tags = [], memoryType = null, metadata = {} } = opts;
+        try {
+            // The stdio MCP handler (server/handlers/memory.py::handle_store_memory)
+            // reads tags/type from the metadata dict. Pack them in accordingly while
+            // preserving any custom metadata provided by the caller.
+            const result = await this.callTool('store_memory', {
+                content,
+                metadata: {
+                    ...metadata,
+                    tags,
+                    type: memoryType,
+                },
+            });
+
+            // MCP tool responses come back as text content — parse success flag
+            const text = Array.isArray(result?.content)
+                ? result.content.map((c) => c.text || '').join('\n')
+                : '';
+
+            // Success is defined by hash presence — the server always emits
+            // "(hash: ...)" or "(original hash: ...)" on success and never on failure.
+            // This avoids brittle keyword matching on the response text.
+            const hashMatch = text.match(/\((?:original )?hash:\s*([a-f0-9]+)\)/i);
+            const success = hashMatch !== null;
+
+            return {
+                success,
+                content_hash: hashMatch ? hashMatch[1] : undefined,
+            };
+        } catch (error) {
+            console.warn('[MCP Client] Store memory error:', error.message);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
      * Parse tool response content
      */
     parseToolResponse(content) {
