@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.39.1] - 2026-04-19
+
+### Fixed
+
+- **plugin**: `plugin.json` `author` field now uses the Claude Code plugin spec's required object format (`{"name": "..."}`) instead of the pre-spec string form. Unblocks `/plugin install mcp-memory-service` — thanks @yingzhi0808 for the report (#738) and the fix (#739).
+
 ## [10.39.0] - 2026-04-19
 
 ### Added
