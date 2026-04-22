@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.40.1] - 2026-04-21
+
+### Fixed
+
+- **[#750] CF hybrid sync: `POST /api/sync/force` now reliably completes**: Deduplication logic in the force-sync path now compares against secondary-store hashes before embedding, so already-synced memories are skipped cheaply rather than consuming Cloudflare Workers AI quota. This eliminates the "0 synced / N failed" result that was caused by exhausting the embed rate limit on redundant re-submissions. (PR #753)
+- **[#750] CF hybrid sync: sync status flag reflects current health, not lifetime-cumulative failures**: `status.sync_ok` was latching `False` on any historical error and never recovering. It now reflects whether the most-recent sync attempt succeeded, so dashboards and health probes show accurate state after a transient failure is resolved. (PR #751)
+- **[#750] CF stats: totals no longer inflated by soft-deleted tombstones**: The Cloudflare statistics endpoint was counting soft-deleted (tombstoned) records in memory totals, making the remote count appear larger than the live dataset. Tombstones are now excluded from count queries. (PR #751)
+- **[#750] Reduced timezone-mismatch log noise**: Spurious drift warnings caused by comparing UTC timestamps from Cloudflare against local naive datetimes have been suppressed. (PR #751)
+
+### Changed
+
+- **Dependency bumps (Dependabot)**: `python-semantic-release/python-semantic-release` (PR #748), `actions/setup-python` 5 → 6 (PR #749), `actions/setup-node` 4 → 6 (PR #747).
+
 ## [10.40.0] - 2026-04-22
 
 ### Added

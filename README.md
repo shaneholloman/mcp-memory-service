@@ -437,19 +437,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.40.0** (April 22, 2026)
+## Latest Release: **v10.40.1** (April 21, 2026)
 
-**feat: Milvus storage backend — Lite / self-hosted / Zilliz Cloud**
+**fix(sync): CF hybrid sync reliability + reporting accuracy**
 
 **What's New:**
-- **New Milvus storage backend** (`MCP_MEMORY_STORAGE_BACKEND=milvus`): Three deployment modes from one code path — Milvus Lite (zero-dep local file), self-hosted Docker, and Zilliz Cloud. ~1,750 lines, 39 tests, `@zc277584121` committed to 6-month SLA on `backend:milvus` issues. See `docs/milvus-backend.md`. (PR #721)
-- **OAuth security hardening**: Defense-in-depth guards against CodeQL `py/reflective-xss` and `py/url-redirection` in the authorization-code redirect flow. (PR #745)
-- **Plugin manifest shape validation**: CI now validates `plugin.json` structure against the Claude Code plugin spec. (PR #740)
+- **`POST /api/sync/force` reliably completes**: Deduplication now skips already-synced memories before embedding, eliminating "0 synced / N failed" from CF Workers AI rate-limit exhaustion. (PR #753)
+- **Sync status flag reflects current health**: `sync_ok` no longer latches `False` from historical errors — it tracks the most-recent sync attempt. (PR #751)
+- **CF stats exclude tombstones**: Remote memory totals no longer inflate with soft-deleted records. (PR #751)
+- **Reduced timezone-mismatch log noise**: Spurious drift warnings from UTC vs naive-datetime comparisons are suppressed. (PR #751)
 - **1,675 Python tests** passing.
 
 ---
 
 **Previous Releases**:
+- **v10.40.0** - feat: Milvus storage backend (Lite / self-hosted / Zilliz Cloud), OAuth XSS hardening, plugin shape validation (PRs #721, #745, #740)
 - **v10.39.1** - hotfix: plugin.json author field object format — unblocks `/plugin install mcp-memory-service` (#738, #739)
 - **v10.39.0** - feat: Claude Code plugin install (`/plugin marketplace add doobidoo/mcp-memory-service`) + MemoryClient.storeMemory() protocol-native writes (PRs #736, #735)
 - **v10.38.4** - fix(mcp): return HTTP 202 for JSON-RPC notifications — fixes Codex/strict-client handshake (PR #733)
