@@ -172,10 +172,12 @@ class MemoryClient {
                     method: 'GET',
                     headers: {
                         'X-API-Key': this.httpConfig.apiKey,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'Connection': 'close'
                     },
                     timeout: this.httpConfig.healthCheckTimeout || 3000,
-                    rejectUnauthorized: false  // Allow self-signed certificates
+                    rejectUnauthorized: false,  // Allow self-signed certificates
+                    agent: false  // Disable keepAlive — hook is one-shot, reused sockets race uvicorn close (ECONNRESET / socket hang up)
                 };
 
                 const protocol = url.protocol === 'https:' ? https : http;
@@ -285,8 +287,10 @@ class MemoryClient {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(payload),
                     'X-API-Key': this.httpConfig.apiKey,
+                    'Connection': 'close',
                 },
                 timeout: 5000,
+                agent: false,  // Disable keepAlive — one-shot CLI, avoids ECONNRESET from reused sockets
             };
 
             if (isHttps) {
@@ -365,9 +369,15 @@ class MemoryClient {
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(postData),
-                    'X-API-Key': this.httpConfig.apiKey
+                    'X-API-Key': this.httpConfig.apiKey,
+                    'Connection': 'close'
                 },
-                rejectUnauthorized: false  // Allow self-signed certificates
+                // 10s covers cold-cache semantic search on /api/search, /api/search/by-time,
+                // /api/search/by-tag. Larger than storeMemoryHTTP (5s) and _attemptHealthCheck (3s)
+                // because search queries run embedding + vector scan, not a simple write/ping.
+                timeout: 10000,
+                rejectUnauthorized: false,  // Allow self-signed certificates
+                agent: false  // Disable keepAlive — hook is one-shot, reused sockets race uvicorn close (ECONNRESET / socket hang up)
             };
 
             const protocol = url.protocol === 'https:' ? https : http;
@@ -417,6 +427,12 @@ class MemoryClient {
 
             req.on('error', (error) => {
                 console.warn('[Memory Client] HTTP network error:', error.message);
+                resolve([]);
+            });
+
+            req.on('timeout', () => {
+                req.destroy();
+                console.warn('[Memory Client] HTTP request timeout');
                 resolve([]);
             });
 
