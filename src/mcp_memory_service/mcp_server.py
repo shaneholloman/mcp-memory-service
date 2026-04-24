@@ -71,6 +71,8 @@ from .config import (
 )
 from .storage.base import MemoryStorage
 from .services.memory_service import MemoryService
+from .services.graph_service import GraphService
+from .storage.graph import GraphStorage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)  # Default to INFO level
@@ -96,6 +98,8 @@ logger = logging.getLogger(__name__)
 
 _STORAGE_CACHE: Dict[str, MemoryStorage] = {}
 _MEMORY_SERVICE_CACHE: Dict[int, MemoryService] = {}
+_GRAPH_STORAGE_CACHE: Dict[str, GraphStorage] = {}
+_GRAPH_SERVICE_CACHE: Dict[int, GraphService] = {}
 _CACHE_LOCK: Optional[asyncio.Lock] = None  # Initialized on first use
 _CACHE_STATS = {
     "storage_hits": 0,
@@ -168,6 +172,7 @@ class MCPServerContext:
     """Application context for the MCP server with all required components."""
     storage: MemoryStorage
     memory_service: MemoryService
+    graph_service: GraphService
 
 @asynccontextmanager
 async def mcp_server_lifespan(server: FastMCP) -> AsyncIterator[MCPServerContext]:
@@ -221,10 +226,43 @@ async def mcp_server_lifespan(server: FastMCP) -> AsyncIterator[MCPServerContext
         memory_service = _get_or_create_memory_service(storage)
         _log_cache_performance(start_time)
 
+    # Initialize graph service with caching (only for SQLite-based backends)
+    graph_service = None
+    if STORAGE_BACKEND in ('sqlite_vec', 'hybrid'):
+        async with cache_lock:
+            if SQLITE_VEC_PATH in _GRAPH_STORAGE_CACHE:
+                graph_storage = _GRAPH_STORAGE_CACHE[SQLITE_VEC_PATH]
+                logger.info("✅ GraphStorage Cache HIT — reusing instance")
+            else:
+                try:
+                    # Offload blocking SQLite I/O to a separate thread
+                    graph_storage = await asyncio.to_thread(GraphStorage, SQLITE_VEC_PATH)
+                    _GRAPH_STORAGE_CACHE[SQLITE_VEC_PATH] = graph_storage
+                    logger.info("GraphStorage initialized and cached for %s backend", STORAGE_BACKEND)
+                except Exception as e:
+                    logger.warning("GraphStorage initialization failed (graph tools disabled): %s", e)
+                    graph_storage = None
+
+            if graph_storage is not None:
+                gs_id = id(graph_storage)
+                if gs_id in _GRAPH_SERVICE_CACHE:
+                    graph_service = _GRAPH_SERVICE_CACHE[gs_id]
+                    logger.info("✅ GraphService Cache HIT — reusing instance")
+                else:
+                    graph_service = GraphService(graph_storage)
+                    _GRAPH_SERVICE_CACHE[gs_id] = graph_service
+                    logger.info("💾 Cached GraphService instance")
+    else:
+        logger.info("Graph tools not available for %s backend (expected)", STORAGE_BACKEND)
+
+    if graph_service is None:
+        graph_service = GraphService(None)
+
     try:
         yield MCPServerContext(
             storage=storage,
-            memory_service=memory_service
+            memory_service=memory_service,
+            graph_service=graph_service,
         )
     finally:
         # IMPORTANT: Do NOT close cached storage instances here!
@@ -678,6 +716,71 @@ Examples:
         tag=tag,
         memory_type=memory_type
     )
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Memory Graph",
+        readOnlyHint=True,
+    ),
+)
+async def memory_graph(
+    action: str,
+    ctx: Context,
+    hash: Optional[str] = None,
+    hash1: Optional[str] = None,
+    hash2: Optional[str] = None,
+    max_hops: int = 2,
+    max_depth: int = 5,
+    radius: int = 2,
+) -> Dict[str, Any]:
+    """Knowledge graph operations - explore connections between memories.
+
+USE THIS WHEN:
+- User asks "what's related to X", "how are these memories connected"
+- Investigating cause-and-effect chains between memories
+- Visualizing memory relationships for debugging or understanding
+- Finding the path between two related memories
+
+ACTIONS:
+- connected: Find memories connected to a given memory (BFS traversal up to max_hops)
+- path: Find shortest path between two memories
+- subgraph: Extract subgraph around a memory (nodes + edges for visualization)
+
+REQUIRES: SQLite-vec or Hybrid storage backend. Returns error for Milvus/Cloudflare.
+
+RETURNS:
+- connected: {success, connected: [{hash, distance}], count}
+- path: {success, path: [hash1, ..., hash2], length}
+- subgraph: {success, nodes: [...], edges: [{source, target, similarity, ...}], node_count, edge_count}
+
+Examples:
+{"action": "connected", "hash": "abc123def456...", "max_hops": 2}
+{"action": "path", "hash1": "abc123...", "hash2": "def456..."}
+{"action": "subgraph", "hash": "abc123...", "radius": 3}
+    """
+    graph_service = ctx.request_context.lifespan_context.graph_service
+
+    if action == "connected":
+        if not hash:
+            return {"success": False, "error": "hash is required for 'connected' action"}
+        return await graph_service.find_connected(hash, max_hops=max_hops)
+
+    elif action == "path":
+        if not hash1 or not hash2:
+            return {"success": False, "error": "hash1 and hash2 are required for 'path' action"}
+        return await graph_service.find_shortest_path(hash1, hash2, max_depth=max_depth)
+
+    elif action == "subgraph":
+        if not hash:
+            return {"success": False, "error": "hash is required for 'subgraph' action"}
+        return await graph_service.get_subgraph(hash, radius=radius)
+
+    else:
+        return {
+            "success": False,
+            "error": f"Invalid action '{action}'. Must be one of: connected, path, subgraph"
+        }
+
 
 @mcp.tool(
     annotations=ToolAnnotations(
