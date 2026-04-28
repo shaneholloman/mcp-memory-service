@@ -32,22 +32,37 @@ from ...config import SQLITE_VEC_PATH, STORAGE_BACKEND
 logger = logging.getLogger(__name__)
 
 
-def get_graph_storage() -> Optional[GraphStorage]:
+async def get_graph_storage() -> Optional[GraphStorage]:
     """
     Get graph storage instance if available.
 
-    Graph operations are only available for SQLite-based backends
-    (sqlite_vec and hybrid). Cloudflare backend does not support
-    graph traversal.
+    Graph operations are available for SQLite-based backends
+    (sqlite_vec and hybrid) and Milvus backend. Cloudflare backend
+    does not support graph traversal.
 
     Returns:
-        GraphStorage instance if backend supports it, None otherwise
+        GraphStorage or MilvusGraphStorage instance if backend supports it, None otherwise
     """
     if STORAGE_BACKEND in ['sqlite_vec', 'hybrid']:
         try:
             return GraphStorage(SQLITE_VEC_PATH)
         except Exception as e:
             logger.error(f"Failed to initialize GraphStorage: {e}")
+            return None
+    elif STORAGE_BACKEND == 'milvus':
+        try:
+            from ...storage.milvus_graph import MilvusGraphStorage
+            from ...config import MILVUS_URI, MILVUS_TOKEN, MILVUS_COLLECTION_NAME
+            gs = MilvusGraphStorage(
+                uri=MILVUS_URI,
+                token=MILVUS_TOKEN,
+                collection_name=MILVUS_COLLECTION_NAME,
+            )
+            # Async init to avoid blocking the event loop.
+            await gs.initialize()
+            return gs
+        except Exception as e:
+            logger.error(f"Failed to initialize MilvusGraphStorage: {e}")
             return None
     return None
 
@@ -147,7 +162,7 @@ async def handle_find_connected_memories(
     logger.info("=== EXECUTING FIND_CONNECTED_MEMORIES ===")
 
     # Get graph storage
-    graph = get_graph_storage()
+    graph = await get_graph_storage()
     if graph is None:
         result = {
             "success": False,
@@ -241,7 +256,7 @@ async def handle_find_shortest_path(
     logger.info("=== EXECUTING FIND_SHORTEST_PATH ===")
 
     # Get graph storage
-    graph = get_graph_storage()
+    graph = await get_graph_storage()
     if graph is None:
         result = {
             "success": False,
@@ -351,7 +366,7 @@ async def handle_get_memory_subgraph(
     logger.info("=== EXECUTING GET_MEMORY_SUBGRAPH ===")
 
     # Get graph storage
-    graph = get_graph_storage()
+    graph = await get_graph_storage()
     if graph is None:
         result = {
             "success": False,
