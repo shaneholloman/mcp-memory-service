@@ -437,20 +437,21 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.41.0** (April 28, 2026)
+## Latest Release: **v10.42.0** (April 26, 2026)
 
-**feat(oauth): OAuth 2.1 refresh_token grant with rotation (MCP SEP-2207)**
+**feat(milvus): MilvusGraphStorage, BM25 hybrid search, and consolidation integration**
 
 **What's New:**
-- **OAuth refresh tokens**: Clients requesting `offline_access` scope receive a refresh token with atomic rotation — every refresh issues a new token and revokes the old one, with full chain revocation on replay detection. (PR #766, @netizen1119)
-- **`memory_graph` tool on streamable-http server**: Knowledge graph queries (connected memories, shortest path, subgraph) now work in the FastMCP streamable-http transport, matching stdio parity. (PR #759, @henry201605)
-- **New env var**: `MCP_OAUTH_REFRESH_TOKEN_EXPIRE_DAYS` (default 30, range 1–365). Zero breaking changes.
-- **1,692 Python tests** passing.
-- Special thanks to @netizen1119 for the OAuth refresh token implementation.
+- **MilvusGraphStorage**: Full knowledge-graph support for the Milvus backend — BFS traversal, shortest path, subgraph extraction — stored in a dedicated scalar collection with Zilliz Cloud-compatible schema. (PR #762, @henry201605)
+- **BM25 hybrid search**: Milvus 2.5+ deployments get combined vector + keyword search via RRFRanker. Pre-2.5 collections fall back to vector-only automatically — zero breaking changes. (PR #762)
+- **Consolidation integration**: `DreamInspiredConsolidator` now initialises `MilvusGraphStorage` for Milvus backends, bringing automatic relationship inference to consolidation cycles. (PR #762)
+- **~1,722 Python tests** passing (added 30 new tests: graph unit suite + Zilliz Cloud remote-compat suite).
+- Special thanks to @henry201605 for the implementation and @zc277584121 (Cheney Zhang) for expert Zilliz Cloud verification that caught three Milvus Lite vs remote schema gaps.
 
 ---
 
 **Previous Releases**:
+- **v10.41.0** - feat(oauth): OAuth 2.1 refresh_token grant with rotation, memory_graph on streamable-http (PRs #766, #759)
 - **v10.40.4** - fix(quality): handle shape (1, 1) cross-encoder logits in ONNX ranker (PR #765)
 - **v10.40.3** - fix(claude-hooks): eliminate socket hang-up and raise hook timeout (PR #761)
 - **v10.40.2** - fix(docker): correct invalid Python one-liner in ONNX pre-download (PR #757)
