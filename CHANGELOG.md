@@ -10,9 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.44.0] - 2026-04-29
+
 ### Added
 
-- **[#772] Mistake Notes — structured error replay for learning from failures**: Two new MCP tools (`mistake_note_add`, `mistake_note_search`) that store mistake patterns as regular memories with `memory_type='mistake'`. Reuses the existing memory store — no new tables, works on all backends. `mistake_note_add` auto-deduplicates: if a similar pattern exists above the configurable similarity threshold (`MCP_MISTAKE_NOTE_DEDUP_THRESHOLD`, default 0.85), it increments `failure_count` in metadata instead of creating a duplicate. `mistake_note_search` retrieves mistake notes by semantic similarity, filtered to `memory_type='mistake'`. Inspired by [Mistake Notebook Learning](https://arxiv.org/abs/2512.11485). (PR #786)
+- **[#786] Mistake Notes — structured error replay for learning from failures**: Two new MCP tools (`mistake_note_add`, `mistake_note_search`) that store mistake patterns as regular memories with `memory_type='mistake'`. Reuses the existing memory store — no new tables, works on all backends. `mistake_note_add` auto-deduplicates: if a similar pattern exists above the configurable similarity threshold (`MCP_MISTAKE_NOTE_DEDUP_THRESHOLD`, default 0.85), it increments `failure_count` in metadata instead of creating a duplicate. `mistake_note_search` retrieves mistake notes by semantic similarity, filtered to `memory_type='mistake'`. Inspired by [Mistake Notebook Learning](https://arxiv.org/abs/2512.11485). 5 new tests in `tests/services/test_mistake_notes.py`. `models/ontology.py` updated to register `mistake` as subtype of `error`. Thanks to @filhocf for the contribution. (PR #786)
+
+### Changed
+
+- **[#789] CI: ignore glama.ai in markdown link-check** — glama.ai was causing intermittent link-check failures. Added to the ignore list in `.github/workflows/docs-link-check.yml`. (PR #789)
 
 ## [10.43.0] - 2026-04-29
 

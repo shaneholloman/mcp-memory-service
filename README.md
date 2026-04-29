@@ -437,18 +437,20 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.43.0** (April 29, 2026)
+## Latest Release: **v10.44.0** (April 29, 2026)
 
-**feat(search): Reciprocal Rank Fusion (RRF) for SQLite-vec hybrid search**
+**feat: Mistake Notes — structured error replay**
 
 **What's New:**
-- **RRF fusion method**: Set `MCP_HYBRID_FUSION_METHOD=rrf` to use industry-standard Reciprocal Rank Fusion (Cormack, Clarke & Buettcher 2009) instead of weighted average when combining vector + keyword search results. Default remains `weighted_average` — fully backward compatible. (PR #773, @filhocf)
-- **New env vars**: `MCP_HYBRID_RRF_K` (smoothing constant, default `60`) and `MCP_HYBRID_RRF_CONSENSUS_BOOST` (score bonus for documents ranked by both retrievers, default `0.1`).
-- **10 new tests** in `tests/storage/test_rrf_fusion.py` covering RRF scoring, k parameter, consensus boost, and integration with SQLite-vec hybrid search.
+- **Mistake Notes**: Two new MCP tools — `mistake_note_add` and `mistake_note_search` — let agents record error patterns and retrieve them before similar tasks. Implements the "structured error replay" pattern from [Mistake Notebook Learning](https://arxiv.org/abs/2512.11485). (PR #786, @filhocf)
+- **Backend-agnostic**: Reuses the existing memory store with `memory_type='mistake'` and tags `mistake-note,error-replay`. No new tables or schema migrations — works on all backends (SQLite-vec, Cloudflare, Hybrid, Milvus).
+- **Auto-deduplication**: If a similar pattern exists above the configurable threshold (`MCP_MISTAKE_NOTE_DEDUP_THRESHOLD`, default 0.85), `mistake_note_add` increments `failure_count` in metadata instead of creating a duplicate.
+- **CI hygiene**: glama.ai added to markdown link-check ignore list, eliminating flaky CI failures. (PR #789)
 
 ---
 
 **Previous Releases**:
+- **v10.43.0** - feat(search): Reciprocal Rank Fusion (RRF) for SQLite-vec hybrid search (PR #773, @filhocf)
 - **v10.42.1** - fix(milvus): add missing `anns_field` to search calls for BM25-enabled collections (PR #775, @henry201605)
 - **v10.42.0** - feat(milvus): MilvusGraphStorage, BM25 hybrid search, and consolidation integration (PR #762, @henry201605)
 - **v10.41.0** - feat(oauth): OAuth 2.1 refresh_token grant with rotation, memory_graph on streamable-http (PRs #766, #759)
