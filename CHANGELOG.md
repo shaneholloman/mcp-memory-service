@@ -10,9 +10,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.43.0] - 2026-04-29
+
 ### Added
 
-- **[#771] Reciprocal Rank Fusion (RRF) as hybrid search fusion method**: Alternative to weighted average for combining BM25 and vector search results. RRF operates on rank positions rather than raw scores, making it robust to scale incompatibility between BM25 (negative log scores) and cosine similarity (0–1 range). New env vars: `MCP_HYBRID_FUSION_METHOD` (`weighted_average` | `rrf`), `MCP_HYBRID_RRF_K` (default 60), `MCP_HYBRID_RRF_CONSENSUS_BOOST` (default 0.1). Documents found by both retrievers get a configurable consensus boost. Backward compatible — default behavior unchanged. Comprehensive test suite in `tests/storage/test_rrf_fusion.py`. (PR #773)
+- **[#773] Reciprocal Rank Fusion (RRF) for SQLite-vec hybrid search**: The SQLite-vec backend now supports RRF as an alternative fusion method for hybrid search (vector + keyword). Set `MCP_HYBRID_FUSION_METHOD=rrf` to activate; the default remains `weighted_average` for full backward compatibility. Two additional env vars control RRF behaviour: `MCP_HYBRID_RRF_K` (smoothing constant, default `60` per Cormack, Clarke & Buettcher 2009) and `MCP_HYBRID_RRF_CONSENSUS_BOOST` (score bonus when both retrieval paths rank the same document, default `0.1`). 10 new tests in `tests/storage/test_rrf_fusion.py`. Thanks to @filhocf for the contribution. (PR #773)
 
 ### Changed
 

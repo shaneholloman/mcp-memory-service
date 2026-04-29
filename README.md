@@ -437,17 +437,19 @@ Export memories from mcp-memory-service → Import to shodh-cloudflare → Sync 
 ---
 
 
-## Latest Release: **v10.42.1** (April 29, 2026)
+## Latest Release: **v10.43.0** (April 29, 2026)
 
-**fix(milvus): add missing `anns_field` to search calls for BM25-enabled collections**
+**feat(search): Reciprocal Rank Fusion (RRF) for SQLite-vec hybrid search**
 
-**What's Fixed:**
-- **Silent deduplication bypass**: `_check_semantic_duplicate` was missing `anns_field="vector"`, causing Milvus to reject search calls silently on collections with BM25 enabled (pymilvus >= 2.5, two vector fields). Duplicate memories were stored without error. (PR #775, @henry201605)
-- **Empty vector-search fallback**: `_run_search` had the same omission, causing the pure vector-search fallback paths (`_has_bm25=False`, `_HYBRID_SEARCH_AVAILABLE=False`, error-fallback) to return empty results silently. The hybrid search happy path was not affected. (PR #775)
+**What's New:**
+- **RRF fusion method**: Set `MCP_HYBRID_FUSION_METHOD=rrf` to use industry-standard Reciprocal Rank Fusion (Cormack, Clarke & Buettcher 2009) instead of weighted average when combining vector + keyword search results. Default remains `weighted_average` — fully backward compatible. (PR #773, @filhocf)
+- **New env vars**: `MCP_HYBRID_RRF_K` (smoothing constant, default `60`) and `MCP_HYBRID_RRF_CONSENSUS_BOOST` (score bonus for documents ranked by both retrievers, default `0.1`).
+- **10 new tests** in `tests/storage/test_rrf_fusion.py` covering RRF scoring, k parameter, consensus boost, and integration with SQLite-vec hybrid search.
 
 ---
 
 **Previous Releases**:
+- **v10.42.1** - fix(milvus): add missing `anns_field` to search calls for BM25-enabled collections (PR #775, @henry201605)
 - **v10.42.0** - feat(milvus): MilvusGraphStorage, BM25 hybrid search, and consolidation integration (PR #762, @henry201605)
 - **v10.41.0** - feat(oauth): OAuth 2.1 refresh_token grant with rotation, memory_graph on streamable-http (PRs #766, #759)
 - **v10.40.4** - fix(quality): handle shape (1, 1) cross-encoder logits in ONNX ranker (PR #765)
