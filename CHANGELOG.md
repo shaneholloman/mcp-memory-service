@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.42.1] - 2026-04-29
+
+### Fixed
+
+- **[#775] Milvus: missing `anns_field` in `_check_semantic_duplicate` and `_run_search` causes silent failures on BM25-enabled collections**: Milvus collections with BM25 full-text search (pymilvus ≥ 2.5) contain two vector fields (`vector` dense + `sparse_vector` BM25-generated). Milvus rejects `search()` calls without an explicit `anns_field` when multiple vector fields exist. Two call sites swallowed the error in `except` blocks, causing completely silent failures: semantic deduplication was bypassed (duplicate memories stored silently), and pure vector-search fallback returned empty results on collections where `_has_bm25=False`, `_HYBRID_SEARCH_AVAILABLE=False`, or the hybrid search error-fallback path was taken. The hybrid search happy path (which already specified `anns_field` per `AnnSearchRequest`) was not affected. Does not manifest with Milvus Lite or pre-BM25 collections. Thanks to @henry201605 for the report and fix. (PR #775)
+
 ## [10.42.0] - 2026-04-26
 
 ### Added
