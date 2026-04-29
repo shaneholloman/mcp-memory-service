@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **[#771] Reciprocal Rank Fusion (RRF) as hybrid search fusion method**: Alternative to weighted average for combining BM25 and vector search results. RRF operates on rank positions rather than raw scores, making it robust to scale incompatibility between BM25 (negative log scores) and cosine similarity (0–1 range). New env vars: `MCP_HYBRID_FUSION_METHOD` (`weighted_average` | `rrf`), `MCP_HYBRID_RRF_K` (default 60), `MCP_HYBRID_RRF_CONSENSUS_BOOST` (default 0.1). Documents found by both retrievers get a configurable consensus boost. Backward compatible — default behavior unchanged. Comprehensive test suite in `tests/storage/test_rrf_fusion.py`. (PR #773)
+
 ### Changed
 
 - **Dependency bumps (Dependabot)**: `actions/checkout` 3 → 6 (PR #777), `docker/login-action` 3 → 4 (PR #778), `actions/upload-artifact` 4 → 7 (PR #779), uv group bump (PR #780): `authlib` 1.6.11 → 1.7.0, `cryptography` 46.0.7 → 47.0.0, `fastapi` 0.135.3 → 0.136.1, `uvicorn` 0.44.0 → 0.46.0, `sse-starlette` 3.3.4 → 3.4.1, `setuptools` 80.10.2 → 82.0.1 (constraint bumped to `<83`), plus `click`, `python-multipart`, `ruff`, `wandb` patches.
