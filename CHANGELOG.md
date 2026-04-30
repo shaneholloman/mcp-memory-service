@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **[#793] Quantize deberta quality classifier at Docker build time**: New `tools/docker/scripts/quantize_quality_models.py` runs after the existing ONNX export in `Dockerfile.quality-cpu`. Produces fp16 (`onnxconverter-common`) and dynamic int8 (`onnxruntime.quantization.quantize_dynamic` on MatMul + Gather) variants of `nvidia-quality-classifier-deberta`, benchmarks each against the fp32 baseline (file size, mean inference latency, and Pearson correlation on 100 sample texts), and replaces `model.onnx` in place with the smallest variant whose correlation is ≥ 0.98. The correlation reduction mirrors the production scoring path in `onnx_ranker.py::score_quality` (softmax + weighted sum `[High=1.0, Medium=0.5, Low=0.0]`) so the metric reflects the score that actually drives quality decisions at runtime. Cleanup deletes the fp32 external-weights sidecar (`model.onnx_data`, ~700 MB) along with rejected variants. Falls back to fp32 (no build failure) if no variant meets the gate; pass `--strict` to make a missed gate hard-fail. Strategy is overridable at build time via `--build-arg QUANTIZE_MODE={fp16|int8|best}` and `--build-arg QUANTIZE_MIN_CORR=<float>`. Expected size delta vs `:slim` drops from ~1.7 GB to ~600 MB on the next tagged build. `ms-marco-MiniLM-L-6-v2` is intentionally not quantized (already ~80 MB). Closes #793. (PR #803)
+
 ## [10.46.0] - 2026-04-30
 
 ### Added
