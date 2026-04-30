@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.45.0] - 2026-04-30
+
+### Added
+
+- **[#790] OpenAI-compatible quality scoring provider (LiteLLM / Ollama / MLX / vLLM)**: Adds `openai-compatible` as a new `MCP_QUALITY_AI_PROVIDER` value so homelab and self-hosted users can point quality scoring at any OpenAI `/v1/chat/completions`-compatible endpoint without a cloud API key or the ONNX model. Three new env vars: `MCP_QUALITY_AI_BASE_URL` (required), `MCP_QUALITY_AI_MODEL` (required), `MCP_QUALITY_AI_API_KEY` (optional). Config validation raises `ValueError` if the provider is set without the required vars. New Tier 2 in the fallback chain: local ONNX → openai-compatible → Groq → Gemini → implicit signals. Endpoint failures fall through silently — no exception bubbles to the storage path. 18 new tests in `tests/test_openai_compat_quality.py`. (PR #790)
+
+### Fixed
+
+- **[#783] Soft-delete UPDATE guards — 7 remaining UPDATE statements in `sqlite_vec.py`**: Seven `UPDATE memories SET ...` statements were missing the `AND deleted_at IS NULL` guard, meaning they could operate on soft-deleted (tombstoned) rows. All seven have been patched. No behavioral change for live rows. Continues the series from PRs #557, #558, #562. Follow-up testing tracked in #791. Thanks to @filhocf for the contribution. (PR #783)
+
 ## [10.44.0] - 2026-04-29
 
 ### Added
