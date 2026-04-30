@@ -3477,7 +3477,16 @@ SOLUTIONS:
             logger.error(f"Error converting row to memory: {str(e)}")
             return None
 
-    async def get_all_memories(self, limit: int = None, offset: int = 0, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> List[Memory]:
+    @staticmethod
+    def _apply_stale_days_filter(conditions: list, params: list, stale_days: Optional[int], table_alias: str = "") -> None:
+        """Append stale_days WHERE clause. Uses COALESCE(last_accessed, created_at) for never-read memories."""
+        if stale_days is not None and stale_days > 0:
+            prefix = f"{table_alias}." if table_alias else ""
+            threshold = time.time() - stale_days * 86400
+            conditions.append(f'COALESCE({prefix}last_accessed, {prefix}created_at) < ?')
+            params.append(threshold)
+
+    async def get_all_memories(self, limit: int = None, offset: int = 0, memory_type: Optional[str] = None, tags: Optional[List[str]] = None, stale_days: Optional[int] = None) -> List[Memory]:
         """
         Get all memories in storage ordered by creation time (newest first).
 
@@ -3524,6 +3533,10 @@ SOLUTIONS:
                 )
                 where_conditions.append(f"({tag_conditions})")
                 params.extend([f"*,{_escape_glob(tag)},*" for tag in stripped_tags])
+
+            # Add stale_days filter: memories not accessed in the last N days
+            # Uses COALESCE(last_accessed, created_at) for memories never read
+            self._apply_stale_days_filter(where_conditions, params, stale_days, table_alias="m")
 
             # Apply WHERE clause
             query += ' WHERE ' + ' AND '.join(where_conditions)
@@ -3665,7 +3678,7 @@ SOLUTIONS:
             logger.error(f"Error getting memory timestamps: {e}")
             return []
 
-    async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
+    async def count_all_memories(self, memory_type: Optional[str] = None, tags: Optional[List[str]] = None, stale_days: Optional[int] = None) -> int:
         """
         Get total count of memories in storage.
 
@@ -3698,6 +3711,9 @@ SOLUTIONS:
                 )
                 conditions.append(f"({tag_conditions})")
                 params.extend([f"*,{_escape_glob(tag)},*" for tag in stripped_tags])
+
+            # Add stale_days filter
+            self._apply_stale_days_filter(conditions, params, stale_days)
 
             # Build final query (always exclude soft-deleted)
             conditions.append('deleted_at IS NULL')
