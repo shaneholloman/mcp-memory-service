@@ -10,9 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.47.1] - 2026-05-01
+
 ### Fixed
 
-- **[#729] `/server/update` no longer silently fails**: The dashboard's *Update & Restart* button used to show a generic success toast even when `git pull` aborted on a dirty working tree, when `pip install` failed, or when the process never actually restarted. Three changes fix this end-to-end: (1) `/api/server/update` now refuses to pull on a dirty working tree (HTTP 409 with the offending paths) unless the new `force=true` flag is set; (2) git/pip failures now return HTTP 500 with the real stderr in `detail` instead of HTTP 200 with `status: "error"` in the body that the frontend never read; (3) `/api/server/restart` and `/api/server/update` now return `pre_restart_pid` + `pre_restart_version`, and the dashboard polls `/api/server/status` after restart to verify the process actually rolled over (pid or version changed). The restart overlay surfaces a clear warning if the process never restarted instead of reloading to the same stale build. The dashboard also offers a force-retry confirmation dialog when a dirty tree blocks an update. 8 new tests in `tests/web/api/test_server_management.py`. Closes #729.
+- **[#729] `/server/update` no longer silently fails**: The dashboard's *Update & Restart* button used to show a generic success toast even when `git pull` aborted on a dirty working tree, when `pip install` failed, or when the process never actually restarted. Three changes fix this end-to-end: (1) `/api/server/update` now refuses to pull on a dirty working tree (HTTP 409 with the offending paths) unless the new `force=true` flag is set; (2) git/pip failures now return HTTP 500 with the real stderr in `detail` instead of HTTP 200 with `status: "error"` in the body that the frontend never read; (3) `/api/server/restart` and `/api/server/update` now return `pre_restart_pid` + `pre_restart_version`, and the dashboard polls `/api/server/status` after restart to verify the process actually rolled over (pid or version changed). The restart overlay surfaces a clear warning if the process never restarted instead of reloading to the same stale build. The dashboard also offers a force-retry confirmation dialog when a dirty tree blocks an update. 8 new tests in `tests/web/api/test_server_management.py`. Closes #729. (PR #807)
+- **[Security] CodeQL log injection fix**: Inline CR/LF sanitization on all user-controlled strings written to `server.py` audit logs, preventing log-forging via malicious input.
+- **[Frontend] `apiCall` now attaches `.status` to thrown errors**: `app.js` error objects surface the HTTP status code so callers can branch on specific failure codes (e.g. 409 dirty-tree vs 500 subprocess failure).
+- **[Tests] `test_server_management.py` monkeypatch switched to module-object refs**: Fixes `uvx`/isolated-env CI failures where dotted-string patch targets resolved to the wrong module copy.
 
 ## [10.47.0] - 2026-05-01
 

@@ -457,18 +457,20 @@ The `:quality-cpu` image pre-exports both models at build time and ships only `o
 ---
 
 
-## Latest Release: **v10.47.0** (May 1, 2026)
+## Latest Release: **v10.47.1** (May 1, 2026)
 
-**feat: memory_quality maintain orchestrator + Docker DeBERTa quantization**
+**fix(web): surface /server/update failures end-to-end**
 
-**What's New:**
-- **`memory_quality(action='maintain')`**: One-call maintenance cycle — cleanup, conflict detection, stale detection, quality snapshot. `dry_run=true` by default, so it's always safe to explore. `maintain_status` returns last-run stats. Auto-resolve conflicts opt-in via `MCP_MAINTAIN_AUTO_RESOLVE`. (PR #802, @filhocf, closes #799)
-- **DeBERTa ONNX quantization at Docker build time**: `:quality-cpu` images now ship a pre-quantized DeBERTa model (fp16 or int8), cutting the image size from ~1.7 GB to ~600 MB. Cold start no longer re-runs quantization. (PR #803, closes #793)
-- **10 new tests** for the maintain orchestrator.
+**What's Fixed:**
+- **`/server/update` no longer silently fails**: Dirty-tree check (HTTP 409), real stderr on git/pip failure (HTTP 500), post-restart PID/version polling, and force-retry dialog on dirty tree. 8 new tests. Closes #729. (PR #807)
+- **CodeQL log injection**: CR/LF sanitization on audit log inputs in `server.py`.
+- **Frontend status propagation**: `apiCall` in `app.js` now attaches `.status` to thrown errors for proper 409/500 branching.
+- **CI monkeypatch fix**: `test_server_management.py` uses module-object refs instead of dotted strings — fixes `uvx` isolated-env CI failures.
 
 ---
 
 **Previous Releases**:
+- **v10.47.0** - feat: memory_quality maintain orchestrator + Docker DeBERTa quantization (PRs #802, #803, @filhocf, closes #799, #793)
 - **v10.46.0** - feat: stale_days filter for memory_list — dormant memory detection (PR #796, @filhocf, closes #784)
 - **v10.45.1** - fix: CodeQL redundant import cleanup + soft-delete regression tests (PRs #794, #795, @filhocf)
 - **v10.45.0** - feat(quality): OpenAI-compatible provider for LiteLLM/Ollama/MLX + soft-delete UPDATE guards (PRs #790, #783, @filhocf)
