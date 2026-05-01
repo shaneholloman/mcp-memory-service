@@ -2,7 +2,7 @@
 
 ## Persistent Shared Memory for AI Agent Pipelines
 
-Open-source memory backend for multi-agent systems.
+Open-source memory backend for AI agents — **REST API, MCP, OAuth, CLI, dashboard**. One self-hosted service, every transport.
 Agents store decisions, share causal knowledge graphs, and retrieve
 context in 5ms — without cloud lock-in or API costs.
 
