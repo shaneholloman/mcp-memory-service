@@ -13,6 +13,8 @@ from benchmark_longmemeval import (
     _match_evidence,
     create_isolated_storage,
     ingest_item,
+    ingest_item_hybrid,
+    ingest_item_session,
     evaluate_retrieval,
     run_ablation,
 )
@@ -68,6 +70,20 @@ class TestIngestItem:
     async def _run_ingest(self, storage, item):
         await storage.initialize()
         return await ingest_item(storage, item)
+
+
+class TestIngestItemHybrid:
+    @pytest.mark.asyncio
+    async def test_hybrid_stores_sessions_and_turns(self):
+        item = _make_test_item()
+        storage, tmp_dir = create_isolated_storage()
+        try:
+            await storage.initialize()
+            count = await ingest_item_hybrid(storage, item)
+            # 2 sessions + 4 turns = 6 total
+            assert count == 6
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 class TestEvaluateRetrieval:
