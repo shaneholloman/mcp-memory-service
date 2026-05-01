@@ -457,17 +457,19 @@ The `:quality-cpu` image pre-exports both models at build time and ships only `o
 ---
 
 
-## Latest Release: **v10.46.0** (April 30, 2026)
+## Latest Release: **v10.47.0** (May 1, 2026)
 
-**feat: stale_days filter for memory_list — dormant memory detection**
+**feat: memory_quality maintain orchestrator + Docker DeBERTa quantization**
 
 **What's New:**
-- **`stale_days` filter**: Pass `stale_days=N` to `memory_list` to surface memories not accessed in N days. Falls back to `created_at` for never-read memories. Strict `<` semantics. Composes with `tags`, `memory_type`, and pagination. Fully implemented on SQLite-vec; stub (no-op) on Cloudflare/Hybrid/Milvus. (PR #796, @filhocf, closes #784)
-- **8 new tests** in `tests/storage/test_stale_days.py` covering boundary conditions, tag/type composition, pagination, and backward compatibility.
+- **`memory_quality(action='maintain')`**: One-call maintenance cycle — cleanup, conflict detection, stale detection, quality snapshot. `dry_run=true` by default, so it's always safe to explore. `maintain_status` returns last-run stats. Auto-resolve conflicts opt-in via `MCP_MAINTAIN_AUTO_RESOLVE`. (PR #802, @filhocf, closes #799)
+- **DeBERTa ONNX quantization at Docker build time**: `:quality-cpu` images now ship a pre-quantized DeBERTa model (fp16 or int8), cutting the image size from ~1.7 GB to ~600 MB. Cold start no longer re-runs quantization. (PR #803, closes #793)
+- **10 new tests** for the maintain orchestrator.
 
 ---
 
 **Previous Releases**:
+- **v10.46.0** - feat: stale_days filter for memory_list — dormant memory detection (PR #796, @filhocf, closes #784)
 - **v10.45.1** - fix: CodeQL redundant import cleanup + soft-delete regression tests (PRs #794, #795, @filhocf)
 - **v10.45.0** - feat(quality): OpenAI-compatible provider for LiteLLM/Ollama/MLX + soft-delete UPDATE guards (PRs #790, #783, @filhocf)
 - **v10.44.0** - feat: Mistake Notes — structured error replay (`mistake_note_add`, `mistake_note_search`, PR #786, @filhocf)

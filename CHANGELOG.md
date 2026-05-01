@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.47.0] - 2026-05-01
+
+### Added
+
+- **[#799] `memory_quality(action='maintain')` — one-call maintenance orchestrator**: New `maintain` action runs cleanup → conflict detection → stale detection → quality snapshot in a single cycle. `dry_run=true` by default so the tool is always safe to call. New `maintain_status` action returns last-run stats. Auto-resolve is opt-in via `MCP_MAINTAIN_AUTO_RESOLVE` (default `false`); when enabled, conflict pairs are auto-resolved when three signals all pass: cosine similarity ≥ `MCP_MAINTAIN_AUTO_RESOLVE_THRESHOLD` (default `0.95`), same `memory_type`, and age delta > `MCP_MAINTAIN_AUTO_RESOLVE_AGE_DAYS` (default `7`). Winner is the newer memory (`created_at`). New env vars: `MCP_MAINTAIN_STALE_DAYS`, `MCP_MAINTAIN_AUTO_RESOLVE`, `MCP_MAINTAIN_AUTO_RESOLVE_THRESHOLD`, `MCP_MAINTAIN_AUTO_RESOLVE_AGE_DAYS`. 10 new tests. Closes #799. Thanks to @filhocf for the contribution. (PR #802)
+
 ### Changed
 
 - **[#793] Quantize deberta quality classifier at Docker build time**: New `tools/docker/scripts/quantize_quality_models.py` runs after the existing ONNX export in `Dockerfile.quality-cpu`. Produces fp16 (`onnxconverter-common`) and dynamic int8 (`onnxruntime.quantization.quantize_dynamic` on MatMul + Gather) variants of `nvidia-quality-classifier-deberta`, benchmarks each against the fp32 baseline (file size, mean inference latency, and Pearson correlation on 100 sample texts), and replaces `model.onnx` in place with the smallest variant whose correlation is ≥ 0.98. The correlation reduction mirrors the production scoring path in `onnx_ranker.py::score_quality` (softmax + weighted sum `[High=1.0, Medium=0.5, Low=0.0]`) so the metric reflects the score that actually drives quality decisions at runtime. Cleanup deletes the fp32 external-weights sidecar (`model.onnx_data`, ~700 MB) along with rejected variants. Falls back to fp32 (no build failure) if no variant meets the gate; pass `--strict` to make a missed gate hard-fail. Strategy is overridable at build time via `--build-arg QUANTIZE_MODE={fp16|int8|best}` and `--build-arg QUANTIZE_MIN_CORR=<float>`. Expected size delta vs `:slim` drops from ~1.7 GB to ~600 MB on the next tagged build. `ms-marco-MiniLM-L-6-v2` is intentionally not quantized (already ~80 MB). Closes #793. (PR #803)
