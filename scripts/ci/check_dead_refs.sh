@@ -23,6 +23,13 @@ DEAD_REFS=(
   "localhost:8443"
   "127.0.0.1:8443"
   "python install.py"
+  # NOTE (2026-05-02 housekeeping audit): v10.0.0 deprecated MCP tool names
+  # (store_memory, retrieve_memory, delete_memory, check_database_health,
+  # search_by_tag(s), rate_memory, trigger_consolidation, etc.) deliberately
+  # NOT added here yet — 25+ active docs still use them as primary examples.
+  # Adding to DEAD_REFS would require a much larger doc-cleanup wave than
+  # the housekeeping PR scope. Add term-by-term as docs are migrated to the
+  # unified memory_* surface. Tracked in follow-up issue.
 )
 
 # Soft dead reference: bare "chromadb". Checked separately because some active
@@ -42,6 +49,10 @@ EXCLUDE_PATHS=(
   "docs/DOCUMENTATION_AUDIT"
   "docs/IMPLEMENTATION_PLAN"
   "CHANGELOG"
+  # Added 2026-05-02: superpowers/ holds spec/plan/audit artifacts that
+  # legitimately reference dead terms when documenting historical context
+  # (e.g. housekeeping audit reports listing what was removed).
+  "docs/superpowers"
 )
 
 # Allow-list for the SOFT_DEAD_REF only. Files below intentionally retain
