@@ -571,7 +571,10 @@ python scripts/validation/diagnose_backend_config.py          # Backend-specific
 - **CHANGELOG.md** - Every version bump (use github-release-manager agent)
 - **docs/index.html** - Landing page: MINOR/MAJOR releases only (version badge, test count, features). Auto-deployed via GitHub Pages. Also re-publish to here.now:
   ```bash
-  cd docs && ~/.agents/skills/here-now/scripts/publish.sh index.html --slug merry-realm-j835
+  mkdir -p /tmp/herenow-publish && \
+  cp docs/index.html docs/brain-icon.png /tmp/herenow-publish/ && \
+  ~/.agents/skills/here-now/scripts/publish.sh /tmp/herenow-publish --slug merry-realm-j835 && \
+  rm -rf /tmp/herenow-publish
   ```
 - **Wiki** - Detailed guides, troubleshooting, tutorials
 
