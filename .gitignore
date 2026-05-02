@@ -215,6 +215,7 @@ social-media/
 # Python version compatibility marker
 venv/.python312_compat
 docs/.herenow/
+.herenow/
 certs/cert.pem
 .gitignore
 certs/key.pem
