@@ -457,19 +457,19 @@ The `:quality-cpu` image pre-exports both models at build time and ships only `o
 ---
 
 
-## Latest Release: **v10.47.1** (May 1, 2026)
+## Latest Release: **v10.47.2** (May 2, 2026)
 
-**fix(web): surface /server/update failures end-to-end**
+**fix(consolidation): disable-by-default schedule prevents unintended automatic consolidation**
 
 **What's Fixed:**
-- **`/server/update` no longer silently fails**: Dirty-tree check (HTTP 409), real stderr on git/pip failure (HTTP 500), post-restart PID/version polling, and force-retry dialog on dirty tree. 8 new tests. Closes #729. (PR #807)
-- **CodeQL log injection**: CR/LF sanitization on audit log inputs in `server.py`.
-- **Frontend status propagation**: `apiCall` in `app.js` now attaches `.status` to thrown errors for proper 409/500 branching.
-- **CI monkeypatch fix**: `test_server_management.py` uses module-object refs instead of dotted strings — fixes `uvx` isolated-env CI failures.
+- **Consolidation schedule defaults changed to `'disabled'`**: Previously, omitting `MCP_SCHEDULE_*` env vars activated daily (`02:00`), weekly (`SUN 03:00`), and monthly (`01 04:00`) consolidation automatically. Deployments that believed they were running in manual-only mode were silently accumulating scheduled runs. Defaults are now `'disabled'` — operators must explicitly set `MCP_SCHEDULE_DAILY`, `MCP_SCHEDULE_WEEKLY`, and `MCP_SCHEDULE_MONTHLY` to opt in to automatic consolidation. If you relied on the prior automatic behavior, add those three env vars to restore it. Closes #808. (PR #821)
+- **`.env.example` `CONSOLIDATION SCHEDULING` section**: New documented block makes the three schedule env vars discoverable with their expected cron/time syntax.
+- **Quarterly format docstring fix**: Corrected the docstring example for the monthly/quarterly schedule format (caught by gemini-code-assist, commit `0d4a658`).
 
 ---
 
 **Previous Releases**:
+- **v10.47.1** - fix(web): surface /server/update failures end-to-end (PR #807, closes #729)
 - **v10.47.0** - feat: memory_quality maintain orchestrator + Docker DeBERTa quantization (PRs #802, #803, @filhocf, closes #799, #793)
 - **v10.46.0** - feat: stale_days filter for memory_list — dormant memory detection (PR #796, @filhocf, closes #784)
 - **v10.45.1** - fix: CodeQL redundant import cleanup + soft-delete regression tests (PRs #794, #795, @filhocf)
