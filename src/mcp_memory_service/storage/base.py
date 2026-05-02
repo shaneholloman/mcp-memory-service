@@ -101,7 +101,7 @@ class MemoryStorage(ABC):
         return final_results
     
     @abstractmethod
-    async def retrieve(self, query: str, n_results: int = 5, tags: Optional[List[str]] = None, min_confidence: float = 0.0) -> List[MemoryQueryResult]:
+    async def retrieve(self, query: str, n_results: int = 5, tags: Optional[List[str]] = None, min_confidence: float = 0.0, include_superseded: bool = False) -> List[MemoryQueryResult]:
         """Retrieve memories by semantic search.
 
         Args:
@@ -130,7 +130,8 @@ class MemoryStorage(ABC):
         n_results: int = 10,
         tags: Optional[List[str]] = None,
         quality_boost: Optional[bool] = None,
-        quality_weight: Optional[float] = None
+        quality_weight: Optional[float] = None,
+        include_superseded: bool = False
     ) -> List[MemoryQueryResult]:
         """
         Retrieve memories with optional quality-based reranking.
@@ -175,12 +176,12 @@ class MemoryStorage(ABC):
 
         if not quality_boost:
             # Standard retrieval, no reranking
-            return await self.retrieve(query, n_results, tags=tags)
+            return await self.retrieve(query, n_results, tags=tags, include_superseded=include_superseded)
 
         # Quality-boosted retrieval
         # Step 1: Over-fetch (3x) to have pool for reranking
         oversample_factor = 3
-        candidates = await self.retrieve(query, n_results * oversample_factor, tags=tags)
+        candidates = await self.retrieve(query, n_results * oversample_factor, tags=tags, include_superseded=include_superseded)
 
         if not candidates:
             return []
@@ -771,6 +772,19 @@ class MemoryStorage(ABC):
             else:
                 final_results.append(res)
         return final_results
+
+    async def mark_superseded_batch(self, pairs: list[tuple[str, str]]) -> int:
+        """Mark memories as superseded in a single batch operation.
+
+        Args:
+            pairs: List of (winner_hash, loser_hash) tuples. Each loser
+                   will have its superseded_by set to the winner.
+
+        Returns:
+            Number of memories successfully marked.
+        """
+        # Default: no-op. Concrete backends override with real implementation.
+        return 0
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get storage statistics. Override for specific implementations."""
@@ -940,7 +954,8 @@ class MemoryStorage(ABC):
         tags: Optional[List[str]] = None,
         quality_boost: float = 0.0,
         limit: int = 10,
-        include_debug: bool = False
+        include_debug: bool = False,
+        include_superseded: bool = False
     ) -> Dict[str, Any]:
         """
         Unified memory search with flexible modes and filters.
@@ -1135,7 +1150,8 @@ class MemoryStorage(ABC):
                         if MCP_HYBRID_SEARCH_ENABLED:
                             results = await self.retrieve_hybrid(
                                 query,
-                                n_results=fetch_limit
+                                n_results=fetch_limit,
+                                include_superseded=include_superseded
                             )
                         else:
                             # Fall back to semantic if hybrid disabled in config
@@ -1146,10 +1162,11 @@ class MemoryStorage(ABC):
                                     n_results=fetch_limit,
                                     tags=tags,
                                     quality_boost=True,
-                                    quality_weight=quality_boost
+                                    quality_weight=quality_boost,
+                                    include_superseded=include_superseded
                                 )
                             else:
-                                results = await self.retrieve(query, n_results=fetch_limit, tags=tags)
+                                results = await self.retrieve(query, n_results=fetch_limit, tags=tags, include_superseded=include_superseded)
                     elif quality_boost > 0:
                         # Use quality-boosted retrieval
                         results = await self.retrieve_with_quality_boost(
@@ -1157,11 +1174,12 @@ class MemoryStorage(ABC):
                             n_results=fetch_limit,
                             tags=tags,
                             quality_boost=True,
-                            quality_weight=quality_boost
+                            quality_weight=quality_boost,
+                            include_superseded=include_superseded
                         )
                     else:
                         # Standard semantic search
-                        results = await self.retrieve(query, n_results=fetch_limit, tags=tags)
+                        results = await self.retrieve(query, n_results=fetch_limit, tags=tags, include_superseded=include_superseded)
 
                     pre_filter_count = len(results)
                 else:
