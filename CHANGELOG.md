@@ -10,7 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.47.2] - 2026-05-02
+
 ### Fixed
+
+- **[#808] Consolidation schedule defaults changed to `'disabled'` — operators must now opt in to automatic consolidation**: Previously, omitting `MCP_SCHEDULE_DAILY`, `MCP_SCHEDULE_WEEKLY`, and `MCP_SCHEDULE_MONTHLY` env vars silently activated automatic consolidation runs at `02:00` daily, `SUN 03:00` weekly, and `01 04:00` monthly. One affected deployment accumulated 1,369 unintended `compressed/` entries and had 76+ files silently archived in a monthly run they believed was disabled. The defaults are now `'disabled'` — automatic consolidation no longer runs unless the env vars are explicitly set. **If you relied on the prior automatic behavior**, add the following to your `.env` to restore it: `MCP_SCHEDULE_DAILY=02:00`, `MCP_SCHEDULE_WEEKLY=SUN 03:00`, `MCP_SCHEDULE_MONTHLY=01 04:00`. A new `CONSOLIDATION SCHEDULING` section in `.env.example` documents the syntax. Quarterly schedule format docstring corrected (caught by gemini-code-assist). Closes #808. (PR #821, commit `0d4a658`)
+
+### Added
 
 - **[#811] Docker `:slim` and `:quality-cpu` images missing `aiosqlite` and other core deps**: The hand-curated dependency lists in `tools/docker/Dockerfile.slim` and `tools/docker/Dockerfile.quality-cpu` had drifted from `pyproject.toml`'s `dependencies` block. Both Dockerfiles use `pip install -e . --no-deps` to skip the heavy ML stack (`torch`, `transformers`, `sentence-transformers`) but were also accidentally skipping `aiosqlite>=0.20.0` (the visible failure: `ModuleNotFoundError: No module named 'aiosqlite'` on first memory tool call with `MCP_MEMORY_STORAGE_BACKEND=sqlite_vec`), plus `apscheduler` (consolidation), `authlib`/`PyJWT[crypto]`/`cryptography` (OAuth), `httpx`/`requests`, `python-dotenv`, and `pypdf`. The list was also still installing the deprecated `PyPDF2` while the code imports `pypdf`. Both Dockerfiles now ship the full pyproject `dependencies` set minus the heavy ML deps, with `mcp` and `tokenizers` version specifiers re-aligned to pyproject. The `Dockerfile.slim` install step also strips uv/pip caches at the end of the RUN, mirroring `Dockerfile.quality-cpu`. Closes #811. (PR #815)
 
