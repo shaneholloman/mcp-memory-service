@@ -43,6 +43,18 @@ jobs:
       - name: Check for dead references
         run: bash scripts/ci/check_dead_refs.sh
 
+  orphan-doc-check:
+    # Only meaningful on pull_request events — needs a base ref to diff against.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for orphan docs (no inbound links)
+        run: bash scripts/ci/check_orphan_docs.sh
+
   version-drift-check:
     runs-on: ubuntu-latest
     steps:
