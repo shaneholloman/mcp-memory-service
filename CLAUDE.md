@@ -387,7 +387,8 @@ export MCP_EXTERNAL_EMBEDDING_API_KEY=sk-xxx  # Optional
 - [`.claude/directives/development-setup.md`](.claude/directives/development-setup.md) - Editable install
 - [`.claude/directives/pr-workflow.md`](.claude/directives/pr-workflow.md) - Pre-PR checks (MANDATORY)
 - [`.claude/directives/refactoring-checklist.md`](.claude/directives/refactoring-checklist.md) - Refactoring safety
-- [`.claude/directives/version-management.md`](.claude/directives/version-management.md) - Release workflow
+- [`.claude/directives/version-management.md`](.claude/directives/version-management.md) - Release workflow (HOW)
+- [`.claude/directives/release-cadence.md`](.claude/directives/release-cadence.md) - Release batching (WHEN)
 
 **Quick workflow:**
 1. `pip install -e .` - Install in editable mode
