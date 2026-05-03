@@ -24,12 +24,23 @@ NC='\033[0m' # No Color
 echo "Running pre-commit quality checks..."
 echo ""
 
+# Get script directory for Groq wrapper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Resolve Python: prefer project .venv (where the editable install lives), then $VIRTUAL_ENV,
+# then bare `python`. Without this the dev-setup check sees system Python that doesn't have
+# mcp_memory_service installed and the hook fails with a misleading "Package not installed" error.
+if [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
+    PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python"
+elif [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
+    PYTHON_BIN="$VIRTUAL_ENV/bin/python"
+else
+    PYTHON_BIN="$(command -v python3 || command -v python)"
+fi
+
 # Determine which LLM to use (Groq preferred, Gemini fallback)
 LLM_CMD=""
 LLM_NAME=""
-
-# Get script directory for Groq wrapper
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Check for Groq first (preferred - fast, no OAuth issues)
 if [ -x "$SCRIPT_DIR/scripts/utils/groq" ] && [ -n "$GROQ_API_KEY" ]; then
@@ -53,13 +64,13 @@ fi
 echo ""
 
 # === Development Environment Check ===
-echo "Verifying development environment..."
-if python scripts/validation/check_dev_setup.py > /dev/null 2>&1; then
+echo "Verifying development environment (using $PYTHON_BIN)..."
+if "$PYTHON_BIN" scripts/validation/check_dev_setup.py > /dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} Development environment OK"
 else
     echo -e "${RED}⚠️  Development environment issue detected${NC}"
     echo ""
-    python scripts/validation/check_dev_setup.py
+    "$PYTHON_BIN" scripts/validation/check_dev_setup.py
     echo ""
     echo "Please fix the development setup before committing."
     echo "This prevents 'stale venv vs source code' issues."

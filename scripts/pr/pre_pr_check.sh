@@ -31,6 +31,26 @@ if [ "$1" = "--fix" ]; then
     FIX_MODE=true
 fi
 
+# Resolve Python: prefer project .venv (where the editable install lives),
+# then $VIRTUAL_ENV, then bare `python3`/`python`. Without this, system Python
+# misses the editable mcp_memory_service package and checks fail with
+# "Package not installed" / "ModuleNotFoundError" errors.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+if [ -x "$REPO_ROOT/.venv/bin/python" ]; then
+    PYTHON_BIN="$REPO_ROOT/.venv/bin/python"
+    PIP_BIN="$REPO_ROOT/.venv/bin/pip"
+    PYTEST_BIN="$REPO_ROOT/.venv/bin/pytest"
+elif [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
+    PYTHON_BIN="$VIRTUAL_ENV/bin/python"
+    PIP_BIN="$VIRTUAL_ENV/bin/pip"
+    PYTEST_BIN="$VIRTUAL_ENV/bin/pytest"
+else
+    PYTHON_BIN="$(command -v python3 || command -v python)"
+    PIP_BIN="$(command -v pip3 || command -v pip)"
+    PYTEST_BIN="$(command -v pytest)"
+fi
+[ -x "$PYTEST_BIN" ] || PYTEST_BIN="$PYTHON_BIN -m pytest"
+
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║         Pre-PR Quality Gate - MCP Memory Service             ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════════╝${NC}"
@@ -75,13 +95,13 @@ fi
 echo -e "\n${YELLOW}[3/9]${NC} Running test suite with coverage..."
 
 # Check if pytest-cov is installed
-if ! python -c "import pytest_cov" 2>/dev/null; then
+if ! "$PYTHON_BIN" -c "import pytest_cov" 2>/dev/null; then
     echo -e "${YELLOW}   Installing pytest-cov...${NC}"
-    pip install pytest-cov > /dev/null 2>&1
+    "$PIP_BIN" install pytest-cov > /dev/null 2>&1
 fi
 
 # Run tests with coverage
-COVERAGE_OUTPUT=$(pytest tests/ -q --tb=short \
+COVERAGE_OUTPUT=$($PYTEST_BIN tests/ -q --tb=short \
     --cov=src/mcp_memory_service \
     --cov-report=term-missing 2>&1)
 
@@ -107,7 +127,7 @@ fi
 
 # Check 3.5: Handler coverage check
 echo -e "\n${YELLOW}[3.5/9]${NC} Checking handler test coverage..."
-if python scripts/validation/check_handler_coverage.py; then
+if "$PYTHON_BIN" scripts/validation/check_handler_coverage.py; then
     check_status "Handler coverage (all 17 handlers tested)" 0
 else
     check_status "Handler coverage (all 17 handlers tested)" 1

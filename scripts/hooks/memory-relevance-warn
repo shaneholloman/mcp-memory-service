@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+#
+# memory-relevance-warn — pre-commit advisory hook
+#
+# Searches the local MCP Memory Service for memories relevant to the staged
+# files and displays top hits as warnings BEFORE the commit lands. Never blocks.
+#
+# Goal: surface prior learnings at the moment they're most useful — when you're
+# about to touch a file the project has past notes on.
+#
+# Install (chained after the existing pre-commit):
+#   add `bash scripts/hooks/memory-relevance-warn || true` to your
+#   .git/hooks/pre-commit, OR run via pre-commit framework if that's set up.
+#
+# Disable for one commit: MCP_MEMORY_SKIP_HOOK=1 git commit ...
+# Disable permanently:    set MCP_MEMORY_SKIP_HOOK=1 in your shell rc
+
+set -u
+
+[ "${MCP_MEMORY_SKIP_HOOK:-0}" = "1" ] && exit 0
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ENV_FILE="$REPO_ROOT/.env"
+
+# Pull credentials from .env without sourcing (avoids leaking other vars).
+API_KEY=""
+HOST="127.0.0.1"
+PORT="8000"
+if [ -f "$ENV_FILE" ]; then
+    API_KEY=$(grep -E '^MCP_API_KEY=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+    _PORT=$(grep -E '^MCP_HTTP_PORT=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+    [ -n "$_PORT" ] && PORT="$_PORT"
+fi
+
+URL="http://$HOST:$PORT/api/search"
+
+# Quick liveness probe — silent skip if server isn't running.
+if ! curl -s -o /dev/null --max-time 1 "http://$HOST:$PORT/api/health" 2>/dev/null; then
+    exit 0
+fi
+
+# Build query from staged file paths. We feed the relative paths as a single
+# semantic query — embeddings handle context better than keyword joins.
+STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -v '^$' | head -20)
+[ -z "$STAGED" ] && exit 0
+
+# Collapse to a compact query: pick directories + filenames, drop extensions.
+QUERY=$(echo "$STAGED" | sed 's/\.[a-z]*$//' | tr '\n' ' ' | sed 's/  */ /g')
+[ ${#QUERY} -lt 5 ] && exit 0
+[ ${#QUERY} -gt 500 ] && QUERY="${QUERY:0:500}"
+
+# Build JSON payload via python so we don't have to escape shell quotes.
+PAYLOAD=$(REPO_ROOT="$REPO_ROOT" QUERY="$QUERY" python3 -c '
+import json, os
+print(json.dumps({
+    "query": os.environ["QUERY"],
+    "n_results": 3,
+    "tags": ["mcp-memory-service"],
+}))
+')
+
+HEADERS=()
+[ -n "$API_KEY" ] && HEADERS+=(-H "Authorization: Bearer $API_KEY")
+
+RESP=$(curl -s --max-time 3 -X POST "$URL" \
+    -H "Content-Type: application/json" \
+    "${HEADERS[@]}" \
+    -d "$PAYLOAD" 2>/dev/null) || exit 0
+
+# Parse and display. Bail silently on any parsing issue — this hook never blocks.
+echo "$RESP" | python3 -c '
+import json, sys, os
+
+try:
+    data = json.loads(sys.stdin.read() or "{}")
+except Exception:
+    sys.exit(0)
+
+results = data.get("results") or data.get("memories") or []
+if not results:
+    sys.exit(0)
+
+# Show only memories with non-trivial similarity. Threshold tuned to filter noise.
+hits = [r for r in results if (r.get("similarity_score") or r.get("relevance_score") or 0) >= 0.45]
+if not hits:
+    sys.exit(0)
+
+YELLOW = "\033[1;33m"
+DIM = "\033[2m"
+NC = "\033[0m"
+
+print(f"\n{YELLOW}💡 Relevant prior learnings (from MCP Memory){NC}")
+for r in hits[:3]:
+    content = (r.get("memory") or {}).get("content") if isinstance(r.get("memory"), dict) else r.get("content", "")
+    if not content:
+        continue
+    line1 = content.strip().split("\n")[0][:140]
+    score = r.get("similarity_score") or r.get("relevance_score") or 0
+    print(f"  {DIM}[{score:.2f}]{NC} {line1}")
+print(f"{DIM}  (set MCP_MEMORY_SKIP_HOOK=1 to silence){NC}\n")
+' 2>/dev/null
+
+exit 0
