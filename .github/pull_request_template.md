@@ -60,6 +60,43 @@
 - [ ] Updated existing tests
 - [ ] Test coverage maintained/improved
 
+## Regression Prevention (required for Bug fix PRs)
+
+<!--
+Goal: prevent the same bug from recurring. Skip ONLY for new-feature PRs that
+have no failure mode to lock in.
+-->
+
+**What test prevents reintroduction of this bug?**
+<!-- File path + test name. e.g. tests/storage/test_sqlite_vec.py::test_deleted_at_guard -->
+
+-
+
+**If no regression test was added, why?**
+<!-- Valid reasons: bug is in deprecated code being removed, untestable infra issue,
+test infra doesn't yet exist (file follow-up issue and link it). -->
+
+-
+
+## Captured Learnings (recommended)
+
+<!--
+Did this PR teach you something non-obvious about the codebase, a library, CI,
+or a workflow? Capture it here so the project's memory layer can index it. The
+maintainer will save anything useful to the MCP Memory Service with the
+appropriate tags. One-line per learning is fine.
+
+Examples (good):
+  - SQLite WAL mode requires explicit busy_timeout to survive concurrent writes
+    under HTTP+MCP server load (closes the "database is locked" class)
+  - peter-evans/create-pull-request must be pinned to SHA, not version tag —
+    supply chain finding from PR #578
+
+Skip if there's nothing non-obvious — don't manufacture content.
+-->
+
+-
+
 ## Related Issues
 
 <!-- Link related issues using keywords: Fixes #123, Closes #456, Relates to #789 -->
