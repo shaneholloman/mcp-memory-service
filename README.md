@@ -490,17 +490,20 @@ The `:quality-cpu` image pre-exports both models at build time and ships only `o
 ---
 
 
-## Latest Release: **v10.48.0** (May 2, 2026)
+## Latest Release: **v10.49.0** (May 4, 2026)
 
-**feat: include_superseded retrieval filter + auto-mark on contradiction**
+**feat(cli): lazy lifecycle commands and faster startup (PR #841, @creativelaides)**
 
 **What's New:**
-- **`include_superseded` parameter on all retrieval paths**: `memory_search`, `retrieve`, `retrieve_with_quality_boost`, and `retrieve_hybrid` across all backends (`sqlite_vec`, `cloudflare`, `hybrid`, `milvus`, `http_client`) now accept `include_superseded: bool = False`. Default behavior unchanged — pass `True` to retrieve the full contradiction chain. Partial implementation of RFC #732. (PR #814, @filhocf)
-- **Auto-mark `superseded_by` on high-confidence contradiction**: The consolidator automatically marks the older memory as `superseded_by` the newer one when a `contradicts` relationship is detected with confidence ≥ 0.75. Single batched transaction via new `mark_superseded_batch()` storage method. No DB migration needed. (PR #814, @filhocf)
+- **CLI lifecycle commands**: `memory launch|stop|restart|info|health|logs` for managing the background HTTP server — cross-platform PID tracking, health polling, and clean teardown.
+- **22s → <3s startup**: Heavy ML imports (torch, transformers, sentence-transformers) are now lazy-loaded, so `memory --help` and lifecycle commands start instantly.
+- **Security fixes**: Command injection in `launch` patched (safe arg list replaces `-c` string); file-descriptor leak after `Popen` closed; `MCP_ALLOW_ANONYMOUS_ACCESS` pass-through restored.
+- **+18 tests recovered**: csv/json/semtools loader tests re-enabled with qualified conftest imports (~1,803 tests total).
 
 ---
 
 **Previous Releases**:
+- **v10.48.0** - feat: include_superseded retrieval filter + auto-mark on contradiction (PR #814, @filhocf)
 - **v10.47.2** - fix(consolidation): disable-by-default schedule prevents unintended automatic consolidation (PR #821, closes #808)
 - **v10.47.1** - fix(web): surface /server/update failures end-to-end (PR #807, closes #729)
 - **v10.47.0** - feat: memory_quality maintain orchestrator + Docker DeBERTa quantization (PRs #802, #803, @filhocf, closes #799, #793)
