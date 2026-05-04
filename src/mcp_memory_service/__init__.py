@@ -24,22 +24,38 @@ except ImportError:
     except Exception:
         __version__ = "10.13.0"
 
-# Import core classes to establish package structure for pytest
+# Eagerly import lightweight subpackages and core types.
+# This anchors package discovery for `from mcp_memory_service.X import ...`
+# in all install contexts (editable, wheel, uvx). A no-op `__path__ = __path__`
+# is not enough — pytest/import paths that use `sys.path.insert(0, 'src')`
+# can otherwise resolve this as a plain module and break subpackage imports.
+# Heavy imports (torch/transformers via storage backends) stay deferred via
+# `__getattr__` below.
 from .models import Memory, MemoryQueryResult
-from .storage import MemoryStorage
 from .utils import generate_content_hash
 
-# Export main classes
+
+def __getattr__(name):
+    """Lazy-load heavy storage classes on first access to avoid loading
+    torch/transformers (~22s) at package import time.
+    Keeps CLI commands like 'memory launch', 'memory stop', 'memory info' fast.
+    """
+    _lazy_map = {
+        "MemoryStorage": ".storage",
+        "SqliteVecMemoryStorage": ".storage",
+    }
+    if name in _lazy_map:
+        import importlib
+        module = importlib.import_module(_lazy_map[name], __name__)
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
     'Memory',
     'MemoryQueryResult',
     'MemoryStorage',
     'generate_content_hash',
 ]
-
-# Conditional import for SqliteVecMemoryStorage (may not be available in all environments)
-try:
-    from .storage import SqliteVecMemoryStorage
-    __all__.append('SqliteVecMemoryStorage')
-except ImportError:
-    pass  # SqliteVecMemoryStorage is optional; not available in all environments
