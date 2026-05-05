@@ -161,9 +161,30 @@ class ConsolidationBase(ABC):
         return memory.memory_type or 'standard'
     
     def _is_protected_memory(self, memory: Memory) -> bool:
-        """Check if a memory is protected from consolidation operations."""
+        """Check if a memory is protected from consolidation operations.
+
+        Protected memories include:
+        - Memories with critical/important/reference/permanent tags
+        - Mistake notes with failure_count >= 3 (proven error patterns)
+        """
         protected_tags = {'critical', 'important', 'reference', 'permanent'}
-        return bool(set(memory.tags).intersection(protected_tags))
+        if set(memory.tags).intersection(protected_tags):
+            return True
+
+        # Protect high-value mistake notes (recurring patterns)
+        if memory.memory_type == 'mistake':
+            metadata = memory.metadata or {}
+            if isinstance(metadata, str) and metadata.strip():
+                import json
+                try:
+                    metadata = json.loads(metadata)
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+
+            if isinstance(metadata, dict) and metadata.get('failure_count', 0) >= 3:
+                return True
+
+        return False
 
 class ConsolidationError(Exception):
     """Base exception for consolidation operations."""
