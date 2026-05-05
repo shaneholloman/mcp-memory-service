@@ -490,17 +490,17 @@ The `:quality-cpu` image pre-exports both models at build time and ships only `o
 ---
 
 
-## Latest Release: **v10.49.3** (May 5, 2026)
+## Latest Release: **v10.49.4** (May 5, 2026)
 
-**fix(opencode): correct API path, payload field, and client-side tag filter (PRs #849, #850)**
+**fix(consolidation): protect high-value mistake notes from decay/forgetting (PR #854, @filhocf)**
 
 **What's New:**
-- **OpenCode plugin works again**: Fixed wrong API path (`/api/memories/search` -> `/api/search`) and wrong payload field (`limit` -> `n_results`) that caused HTTP 405 errors on all OpenCode memory searches. Closes #847.
-- **Project-scoped searches correctly scoped**: `/api/search` ignores `tags` server-side; plugin now over-fetches and filters client-side by tag intersection so project memory stays isolated.
+- **Mistake notes survive consolidation**: `_is_protected_memory()` now shields `memory_type='mistake'` records with `failure_count >= 3` from decay and forgetting passes. Error-replay knowledge is no longer silently erased during scheduled consolidation. Closes #853.
 
 ---
 
 **Previous Releases**:
+- **v10.49.3** - fix(opencode): correct API path, payload field, and client-side tag filter (PRs #849, #850)
 - **v10.49.2** - fix(ontology): register custom base types with empty subtype lists (PR #846)
 - **v10.49.1** - fix: surface memory_type ontology coercion warnings + uvx CI flake fix (PR #844)
 - **v10.49.0** - feat(cli): lazy lifecycle commands and faster startup (PR #841, @creativelaides)

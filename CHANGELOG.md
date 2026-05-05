@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.49.4] - 2026-05-05
+
+### Fixed
+
+- **[#853] Mistake-notes survive consolidation**: `_is_protected_memory()` in [`consolidation/base.py`](src/mcp_memory_service/consolidation/base.py) now shields memories with `memory_type='mistake'` and `failure_count >= 3` from decay and forgetting passes. High-value error-replay records no longer vanish during scheduled consolidation. 10 new tests in `tests/consolidation/test_mistake_lifecycle.py`. Closes #853. (PR #854, @filhocf)
+
 ## [10.49.3] - 2026-05-05
 
 ### Fixed
