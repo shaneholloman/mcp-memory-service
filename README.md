@@ -490,19 +490,19 @@ The `:quality-cpu` image pre-exports both models at build time and ships only `o
 ---
 
 
-## Latest Release: **v10.49.0** (May 4, 2026)
+## Latest Release: **v10.49.1** (May 5, 2026)
 
-**feat(cli): lazy lifecycle commands and faster startup (PR #841, @creativelaides)**
+**fix: surface memory_type ontology coercion warnings + uvx CI flake fix (PR #844)**
 
 **What's New:**
-- **CLI lifecycle commands**: `memory launch|stop|restart|info|health|logs` for managing the background HTTP server — cross-platform PID tracking, health polling, and clean teardown.
-- **22s → <3s startup**: Heavy ML imports (torch, transformers, sentence-transformers) are now lazy-loaded, so `memory --help` and lifecycle commands start instantly.
-- **Security fixes**: Command injection in `launch` patched (safe arg list replaces `-c` string); file-descriptor leak after `Popen` closed; `MCP_ALLOW_ANONYMOUS_ACCESS` pass-through restored.
-- **+18 tests recovered**: csv/json/semtools loader tests re-enabled with qualified conftest imports (~1,803 tests total).
+- **Ontology coercion UX**: `memory_store` (MCP) and `POST /memories` (HTTP) now surface a visible warning when an unknown `memory_type` is silently coerced to `"observation"`. Callers can register custom types via `MCP_CUSTOM_MEMORY_TYPES`. Closes #843.
+- **New docs**: [`docs/memory-ontology.md`](docs/memory-ontology.md) documents the built-in taxonomy (12 base types, ~60 subtypes), coercion behaviour, and `MCP_CUSTOM_MEMORY_TYPES` JSON format.
+- **uvx CI flake fixed**: Removed `importlib.reload` in test files that poisoned FastAPI route deps, causing intermittent `test_harvest_requires_auth` failures in the `Test uvx compatibility` run.
 
 ---
 
 **Previous Releases**:
+- **v10.49.0** - feat(cli): lazy lifecycle commands and faster startup (PR #841, @creativelaides)
 - **v10.48.0** - feat: include_superseded retrieval filter + auto-mark on contradiction (PR #814, @filhocf)
 - **v10.47.2** - fix(consolidation): disable-by-default schedule prevents unintended automatic consolidation (PR #821, closes #808)
 - **v10.47.1** - fix(web): surface /server/update failures end-to-end (PR #807, closes #729)

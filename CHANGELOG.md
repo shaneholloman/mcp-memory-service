@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [10.49.1] - 2026-05-05
+
 ### Fixed
 
 - **[#842 / #843] `memory_type` ontology coercion was invisible to callers**: When a user passed an unknown `memory_type` (e.g. `"foo"`), `Memory.__post_init__` silently rewrote it to `"observation"` and only logged a warning. The MCP/HTTP store responses still reported `success`, so the caller had no way to detect the rewrite — subsequent `memory_list` queries filtered on the original type returned 0 results and looked like a broken filter (#842). Fix: both the MCP `memory_store` handler ([`server/handlers/memory.py`](src/mcp_memory_service/server/handlers/memory.py)) and the HTTP `POST /memories` endpoint ([`web/api/memories.py`](src/mcp_memory_service/web/api/memories.py)) now compare the requested vs. effective `memory_type` and append a visible warning to the response when they diverge, including a hint to register the type via `MCP_CUSTOM_MEMORY_TYPES`. The default `"note"` (applied when the caller omits `type`) does not trigger a warning. Tool description for `memory_store` updated to enumerate the built-in base types and link to the new ontology guide. Closes #843.
